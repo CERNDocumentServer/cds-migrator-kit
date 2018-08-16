@@ -1,0 +1,30 @@
+version: '2'
+services:
+
+  cache:
+    image: redis:4.0.6
+    read_only: true
+    ports:
+      - "6379:6379"
+
+  db:
+    image: postgres:9.4
+    command: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=
+    ports:
+      - "5432:5432"
+    read_only: false
+
+  mq:
+    image: rabbitmq:3.6.14-management
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+
+  es:
+    build: ./es/
+    ports:
+      - "9200:9200"
+      - "9300:9300"
