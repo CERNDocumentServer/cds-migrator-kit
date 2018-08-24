@@ -39,4 +39,4 @@ def test_view(app):
     with app.test_client() as client:
         res = client.get("/")
         assert res.status_code == 200
-        assert 'Welcome to cds-migrator-kit' in str(res.data)
+        assert 'migrator' in str(res.data)

@@ -9,8 +9,9 @@
 
 from __future__ import absolute_import, print_function
 
-from flask import Blueprint, render_template
-from flask_babelex import gettext as _
+from flask import Blueprint, render_template, send_from_directory
+
+from cds_migrator_kit.modules.migrator.log import JsonLogger
 
 blueprint = Blueprint(
     'cds_migrator_kit',
@@ -24,5 +25,21 @@ blueprint = Blueprint(
 def index():
     """Render a basic view."""
     return render_template(
+        "cds_migrator_kit/welcome.html",
+    )
+
+
+@blueprint.route("/results")
+def results():
+    """Render a basic view."""
+    all_stats = JsonLogger.render_stats()
+
+    return render_template(
         "cds_migrator_kit/index.html",
-        module_name=_('cds-migrator-kit'))
+        results=all_stats)
+
+
+@blueprint.route('/record/<recid>')
+def send_json(recid):
+    """Serves static json preview output files."""
+    return send_from_directory('tmp/logs', '{0}.json'.format(recid))

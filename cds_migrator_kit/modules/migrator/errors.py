@@ -15,5 +15,16 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Invenio; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02D111-1307, USA.
-"""CDS Migrator Kit."""
+# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+"""Define Books flavour exceptions."""
+from dojson.errors import DoJSONException
+
+
+class LossyConversion(DoJSONException):
+    """Data lost during migration."""
+
+    def __init__(self, *args, **kwargs):
+        """Exception custom initialisation."""
+        self.missing = kwargs.pop('missing', None)
+        self.message = 'Lossy conversion: {0}'.format(self.missing or '')
+        super(LossyConversion, self).__init__(*args, **kwargs)
