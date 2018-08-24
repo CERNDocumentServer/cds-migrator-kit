@@ -12,7 +12,7 @@ from __future__ import absolute_import, print_function
 import os
 import shutil
 import tempfile
-from os.path import join, dirname
+from os.path import dirname, join
 
 import pytest
 from flask import Flask
@@ -30,7 +30,6 @@ def instance_path():
 @pytest.fixture()
 def base_app(instance_path):
     """Flask application fixture."""
-
     instance_path = tempfile.mkdtemp()
 
     os.environ.update(
@@ -50,6 +49,7 @@ def base_app(instance_path):
         PIDSTORE_DATACITE_DOI_PREFIX='10.0000',
         ACCOUNTS_JWT_ENABLE=False,
     )
+
     Babel(app_)
 
     return app_
@@ -66,14 +66,3 @@ def app(base_app):
 def datadir():
     """Get data directory."""
     return join(dirname(__file__), 'data')
-
-
-# @pytest.yield_fixture()
-# def db(app):
-#     """Setup database."""
-#     if not database_exists(str(db_.engine.url)):
-#         create_database(str(db_.engine.url))
-#     db_.create_all()
-#     yield db_
-#     db_.session.remove()
-#     db_.drop_all()

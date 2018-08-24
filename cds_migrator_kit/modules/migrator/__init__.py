@@ -16,4 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with Invenio; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place, Suite 330, Boston, MA 02D111-1307, USA.
-"""CDS Migrator Kit"""
+"""CDS Migrator Kit."""
+
+from __future__ import absolute_import, print_function
+
+from .ext import CDSMigrator
+
+__all__ = ('CDSMigrator', )

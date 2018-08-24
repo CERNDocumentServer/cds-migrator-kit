@@ -1,0 +1,14 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2018 CERN.
+#
+# cds-migrator-kit is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
+#
+#       Add development versions of some important dependencies here to get a
+#       warning when there are breaking upstream changes, e.g.:
+#
+#     -e git+git://github.com/mitsuhiko/werkzeug.git#egg=Werkzeug
+#     -e git+git://github.com/mitsuhiko/jinja2.git#egg=Jinja2
+
+-e git+https://github.com/CERNDocumentServer/cds-dojson.git@books#egg=cds-dojson
