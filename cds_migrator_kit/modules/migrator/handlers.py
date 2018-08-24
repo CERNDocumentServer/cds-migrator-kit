@@ -16,4 +16,25 @@
 # You should have received a copy of the GNU General Public License
 # along with Invenio; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place, Suite 330, Boston, MA 02D111-1307, USA.
-"""CDS Migrator Kit."""
+"""CDS Books exceptions handlers."""
+import logging
+
+from cds_migrator_kit.modules.migrator.log import JsonLogger
+
+logger = logging.getLogger('migrator')
+
+
+def migration_exception_handler(exc, output, key, value):
+    """Migration exception handling - log to files.
+
+    :param exc: exception
+    :param output: generated output version
+    :param key: MARC field ID
+    :param value: MARC field value
+    :return:
+    """
+    logger.error(
+        '#RECID: #{0} - {1}  MARC FIELD: *{2}*, input value: {3}, -> {4}, '
+        .format(output['recid'], exc.message, key, value, output)
+    )
+    JsonLogger().add_log(exc, key, value, output)

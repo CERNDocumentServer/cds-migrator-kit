@@ -7,7 +7,49 @@
 {%- extends config.CDS_MIGRATOR_KIT_BASE_TEMPLATE %}
 
 {%- block page_body %}
-TODO: Example template, please remove if you do not need it.
-{{_('Welcome to %(module_name)s', module_name=module_name)}}
+
+
+  <table class="table table-bordered">
+    <thead class="thead-dark">
+    <tr>
+      <th scope="col" style="position: sticky; top:0; ">Recid (Legacy link)</th>
+      <th scope="col" style="position: sticky; top:0; ">Unexpected Value</th>
+      <th scope="col" style="position: sticky; top:0; ">Missing required</th>
+      <th scope="col" style="position: sticky; top:0; ">Manual Migration</th>
+      <th scope="col" style="position: sticky; top:0; ">Lost data fields</th>
+      <th scope="col" style="position: sticky; top:0; ">Output</th>
+    </tr>
+    </thead>
+    <tbody class="table-hover">
+    {% for elem in results %}
+      <tr {% if elem.clean %}class="table-success"{% endif %}>
+        <th scope="row"><a href="https://cds.cern.ch/record/{{ elem.recid }}">{{ elem.recid }}</a></th>
+        <td>
+          {% for val in elem.unexpected_value %}
+            {{ val.0 }}<br>
+            {{ val.1 }}
+          {% endfor %}
+        </td>
+        <td>
+          {% for val in elem.missing_required_field %}
+            {{ val }},
+          {% endfor %}
+        </td>
+        <td>{% for val in elem.manual_migration %}
+          {{ val }},
+        {% endfor %}</td>
+        <td>{% for val in elem.lost_data %}
+          {{ val }},
+        {% endfor %}</td>
+        <td>
+          {% if not elem.lost_data %}
+            <a href="/record/{{ elem.recid }}">View</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
 {%- endblock %}
 

@@ -15,12 +15,13 @@
 # Check manifest will not automatically add these two files:
 include .dockerignore
 include .editorconfig
-include .tx/config
+# include .tx/config
 prune docs/_build
 recursive-include cds_migrator_kit *.po *.pot *.mo
 
 # added by check_manifest.py
 include *.rst
+include *.txt
 include *.sh
 include *.yml
 include Dockerfile
@@ -35,9 +36,14 @@ recursive-include docker *.ini
 recursive-include docker *.key
 recursive-include docker *.pem
 recursive-include docker *.sh
+recursive-include docker *
 recursive-include docs *.bat
 recursive-include docs *.py
 recursive-include docs *.rst
 recursive-include docs *.txt
 recursive-include docs Makefile
 recursive-include tests *.json
+recursive-include scripts *.sh
+recursive-include examples *.py
+recursive-include examples *.sh
+

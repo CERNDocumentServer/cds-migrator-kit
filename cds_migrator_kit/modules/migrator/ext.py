@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of CERN Document Server.
-# Copyright (C) 2017 CERN.
+# This file is part of Invenio.
+# Copyright (C) 2018 CERN.
 #
 # Invenio is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as
@@ -15,5 +15,20 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with Invenio; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02D111-1307, USA.
-"""CDS Migrator Kit."""
+# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+
+"""CDS Migrator."""
+from cds_migrator_kit.modules.migrator.cli import report
+
+
+class CDSMigrator(object):
+    """CDS fixtures extension."""
+
+    def __init__(self, app=None):
+        """Extension initialization."""
+        if app:
+            self.init_app(app)
+
+    def init_app(self, app):
+        """Flask application initialization."""
+        app.cli.add_command(report)

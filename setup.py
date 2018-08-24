@@ -42,16 +42,24 @@ setup_requires = [
 ]
 
 install_requires = [
+    'cds-dojson>=0.9.0',
     'Flask-BabelEx>=0.9.2',
+    'invenio-base>=1.0.1',
+    'invenio-config>=1.0.0',
+    'invenio-db[postgresql,versioning]>=1.0.0',
+    'invenio-files-rest>=1.0.0a18',
+    'invenio-migrator>=1.0.0a9',
+    'invenio-pidstore>=1.0.0',
+    'invenio-records>=1.0.0',
+    'invenio-records-files>=1.0.0a10',
 ]
 
 packages = find_packages()
 
-
 # Get the version string. Cannot be done with import!
 g = {}
 with open(os.path.join('cds_migrator_kit', 'version.py'), 'rt') as fp:
-    exec(fp.read(), g)
+    exec (fp.read(), g)
     version = g['__version__']
 
 setup(
@@ -74,6 +82,7 @@ setup(
         ],
         'invenio_base.apps': [
             'cds_migrator_kit = cds_migrator_kit:cdsmigratorkit',
+            'cds_migrator = cds_migrator_kit.modules.migrator:CDSMigrator',
         ],
         'invenio_i18n.translations': [
             'messages = cds_migrator_kit',
