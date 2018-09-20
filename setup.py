@@ -52,6 +52,7 @@ install_requires = [
     'invenio-pidstore>=1.0.0',
     'invenio-records>=1.0.0',
     'invenio-records-files>=1.0.0a10',
+    'pathlib>=1.0.1',
 ]
 
 packages = find_packages()

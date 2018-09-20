@@ -19,10 +19,13 @@
 """CDS Books exceptions handlers."""
 import json
 import logging
+import os
 
 import click
 from flask.cli import with_appcontext
+from pathlib import Path
 
+from cds_migrator_kit.config import MIGRATION_LOG_FILE
 from cds_migrator_kit.modules.migrator.errors import LossyConversion
 from cds_migrator_kit.modules.migrator.log import JsonLogger
 from cds_migrator_kit.modules.migrator.records import CDSRecordDump
@@ -48,7 +51,8 @@ def load_records(sources, source_type, eager):
                 except LossyConversion as e:
                     cli_logger.error('[DATA ERROR]: {0}'.format(e.message))
                     JsonLogger().add_log(e, output=item)
-        click.secho('Check completed. See the report on:', fg='green')
+        click.secho('Check completed. See the report on: '
+                    'books-migrator-dev.web.cern.ch/results', fg='green')
 
 
 @click.group()
@@ -72,4 +76,8 @@ def report():
 @with_appcontext
 def dryrun(sources, source_type, recid):
     """Load records migration dump."""
+    # if os.path.exists(MIGRATION_LOG_FILE):
+    #     os.remove(MIGRATION_LOG_FILE)
+    #     f = Path(MIGRATION_LOG_FILE)
+    #     f.touch(exist_ok=True)
     load_records(sources=sources, source_type=source_type, eager=True)
