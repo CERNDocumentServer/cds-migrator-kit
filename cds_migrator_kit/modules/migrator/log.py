@@ -1,27 +1,16 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of CERN Document Server.
-# Copyright (C) 2017 CERN.
+# This file is part of Invenio.
+# Copyright (C) 2015-2018 CERN.
 #
-# Invenio is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+# cds-migrator-kit is free software; you can redistribute it and/or modify it
+# under the terms of the MIT License; see LICENSE file for more details.
+
 """Define Books loggers."""
+
 import json
 import logging
-import os
 
-from pathlib import Path
 from cds_dojson.marc21.fields.books.errors import ManualMigrationRequired, \
     MissingRequiredField, UnexpectedValue
 
@@ -42,6 +31,7 @@ def set_logging():
     logger.addHandler(fh)
     return logger
 
+
 logger = logging.getLogger('migrator')
 
 
@@ -54,35 +44,33 @@ class JsonLogger(object):
         return next(
             (item for item in stats_json if item['recid'] == recid), None)
 
-    @staticmethod
-    def render_stats():
+    def render_stats(self):
         """Load stats from file as json."""
         try:
-            with open(MIGRATION_LOG_FILE, 'r+') as f:
+            with open(MIGRATION_LOG_FILE, "r") as f:
                 all_stats = json.load(f)
         except IOError as e:
-            f = open(MIGRATION_LOG_FILE, 'w+').close()
+            open(MIGRATION_LOG_FILE, "w+").close()
             all_stats = []
-            print e.message
+            logger.error(e.message)
         except ValueError as e:
             all_stats = []
-            print e.message
+            logger.error(e.message)
         return all_stats
 
     def create_output_file(self, recid, output):
         """Create json preview output file."""
-        filename = "{0}{1}.json".format(MIGRATION_LOGS_PATH, recid)
-        f = Path(filename)
-        f.touch(exist_ok=True)
-        logger.info(f)
-        logger.info(filename)
-        logger.info(os.path.abspath(__file__))
-        with open(filename, "w+") as f:
-            json.dump(output, f, indent=2)
+        try:
+            filename = "{0}{1}.json".format(MIGRATION_LOGS_PATH, recid)
+            with open(filename, "w+") as f:
+                json.dump(output, f, indent=2)
+        except Exception as e:
+            print e.message
+            raise e
 
     def add_log(self, exc, key=None, value=None, output=None):
         """Add exception log."""
-        all_stats = JsonLogger.render_stats()
+        all_stats = JsonLogger().render_stats()
         with open(MIGRATION_LOG_FILE, "w+") as f:
             record_stats = JsonLogger.get_stat_by_recid(output['recid'],
                                                         all_stats)
@@ -94,13 +82,13 @@ class JsonLogger(object):
                                 'lost_data': [],
                                 'clean': False,
                                 }
-            all_stats.append(record_stats)
-            JsonLogger.resolve_error_type(exc, record_stats, key, value)
+                all_stats.append(record_stats)
+            self.resolve_error_type(exc, record_stats, key, value)
             json.dump(all_stats, f, indent=2)
 
     def add_item(self, output):
         """Add empty log item."""
-        all_stats = JsonLogger.render_stats()
+        all_stats = JsonLogger().render_stats()
         with open(MIGRATION_LOG_FILE, "w+") as f:
             record_stats = JsonLogger.get_stat_by_recid(output['recid'],
                                                         all_stats)
@@ -112,12 +100,10 @@ class JsonLogger(object):
                                 'lost_data': [],
                                 'clean': True,
                                 }
-            all_stats.append(record_stats)
-            json.dump(all_stats, f, indent=2)
+                all_stats.append(record_stats)
+                json.dump(all_stats, f, indent=2)
 
-
-    @staticmethod
-    def resolve_error_type(exc, rec_stats, key, value):
+    def resolve_error_type(self, exc, rec_stats, key, value):
         """Check the type of exception and log to dict."""
         rec_stats['clean'] = False
         if isinstance(exc, ManualMigrationRequired):

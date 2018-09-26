@@ -33,7 +33,7 @@ def index():
 @blueprint.route("/results")
 def results():
     """Render a basic view."""
-    all_stats = JsonLogger.render_stats()
+    all_stats = JsonLogger().render_stats()
 
     return render_template(
         "cds_migrator_kit/index.html",
@@ -43,4 +43,4 @@ def results():
 @blueprint.route('/record/<recid>')
 def send_json(recid):
     """Serves static json preview output files."""
-    return send_from_directory(MIGRATION_LOGS_PATH, 'rec_{0}.json'.format(recid))
+    return send_from_directory(MIGRATION_LOGS_PATH, '{0}.json'.format(recid))
