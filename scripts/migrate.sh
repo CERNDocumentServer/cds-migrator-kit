@@ -77,10 +77,10 @@ then
 
         if [ "$CHUNK_SIZE" != "" ]; then
             echo 'Performing '$QUERY' dump on the legacy.... ('$CHUNK_SIZE' records)'
-        ssh $USERNAME@cds-wn-04 "cd /eos/media/cds/test/books/migration/records/tmp/; inveniomigrator dump records -q '$QUERY' --with-collections [--latest-only]" --file-prefix $FILE_PREFIX --chunk-size $CHUNK_SIZE $FROM_DATE $LIMIT
+            ssh $USERNAME@cds-wn-04 "cd /eos/media/cds/test/books/migration/records/tmp/; /usr/bin/inveniomigrator dump records -q '$QUERY' --with-collections [--latest-only]" --file-prefix $FILE_PREFIX --chunk-size $CHUNK_SIZE $FROM_DATE $LIMIT
         else
             echo 'Performing '$QUERY' dump on the legacy.... (100 records)'
-            ssh $USERNAME@cds-wn-04 "cd /eos/media/cds/test/books/migration/records/tmp/; inveniomigrator dump records -q '$QUERY' --with-collections [--latest-only]" --file-prefix $FILE_PREFIX --chunk-size 100 $FROM_DATE $LIMIT
+            ssh $USERNAME@cds-wn-04 "cd /eos/media/cds/test/books/migration/records/tmp/; /usr/bin/inveniomigrator dump records -q '$QUERY' --with-collections [--latest-only]" --file-prefix $FILE_PREFIX --chunk-size 100 $FROM_DATE $LIMIT
         fi
     elif [ "$MODE" == "load" ]; then
         echo 'Record analysis on books-migrator-dev...'
