@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2018 CERN.
+# This file is part of Invenio.
+# Copyright (C) 2015-2018 CERN.
 #
 # cds-migrator-kit is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -85,33 +86,6 @@ SECURITY_EMAIL_SUBJECT_REGISTER = _(
 #: Redis session storage URL.
 ACCOUNTS_SESSION_REDIS_URL = 'redis://localhost:6379/1'
 
-# Celery configuration
-# ====================
-
-BROKER_URL = 'amqp://guest:guest@localhost:5672/'
-#: URL of message broker for Celery (default is RabbitMQ).
-CELERY_BROKER_URL = 'amqp://guest:guest@localhost:5672/'
-#: URL of backend for result storage (default is Redis).
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/2'
-#: Scheduled tasks configuration (aka cronjobs).
-CELERY_BEAT_SCHEDULE = {
-    'indexer': {
-        'task': 'invenio_indexer.tasks.process_bulk_queue',
-        'schedule': timedelta(minutes=5),
-    },
-    'accounts': {
-        'task': 'invenio_accounts.tasks.clean_session_table',
-        'schedule': timedelta(minutes=60),
-    },
-}
-
-# Database
-# ========
-#: Database URI including user and password
-# SQLALCHEMY_DATABASE_URI = \
-#     'postgresql+psycopg2://cds-migrator-kit:' \
-#     'cds-migrator-kit@localhost/cds-migrator-kit'
-
 # JSONSchemas
 # ===========
 #: Hostname used in URLs for local JSONSchemas.
@@ -135,22 +109,14 @@ SESSION_COOKIE_SECURE = True
 #: route correct hosts to the application.
 APP_ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
-# OAI-PMH
-# =======
-OAISERVER_ID_PREFIX = 'oai:cds-migrator-kit.com:'
-
 # Debug
 # =====
 # Flask-DebugToolbar is by default enabled when the application is running in
 # debug mode. More configuration options are available at
 # https://flask-debugtoolbar.readthedocs.io/en/latest/#configuration
 
-#: Switches off incept of redirects by Flask-DebugToolbar.
-DEBUG_TB_INTERCEPT_REDIRECTS = False
-
-
 CDS_MIGRATOR_KIT_BASE_TEMPLATE = 'cds_migrator_kit/base.html'
-MIGRATION_DUMP_PATH = '/eos/media/cds/test/books/migration/records/tmp/'
-MIGRATION_LOGS_PATH = '/eos/media/cds/test/books/migration/records/tmp/logs/'
+MIGRATION_DUMP_PATH = 'tmp/'
+MIGRATION_LOGS_PATH = 'tmp/logs/'
 
 MIGRATION_LOG_FILE = '{0}stats.json'.format(MIGRATION_LOGS_PATH)
