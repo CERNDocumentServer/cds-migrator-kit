@@ -12,5 +12,6 @@
 #     -e git+git://github.com/mitsuhiko/jinja2.git#egg=Jinja2
 
 gunicorn
--e git+https://github.com/CERNDocumentServer/cds-dojson.git@books#egg=cds-dojson
 -e .
+-e git+https://github.com/CERNDocumentServer/cds-dojson.git@books#egg=cds-dojson
+
