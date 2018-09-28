@@ -7,4 +7,4 @@
 Usage
 =====
 
-.. automodule:: cds_migrator_kit
+. automodule:: cds_migrator_kit

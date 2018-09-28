@@ -52,20 +52,18 @@ class JsonLogger(object):
         except IOError as e:
             open(MIGRATION_LOG_FILE, "w+").close()
             all_stats = []
-            logger.error(e.message)
         except ValueError as e:
             all_stats = []
-            logger.error(e.message)
         return all_stats
 
     def create_output_file(self, recid, output):
         """Create json preview output file."""
         try:
-            filename = "{0}{1}.json".format(MIGRATION_LOGS_PATH, recid)
+            filename = os.path.join(MIGRATION_LOGS_PATH,
+                                    "{0}.json".format(recid))
             with open(filename, "w+") as f:
                 json.dump(output, f, indent=2)
         except Exception as e:
-            print e.message
             raise e
 
     def add_log(self, exc, key=None, value=None, output=None):

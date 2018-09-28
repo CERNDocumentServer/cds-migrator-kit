@@ -10,6 +10,6 @@
 
 from __future__ import absolute_import, print_function
 
-from cds_migrator_kit.factory import create_app
+from .factory import create_app
 
 application = create_app()

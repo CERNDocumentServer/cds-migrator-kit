@@ -30,14 +30,18 @@ def instance_path():
 @pytest.fixture()
 def base_app(instance_path):
     """Flask application fixture."""
-    instance_path = tempfile.mkdtemp()
+    logs_dir = 'tmp/logs/'
+    logs = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+        logs_dir, 'stats.json')
 
     os.environ.update(
         APP_INSTANCE_PATH=os.environ.get(
             'INSTANCE_PATH', instance_path),
     )
 
-    app_ = Flask('testapp', instance_path=instance_path)
+    app_ = Flask('testapp', instance_path=instance_path,
+                 )
     app_.config.update(
         DEBUG_TB_ENABLED=False,
         SQLALCHEMY_DATABASE_URI=os.environ.get(
@@ -48,10 +52,11 @@ def base_app(instance_path):
         JSONSCHEMAS_HOST='cdslabs.cern.ch',
         PIDSTORE_DATACITE_DOI_PREFIX='10.0000',
         ACCOUNTS_JWT_ENABLE=False,
+        MIGRATION_LOGS_PATH=logs_dir,
+        MIGRATION_LOG_FILE=logs,
     )
 
     Babel(app_)
-
     return app_
 
 
