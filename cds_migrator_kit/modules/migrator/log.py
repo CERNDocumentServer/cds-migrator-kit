@@ -10,11 +10,12 @@
 
 import json
 import logging
+import os
 
 from cds_dojson.marc21.fields.books.errors import ManualMigrationRequired, \
     MissingRequiredField, UnexpectedValue
+from flask import current_app
 
-from cds_migrator_kit.config import MIGRATION_LOG_FILE, MIGRATION_LOGS_PATH
 from cds_migrator_kit.modules.migrator.errors import LossyConversion
 
 
@@ -47,10 +48,13 @@ class JsonLogger(object):
     def render_stats(self):
         """Load stats from file as json."""
         try:
-            with open(MIGRATION_LOG_FILE, "r") as f:
+            with open(current_app.config['CDS_MIGRATOR_KIT_LOG'], "r") as f:
                 all_stats = json.load(f)
         except IOError as e:
-            open(MIGRATION_LOG_FILE, "w+").close()
+            if not os.path.exists(
+                    current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH']):
+                os.makedirs(current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'])
+            open(current_app.config['CDS_MIGRATOR_KIT_LOG'], "w+").close()
             all_stats = []
         except ValueError as e:
             all_stats = []
@@ -59,8 +63,9 @@ class JsonLogger(object):
     def create_output_file(self, recid, output):
         """Create json preview output file."""
         try:
-            filename = os.path.join(MIGRATION_LOGS_PATH,
-                                    "{0}.json".format(recid))
+            filename = os.path.join(
+                current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'],
+                "{0}.json".format(recid))
             with open(filename, "w+") as f:
                 json.dump(output, f, indent=2)
         except Exception as e:
@@ -69,7 +74,7 @@ class JsonLogger(object):
     def add_log(self, exc, key=None, value=None, output=None):
         """Add exception log."""
         all_stats = JsonLogger().render_stats()
-        with open(MIGRATION_LOG_FILE, "w+") as f:
+        with open(current_app.config['CDS_MIGRATOR_KIT_LOG'], "w+") as f:
             record_stats = JsonLogger.get_stat_by_recid(output['recid'],
                                                         all_stats)
             if not record_stats:
@@ -87,7 +92,7 @@ class JsonLogger(object):
     def add_item(self, output):
         """Add empty log item."""
         all_stats = JsonLogger().render_stats()
-        with open(MIGRATION_LOG_FILE, "w+") as f:
+        with open(current_app.config['CDS_MIGRATOR_KIT_LOG'], "w+") as f:
             record_stats = JsonLogger.get_stat_by_recid(output['recid'],
                                                         all_stats)
             if not record_stats:

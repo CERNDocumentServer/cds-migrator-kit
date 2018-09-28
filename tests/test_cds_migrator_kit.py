@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2018 CERN.
+# This file is part of Invenio.
+# Copyright (C) 2015-2018 CERN.
 #
 # cds-migrator-kit is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -11,7 +12,7 @@ from __future__ import absolute_import, print_function
 
 from flask import Flask
 
-from cds_migrator_kit import cdsmigratorkit
+from cds_migrator_kit import Cdsmigratorkit
 
 
 def test_version():
@@ -23,11 +24,11 @@ def test_version():
 def test_init():
     """Test extension initialization."""
     app = Flask('testapp')
-    ext = cdsmigratorkit(app)
+    ext = Cdsmigratorkit(app)
     assert 'cds-migrator-kit' in app.extensions
 
     app = Flask('testapp')
-    ext = cdsmigratorkit()
+    ext = Cdsmigratorkit()
     assert 'cds-migrator-kit' not in app.extensions
     ext.init_app(app)
     assert 'cds-migrator-kit' in app.extensions
@@ -35,7 +36,7 @@ def test_init():
 
 def test_view(app):
     """Test view."""
-    cdsmigratorkit(app)
+    Cdsmigratorkit(app)
     with app.test_client() as client:
         res = client.get("/")
         assert res.status_code == 200
