@@ -82,7 +82,7 @@ setup(
             'migrator = cds_migrator_kit.cli:cli',
         ],
         'invenio_base.apps': [
-            'cds_migrator_kit = cds_migrator_kit:cdsmigratorkit',
+            'cds_migrator_kit = cds_migrator_kit:Cdsmigratorkit',
             'cds_migrator = cds_migrator_kit.modules.migrator:CDSMigrator',
         ],
         'invenio_i18n.translations': [

@@ -5,8 +5,6 @@
 #
 # cds-migrator-kit is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
-
-
 """Record Loader."""
 
 from __future__ import absolute_import, print_function
@@ -67,7 +65,7 @@ class CDSRecordDump(RecordDump):
 
         if self.source_type == 'marcxml':
             marc_record = create_record(data['marcxml'])
-            return (dt, marc_record)
+            return dt, marc_record
         else:
             val = data['json']
 
@@ -96,7 +94,6 @@ class CDSRecordDump(RecordDump):
                 current_app.logger.error(
                     'Impossible to convert to JSON {0} - {1}'.format(
                         e, marc_record))
-                raise
             missing = self.dojson_model.missing(marc_record, _json=val)
             if missing:
                 raise LossyConversion(missing=missing)

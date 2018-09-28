@@ -14,7 +14,7 @@ from . import config
 from .views import blueprint
 
 
-class cdsmigratorkit(object):
+class Cdsmigratorkit(object):
     """cds-migrator-kit extension."""
 
     def __init__(self, app=None):

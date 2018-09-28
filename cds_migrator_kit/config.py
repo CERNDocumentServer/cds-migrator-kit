@@ -117,11 +117,12 @@ APP_ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 # https://flask-debugtoolbar.readthedocs.io/en/latest/#configuration
 
 CDS_MIGRATOR_KIT_BASE_TEMPLATE = 'cds_migrator_kit/base.html'
-# MIGRATION_DUMP_PATH = 'tmp/'
-MIGRATION_DUMP_PATH = '/eos/media/cds/test/books/migration/records/tmp/'
-# MIGRATION_LOGS_PATH = 'tmp/logs/'
-MIGRATION_LOGS_PATH = '/eos/media/cds/test/books/migration/records/tmp/logs/'
+# CDS_MIGRATOR_KIT_DUMP_PATH = 'tmp/'
+CDS_MIGRATOR_KIT_DUMP_PATH = '/eos/media/cds/test/books/migration/records/tmp/'
+# CDS_MIGRATOR_KIT_LOGS_PATH = 'tmp/logs/'
+CDS_MIGRATOR_KIT_LOGS_PATH = \
+    '/eos/media/cds/test/books/migration/records/tmp/logs/'
 
 #
 # MIGRATION_LOG_FILE = os.path.join(MIGRATION_LOGS_PATH, 'stats.json')
-MIGRATION_LOG_FILE = os.path.join(MIGRATION_LOGS_PATH, 'stats.json')
+CDS_MIGRATOR_KIT_LOG = os.path.join(CDS_MIGRATOR_KIT_LOGS_PATH, 'stats.json')
