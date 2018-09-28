@@ -46,9 +46,9 @@ from __future__ import absolute_import, print_function
 from flask import Flask
 from flask_babelex import Babel
 
-from cds_migrator_kit import cdsmigratorkit
+from cds_migrator_kit import Cdsmigratorkit
 
 # Create Flask application
 app = Flask(__name__)
 Babel(app)
-cdsmigratorkit(app)
+Cdsmigratorkit(app)

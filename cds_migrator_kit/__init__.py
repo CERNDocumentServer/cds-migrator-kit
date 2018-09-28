@@ -10,7 +10,7 @@
 
 from __future__ import absolute_import, print_function
 
-from .ext import cdsmigratorkit
+from .ext import Cdsmigratorkit
 from .version import __version__
 
-__all__ = ('__version__', 'cdsmigratorkit')
+__all__ = ('__version__', 'Cdsmigratorkit')

@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 #
 # This file is part of Invenio.
@@ -12,8 +11,9 @@ import json
 import logging
 
 import click
+from flask import current_app
+from flask.cli import with_appcontext
 
-from cds_migrator_kit.config import MIGRATION_LOG_FILE
 from cds_migrator_kit.modules.migrator.errors import LossyConversion
 from cds_migrator_kit.modules.migrator.log import JsonLogger
 from cds_migrator_kit.modules.migrator.records import CDSRecordDump
@@ -65,13 +65,9 @@ def report():
     '-r',
     help='Record ID to load (NOTE: will load only one record!).',
     default=None)
-# @with_appcontext
+@with_appcontext
 def dryrun(sources, source_type, recid):
     """Load records migration dump."""
-    # if os.path.exists(MIGRATION_LOG_FILE):
-    #     os.remove(MIGRATION_LOG_FILE)
-    #     f = Path(MIGRATION_LOG_FILE)
-    #     f.touch(exist_ok=True)
-    with open(MIGRATION_LOG_FILE, "w+") as f:
+    with open(current_app.config['CDS_MIGRATOR_KIT_LOG'], "w+") as f:
         json.dump([], f)
     load_records(sources=sources, source_type=source_type, eager=True)

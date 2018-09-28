@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2018 CERN.
+# This file is part of Invenio.
+# Copyright (C) 2015-2018 CERN.
 #
 # cds-migrator-kit is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
@@ -18,6 +19,8 @@ import pytest
 from flask import Flask
 from flask_babelex import Babel
 
+from cds_migrator_kit import Cdsmigratorkit
+
 
 @pytest.yield_fixture()
 def instance_path():
@@ -30,33 +33,33 @@ def instance_path():
 @pytest.fixture()
 def base_app(instance_path):
     """Flask application fixture."""
-    logs_dir = 'tmp/logs/'
-    logs = os.path.join(
+    dump = os.path.join(
         os.path.dirname(os.path.realpath(__file__)),
-        logs_dir, 'stats.json')
-
+        'dump/', 'stats.json')
+    logs_dir = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), 'tmp/logs/')
+    logs = os.path.join(logs_dir, 'stats.json')
+    if not os.path.exists(logs_dir):
+        os.makedirs(logs_dir)
     os.environ.update(
         APP_INSTANCE_PATH=os.environ.get(
             'INSTANCE_PATH', instance_path),
     )
-
     app_ = Flask('testapp', instance_path=instance_path,
                  )
     app_.config.update(
         DEBUG_TB_ENABLED=False,
-        SQLALCHEMY_DATABASE_URI=os.environ.get(
-            'SQLALCHEMY_DATABASE_URI',
-            'postgresql+psycopg2://localhost/cds_testing'),
-        #  SQLALCHEMY_ECHO=True,
         TESTING=True,
         JSONSCHEMAS_HOST='cdslabs.cern.ch',
         PIDSTORE_DATACITE_DOI_PREFIX='10.0000',
         ACCOUNTS_JWT_ENABLE=False,
-        MIGRATION_LOGS_PATH=logs_dir,
-        MIGRATION_LOG_FILE=logs,
+        CDS_MIGRATOR_KIT_DUMP_PATH=dump,
+        CDS_MIGRATOR_KIT_LOGS_PATH=logs_dir,
+        CDS_MIGRATOR_KIT_LOG=logs,
     )
 
     Babel(app_)
+    Cdsmigratorkit(app_)
     return app_
 
 
