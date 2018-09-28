@@ -7,5 +7,5 @@
 Configuration
 =============
 
-.. automodule:: cds_migrator_kit.config
+. automodule:: cds_migrator_kit.config
    :members:
