@@ -36,7 +36,7 @@ def load_records(sources, source_type, eager):
                 try:
                     dump.prepare_revisions()
                     logger.create_output_file(item['recid'],
-                                                  dump.revisions[-1][1])
+                                              dump.revisions[-1][1])
                 except LossyConversion as e:
                     cli_logger.error('[DATA ERROR]: {0}'.format(e.message))
                     JsonLogger().add_log(e, output=item)

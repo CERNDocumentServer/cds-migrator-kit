@@ -21,6 +21,7 @@ recursive-include cds_migrator_kit *.po *.pot *.mo
 
 # added by check_manifest.py
 include *.rst
+include *.md
 include *.txt
 include *.sh
 include *.yml
@@ -46,4 +47,6 @@ recursive-include tests *.json
 recursive-include scripts *.sh
 recursive-include examples *.py
 recursive-include examples *.sh
+
+
 

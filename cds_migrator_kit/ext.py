@@ -10,8 +10,7 @@
 
 from __future__ import absolute_import, print_function
 
-from cds_migrator_kit import config
-
+from . import config
 from .views import blueprint
 
 

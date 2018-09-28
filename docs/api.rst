@@ -7,11 +7,11 @@
 API Docs
 ========
 
-.. automodule:: cds_migrator_kit.ext
+. automodule:: cds_migrator_kit.ext
    :members:
 
 Views
 -----
 
-.. automodule:: cds_migrator_kit.views
+. automodule:: cds_migrator_kit.views
    :members:

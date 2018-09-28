@@ -15,8 +15,9 @@ from invenio_base.app import create_app_factory
 from invenio_base.wsgi import create_wsgi_factory
 from invenio_config import create_config_loader
 
-from cds_migrator_kit import config
 from cds_migrator_kit.modules.migrator.log import set_logging
+
+from . import config
 
 env_prefix = 'APP'
 
