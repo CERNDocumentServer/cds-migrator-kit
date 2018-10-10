@@ -10,13 +10,13 @@
 
 from tests.helpers import load_json
 
-from cds_migrator_kit.modules.migrator.records import CDSRecordDump
+from cds_migrator_kit.records.records import CDSRecordDump
 
 
-def test_migrate_record(datadir, app):
+def test_migrate_record(datadir, base_app):
     """Test migrate date."""
     # [[ migrate the book ]]
-    with app.app_context():
+    with base_app.app_context():
         data = load_json(datadir, 'book1.json')
         dump = CDSRecordDump(data=data[0])
         dump.prepare_revisions()

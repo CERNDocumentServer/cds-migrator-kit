@@ -6,17 +6,17 @@
 # cds-migrator-kit is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
 
-"""CDS Books exceptions handlers."""
+"""CDS Migrator Records CLI."""
+
 import json
 import logging
 
 import click
-from flask import current_app
 from flask.cli import with_appcontext
 
-from cds_migrator_kit.modules.migrator.errors import LossyConversion
-from cds_migrator_kit.modules.migrator.log import JsonLogger
-from cds_migrator_kit.modules.migrator.records import CDSRecordDump
+from .errors import LossyConversion
+from .log import JsonLogger
+from .records import CDSRecordDump
 
 cli_logger = logging.getLogger('migrator')
 
@@ -49,7 +49,7 @@ def load_records(sources, source_type, eager):
 
 @click.group()
 def report():
-    """Create initial data and demo records."""
+    """Report CLI group."""
 
 
 @report.command()
@@ -68,6 +68,4 @@ def report():
 @with_appcontext
 def dryrun(sources, source_type, recid):
     """Load records migration dump."""
-    with open(current_app.config['CDS_MIGRATOR_KIT_LOG'], "w+") as f:
-        json.dump([], f)
     load_records(sources=sources, source_type=source_type, eager=True)

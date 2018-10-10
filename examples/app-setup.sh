@@ -10,6 +10,3 @@ DIR=`dirname "$0"`
 
 cd $DIR
 export FLASK_APP=app.py
-
-# Setup app
-mkdir $DIR/instance

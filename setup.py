@@ -15,14 +15,14 @@ readme = open('README.rst').read()
 history = open('CHANGES.rst').read()
 
 tests_require = [
-    'check-manifest>=0.25',
-    'coverage>=4.0',
-    'isort>=4.3.3',
-    'pydocstyle>=1.0.0',
-    'pytest-cache>=1.0',
-    'pytest-cov>=1.8.0',
+    'check-manifest>=0.35',
+    'coverage>=4.4.1',
+    'isort>=4.3',
+    'pydocstyle>=2.0.0',
+    'pytest-cov>=2.5.1',
     'pytest-pep8>=1.0.6',
-    'pytest>=2.8.0',
+    'pytest>=3.3.1',
+    'pytest-invenio>=1.0.5,<1.1.0',
 ]
 
 extras_require = {
@@ -43,7 +43,8 @@ setup_requires = [
 
 install_requires = [
     'cds-dojson>=0.9.0',
-    'Flask-BabelEx>=0.9.2',
+    'Flask-BabelEx>=0.9.3',
+    'invenio-app>=1.0.3',
     'invenio-base>=1.0.1',
     'invenio-config>=1.0.0',
     'invenio-db[postgresql,versioning]>=1.0.0',
@@ -79,11 +80,20 @@ setup(
     platforms='any',
     entry_points={
         'console_scripts': [
-            'migrator = cds_migrator_kit.cli:cli',
+            'migrator = invenio_app.cli:cli',
+        ],
+        'flask.commands': [
+            'report = cds_migrator_kit.records.cli:report',
         ],
         'invenio_base.apps': [
-            'cds_migrator_kit = cds_migrator_kit:Cdsmigratorkit',
-            'cds_migrator = cds_migrator_kit.modules.migrator:CDSMigrator',
+            'cds_migrator_kit = cds_migrator_kit:CdsMigratorKit',
+        ],
+        "invenio_base.blueprints": [
+            'cds_migrator_kit_views'
+            ' = cds_migrator_kit.records.views:blueprint',
+        ],
+        "invenio_config.module": [
+            "00_cds_migrator_kit = cds_migrator_kit.config",
         ],
         'invenio_i18n.translations': [
             'messages = cds_migrator_kit',

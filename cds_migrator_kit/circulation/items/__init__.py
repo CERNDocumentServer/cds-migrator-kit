@@ -5,10 +5,5 @@
 #
 # cds-migrator-kit is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
-"""CDS Migrator Kit."""
 
-from __future__ import absolute_import, print_function
-
-from .ext import CDSMigrator
-
-__all__ = ('CDSMigrator', )
+"""CDS Migrator Circulation Items module."""
