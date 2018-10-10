@@ -5,7 +5,8 @@
 #
 # cds-migrator-kit is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
-"""Record Loader."""
+
+"""CDS Migrator Records loader."""
 
 from __future__ import absolute_import, print_function
 
@@ -19,11 +20,9 @@ from cds_dojson.marc21.utils import create_record
 from flask import current_app
 from invenio_migrator.records import RecordDump
 
-from cds_migrator_kit.modules.migrator.errors import LossyConversion
-from cds_migrator_kit.modules.migrator.handlers import \
-    migration_exception_handler
-from cds_migrator_kit.modules.migrator.utils import process_fireroles, \
-    update_access
+from cds_migrator_kit.records.errors import LossyConversion
+from cds_migrator_kit.records.handlers import migration_exception_handler
+from cds_migrator_kit.records.utils import process_fireroles, update_access
 
 cli_logger = logging.getLogger('migrator')
 

@@ -14,10 +14,10 @@ fixture data by running:
 
 .. code-block:: console
 
+   $ pip install -r requirements.txt
    $ pip install -e .[all]
    $ cd examples
    $ ./app-setup.sh
-   $ ./app-fixtures.sh
 
 Next, start the development server:
 
@@ -32,12 +32,6 @@ and open the example application in your browser:
 
     $ open http://127.0.0.1:5000/
 
-To reset the example application run:
-
-.. code-block:: console
-
-    $ ./app-teardown.sh
-
 SPHINX-END
 """
 
@@ -46,9 +40,11 @@ from __future__ import absolute_import, print_function
 from flask import Flask
 from flask_babelex import Babel
 
-from cds_migrator_kit import Cdsmigratorkit
+from cds_migrator_kit import CdsMigratorKit
+from cds_migrator_kit.records.views import blueprint
 
 # Create Flask application
 app = Flask(__name__)
 Babel(app)
-Cdsmigratorkit(app)
+CdsMigratorKit(app)
+app.register_blueprint(blueprint)

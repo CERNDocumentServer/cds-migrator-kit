@@ -6,15 +6,14 @@
 # cds-migrator-kit is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
 
-"""Migration tool kit from old invenio to new flavours."""
+"""CDS Migrator app extension."""
 
 from __future__ import absolute_import, print_function
 
 from . import config
-from .views import blueprint
 
 
-class Cdsmigratorkit(object):
+class CdsMigratorKit(object):
     """cds-migrator-kit extension."""
 
     def __init__(self, app=None):
@@ -25,7 +24,6 @@ class Cdsmigratorkit(object):
     def init_app(self, app):
         """Flask application initialization."""
         self.init_config(app)
-        app.register_blueprint(blueprint)
         app.extensions['cds-migrator-kit'] = self
 
     def init_config(self, app):

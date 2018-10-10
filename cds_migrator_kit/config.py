@@ -17,7 +17,8 @@ You overwrite and set instance-specific configuration by either:
 from __future__ import absolute_import, print_function
 
 import os
-from datetime import timedelta
+
+from invenio_app.config import APP_DEFAULT_SECURE_HEADERS
 
 
 def _(x):
@@ -28,7 +29,7 @@ def _(x):
 # Rate limiting
 # =============
 #: Storage for ratelimiter.
-RATELIMIT_STORAGE_URL = 'redis://localhost:6379/3'
+RATELIMIT_STORAGE_URL = 'memory://'
 
 # I18N
 # ====
@@ -77,15 +78,9 @@ MAIL_SUPPRESS_SEND = True
 #: Static files collection method (defaults to copying files).
 COLLECT_STORAGE = 'flask_collect.storage.file'
 
-# Accounts
-# ========
-#: Email address used as sender of account registration emails.
-SECURITY_EMAIL_SENDER = SUPPORT_EMAIL
-#: Email subject for account registration emails.
-SECURITY_EMAIL_SUBJECT_REGISTER = _(
-    "Welcome to cds-migrator-kit!")
-#: Redis session storage URL.
-ACCOUNTS_SESSION_REDIS_URL = 'redis://localhost:6379/1'
+# Cache
+# =====
+CACHE_TYPE = 'null'
 
 # JSONSchemas
 # ===========
@@ -109,20 +104,10 @@ SESSION_COOKIE_SECURE = True
 #: should be set to the correct host and it is strongly recommended to only
 #: route correct hosts to the application.
 APP_ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+APP_DEFAULT_SECURE_HEADERS['force_https'] = False
 
-# Debug
-# =====
-# Flask-DebugToolbar is by default enabled when the application is running in
-# debug mode. More configuration options are available at
-# https://flask-debugtoolbar.readthedocs.io/en/latest/#configuration
-
-CDS_MIGRATOR_KIT_BASE_TEMPLATE = 'cds_migrator_kit/base.html'
-# CDS_MIGRATOR_KIT_DUMP_PATH = 'tmp/'
-CDS_MIGRATOR_KIT_DUMP_PATH = '/eos/media/cds/test/books/migration/records/tmp/'
-# CDS_MIGRATOR_KIT_LOGS_PATH = 'tmp/logs/'
-CDS_MIGRATOR_KIT_LOGS_PATH = \
-    '/eos/media/cds/test/books/migration/records/tmp/logs/'
-
-#
-# MIGRATION_LOG_FILE = os.path.join(MIGRATION_LOGS_PATH, 'stats.json')
-CDS_MIGRATOR_KIT_LOG = os.path.join(CDS_MIGRATOR_KIT_LOGS_PATH, 'stats.json')
+# CDS Migrator Kit
+# ================
+CDS_MIGRATOR_KIT_BASE_TEMPLATE = 'cds_migrator_kit_records/base.html'
+# Configuration overridden by env vars when deployed
+CDS_MIGRATOR_KIT_LOGS_PATH = './tmp/logs/'

@@ -6,16 +6,16 @@
 # cds-migrator-kit is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
 
-"""Migration tool kit from old invenio to new flavours."""
+"""CDS Migrator Records views."""
 
 from __future__ import absolute_import, print_function
 
 from flask import Blueprint, current_app, render_template, send_from_directory
 
-from cds_migrator_kit.modules.migrator.log import JsonLogger
+from .log import JsonLogger
 
 blueprint = Blueprint(
-    'cds_migrator_kit',
+    'cds_migrator_kit_records',
     __name__,
     template_folder='templates',
     static_folder='static',
@@ -26,7 +26,7 @@ blueprint = Blueprint(
 def index():
     """Render a basic view."""
     return render_template(
-        "cds_migrator_kit/welcome.html",
+        "cds_migrator_kit_records/welcome.html",
     )
 
 
@@ -34,9 +34,8 @@ def index():
 def results():
     """Render a basic view."""
     all_stats = JsonLogger().render_stats()
-
     return render_template(
-        "cds_migrator_kit/index.html",
+        "cds_migrator_kit_records/index.html",
         results=all_stats)
 
 

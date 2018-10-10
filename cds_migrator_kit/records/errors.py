@@ -5,7 +5,9 @@
 #
 # cds-migrator-kit is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
-"""Define Books flavour exceptions."""
+
+"""CDS Migrator Records exceptions."""
+
 from dojson.errors import DoJSONException
 
 

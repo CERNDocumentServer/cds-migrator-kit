@@ -12,7 +12,6 @@
 #     -e git+git://github.com/mitsuhiko/jinja2.git#egg=Jinja2
 
 gunicorn
--e .
+-e .[all]
+# TODO: delete me when cds-dojson merge to master and released
 -e git+https://github.com/CERNDocumentServer/cds-dojson.git@books#egg=cds-dojson
-Sphinx==1.5.1
-

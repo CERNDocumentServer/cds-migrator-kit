@@ -28,10 +28,7 @@ def example_app():
     os.chdir(exampleapp_dir)
 
     # Setup application
-    # assert subprocess.call('./app-setup.sh', shell=True) == 0
-    #
-    # Setup fixtures
-    # assert subprocess.call('./app-fixtures.sh', shell=True) == 0
+    assert subprocess.call('./app-setup.sh', shell=True) == 0
 
     # Start example app
     webapp = subprocess.Popen(
@@ -42,9 +39,6 @@ def example_app():
 
     # Stop server
     os.killpg(webapp.pid, signal.SIGTERM)
-
-    # Tear down example app
-    subprocess.call('./app-teardown.sh', shell=True)
 
     # Return to the original directory
     os.chdir(current_dir)

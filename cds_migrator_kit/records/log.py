@@ -6,7 +6,7 @@
 # cds-migrator-kit is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
 
-"""Define Books loggers."""
+"""CDS Migrator Records loggers."""
 
 import json
 import logging
@@ -16,7 +16,7 @@ from cds_dojson.marc21.fields.books.errors import ManualMigrationRequired, \
     MissingRequiredField, UnexpectedValue
 from flask import current_app
 
-from cds_migrator_kit.modules.migrator.errors import LossyConversion
+from cds_migrator_kit.records.errors import LossyConversion
 
 
 def set_logging():
@@ -39,6 +39,17 @@ logger = logging.getLogger('migrator')
 class JsonLogger(object):
     """Log migration statistic to file controller."""
 
+    def __init__(self):
+        """Constructor."""
+        _logs_path = current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH']
+
+        self.LOG_FILEPATH = os.path.join(_logs_path, 'stats.json')
+        if not os.path.exists(_logs_path):
+            os.makedirs(_logs_path)
+        if not os.path.exists(self.LOG_FILEPATH):
+            with open(self.LOG_FILEPATH, "w+") as f:
+                json.dump([], f, indent=2)
+
     @staticmethod
     def get_stat_by_recid(recid, stats_json):
         """Search for existing stats of given recid."""
@@ -48,15 +59,12 @@ class JsonLogger(object):
     def render_stats(self):
         """Load stats from file as json."""
         try:
-            with open(current_app.config['CDS_MIGRATOR_KIT_LOG'], "r") as f:
+            with open(self.LOG_FILEPATH, "r") as f:
                 all_stats = json.load(f)
-        except IOError as e:
-            if not os.path.exists(
-                    current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH']):
-                os.makedirs(current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'])
-            open(current_app.config['CDS_MIGRATOR_KIT_LOG'], "w+").close()
+        except IOError:
+
             all_stats = []
-        except ValueError as e:
+        except ValueError:
             all_stats = []
         return all_stats
 
@@ -74,7 +82,7 @@ class JsonLogger(object):
     def add_log(self, exc, key=None, value=None, output=None):
         """Add exception log."""
         all_stats = JsonLogger().render_stats()
-        with open(current_app.config['CDS_MIGRATOR_KIT_LOG'], "w+") as f:
+        with open(self.LOG_FILEPATH, "w+") as f:
             record_stats = JsonLogger.get_stat_by_recid(output['recid'],
                                                         all_stats)
             if not record_stats:
@@ -92,7 +100,7 @@ class JsonLogger(object):
     def add_item(self, output):
         """Add empty log item."""
         all_stats = JsonLogger().render_stats()
-        with open(current_app.config['CDS_MIGRATOR_KIT_LOG'], "w+") as f:
+        with open(self.LOG_FILEPATH, "w+") as f:
             record_stats = JsonLogger.get_stat_by_recid(output['recid'],
                                                         all_stats)
             if not record_stats:

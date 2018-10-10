@@ -7,6 +7,7 @@
 # under the terms of the MIT License; see LICENSE file for more details.
 
 """Helper functions for usage in tests."""
+
 import json
 from os.path import join
 
