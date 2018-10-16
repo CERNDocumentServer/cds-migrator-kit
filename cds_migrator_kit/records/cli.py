@@ -18,7 +18,7 @@ from .errors import LossyConversion
 from .log import JsonLogger
 from .records import CDSRecordDump
 
-cli_logger = logging.getLogger('migrator')
+cli_logger = logging.getLogger(__name__)
 
 
 def load_records(sources, source_type, eager):
@@ -49,7 +49,7 @@ def load_records(sources, source_type, eager):
 
 @click.group()
 def report():
-    """Report CLI group."""
+    """CDS Migrator report commands."""
 
 
 @report.command()

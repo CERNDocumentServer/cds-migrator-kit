@@ -6,85 +6,99 @@
 # cds-migrator-kit is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
 
-"""CDS Migrator Items CLI."""
-
+"""CDS Migrator Circulation Items CLI."""
+import glob
 import json
+import logging
+import os
 
 import click
+from flask import current_app
 from flask.cli import with_appcontext
 
+from cds_migrator_kit.circulation.items.api import ItemsMigrator, \
+    LibrariesMigrator
 
-class LibrariesMigrator():
-    """.
-
-    Expected format of libraries JSON:
-        [
-          ...,
-          {
-            'id': ,
-            'name': ,
-            'address': ,
-            'email': ,
-            'phone': ,
-            'type': ,
-            'notes': ,
-          },
-          ...,
-        ]
-
-    """
-
-    INVALID_LIBRARY_IDS = [43]
-    VALID_LIBRARY_TYPES = ['main', 'internal']
-
-    def __init__(self, libraries):
-        """Constructor."""
-        self.libraries = [l for l in libraries
-                          if l['type'] in self.VALID_LIBRARY_TYPES and
-                          l['id'] not in self.INVALID_LIBRARY_IDS]
-
-    def _migrate_internal_libraries(self, location_pid):
-        """Return new internal libraries records."""
-        internal_libraries = []
-        for i, library in enumerate(self.libraries):
-            internal_library = {
-                'libid': i,
-                'locid': location_pid,
-                'legacy_id': library['id'],
-                'name': library['name'],
-                'address': library.get('address', ''),
-                'email': library.get('email', ''),
-                'phone': library.get('phone', ''),
-                'notes': library.get('notes', ''),
-            }
-            internal_libraries.append(internal_library)
-        return internal_libraries
-
-    def migrate(self):
-        """Return location and internal libraries records."""
-        location_pid = '1'
-        internal_libraries = self._migrate_internal_libraries(location_pid)
-
-        location = {
-            'locid': '1',
-            'name': 'CERN Central Library',
-        }
-
-        return location, internal_libraries
+logger = logging.getLogger(__name__)
 
 
-@click.command()
-@click.argument('filepath', type=click.Path(exists=True))
+@click.group()
+def circ_items():
+    """CDS Migrator Circulation commands."""
+
+
+@circ_items.command()
+@click.argument('libraries_json', type=click.Path(exists=True))
 @with_appcontext
-def libraries(filepath):
+def libraries(libraries_json):
     """Load libraries from JSON files and output ILS Records."""
-    libraries = json.load(filepath)
-    LibrariesMigrator(libraries).migrate()
+    total_import_records = 0
+    total_migrated_records = 0
+
+    with open(libraries_json, 'r') as fp:
+        libraries = json.load(fp)
+        total_import_records = len(libraries)
+
+    location, internal_locations = LibrariesMigrator(libraries).migrate()
+    records = dict(location=location,
+                   internal_locations=internal_locations)
+
+    total_migrated_records = len(internal_locations) + 1  # 1 location
+
+    filepath = os.path.join(
+        current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'],
+        'libraries.json'
+    )
+    with open(filepath, 'w') as fp:
+        json.dump(records, fp, indent=2)
+
+    _log = "Total number of migrated records: {0}/{1}".format(
+        total_migrated_records, total_import_records)
+    logger.info(_log)
+
+    click.secho(_log, fg='green')
 
 
-@click.command()
-@click.argument('sources', type=click.Path(exists=True))
+@circ_items.command()
+@click.argument('items_json_folder', type=click.Path(exists=True))
+@click.argument('locations_json', type=click.Path(exists=True))
 @with_appcontext
-def items(sources):
-    """Load items from JSON files."""
-    pass
+def items(items_json_folder, locations_json):
+    """Load items from JSON files.
+
+    :param str items_json_folder: The path to the JSON dump of the legacy items
+    :param str locations_json: The path to the JSON records of the new ILS
+                libraries (already migrated)
+    """
+    output_filepath = os.path.join(
+        current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'],
+        'items_{0}.json'
+    )
+
+    with open(locations_json, 'r') as fp_locations:
+        locations = json.load(fp_locations)
+        internal_locations = locations['internal_locations']
+
+    total_import_records = 0
+    total_migrated_records = 0
+    _files = glob.glob(os.path.join(items_json_folder, "*.json"))
+    for i, items_json in enumerate(_files):
+        _log = "Importing #{0} file".format(i)
+        logger.info(_log)
+        click.secho(_log, fg='yellow')
+
+        with open(items_json, 'r') as fp_items:
+            items = json.load(fp_items)
+            total_import_records += len(items)
+
+        records = ItemsMigrator(items, internal_locations).migrate()
+        total_migrated_records += len(records)
+
+        with open(output_filepath.format(i), 'w') as fp:
+            json.dump(records, fp, indent=2)
+
+    _log = "Total number of migrated records: {0}/{1}".format(
+        total_migrated_records, total_import_records)
+    logger.info(_log)
+
+    click.secho(_log, fg='green')
