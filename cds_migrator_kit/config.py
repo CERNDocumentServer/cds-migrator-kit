@@ -26,6 +26,9 @@ def _(x):
     return x
 
 
+LOGGING_CONSOLE = True
+LOGGING_CONSOLE_LEVEL = 'DEBUG'
+
 # Rate limiting
 # =============
 #: Storage for ratelimiter.

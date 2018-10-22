@@ -47,6 +47,7 @@ install_requires = [
     'invenio-app>=1.0.4',
     'invenio-base>=1.0.1',
     'invenio-config>=1.0.0',
+    'invenio-logging>=1.0.0',
     'invenio-db[postgresql,versioning]>=1.0.0',
     'invenio-files-rest>=1.0.0a18',
     'invenio-migrator>=1.0.0a9',
@@ -84,6 +85,7 @@ setup(
         ],
         'flask.commands': [
             'report = cds_migrator_kit.records.cli:report',
+            'circulation = cds_migrator_kit.circulation.items.cli:circ_items',
         ],
         'invenio_base.apps': [
             'cds_migrator_kit = cds_migrator_kit:CdsMigratorKit',
