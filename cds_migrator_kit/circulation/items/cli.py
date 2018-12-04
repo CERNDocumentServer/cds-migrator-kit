@@ -14,7 +14,6 @@ import os
 
 import click
 from flask import current_app
-from flask.cli import with_appcontext
 
 from cds_migrator_kit.circulation.items.api import ItemsMigrator, \
     LibrariesMigrator
@@ -22,14 +21,6 @@ from cds_migrator_kit.circulation.items.api import ItemsMigrator, \
 logger = logging.getLogger(__name__)
 
 
-@click.group()
-def circ_items():
-    """CDS Migrator Circulation commands."""
-
-
-@circ_items.command()
-@click.argument('libraries_json', type=click.Path(exists=True))
-@with_appcontext
 def libraries(libraries_json):
     """Load libraries from JSON files and output ILS Records."""
     total_import_records = 0
@@ -59,10 +50,6 @@ def libraries(libraries_json):
     click.secho(_log, fg='green')
 
 
-@circ_items.command()
-@click.argument('items_json_folder', type=click.Path(exists=True))
-@click.argument('locations_json', type=click.Path(exists=True))
-@with_appcontext
 def items(items_json_folder, locations_json):
     """Load items from JSON files.
 

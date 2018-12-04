@@ -85,7 +85,7 @@ setup(
         ],
         'flask.commands': [
             'report = cds_migrator_kit.records.cli:report',
-            'circulation = cds_migrator_kit.circulation.items.cli:circ_items',
+            'circulation = cds_migrator_kit.circulation:circulation',
         ],
         'invenio_base.apps': [
             'cds_migrator_kit = cds_migrator_kit:CdsMigratorKit',
