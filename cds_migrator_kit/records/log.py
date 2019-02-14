@@ -21,16 +21,26 @@ from cds_migrator_kit.records.errors import LossyConversion
 
 def set_logging():
     """Sets additional logging to file for debug."""
-    logger = logging.getLogger('migrator')
-    logger.setLevel(logging.DEBUG)
+    logger_migrator = logging.getLogger('migrator')
+    logger_migrator.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s - %(name)s - '
                                   '%(message)s - \n '
                                   '[in %(pathname)s:%(lineno)d]')
     fh = logging.FileHandler('migrator.log')
     fh.setFormatter(formatter)
     fh.setLevel(logging.DEBUG)
-    logger.addHandler(fh)
-    return logger
+    logger_migrator.addHandler(fh)
+    logger_matcher = logging.getLogger('cds_dojson.matcher.dojson_matcher')
+    logger_matcher.setLevel(logging.DEBUG)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - '
+                                  '%(message)s - \n '
+                                  '[in %(pathname)s:%(lineno)d]')
+    fh = logging.FileHandler('matcher.log')
+    fh.setFormatter(formatter)
+    fh.setLevel(logging.DEBUG)
+    logger_matcher.addHandler(fh)
+
+    return logger_migrator
 
 
 logger = logging.getLogger('migrator')
@@ -125,5 +135,11 @@ class JsonLogger(object):
             rec_stats['missing_required_field'].append(key)
         elif isinstance(exc, LossyConversion):
             rec_stats['lost_data'] = list(exc.missing)
+        elif isinstance(exc, KeyError):
+            rec_stats['unexpected_value'].append(exc.message)
+        elif isinstance(exc, TypeError) or isinstance(exc, AttributeError):
+            rec_stats['unexpected_value'].append(
+                "Model definition missing for this record."
+                " Contact CDS team to tune the query")
         else:
             raise exc

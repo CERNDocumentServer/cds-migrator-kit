@@ -12,6 +12,7 @@ import json
 import logging
 
 import click
+from flask import current_app
 from flask.cli import with_appcontext
 
 from .errors import LossyConversion
@@ -39,6 +40,19 @@ def load_records(sources, source_type, eager):
                                               dump.revisions[-1][1])
                 except LossyConversion as e:
                     cli_logger.error('[DATA ERROR]: {0}'.format(e.message))
+                    JsonLogger().add_log(e, output=item)
+                except AttributeError as e:
+                    current_app.logger.error('Model missing')
+                    JsonLogger().add_log(e, output=item)
+                    # raise e
+                except TypeError as e:
+                    current_app.logger.error(
+                        'Model missing recid:{}'.format(item['recid']))
+                    JsonLogger().add_log(e, output=item)
+                    # raise e
+                except KeyError as e:
+                    current_app.logger.error(
+                        'Model missing recid:{}'.format(item['recid']))
                     JsonLogger().add_log(e, output=item)
                 except Exception as e:
                     cli_logger.warning(e.message)

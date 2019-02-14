@@ -10,9 +10,16 @@
 
 from __future__ import absolute_import, print_function
 
+import logging
+
 from flask import Blueprint, current_app, render_template, send_from_directory
 
+from cds_migrator_kit.config import CDS_MIGRATOR_KIT_LOGS_PATH
+
 from .log import JsonLogger
+
+cli_logger = logging.getLogger('migrator')
+
 
 blueprint = Blueprint(
     'cds_migrator_kit_records',
@@ -42,6 +49,9 @@ def results():
 @blueprint.route('/record/<recid>')
 def send_json(recid):
     """Serves static json preview output files."""
+    cli_logger.warning('View reached')
+    cli_logger.warning(CDS_MIGRATOR_KIT_LOGS_PATH)
+    cli_logger.warning('{0}.json'.format(recid))
     return send_from_directory(
         current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'],
         '{0}.json'.format(recid))
