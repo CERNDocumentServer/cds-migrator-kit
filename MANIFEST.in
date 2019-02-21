@@ -47,6 +47,7 @@ recursive-include tests *.json
 recursive-include scripts *.sh
 recursive-include examples *.py
 recursive-include examples *.sh
+exclude scripts/migrator.sh
 
 
 

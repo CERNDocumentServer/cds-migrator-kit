@@ -50,11 +50,13 @@ class CDSRecordDump(RecordDump):
         only the access rights are correct for the last version.
         """
         read_access = set()
-        for coll, restrictions in \
-                self.data['collections']['restricted'].items():
-            read_access.update(restrictions['users'])
-            read_access.update(process_fireroles(restrictions['fireroles']))
-        read_access.discard(None)
+        if self.data['collections']:
+            for coll, restrictions in \
+                    self.data['collections']['restricted'].items():
+                read_access.update(restrictions['users'])
+                read_access.update(
+                    process_fireroles(restrictions['fireroles']))
+            read_access.discard(None)
 
         return {'read': list(read_access)}
 
@@ -89,19 +91,24 @@ class CDSRecordDump(RecordDump):
             try:
                 val = self.dojson_model.do(
                     marc_record, exception_handlers=exception_handlers)
+                missing = self.dojson_model.missing(marc_record)
+                if missing:
+                    raise LossyConversion(missing=missing)
+                update_access(val, self.collection_access)
+                return dt, val
+            except LossyConversion as e:
+                raise e
             except Exception as e:
                 current_app.logger.error(
                     'Impossible to convert to JSON {0} - {1}'.format(
                         e, marc_record))
-            missing = self.dojson_model.missing(marc_record, _json=val)
-            if missing:
-                raise LossyConversion(missing=missing)
+                raise e
         else:
             val = data['json']
 
-        # Calculate the _access key
-        update_access(val, self.collection_access)
-        return dt, val
+            # Calculate the _access key
+            update_access(val, self.collection_access)
+            return dt, val
 
     def prepare_revisions(self):
         """Prepare data.

@@ -34,11 +34,10 @@ def test_migrate_record(datadir, base_app):
             "_access": {
                 "read": []
             },
-            "titles": [
+            "title":
                 {
                     "title": "Gauge fields, knots and gravity"
-                }
-            ],
+                },
             "recid": 262146,
             "isbns": [
                 {
@@ -56,10 +55,12 @@ def test_migrate_record(datadir, base_app):
             ],
             "authors": [
                 {
-                    "full_name": "Baez, John C"
+                    "full_name": "Baez, John C",
+                    "role": "Author"
                 },
                 {
-                    "full_name": "Muniain, Javier P"
+                    "full_name": "Muniain, Javier P",
+                    "role": "Author"
                 }
             ],
             "keywords": [
