@@ -136,7 +136,7 @@ class JsonLogger(object):
         elif isinstance(exc, LossyConversion):
             rec_stats['lost_data'] = list(exc.missing)
         elif isinstance(exc, KeyError):
-            rec_stats['unexpected_value'].append(exc.message)
+            rec_stats['unexpected_value'].append(str(exc))
         elif isinstance(exc, TypeError) or isinstance(exc, AttributeError):
             rec_stats['unexpected_value'].append(
                 "Model definition missing for this record."

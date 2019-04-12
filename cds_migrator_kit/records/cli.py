@@ -55,7 +55,7 @@ def load_records(sources, source_type, eager):
                         'Model missing recid:{}'.format(item['recid']))
                     JsonLogger().add_log(e, output=item)
                 except Exception as e:
-                    cli_logger.warning(e.message)
+                    cli_logger.exception(e)
                     raise e
         click.secho('Check completed. See the report on: '
                     'books-migrator-dev.web.cern.ch/results', fg='green')
