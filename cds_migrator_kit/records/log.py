@@ -69,7 +69,7 @@ class JsonLogger(object):
     def render_stats(self):
         """Load stats from file as json."""
         # try:
-        print (self.LOG_FILEPATH, '----')
+        logger.warning(self.LOG_FILEPATH, '----')
         with open(self.LOG_FILEPATH, "r") as f:
             all_stats = json.load(f)
         # except IOError:
