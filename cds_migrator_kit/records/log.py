@@ -68,15 +68,16 @@ class JsonLogger(object):
 
     def render_stats(self):
         """Load stats from file as json."""
-        try:
-            with open(self.LOG_FILEPATH, "r") as f:
-                all_stats = json.load(f)
-        except IOError:
+        # try:
+        print (self.LOG_FILEPATH, '----')
+        with open(self.LOG_FILEPATH, "r") as f:
+            all_stats = json.load(f)
+        # except IOError:
+        #     all_stats = []
+        # except ValueError:
+        #     all_stats = []
 
-            all_stats = []
-        except ValueError:
-            all_stats = []
-        return all_stats
+            return all_stats
 
     def create_output_file(self, recid, output):
         """Create json preview output file."""
