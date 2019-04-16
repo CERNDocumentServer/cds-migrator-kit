@@ -10,7 +10,8 @@
 
 import click
 from flask.cli import with_appcontext
-from .items.cli import libraries, items
+
+from .items.cli import items, libraries
 from .users.cli import users
 
 
