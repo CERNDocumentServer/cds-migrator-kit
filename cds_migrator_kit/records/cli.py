@@ -12,14 +12,16 @@ import json
 import logging
 
 import click
-from cds_dojson.marc21.models.books.multipart import model as multipart_model
-from cds_dojson.marc21.models.books.serial import model as serial_model
 from flask import current_app
 from flask.cli import with_appcontext
+
+from cds_dojson.marc21.models.books.multipart import model as multipart_model
+from cds_dojson.marc21.models.books.serial import model as serial_model
 
 from .errors import LossyConversion
 from .log import JsonLogger
 from .records import CDSRecordDump
+
 
 cli_logger = logging.getLogger(__name__)
 
@@ -105,6 +107,7 @@ def report():
 @with_appcontext
 def dryrun(sources, source_type, recid, rectype, model=None):
     """Load records migration dump."""
+
     JsonLogger.clean_stats_file()
 
     if rectype == 'multipart':
