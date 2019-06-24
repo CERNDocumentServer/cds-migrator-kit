@@ -15,7 +15,7 @@ from .log import JsonLogger
 logger = logging.getLogger('migrator')
 
 
-def migration_exception_handler(exc, output, key, value):
+def migration_exception_handler(exc, output, key, value, **kwargs):
     """Migration exception handling - log to files.
 
     :param exc: exception
@@ -28,4 +28,4 @@ def migration_exception_handler(exc, output, key, value):
         '#RECID: #{0} - {1}  MARC FIELD: *{2}*, input value: {3}, -> {4}, '
         .format(output['recid'], exc.message, key, value, output)
     )
-    JsonLogger().add_log(exc, key, value, output)
+    JsonLogger().add_log(exc, key, value, output, **kwargs)

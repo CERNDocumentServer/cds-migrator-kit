@@ -25,8 +25,9 @@ def test_migrate_record(datadir, base_app):
         assert res == {
             "agency_code": "SzGeCERN",
             "acquisition_source": {
-                "datetime": "2001-03-19"
             },
+            'creation_date': '2001-03-19',
+            "_record_type": 'document',
             "number_of_pages": 465,
             "languages": [
                 "en"
@@ -65,23 +66,23 @@ def test_migrate_record(datadir, base_app):
             ],
             "keywords": [
                 {
-                    "source": "CERN",
+                    "provenance": "CERN",
                     "name": "electromagnetism"
                 },
                 {
-                    "source": "CERN",
+                    "provenance": "CERN",
                     "name": "gauge fields"
                 },
                 {
-                    "source": "CERN",
+                    "provenance": "CERN",
                     "name": "general relativity"
                 },
                 {
-                    "source": "CERN",
+                    "provenance": "CERN",
                     "name": "knot theory, applications"
                 },
                 {
-                    "source": "CERN",
+                    "provenance": "CERN",
                     "name": "quantum gravity"
                 }
             ],
@@ -93,9 +94,7 @@ def test_migrate_record(datadir, base_app):
             "$schema": {
                 "$ref": "records/books/book/book-v.0.0.1.json"
             },
-            "document_type": [
-                "BOOK"
-            ],
+            "document_type": 'BOOK',
             "imprints": [
                 {
                     "date": "1994",

@@ -61,6 +61,15 @@ class JsonLogger(object):
                 json.dump([], f, indent=2)
 
     @staticmethod
+    def clean_stats_file():
+        """Removes contents of the statistics file."""
+        filepath = os.path.join(
+            current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'], 'stats.json')
+        with open(filepath, 'w') as f:
+            f.write('[]')
+            f.close()
+
+    @staticmethod
     def get_stat_by_recid(recid, stats_json):
         """Search for existing stats of given recid."""
         return next(
@@ -73,18 +82,18 @@ class JsonLogger(object):
             all_stats = json.load(f)
             return all_stats
 
-    def create_output_file(self, recid, output):
+    def create_output_file(self, file, output):
         """Create json preview output file."""
         try:
             filename = os.path.join(
                 current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'],
-                "{0}.json".format(recid))
+                "{0}.json".format(file))
             with open(filename, "w+") as f:
                 json.dump(output, f, indent=2)
         except Exception as e:
             raise e
 
-    def add_log(self, exc, key=None, value=None, output=None):
+    def add_log(self, exc, key=None, value=None, output=None, rectype=None):
         """Add exception log."""
         all_stats = JsonLogger().render_stats()
         with open(self.LOG_FILEPATH, "w+") as f:
@@ -92,6 +101,7 @@ class JsonLogger(object):
                                                         all_stats)
             if not record_stats:
                 record_stats = {'recid': output['recid'],
+                                'record_type': rectype,
                                 'manual_migration': [],
                                 'unexpected_value': [],
                                 'missing_required_field': [],
@@ -102,7 +112,7 @@ class JsonLogger(object):
             self.resolve_error_type(exc, record_stats, key, value)
             json.dump(all_stats, f, indent=2)
 
-    def add_item(self, output):
+    def add_item(self, output, rectype=None):
         """Add empty log item."""
         all_stats = JsonLogger().render_stats()
         with open(self.LOG_FILEPATH, "w+") as f:
@@ -110,6 +120,7 @@ class JsonLogger(object):
                                                         all_stats)
             if not record_stats:
                 record_stats = {'recid': output['recid'],
+                                'record_type': rectype,
                                 'manual_migration': [],
                                 'unexpected_value': [],
                                 'missing_required_field': [],

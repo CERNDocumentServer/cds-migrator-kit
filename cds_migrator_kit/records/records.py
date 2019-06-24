@@ -62,6 +62,7 @@ class CDSRecordDump(RecordDump):
 
     def _prepare_intermediate_revision(self, data):
         """Convert intermediate versions to marc into JSON."""
+        # TODO
         dt = arrow.get(data['modification_datetime']).datetime
 
         if self.source_type == 'marcxml':

@@ -8,7 +8,6 @@
 
 {%- block page_body %}
 
-
   <table class="table table-bordered">
     <thead class="thead-dark">
     <tr>
@@ -26,8 +25,7 @@
         <th scope="row"><a href="https://cds.cern.ch/record/{{ elem.recid }}">{{ elem.recid }}</a></th>
         <td>
           {% for val in elem.unexpected_value %}
-            {{ val.0 }}<br>
-            {{ val.1 }}
+            {{ val }}<br>
           {% endfor %}
         </td>
         <td>
@@ -43,7 +41,7 @@
         {% endfor %}</td>
         <td>
           {% if not elem.lost_data %}
-            <a href="/record/{{ elem.recid }}">View</a>
+            <a href="/record/{{ elem.record_type }}/{{ elem.recid }}">View</a>
           {% endif %}
         </td>
       </tr>

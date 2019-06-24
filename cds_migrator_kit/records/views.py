@@ -46,12 +46,12 @@ def results():
         results=all_stats)
 
 
-@blueprint.route('/record/<recid>')
-def send_json(recid):
+@blueprint.route('/record/<rectype>/<recid>')
+def send_json(rectype, recid):
     """Serves static json preview output files."""
     cli_logger.warning('View reached')
     cli_logger.warning(CDS_MIGRATOR_KIT_LOGS_PATH)
-    cli_logger.warning('{0}.json'.format(recid))
+    cli_logger.warning('{0}_{1}.json'.format(rectype, recid))
     return send_from_directory(
         current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'],
-        '{0}.json'.format(recid))
+        '{0}_{1}.json'.format(rectype, recid))
