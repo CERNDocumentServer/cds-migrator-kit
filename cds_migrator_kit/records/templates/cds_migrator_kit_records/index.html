@@ -16,6 +16,10 @@
       <th scope="col" style="position: sticky; top:0; ">Missing required</th>
       <th scope="col" style="position: sticky; top:0; ">Manual Migration</th>
       <th scope="col" style="position: sticky; top:0; ">Lost data fields</th>
+      {% if results[0].record_type == 'serial' %}
+        <th scope="col" style="position: sticky; top:0; ">Exact series</th>
+        <th scope="col" style="position: sticky; top:0; ">Similar series</th>
+      {% endif %}
       <th scope="col" style="position: sticky; top:0; ">Output</th>
     </tr>
     </thead>
@@ -39,9 +43,23 @@
         <td>{% for val in elem.lost_data %}
           {{ val }},
         {% endfor %}</td>
+        {% if elem.record_type == 'serial' %}
+          <td>
+            {{ elem.exact_series }}
+          </td>
+          <td>
+            {{ elem.similar_series }}
+          </td>
+        {% endif %}
         <td>
           {% if not elem.lost_data %}
-            <a href="/record/{{ elem.record_type }}/{{ elem.recid }}">View</a>
+            {% if elem.extracted_records %}
+              {% for index in elem.extracted_records %}
+                <a href="/record/{{ elem.record_type }}/{{ elem.recid }}_{{ index }}">View {{ index }}</a>
+              {% endfor %}
+            {% else %}
+              <a href="/record/{{ elem.record_type }}/{{ elem.recid }}">View</a>
+            {% endif %}
           {% endif %}
         </td>
       </tr>
