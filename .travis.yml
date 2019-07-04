@@ -43,7 +43,7 @@ before_install:
 install:
   - "travis_retry pip install -r .travis-${REQUIREMENTS}-requirements.txt"
   - "travis_retry pip install -e .[all]"
-  - "travis_retry pip install pytest>=3.5.1,<5.0.0"
+  - "travis_retry pip install pytest==3.8.1"
 
 script:
   - "./run-tests.sh"
