@@ -21,7 +21,7 @@ tests_require = [
     'pydocstyle>=2.0.0',
     'pytest-cov>=2.5.1',
     'pytest-pep8>=1.0.6',
-    'pytest>=3.5.1',
+    'pytest>=3.8.1,<5.0.0',
     'pytest-invenio>=1.0.5,<1.1.0',
 ]
 
@@ -55,6 +55,8 @@ install_requires = [
     'invenio-records>=1.0.0',
     'invenio-records-files>=1.0.0a10',
     'pathlib>=1.0.1',
+    'importlib-metadata==0.17',
+    'pluggy==0.11.0'
 ]
 
 packages = find_packages()
