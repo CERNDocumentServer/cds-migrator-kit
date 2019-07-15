@@ -17,6 +17,8 @@ from cds_dojson.marc21.models.books.serial import model as serial_model
 from flask import current_app
 from flask.cli import with_appcontext
 
+from cds_migrator_kit.records.utils import prepare_serials
+
 from .errors import LossyConversion
 from .log import JsonLogger
 from .records import CDSRecordDump
@@ -27,6 +29,7 @@ cli_logger = logging.getLogger(__name__)
 def load_records(sources, source_type, eager, model=None, rectype=None):
     """Load records."""
     logger = JsonLogger()
+
     for idx, source in enumerate(sources, 1):
         click.secho('Loading dump {0} of {1} ({2})'.format(
             idx, len(sources), source), fg='yellow')
@@ -40,21 +43,24 @@ def load_records(sources, source_type, eager, model=None, rectype=None):
         source.close()
         with click.progressbar(data) as records:
             for item in records:
-                # potential place to differentiate the record type
-                # currently migrated
                 dump = CDSRecordDump(data=item, dojson_model=model)
 
                 logger.add_item(item, rectype=rectype)
                 try:
                     dump.prepare_revisions()
-
-                    # potential place to create connections with parents
-                    # potential place to split multipart monographs
                     file_prefix = ''
                     if rectype:
                         file_prefix = '{0}_'.format(rectype)
-                    logger.create_output_file(file_prefix+str(item['recid']),
-                                              dump.revisions[-1][1])
+                    if rectype == 'serial':
+                        serials = prepare_serials(dump.revisions[-1][1],
+                                                  logger, rectype, item)
+                        cli_logger.info('{0} serials created of record {1}'
+                                        .format(serials, item['recid']))
+
+                    else:
+                        logger.create_output_file(
+                            file_prefix + str(item['recid']),
+                            dump.revisions[-1][1])
                 except LossyConversion as e:
                     cli_logger.error('[DATA ERROR]: {0}'.format(e.message))
                     JsonLogger().add_log(e, output=item, rectype=rectype)

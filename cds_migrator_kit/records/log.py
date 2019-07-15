@@ -54,10 +54,14 @@ class JsonLogger(object):
         _logs_path = current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH']
 
         self.LOG_FILEPATH = os.path.join(_logs_path, 'stats.json')
+        self.LOG_SERIALS = os.path.join(_logs_path, 'serials.json')
         if not os.path.exists(_logs_path):
             os.makedirs(_logs_path)
         if not os.path.exists(self.LOG_FILEPATH):
             with open(self.LOG_FILEPATH, "w+") as f:
+                json.dump([], f, indent=2)
+        if not os.path.exists(self.LOG_SERIALS):
+            with open(self.LOG_SERIALS, "w") as f:
                 json.dump([], f, indent=2)
 
     @staticmethod
@@ -93,6 +97,27 @@ class JsonLogger(object):
         except Exception as e:
             raise e
 
+    def add_recid_to_serial(self,  current_entry, similar_series, ratio):
+        """Add record id to existing serial stats."""
+        all_stats = JsonLogger().render_stats()
+        with open(self.LOG_FILEPATH, "w+") as f:
+            record_stats = JsonLogger.get_stat_by_recid(
+                similar_series['recid'], all_stats)
+            if ratio < 100:
+                record_stats['similar_series'].append(current_entry['recid'])
+            else:
+                record_stats['exact_series'].append(current_entry['recid'])
+            json.dump(all_stats, f, indent=2)
+
+    def add_extracted_records(self, recid, index):
+        """Add additionally extracted records from many series."""
+        all_stats = JsonLogger().render_stats()
+        with open(self.LOG_FILEPATH, "w+") as f:
+            record_stats = JsonLogger.get_stat_by_recid(
+                recid, all_stats)
+            record_stats['extracted_records'].append(index)
+            json.dump(all_stats, f, indent=2)
+
     def add_log(self, exc, key=None, value=None, output=None, rectype=None):
         """Add exception log."""
         all_stats = JsonLogger().render_stats()
@@ -107,6 +132,9 @@ class JsonLogger(object):
                                 'missing_required_field': [],
                                 'lost_data': [],
                                 'clean': False,
+                                'similar_series': [],
+                                'exact_series': [],
+                                'extracted_records': []
                                 }
                 all_stats.append(record_stats)
             self.resolve_error_type(exc, record_stats, key, value)
@@ -126,6 +154,9 @@ class JsonLogger(object):
                                 'missing_required_field': [],
                                 'lost_data': [],
                                 'clean': True,
+                                'similar_series': [],
+                                'exact_series': [],
+                                'extracted_records': [],
                                 }
                 all_stats.append(record_stats)
                 json.dump(all_stats, f, indent=2)
