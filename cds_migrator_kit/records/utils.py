@@ -71,10 +71,20 @@ def prepare_serials(serial, logger, rectype, item):
     return split_serials(serial, logger, rectype, item)
 
 
-def check_for_duplicated_serials(serial):
+def check_for_duplicated_serials(serial, i=None):
     """Check if the serial already exists."""
     _logs_path = current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH']
     filepath = os.path.join(_logs_path, 'serials.json')
+
+    serial_to_store = {'title': serial['title'],
+                       'recid': serial['recid'],
+                       'issn': serial['issn']
+                       if 'issn' in serial else None,
+                       }
+
+    if i is not None:
+        serial_to_store['_index'] = i
+
     with open(filepath, 'r+') as file:
         all_serials = json.load(file)
         for stored_serial in all_serials:
@@ -88,24 +98,13 @@ def check_for_duplicated_serials(serial):
             elif 95 <= ratio < 100:
                 return stored_serial, ratio
         else:
-            all_serials.append(
-                        {'title': serial['title'],
-                         'recid': serial['recid'],
-                         'issn': serial['issn']
-                         if 'issn' in serial else None,
-                         }
-                    )
+            all_serials.append(serial_to_store)
             file.seek(0)
             file.truncate(0)
             if all_serials:
                 json.dump(all_serials, file, indent=2)
         if not all_serials:
-            all_serials.append(
-                {'title': serial['title'],
-                 'recid': serial['recid'],
-                 'issn': serial['issn'] if 'issn' in serial else None,
-                 }
-            )
+            all_serials.append(serial_to_store)
             file.seek(0)
             file.truncate(0)
             if all_serials:
@@ -118,10 +117,12 @@ def split_serials(serial, logger, rectype, item):
         for i, title in enumerate(serial['title']):
             split_serial = copy.deepcopy(serial)
             split_serial['title'] = title
-            out = check_for_duplicated_serials(split_serial)
+            out = check_for_duplicated_serials(split_serial, i)
 
             if out:
                 logger.add_recid_to_serial(split_serial, *out)
+                logger.add_related_child(out[0],
+                                         rectype, split_serial['recid'])
             else:
                 logger.add_extracted_records(split_serial['recid'], i)
                 logger.create_output_file(
@@ -133,6 +134,7 @@ def split_serials(serial, logger, rectype, item):
         out = check_for_duplicated_serials(serial)
         if out:
             logger.add_recid_to_serial(serial, *out)
+            logger.add_related_child(out[0], rectype, serial['recid'])
         else:
             logger.create_output_file(
                 '{0}_{1}'.format(rectype, item['recid']),

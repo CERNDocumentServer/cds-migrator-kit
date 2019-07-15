@@ -44,7 +44,7 @@ def load_records(sources, source_type, eager, model=None, rectype=None):
         with click.progressbar(data) as records:
             for item in records:
                 dump = CDSRecordDump(data=item, dojson_model=model)
-
+                click.echo('Processing item {0}...'.format(item['recid']))
                 logger.add_item(item, rectype=rectype)
                 try:
                     dump.prepare_revisions()
@@ -64,19 +64,19 @@ def load_records(sources, source_type, eager, model=None, rectype=None):
                 except LossyConversion as e:
                     cli_logger.error('[DATA ERROR]: {0}'.format(e.message))
                     JsonLogger().add_log(e, output=item, rectype=rectype)
-                except AttributeError as e:
-                    current_app.logger.error('Model missing')
-                    JsonLogger().add_log(e, output=item, rectype=rectype)
-                    # raise e
-                except TypeError as e:
-                    current_app.logger.error(
-                        'Model missing recid:{}'.format(item['recid']))
-                    JsonLogger().add_log(e, output=item, rectype=rectype)
-                    # raise e
-                except KeyError as e:
-                    current_app.logger.error(
-                        'Model missing recid:{}'.format(item['recid']))
-                    JsonLogger().add_log(e, output=item, rectype=rectype)
+                # except AttributeError as e:
+                #     current_app.logger.error('Model missing')
+                #     JsonLogger().add_log(e, output=item, rectype=rectype)
+                #     # raise e
+                # except TypeError as e:
+                #     current_app.logger.error(
+                #         'Model missing recid:{}'.format(item['recid']))
+                #     JsonLogger().add_log(e, output=item, rectype=rectype)
+                #     # raise e
+                # except KeyError as e:
+                #     current_app.logger.error(
+                #         'Model missing recid:{}'.format(item['recid']))
+                #     JsonLogger().add_log(e, output=item, rectype=rectype)
                 except Exception as e:
                     cli_logger.warning(e)
                     raise e
@@ -106,7 +106,7 @@ def report():
 @click.option(
     '--rectype',
     '-x',
-    help='Record ID to load (NOTE: will load only one record!).',
+    help='Type of record to load (f.e serial).',
     default=None)
 @with_appcontext
 def dryrun(sources, source_type, recid, rectype, model=None):

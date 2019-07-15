@@ -51,12 +51,12 @@ class JsonLogger(object):
 
     def __init__(self):
         """Constructor."""
-        _logs_path = current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH']
+        self._logs_path = current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH']
 
-        self.LOG_FILEPATH = os.path.join(_logs_path, 'stats.json')
-        self.LOG_SERIALS = os.path.join(_logs_path, 'serials.json')
-        if not os.path.exists(_logs_path):
-            os.makedirs(_logs_path)
+        self.LOG_FILEPATH = os.path.join(self._logs_path, 'stats.json')
+        self.LOG_SERIALS = os.path.join(self._logs_path, 'serials.json')
+        if not os.path.exists(self._logs_path):
+            os.makedirs(self._logs_path)
         if not os.path.exists(self.LOG_FILEPATH):
             with open(self.LOG_FILEPATH, "w+") as f:
                 json.dump([], f, indent=2)
@@ -91,7 +91,7 @@ class JsonLogger(object):
         try:
             filename = os.path.join(
                 current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'],
-                "{0}.json".format(file))
+                "{0}/{1}.json".format(output['_record_type'], file))
             with open(filename, "w+") as f:
                 json.dump(output, f, indent=2)
         except Exception as e:
@@ -180,3 +180,23 @@ class JsonLogger(object):
                 " Contact CDS team to tune the query")
         else:
             raise exc
+
+    def add_related_child(self, stored_parent, rectype, related_recid):
+        """Dumps recids picked up during migration in the output file."""
+        if '_index' in stored_parent:
+            filename = '{0}/{1}_{2}_{3}.json'.format(
+                rectype, rectype, stored_parent['recid'],
+                stored_parent['_index'])
+        else:
+            filename = '{0}/{1}_{2}.json'.format(rectype, rectype,
+                                                 stored_parent['recid'])
+        filepath = os.path.join(self._logs_path, filename)
+        with open(filepath, 'r+') as file:
+            parent = json.load(file)
+            key_name = '_migration_relation_{0}_recids'.format(rectype)
+            if key_name not in parent:
+                parent[key_name] = []
+            parent[key_name].append(related_recid)
+            file.seek(0)
+            file.truncate(0)
+            json.dump(parent, file, indent=2)

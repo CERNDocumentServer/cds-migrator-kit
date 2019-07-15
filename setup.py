@@ -18,10 +18,11 @@ tests_require = [
     'check-manifest>=0.35',
     'coverage>=4.4.1',
     'isort>=4.3',
+    'pluggy==0.11.0',
     'pydocstyle>=2.0.0',
     'pytest-cov>=2.5.1',
     'pytest-pep8>=1.0.6',
-    'pytest>=3.8.1,<5.0.0',
+    'pytest==4.0.0',
     'pytest-invenio>=1.0.5,<1.1.0',
 ]
 
