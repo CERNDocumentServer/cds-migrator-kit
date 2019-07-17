@@ -51,7 +51,7 @@ def send_json(rectype, recid):
     """Serves static json preview output files."""
     cli_logger.warning('View reached')
     cli_logger.warning(CDS_MIGRATOR_KIT_LOGS_PATH)
-    cli_logger.warning('{0}_{1}.json'.format(rectype, recid))
-    return send_from_directory(
-        current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'],
+    cli_logger.warning('{0}/{1}_{2}.json'.format(rectype, rectype, recid))
+    return send_from_directory('{0}{1}/'.format(
+        current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'], rectype),
         '{0}_{1}.json'.format(rectype, recid))
