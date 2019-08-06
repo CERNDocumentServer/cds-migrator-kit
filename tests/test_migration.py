@@ -27,7 +27,6 @@ def test_migrate_record(datadir, base_app):
             "acquisition_source": {
             },
             'creation_date': '2001-03-19',
-            "_record_type": 'document',
             "number_of_pages": 465,
             "languages": [
                 "en"
@@ -91,15 +90,20 @@ def test_migrate_record(datadir, base_app):
                     "value": "newqudc"
                 }
             ],
-            "$schema": {
-                "$ref": "records/books/book/book-v.0.0.1.json"
-            },
+            "$schema": "records/books/book/book-v.0.0.1.json",
             "document_type": 'BOOK',
             "imprints": [
                 {
                     "date": "1994",
                     "publisher": "World Scientific",
                     "place": "Singapore"
-                }
-            ]
+                },
+            ],
+            '_migration': {'has_keywords': False,
+                           'has_multipart': False,
+                           'has_related': False,
+                           'has_serial': False,
+                           'record_type': 'document',
+                           'volumes': []},
+
         }
