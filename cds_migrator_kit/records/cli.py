@@ -67,18 +67,20 @@ def load_records(sources, source_type, eager, model=None, rectype=None):
                 # except AttributeError as e:
                 #     current_app.logger.error('Model missing')
                 #     JsonLogger().add_log(e, output=item, rectype=rectype)
-                #     # raise e
+                #     raise e
                 # except TypeError as e:
                 #     current_app.logger.error(
                 #         'Model missing recid:{}'.format(item['recid']))
                 #     JsonLogger().add_log(e, output=item, rectype=rectype)
-                #     # raise e
+                #     raise e
                 # except KeyError as e:
                 #     current_app.logger.error(
                 #         'Model missing recid:{}'.format(item['recid']))
                 #     JsonLogger().add_log(e, output=item, rectype=rectype)
                 except Exception as e:
-                    cli_logger.warning(e)
+                    cli_logger.error(e)
+                    current_app.logger.error(e)
+                    JsonLogger().add_log(e, output=item, rectype=rectype)
                     raise e
         click.secho('Check completed. See the report on: '
                     'books-migrator-dev.web.cern.ch/results', fg='green')

@@ -91,7 +91,8 @@ class JsonLogger(object):
         try:
             filename = os.path.join(
                 current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'],
-                "{0}/{1}.json".format(output['_record_type'], file))
+                "{0}/{1}.json".format(output['_migration']['record_type'],
+                                      file))
             with open(filename, "w+") as f:
                 json.dump(output, f, indent=2)
         except Exception as e:
