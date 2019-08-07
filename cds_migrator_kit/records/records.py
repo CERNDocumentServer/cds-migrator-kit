@@ -35,10 +35,12 @@ class CDSRecordDump(RecordDump):
                  source_type='marcxml',
                  latest_only=False,
                  pid_fetchers=None,
-                 dojson_model=marc21):
+                 dojson_model=marc21,
+                 logger=None):
         """Initialize."""
-        super(self.__class__, self).__init__(data, source_type, latest_only,
-                                             pid_fetchers, dojson_model)
+        super().__init__(data, source_type, latest_only, pid_fetchers,
+                         dojson_model)
+        self.logger = logger
         cli_logger.info('\n=====#RECID# {0} INIT=====\n'.format(data['recid']))
 
     @property
@@ -83,10 +85,10 @@ class CDSRecordDump(RecordDump):
         dt = arrow.get(data['modification_datetime']).datetime
 
         exception_handlers = {
-            UnexpectedValue: migration_exception_handler,
-            MissingRequiredField: migration_exception_handler,
-            ManualMigrationRequired: migration_exception_handler,
-            }
+            UnexpectedValue: migration_exception_handler(self.logger),
+            MissingRequiredField: migration_exception_handler(self.logger),
+            ManualMigrationRequired: migration_exception_handler(self.logger),
+        }
         if self.source_type == 'marcxml':
             marc_record = create_record(data['marcxml'])
             try:

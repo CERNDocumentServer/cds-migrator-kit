@@ -17,8 +17,6 @@ from cds_dojson.marc21.models.books.serial import model as serial_model
 from flask import current_app
 from flask.cli import with_appcontext
 
-from cds_migrator_kit.records.utils import prepare_serials
-
 from .errors import LossyConversion
 from .log import JsonLogger
 from .records import CDSRecordDump
@@ -28,7 +26,7 @@ cli_logger = logging.getLogger(__name__)
 
 def load_records(sources, source_type, eager, model=None, rectype=None):
     """Load records."""
-    logger = JsonLogger()
+    logger = JsonLogger.get_json_logger(rectype)
 
     for idx, source in enumerate(sources, 1):
         click.secho('Loading dump {0} of {1} ({2})'.format(
@@ -43,27 +41,20 @@ def load_records(sources, source_type, eager, model=None, rectype=None):
         source.close()
         with click.progressbar(data) as records:
             for item in records:
-                dump = CDSRecordDump(data=item, dojson_model=model)
+                dump = CDSRecordDump(
+                    data=item,
+                    dojson_model=model,
+                    logger=logger
+                )
                 click.echo('Processing item {0}...'.format(item['recid']))
-                logger.add_item(item, rectype=rectype)
+                logger.add_recid_to_stats(item['recid'])
                 try:
                     dump.prepare_revisions()
-                    file_prefix = ''
-                    if rectype:
-                        file_prefix = '{0}_'.format(rectype)
-                    if rectype == 'serial':
-                        serials = prepare_serials(dump.revisions[-1][1],
-                                                  logger, rectype, item)
-                        cli_logger.info('{0} serials created of record {1}'
-                                        .format(serials, item['recid']))
+                    logger.add_record(dump.revisions[-1][1])
 
-                    else:
-                        logger.create_output_file(
-                            file_prefix + str(item['recid']),
-                            dump.revisions[-1][1])
                 except LossyConversion as e:
                     cli_logger.error('[DATA ERROR]: {0}'.format(e.message))
-                    JsonLogger().add_log(e, output=item, rectype=rectype)
+                    logger.add_log(e, output=item)
                 # except AttributeError as e:
                 #     current_app.logger.error('Model missing')
                 #     JsonLogger().add_log(e, output=item, rectype=rectype)
@@ -80,8 +71,9 @@ def load_records(sources, source_type, eager, model=None, rectype=None):
                 except Exception as e:
                     cli_logger.error(e)
                     current_app.logger.error(e)
-                    JsonLogger().add_log(e, output=item, rectype=rectype)
+                    logger.add_log(e, output=item)
                     raise e
+        logger.save()
         click.secho('Check completed. See the report on: '
                     'books-migrator-dev.web.cern.ch/results', fg='green')
 
@@ -109,12 +101,10 @@ def report():
     '--rectype',
     '-x',
     help='Type of record to load (f.e serial).',
-    default=None)
+    default='document')
 @with_appcontext
 def dryrun(sources, source_type, recid, rectype, model=None):
     """Load records migration dump."""
-    JsonLogger.clean_stats_file()
-
     if rectype == 'multipart':
         model = multipart_model
     elif rectype == 'serial':

@@ -1,0 +1,19 @@
+{#
+ Copyright (C) 2015-2018 CERN.
+  cds-migrator-kit is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
+#}
+
+{%- extends config.CDS_MIGRATOR_KIT_BASE_TEMPLATE %}
+
+{%- block page_body %}
+
+<div class="container">
+  <div class="alert alert-danger" role="alert">
+    <h4 class="alert-heading">No stats exists for record type "{{ rectype }}"</h4>
+    To generate statistics for this record type please run:
+    <code>migrator report dryrun --rectype {{ rectype }} &lt;sources&gt;</code>
+  </div>
+</div>
+
+{%- endblock %}

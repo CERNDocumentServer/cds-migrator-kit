@@ -106,7 +106,11 @@ SESSION_COOKIE_SECURE = True
 #: provided, the allowed hosts variable is set to localhost. In production it
 #: should be set to the correct host and it is strongly recommended to only
 #: route correct hosts to the application.
-APP_ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+APP_ALLOWED_HOSTS = []
+if os.environ.get("ALLOWED_HOST"):
+    APP_ALLOWED_HOSTS.append(os.environ.get("ALLOWED_HOST"))
+if os.environ.get("HOSTNAME"):
+    APP_ALLOWED_HOSTS.append(os.environ.get("HOSTNAME"))
 APP_DEFAULT_SECURE_HEADERS['force_https'] = False
 APP_DEFAULT_SECURE_HEADERS['content_security_policy'] = {}
 

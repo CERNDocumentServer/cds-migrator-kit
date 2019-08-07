@@ -45,8 +45,8 @@ setup_requires = [
 install_requires = [
     'cds-dojson>=0.9.0',
     'Flask-BabelEx>=0.9.3',
-    'invenio-app>=1.0.4,<1.2.0',
-    'invenio-base>=1.0.0,<1.1.0',
+    'invenio-app>=1.0.4',
+    'invenio-base>=1.0.0,<1.2.0',
     'invenio-config>=1.0.0',
     'invenio-logging>=1.0.0',
     'invenio-db[postgresql,versioning]>=1.0.0',
@@ -56,9 +56,10 @@ install_requires = [
     'invenio-records>=1.0.0',
     'invenio-records-files>=1.0.0a10',
     'pathlib>=1.0.1',
-    'importlib-metadata==0.17',
+    'importlib-metadata==0.18',
     'pluggy==0.11.0',
     'fuzzywuzzy>=0.17.0',
+    'python-Levenshtein>=0.12',
 ]
 
 packages = find_packages()

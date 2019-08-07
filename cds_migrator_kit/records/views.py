@@ -12,7 +12,7 @@ from __future__ import absolute_import, print_function
 
 import logging
 
-from flask import Blueprint, current_app, render_template, send_from_directory
+from flask import Blueprint, abort, current_app, jsonify, render_template
 
 from cds_migrator_kit.config import CDS_MIGRATOR_KIT_LOGS_PATH
 
@@ -40,18 +40,36 @@ def index():
 @blueprint.route("/results")
 def results():
     """Render a basic view."""
-    all_stats = JsonLogger().render_stats()
+    return render_template("cds_migrator_kit_records/index.html", rectype=None)
+
+
+@blueprint.route("/results/<rectype>")
+def results_rectype(rectype=None):
+    """Render a basic view."""
+    try:
+        logger = JsonLogger.get_json_logger(rectype)
+        logger.load()
+        template = "cds_migrator_kit_records/{}.html".format(rectype)
+    except FileNotFoundError:
+        template = "cds_migrator_kit_records/rectype_missing.html"
+
     return render_template(
-        "cds_migrator_kit_records/index.html",
-        results=all_stats)
+        template,
+        stats_sorted_by_key=[
+            logger.stats[stat]
+            for stat in sorted(logger.stats.keys())
+        ],
+        stats=logger.stats,
+        records=logger.records,
+        rectype=rectype
+    )
 
 
 @blueprint.route('/record/<rectype>/<recid>')
 def send_json(rectype, recid):
     """Serves static json preview output files."""
-    cli_logger.warning('View reached')
-    cli_logger.warning(CDS_MIGRATOR_KIT_LOGS_PATH)
-    cli_logger.warning('{0}/{1}_{2}.json'.format(rectype, rectype, recid))
-    return send_from_directory('{0}{1}/'.format(
-        current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'], rectype),
-        '{0}_{1}.json'.format(rectype, recid))
+    logger = JsonLogger.get_json_logger(rectype)
+    logger.load()
+    if recid not in logger.records:
+        abort(404)
+    return jsonify(logger.records[recid])
