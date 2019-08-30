@@ -26,21 +26,21 @@
         <td>
           {% for val in stat.unexpected_value %}
             <span data-toggle="tooltip" data-placement="top" title="{{ val.message }}">
-              {{ val.key }}{{ val.subfield }}: <code>{{ val.value }}</code>
+              {{ val.key }}{{ val.subfield or '' }}: <code>{{ val.value }}</code>
             </span><br />
           {% endfor %}
         </td>
         <td>
           {% for val in stat.missing_required_field %}
             <span data-toggle="tooltip" data-placement="left" title="{{ val.message }}">
-              {{ val.key }}{{ val.subfield }}: <code>{{ val.value }}</code>
+              {{ val.key }}{{ val.subfield or '' }}: <code>{{ val.value }}</code>
             </span><br />
           {% endfor %}
         </td>
         <td>
           {% for val in stat.manual_migration %}
             <span data-toggle="tooltip" data-placement="left" title="{{ val.message }}">
-              {{ val.key }}{{ val.subfield }}: <code>{{ val.value }}</code>
+              {{ val.key }}{{ val.subfield or '' }}: <code>{{ val.value }}</code>
             </span><br />
           {% endfor %}
         </td>

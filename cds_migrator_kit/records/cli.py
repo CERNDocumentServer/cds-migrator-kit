@@ -24,7 +24,7 @@ from .records import CDSRecordDump
 cli_logger = logging.getLogger(__name__)
 
 
-def load_records(sources, source_type, eager, model=None, rectype=None):
+def load_records(sources, source_type, eager, rectype=None, **params):
     """Load records."""
     logger = JsonLogger.get_json_logger(rectype)
 
@@ -41,17 +41,12 @@ def load_records(sources, source_type, eager, model=None, rectype=None):
         source.close()
         with click.progressbar(data) as records:
             for item in records:
-                dump = CDSRecordDump(
-                    data=item,
-                    dojson_model=model,
-                    logger=logger
-                )
+                dump = CDSRecordDump(data=item, logger=logger, **params)
                 click.echo('Processing item {0}...'.format(item['recid']))
                 logger.add_recid_to_stats(item['recid'])
                 try:
                     dump.prepare_revisions()
                     logger.add_record(dump.revisions[-1][1])
-
                 except LossyConversion as e:
                     cli_logger.error('[DATA ERROR]: {0}'.format(e.message))
                     logger.add_log(e, output=item)
@@ -105,9 +100,15 @@ def report():
 @with_appcontext
 def dryrun(sources, source_type, recid, rectype, model=None):
     """Load records migration dump."""
+    params = {}
     if rectype == 'multipart':
-        model = multipart_model
+        params['dojson_model'] = multipart_model
     elif rectype == 'serial':
-        model = serial_model
+        params['dojson_model'] = serial_model
+    elif rectype == 'document':
+        # use default model
+        pass
+    else:
+        raise ValueError('invalid rectype: {}'.format(rectype))
     load_records(sources=sources, source_type=source_type, eager=True,
-                 model=model, rectype=rectype)
+                 rectype=rectype, **params)
