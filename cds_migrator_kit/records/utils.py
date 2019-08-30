@@ -10,6 +10,7 @@
 import copy
 import json
 import os
+import re
 
 from flask import current_app
 from fuzzywuzzy import fuzz
@@ -66,77 +67,20 @@ def update_access(data, *access):
     data['_access'] = current_rules
 
 
-def prepare_serials(serial, logger, rectype, item):
-    """Prepare serials records to migrate."""
-    return split_serials(serial, logger, rectype, item)
+def same_issn(obj1, obj2):
+    """Check if two objects have the same ISSN."""
+    return obj1['issn'] is not None and obj2['issn'] is not None and \
+        obj1['issn'] == obj2['issn']
 
 
-def check_for_duplicated_serials(serial, i=None):
-    """Check if the serial already exists."""
-    _logs_path = current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH']
-    filepath = os.path.join(_logs_path, 'serials.json')
-
-    serial_to_store = {'title': serial['title'],
-                       'recid': serial['recid'],
-                       'issn': serial['issn']
-                       if 'issn' in serial else None,
-                       }
-
-    if i is not None:
-        serial_to_store['_index'] = i
-
-    with open(filepath, 'r+') as file:
-        all_serials = json.load(file)
-        for stored_serial in all_serials:
-            ratio = fuzz.ratio(serial['title']['title'],
-                               stored_serial['title']['title'])
-            if serial['title']['title'] == stored_serial['title']['title'] or \
-                ('issn' in serial and serial['issn'] is not None and
-                    serial['issn'] == stored_serial['issn']):
-                return stored_serial, 100
-
-            elif 95 <= ratio < 100:
-                return stored_serial, ratio
-        else:
-            all_serials.append(serial_to_store)
-            file.seek(0)
-            file.truncate(0)
-            if all_serials:
-                json.dump(all_serials, file, indent=2)
-        if not all_serials:
-            all_serials.append(serial_to_store)
-            file.seek(0)
-            file.truncate(0)
-            if all_serials:
-                json.dump(all_serials, file, indent=2)
+def compare_titles(title1, title2):
+    """Return the ratio of the fuzzy comparison between two titles."""
+    return fuzz.ratio(title1, title2)
 
 
-def split_serials(serial, logger, rectype, item):
-    """Extract multiple serials if many in the record MARC."""
-    if len(serial['title']) > 1:
-        for i, title in enumerate(serial['title']):
-            split_serial = copy.deepcopy(serial)
-            split_serial['title'] = title
-            out = check_for_duplicated_serials(split_serial, i)
-
-            if out:
-                logger.add_recid_to_serial(split_serial, *out)
-                logger.add_related_child(out[0],
-                                         rectype, split_serial['recid'])
-            else:
-                logger.add_extracted_records(split_serial['recid'], i)
-                logger.create_output_file(
-                    '{0}_{1}_{2}'.format(rectype, item['recid'], i),
-                    split_serial)
-        return i
-    else:
-        serial['title'] = serial['title'][0]
-        out = check_for_duplicated_serials(serial)
-        if out:
-            logger.add_recid_to_serial(serial, *out)
-            logger.add_related_child(out[0], rectype, serial['recid'])
-        else:
-            logger.create_output_file(
-                '{0}_{1}'.format(rectype, item['recid']),
-                serial)
-        return 1
+def clean_exception_message(message):
+    """Cleanup exception message."""
+    match = re.match(r'^(\[[^\]]*\])?(.*)$', message)
+    if match:
+        return match.group(2).strip().capitalize()
+    return message
