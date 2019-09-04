@@ -21,7 +21,7 @@ def test_migrate_record(datadir, base_app):
         dump = CDSRecordDump(data=data[0])
         dump.prepare_revisions()
         res = dump.revisions[-1][1]
-        assert res['recid'] == 262146
+        assert res['legacy_recid'] == 262146
         assert res == {
             "agency_code": "SzGeCERN",
             "acquisition_source": {
@@ -38,7 +38,7 @@ def test_migrate_record(datadir, base_app):
                 {
                     "title": "Gauge fields, knots and gravity"
                 },
-            "recid": 262146,
+            "legacy_recid": 262146,
             "isbns": [
                 {
                     "value": "9789810217297"
@@ -56,33 +56,11 @@ def test_migrate_record(datadir, base_app):
             "authors": [
                 {
                     "full_name": "Baez, John C",
-                    "role": "Author"
+                    "roles": ["author"]
                 },
                 {
                     "full_name": "Muniain, Javier P",
-                    "role": "Author"
-                }
-            ],
-            "keywords": [
-                {
-                    "provenance": "CERN",
-                    "name": "electromagnetism"
-                },
-                {
-                    "provenance": "CERN",
-                    "name": "gauge fields"
-                },
-                {
-                    "provenance": "CERN",
-                    "name": "general relativity"
-                },
-                {
-                    "provenance": "CERN",
-                    "name": "knot theory, applications"
-                },
-                {
-                    "provenance": "CERN",
-                    "name": "quantum gravity"
+                    "roles": ["author"]
                 }
             ],
             "_private_notes": [
@@ -90,7 +68,8 @@ def test_migrate_record(datadir, base_app):
                     "value": "newqudc"
                 }
             ],
-            "$schema": "records/books/book/book-v.0.0.1.json",
+            "$schema": "https://127.0.0.1:5000/schemas/documents/"
+                       "document-v1.0.0.json",
             "document_type": 'BOOK',
             "imprints": [
                 {
@@ -99,11 +78,35 @@ def test_migrate_record(datadir, base_app):
                     "place": "Singapore"
                 },
             ],
-            '_migration': {'has_keywords': False,
-                           'has_multipart': False,
-                           'has_related': False,
-                           'has_serial': False,
-                           'record_type': 'document',
-                           'volumes': []},
-
+            '_migration': {
+                'has_keywords': True,
+                'is_multipart': False,
+                'has_related': False,
+                'has_serial': False,
+                'record_type': 'document',
+                'volumes': [],
+                'serials': [],
+                "keywords": [
+                    {
+                        "provenance": "CERN",
+                        "name": "electromagnetism"
+                    },
+                    {
+                        "provenance": "CERN",
+                        "name": "gauge fields"
+                    },
+                    {
+                        "provenance": "CERN",
+                        "name": "general relativity"
+                    },
+                    {
+                        "provenance": "CERN",
+                        "name": "knot theory, applications"
+                    },
+                    {
+                        "provenance": "CERN",
+                        "name": "quantum gravity"
+                    }
+                ],
+            },
         }
