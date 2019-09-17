@@ -17,7 +17,8 @@
       <th scope="col" style="position: sticky; top:0; ">Manual Migration</th>
       <th scope="col" style="position: sticky; top:0; ">Lost data fields</th>
       <th scope="col" style="position: sticky; top:0; ">Multipart</th>
-      <th scope="col" style="position: sticky; top:0; ">Volumes</th>
+      <th scope="col" style="position: sticky; top:0; ">Volumes Found</th>
+      <th scope="col" style="position: sticky; top:0; ">Volumes Expected</th>
     </tr>
     </thead>
     <tbody class="table-hover">
@@ -58,12 +59,10 @@
           {% endif %}
         </td>
         <td nowrap>
-          {% if not stat.lost_data %}
-            {% for doc_pid in stat.volumes %}
-              <a href="/record/multipart/{{ doc_pid }}">Volume: {{ records[doc_pid].volume }}</a>
-              <br />
-            {% endfor %}
-          {% endif %}
+          {{ stat.volumes_found | length }}
+        </td>
+        <td nowrap>
+          {{ stat.volumes_expected }}
         </td>
       </tr>
     {% endfor %}

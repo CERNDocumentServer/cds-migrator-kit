@@ -170,7 +170,7 @@ class DocumentJsonLogger(JsonLogger):
 
     def add_record(self, record):
         """Add record to collected records."""
-        self.records[record['recid']] = record
+        self.records[record['legacy_recid']] = record
 
 
 class MultipartJsonLogger(JsonLogger):
@@ -200,32 +200,25 @@ class MultipartJsonLogger(JsonLogger):
                 'missing_required_field': [],
                 'lost_data': [],
                 'volumes': [],
+                'volumes_found': [],
+                'volumes_expected': 0,
                 'clean': True,
             }
-
-    def _create_document(self, obj, recid):
-        """Create a new document object."""
-        return {
-            '$schema': 'https://127.0.0.1:5000/schemas/documents/'
-                       'document-v1.0.0.json',
-            '_migration': {
-                'record_type': 'document',
-                'multipart_recid': recid,
-            },
-            **obj,
-        }
 
     def add_record(self, record):
         """Add log record."""
         recid = record['legacy_recid']
         self.records[recid] = record
+        if 'volumes' in record['_migration']:
+            for volume in record['_migration']['volumes']:
+                if 'title' in volume:
+                    self.stats[recid]['volumes'].append(volume)
+                    found = self.stats[recid]['volumes_found']
+                    if volume['volume'] not in found:
+                        found.append(volume['volume'])
 
-        # Create a new document for each volume
-        for obj in record['_migration']['volumes']:
-            doc_pid = '{}-doc-{}'.format(recid, self.next_doc_pid())
-            document = self._create_document(obj, recid)
-            self.stats[recid]['volumes'].append(doc_pid)
-            self.records[doc_pid] = document
+        self.stats[recid]['volumes_expected'] = \
+            record.get('number_of_volumes', '-')
 
 
 class SerialJsonLogger(JsonLogger):
