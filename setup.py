@@ -16,14 +16,15 @@ history = open('CHANGES.rst').read()
 
 tests_require = [
     'check-manifest>=0.35',
-    'coverage>=4.4.1',
+    'coverage>=4.4.1,<5.0',
     'isort>=4.3',
-    'pluggy==0.11.0',
+    'pluggy>=0.12.0,<1.0.0',
     'pydocstyle>=2.0.0',
     'pytest-cov>=2.5.1',
     'pytest-pep8>=1.0.6',
-    'pytest==4.0.0',
-    'pytest-invenio>=1.0.5,<1.1.0',
+    'pytest>=4.0.0,<5.0',
+    'pytest-invenio>=1.0.5',
+    'pytest-flask>=0.15.1,<1.0.0',
 ]
 
 extras_require = {
@@ -40,24 +41,27 @@ for reqs in extras_require.values():
 setup_requires = [
     'Babel>=1.3',
     'pytest-runner>=2.6.2',
+    'setuptools>=17.1',
 ]
 
 install_requires = [
     'cds-dojson>=0.9.0',
     'Flask-BabelEx>=0.9.3',
-    'invenio-app>=1.0.4',
-    'invenio-base>=1.0.0,<1.2.0',
+    'invenio-app>=1.3.0',
+    'invenio-base>=1.2.0',
+    'invenio-search[elasticsearch6]>=1.0.0',
     'invenio-config>=1.0.0',
     'invenio-logging>=1.0.0',
     'invenio-db[postgresql,versioning]>=1.0.0',
-    'invenio-files-rest>=1.0.0a18',
+    'invenio-files-rest>=1.2.0',
     'invenio-migrator>=1.0.0a9',
     'invenio-pidstore>=1.0.0',
     'invenio-records>=1.0.0',
     'invenio-records-files>=1.0.0a10',
     'pathlib>=1.0.1',
-    'importlib-metadata==0.18',
-    'pluggy==0.11.0',
+    'importlib-metadata>=0.17',
+    'pluggy>=0.11.0',
+    'secrets>=1.0.2',
     'fuzzywuzzy>=0.17.0',
     'python-Levenshtein>=0.12',
 ]

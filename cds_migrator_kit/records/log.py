@@ -18,7 +18,8 @@ from cds_dojson.marc21.fields.books.errors import ManualMigrationRequired, \
 from flask import current_app
 from fuzzywuzzy import fuzz
 
-from cds_migrator_kit.records.errors import LossyConversion
+from cds_migrator_kit.records.errors import LossyConversion, \
+    RequiredFieldMissing
 from cds_migrator_kit.records.utils import clean_exception_message, \
     compare_titles, same_issn
 
@@ -139,6 +140,13 @@ class JsonLogger(object):
                 missing=list(exc.missing),
                 message=exc.message
             ))
+        elif isinstance(exc, RequiredFieldMissing):
+            rec_stats['missing_required_field'].append(dict(
+                value=exc.value,
+                subfield=exc.subfield,
+                missing=list(exc.missing),
+                message=exc.message
+            ))
         elif isinstance(exc, KeyError):
             rec_stats['unexpected_value'].append(str(exc))
         elif isinstance(exc, TypeError) or isinstance(exc, AttributeError):
@@ -234,7 +242,7 @@ class SerialJsonLogger(JsonLogger):
 
     def _add_to_stats(self, record):
         """Update serial stats."""
-        title = record['title']['title']
+        title = record['title']
         if title in self.stats:
             self.stats[title]['documents'].append(record['recid'])
         else:
@@ -251,11 +259,14 @@ class SerialJsonLogger(JsonLogger):
     def _add_to_record(self, record):
         """Update serial record."""
         del record['recid']
-        title = record['title']['title']
+        title = record['title']
         self.records[title] = record
 
     def add_record(self, record):
         """Add serial to collected records."""
+        if 'title' not in record:
+            record['title'] = ['FIXME - serial has invalid title - field 490']
+
         title = record['title']
         if len(title) > 1:
             for title in record['title']:
@@ -272,7 +283,7 @@ class SerialJsonLogger(JsonLogger):
         """Add children to collected record."""
         for record in self.records.values():
             record['_migration']['children'] = \
-                self.stats[record['title']['title']]['documents']
+                self.stats[record['title']]['documents']
 
     def _match_similar(self):
         """Match similar serials."""
