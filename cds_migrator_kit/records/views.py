@@ -14,8 +14,6 @@ import logging
 
 from flask import Blueprint, abort, current_app, jsonify, render_template
 
-from cds_migrator_kit.config import CDS_MIGRATOR_KIT_LOGS_PATH
-
 from .log import JsonLogger
 
 cli_logger = logging.getLogger('migrator')

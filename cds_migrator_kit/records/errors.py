@@ -19,3 +19,16 @@ class LossyConversion(DoJSONException):
         self.missing = kwargs.pop('missing', None)
         self.message = 'Lossy conversion: {0}'.format(self.missing or '')
         super(LossyConversion, self).__init__(*args, **kwargs)
+
+
+class RequiredFieldMissing(DoJSONException):
+    """Required field missing in the records."""
+
+    def __init__(self, *args, **kwargs):
+        """Exception custom initialisation."""
+        self.missing = kwargs.pop('missing', None)
+        self.message = 'Required fields missing: {0}'\
+            .format(self.missing or '')
+        self.subfield = kwargs.pop('subfield', None)
+        self.value = 'MISSING'
+        super(RequiredFieldMissing, self).__init__(*args, **kwargs)

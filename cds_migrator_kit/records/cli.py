@@ -17,7 +17,9 @@ from cds_dojson.marc21.models.books.serial import model as serial_model
 from flask import current_app
 from flask.cli import with_appcontext
 
-from .errors import LossyConversion
+from cds_migrator_kit.records.validators import record_validator
+
+from .errors import LossyConversion, RequiredFieldMissing
 from .log import JsonLogger
 from .records import CDSRecordDump
 
@@ -46,6 +48,7 @@ def load_records(sources, source_type, eager, rectype=None, **params):
                 logger.add_recid_to_stats(item['recid'])
                 try:
                     dump.prepare_revisions()
+                    record_validator(dump.revisions[-1][1], rectype=rectype)
                     logger.add_record(dump.revisions[-1][1])
                 except LossyConversion as e:
                     cli_logger.error('[DATA ERROR]: {0}'.format(e.message))
@@ -63,6 +66,10 @@ def load_records(sources, source_type, eager, rectype=None, **params):
                 #     current_app.logger.error(
                 #         'Model missing recid:{}'.format(item['recid']))
                 #     JsonLogger().add_log(e, output=item, rectype=rectype)
+                except RequiredFieldMissing as e:
+                    cli_logger.error(e)
+                    current_app.logger.error(e)
+                    logger.add_log(e, output=item)
                 except Exception as e:
                     cli_logger.error(e)
                     current_app.logger.error(e)

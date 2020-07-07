@@ -40,9 +40,9 @@ before_install:
   - "requirements-builder -e all --level=dev --req requirements-devel.txt setup.py > .travis-devel-requirements.txt"
 
 install:
+  - "travis_retry pip install pyOpenSSL"
   - "travis_retry pip install -r .travis-${REQUIREMENTS}-requirements.txt"
   - "travis_retry pip install -e .[all]"
-  - "travis_retry pip install pytest==3.8.1"
 
 script:
   - "./run-tests.sh"

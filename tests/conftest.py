@@ -29,8 +29,8 @@ def app_config(app_config):
     return app_config
 
 
-@pytest.fixture(scope='module')
-def create_app():
+@pytest.fixture(scope="module")
+def create_app(app_config):
     """Create test app."""
     return create_ui
 

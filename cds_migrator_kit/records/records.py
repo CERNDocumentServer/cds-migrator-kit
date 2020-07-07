@@ -124,7 +124,6 @@ class CDSRecordDump(RecordDump):
         """
         # Prepare revisions
         self.revisions = []
-
         it = [self.data['record'][0]] if self.latest_only \
             else self.data['record']
 

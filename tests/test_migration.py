@@ -24,32 +24,33 @@ def test_migrate_record(datadir, base_app):
         assert res['legacy_recid'] == 262146
         assert res == {
             "agency_code": "SzGeCERN",
-            "acquisition_source": {
-            },
-            'creation_date': '2001-03-19',
-            "number_of_pages": 465,
+            '_created': '2001-03-19',
+            'created_by': {'type': 'user'},
+            "number_of_pages": "465",
             "languages": [
                 "en"
             ],
             "_access": {
                 "read": []
             },
-            "title":
-                {
-                    "title": "Gauge fields, knots and gravity"
-                },
+            "title": "Gauge fields, knots and gravity",
             "legacy_recid": 262146,
-            "isbns": [
+            'publication_year': "1994",
+            "identifiers": [
                 {
+                    "scheme": "ISBN",
                     "value": "9789810217297"
                 },
                 {
+                    "scheme": "ISBN",
                     "value": "9789810220341"
                 },
                 {
+                    "scheme": "ISBN",
                     "value": "9810217293"
                 },
                 {
+                    "scheme": "ISBN",
                     "value": "9810220340"
                 }
             ],
@@ -63,50 +64,55 @@ def test_migrate_record(datadir, base_app):
                     "roles": ["author"]
                 }
             ],
-            "_private_notes": [
+            "keywords": [
+                {
+                    "source": "CERN",
+                    "value": "electromagnetism"
+                },
+                {
+                    "source": "CERN",
+                    "value": "gauge fields"
+                },
+                {
+                    "source": "CERN",
+                    "value": "general relativity"
+                },
+                {
+                    "source": "CERN",
+                    "value": "knot theory, applications"
+                },
+                {
+                    "source": "CERN",
+                    "value": "quantum gravity"
+                }
+            ],
+            "internal_notes": [
                 {
                     "value": "newqudc"
                 }
             ],
-            "$schema": "https://127.0.0.1:5000/schemas/documents/"
-                       "document-v1.0.0.json",
+            "$schema":
+                'https://127.0.0.1:5000/schemas/'
+                'documents/document-v1.0.0.json',
             "document_type": 'BOOK',
-            "imprints": [
+            "imprint":
                 {
                     "date": "1994",
                     "publisher": "World Scientific",
                     "place": "Singapore"
                 },
-            ],
-            '_migration': {
-                'has_keywords': True,
-                'is_multipart': False,
-                'has_related': False,
-                'has_serial': False,
-                'record_type': 'document',
-                'volumes': [],
-                'serials': [],
-                "keywords": [
-                    {
-                        "provenance": "CERN",
-                        "name": "electromagnetism"
-                    },
-                    {
-                        "provenance": "CERN",
-                        "name": "gauge fields"
-                    },
-                    {
-                        "provenance": "CERN",
-                        "name": "general relativity"
-                    },
-                    {
-                        "provenance": "CERN",
-                        "name": "knot theory, applications"
-                    },
-                    {
-                        "provenance": "CERN",
-                        "name": "quantum gravity"
-                    }
-                ],
-            },
+
+            '_migration': {'has_tags': False,
+                           'has_related': False,
+                           'has_serial': False,
+                           'has_journal': False,
+                           'is_multipart': False,
+                           'journal_record_legacy_recid': '',
+                           'record_type': 'document',
+                           'volumes': [],
+                           'serials': [],
+                           'tags': [],
+
+                           },
+
         }

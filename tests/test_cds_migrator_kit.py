@@ -34,10 +34,11 @@ def test_init():
     assert 'cds-migrator-kit' in app.extensions
 
 
-def test_view(base_app):
+def test_view():
     """Test view."""
-    CdsMigratorKit(base_app)
-    with base_app.test_client() as client:
+    app = Flask(__name__)
+    CdsMigratorKit(app)
+    with app.test_client() as client:
         res = client.get("/")
         assert res.status_code == 200
         assert 'migrator' in str(res.data)
