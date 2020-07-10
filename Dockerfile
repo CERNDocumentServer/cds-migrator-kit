@@ -36,4 +36,4 @@ RUN useradd invenio --uid 1000 --gid 0 && \
     chown -R invenio:root ${WORKING_DIR}
 USER 1000
 
-CMD ["/usr/local/bin/gunicorn", "-b", ":8080", "--access-logfile", "-", "--error-logfile", "-", "--timeout", "120", "--graceful-timeout", "60", "invenio_app.wsgi_ui:application"]
+CMD ["/usr/local/bin/gunicorn", "-b", ":8080", "--access-logfile", "-", "--error-logfile", "-", "--timeout", "120", "--graceful-timeout", "60", "cds_migrator_kit.app:app"]
