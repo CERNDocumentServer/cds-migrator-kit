@@ -24,6 +24,7 @@ WORKDIR ${WORKING_DIR}/src
 
 # install all dependencies
 RUN pip install -r requirements.txt
+RUN pip install .[all]
 
 # Install/create static files
 RUN mkdir -p ${INVENIO_INSTANCE_PATH}
