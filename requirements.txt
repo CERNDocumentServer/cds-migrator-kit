@@ -28,8 +28,6 @@ base32-lib==1.0.2
 billiard==3.6.3.0
 bleach==3.1.5
 blinker==1.4
--e git+https://github.com/kprzerwa/cds-dojson.git@746653c9422b1a630a3d0a92bfb027a45d243e85#egg=cds_dojson
--e git+https://github.com/kprzerwa/cds-migrator-kit.git@ddd4a6ac13cb73003b64aac5e92352fbff7b9804#egg=cds_migrator_kit
 celery==4.4.6
 certifi==2020.6.20
 cffi==1.14.0
