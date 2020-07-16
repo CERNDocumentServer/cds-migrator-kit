@@ -13,6 +13,7 @@
 
 gunicorn
 # TODO: delete me when cds-dojson merge to master and released
+pyOpenSSL
 -e git+https://github.com/CERNDocumentServer/cds-dojson.git@books#egg=cds-dojson
 alabaster==0.7.12
 alembic==1.4.2
