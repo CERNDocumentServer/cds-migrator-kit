@@ -12,6 +12,7 @@ import json
 import logging
 
 import click
+from cds_dojson.marc21.models.books.journal import model as journal_model
 from cds_dojson.marc21.models.books.multipart import model as multipart_model
 from cds_dojson.marc21.models.books.serial import model as serial_model
 from flask import current_app
@@ -112,6 +113,8 @@ def dryrun(sources, source_type, recid, rectype, model=None):
         params['dojson_model'] = multipart_model
     elif rectype == 'serial':
         params['dojson_model'] = serial_model
+    elif rectype == 'journal':
+        params['dojson_model'] = journal_model
     elif rectype == 'document':
         # use default model
         pass

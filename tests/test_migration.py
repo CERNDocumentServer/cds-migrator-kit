@@ -8,9 +8,8 @@
 
 """CDS migration to CDSLabs tests."""
 
-from tests.helpers import load_json
-
 from cds_migrator_kit.records.records import CDSRecordDump
+from tests.helpers import load_json
 
 
 def test_migrate_record(datadir, base_app):
