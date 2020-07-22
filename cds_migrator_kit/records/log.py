@@ -61,6 +61,8 @@ class JsonLogger(object):
         """Get JsonLogger instance based on the rectype."""
         if rectype == 'serial':
             return SerialJsonLogger()
+        elif rectype == 'journal':
+            return JournalJsonLogger()
         elif rectype == 'document':
             return DocumentJsonLogger()
         elif rectype == 'multipart':
@@ -163,6 +165,30 @@ class DocumentJsonLogger(JsonLogger):
     def __init__(self):
         """Constructor."""
         super().__init__('document_stats.json', 'document_records.json')
+
+    def add_recid_to_stats(self, recid):
+        """Add empty log item."""
+        if recid not in self.stats:
+            self.stats[recid] = {
+                'recid': recid,
+                'manual_migration': [],
+                'unexpected_value': [],
+                'missing_required_field': [],
+                'lost_data': [],
+                'clean': True,
+            }
+
+    def add_record(self, record):
+        """Add record to collected records."""
+        self.records[record['legacy_recid']] = record
+
+
+class JournalJsonLogger(JsonLogger):
+    """Log document migration statistic to file controller."""
+
+    def __init__(self):
+        """Constructor."""
+        super().__init__('journal_stats.json', 'journal_records.json')
 
     def add_recid_to_stats(self, recid):
         """Add empty log item."""
