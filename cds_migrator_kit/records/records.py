@@ -13,10 +13,10 @@ from __future__ import absolute_import, print_function
 import logging
 
 import arrow
-from cds_dojson.marc21 import marc21
-from cds_dojson.marc21.fields.books.errors import ManualMigrationRequired, \
-    MissingRequiredField, UnexpectedValue
 from cds_dojson.marc21.utils import create_record
+from cds_ils.importer import marc21
+from cds_ils.importer.errors import ManualImportRequired, \
+    MissingRequiredField, UnexpectedValue
 from flask import current_app
 from invenio_migrator.records import RecordDump
 
@@ -87,7 +87,7 @@ class CDSRecordDump(RecordDump):
         exception_handlers = {
             UnexpectedValue: migration_exception_handler(self.logger),
             MissingRequiredField: migration_exception_handler(self.logger),
-            ManualMigrationRequired: migration_exception_handler(self.logger),
+            ManualImportRequired: migration_exception_handler(self.logger),
         }
         if self.source_type == 'marcxml':
             marc_record = create_record(data['marcxml'])

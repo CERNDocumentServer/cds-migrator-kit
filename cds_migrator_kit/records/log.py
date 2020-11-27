@@ -13,7 +13,7 @@ import json
 import logging
 import os
 
-from cds_dojson.marc21.fields.books.errors import ManualMigrationRequired, \
+from cds_ils.importer.errors import ManualImportRequired, \
     MissingRequiredField, UnexpectedValue
 from flask import current_app
 from fuzzywuzzy import fuzz
@@ -114,7 +114,7 @@ class JsonLogger(object):
         recid = output.get('recid', None) or output['legacy_recid']
         rec_stats = self.stats[recid]
         rec_stats['clean'] = False
-        if isinstance(exc, ManualMigrationRequired):
+        if isinstance(exc, ManualImportRequired):
             rec_stats['manual_migration'].append(dict(
                 key=key,
                 value=value,
@@ -270,12 +270,12 @@ class SerialJsonLogger(JsonLogger):
         """Update serial stats."""
         title = record['title']
         if title in self.stats:
-            self.stats[title]['documents'].append(record['recid'])
+            self.stats[title]['documents'].append(record['legacy_recid'])
         else:
             self.stats[title] = {
                 'title': title,
                 'issn': record.get('issn', None),
-                'documents': [record['recid']],
+                'documents': [record['legacy_recid']],
                 'similars': {
                     'same_issn': [],
                     'similar_title': [],
@@ -284,7 +284,7 @@ class SerialJsonLogger(JsonLogger):
 
     def _add_to_record(self, record):
         """Update serial record."""
-        del record['recid']
+        del record['legacy_recid']
         title = record['title']
         self.records[title] = record
 

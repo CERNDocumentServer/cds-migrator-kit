@@ -24,16 +24,15 @@ def test_migrate_record(datadir, base_app):
         assert res == {
             "agency_code": "SzGeCERN",
             '_created': '2001-03-19',
+            '_access': {"read": []},
             'created_by': {'type': 'user'},
             "number_of_pages": "465",
             "languages": [
-                "en"
+                "EN"
             ],
-            "_access": {
-                "read": []
-            },
             "title": "Gauge fields, knots and gravity",
             "legacy_recid": 262146,
+            "provider_recid": "262146",
             'publication_year': "1994",
             "identifiers": [
                 {
@@ -56,11 +55,11 @@ def test_migrate_record(datadir, base_app):
             "authors": [
                 {
                     "full_name": "Baez, John C",
-                    "roles": ["author"]
+                    "roles": ["AUTHOR"]
                 },
                 {
                     "full_name": "Muniain, Javier P",
-                    "roles": ["author"]
+                    "roles": ["AUTHOR"]
                 }
             ],
             "keywords": [
@@ -90,9 +89,6 @@ def test_migrate_record(datadir, base_app):
                     "value": "newqudc"
                 }
             ],
-            "$schema":
-                'https://127.0.0.1:5000/schemas/'
-                'documents/document-v1.0.0.json',
             "document_type": 'BOOK',
             "imprint":
                 {
@@ -105,13 +101,28 @@ def test_migrate_record(datadir, base_app):
                            'has_related': False,
                            'has_serial': False,
                            'has_journal': False,
+                           'eitems_ebl': [],
+                           'eitems_external': [],
+                           'eitems_file_links': [],
+                           'eitems_has_ebl': False,
+                           'eitems_has_external': False,
+                           'eitems_has_files': False,
+                           'eitems_has_proxy': False,
+                           'eitems_open_access': False,
+                           'eitems_proxy': [],
+                           'electronic_items': [],
                            'is_multipart': False,
-                           'journal_record_legacy_recid': '',
+                           'journal_record_legacy_id': '',
                            'record_type': 'document',
                            'volumes': [],
                            'serials': [],
                            'tags': [],
-
+                           'related': [],
+                           'relation_next': None,
+                           'relation_previous': None,
+                           'volumes_identifiers': [],
+                           'volumes_urls': [],
+                           'items': [],
                            },
 
         }

@@ -11,4 +11,4 @@
 #     -e git+git://github.com/mitsuhiko/werkzeug.git#egg=Werkzeug
 #     -e git+git://github.com/mitsuhiko/jinja2.git#egg=Jinja2
 
--e git+https://github.com/CERNDocumentServer/cds-dojson.git@books#egg=cds-dojson
+-e git+https://github.com/CERNDocumentServer/cds-ils.git@master#egg=cds-ils

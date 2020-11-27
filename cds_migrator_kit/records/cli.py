@@ -12,9 +12,11 @@ import json
 import logging
 
 import click
-from cds_dojson.marc21.models.books.journal import model as journal_model
-from cds_dojson.marc21.models.books.multipart import model as multipart_model
-from cds_dojson.marc21.models.books.serial import model as serial_model
+from cds_ils.importer.providers.cds.models.journal import \
+    model as journal_model
+from cds_ils.importer.providers.cds.models.multipart import \
+    model as multipart_model
+from cds_ils.importer.providers.cds.models.serial import model as serial_model
 from flask import current_app
 from flask.cli import with_appcontext
 
