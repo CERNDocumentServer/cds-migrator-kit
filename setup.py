@@ -65,7 +65,6 @@ install_requires = [
     'python-Levenshtein>=0.12',
     # needed by legacy pip resolver
     "invenio[base,auth,metadata,files]>=3.3.0,<3.4.0",
-    "celery>=4.3,<5.0.0",
 ]
 
 packages = find_packages()
