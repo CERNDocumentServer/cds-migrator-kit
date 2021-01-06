@@ -46,6 +46,7 @@ setup_requires = [
 
 install_requires = [
     'cds-dojson>=0.9.0',
+    'invenio>=3.3.0,<3.4.0',
     'Flask-BabelEx>=0.9.3',
     'invenio-search[elasticsearch7]>=1.2.0',
     'invenio-config>=1.0.0',
@@ -62,6 +63,9 @@ install_requires = [
     'secrets>=1.0.2',
     'fuzzywuzzy>=0.17.0',
     'python-Levenshtein>=0.12',
+    # needed by legacy pip resolver
+    "invenio[base,auth,metadata,files]>=3.3.0,<3.4.0",
+    "celery>=4.3,<5.0.0",
 ]
 
 packages = find_packages()
