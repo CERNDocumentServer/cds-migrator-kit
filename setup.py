@@ -45,8 +45,8 @@ setup_requires = [
 ]
 
 install_requires = [
+    'six>=1.12.0',
     'cds-dojson>=0.9.0',
-    'invenio>=3.3.0,<3.4.0',
     'Flask-BabelEx>=0.9.3',
     'invenio-search[elasticsearch7]>=1.2.0',
     'invenio-config>=1.0.0',
