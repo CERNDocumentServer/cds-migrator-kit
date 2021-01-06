@@ -9,5 +9,4 @@
 pydocstyle cds_migrator_kit tests docs && \
 isort . --check-only --diff && \
 check-manifest --ignore ".travis-*" && \
-sphinx-build -qnNW docs docs/_build/html && \
-python setup.py test
+python -m pytest
