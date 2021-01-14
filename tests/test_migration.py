@@ -24,7 +24,6 @@ def test_migrate_record(datadir, base_app):
         assert res == {
             "agency_code": "SzGeCERN",
             '_created': '2001-03-19',
-            '_access': {"read": []},
             'created_by': {'type': 'user'},
             "number_of_pages": "465",
             "languages": [
@@ -92,7 +91,7 @@ def test_migrate_record(datadir, base_app):
             "document_type": 'BOOK',
             "imprint":
                 {
-                    "date": "1994",
+                    "date": "1994-01-14",
                     "publisher": "World Scientific",
                     "place": "Singapore"
                 },
