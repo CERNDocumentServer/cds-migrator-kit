@@ -17,50 +17,28 @@ from cds_dojson.marc21.utils import create_record
 from cds_ils.importer import marc21
 from cds_ils.importer.errors import ManualImportRequired, \
     MissingRequiredField, UnexpectedValue
+from cds_ils.migrator.xml_to_json_dump import CDSRecordDump
 from flask import current_app
-from invenio_migrator.records import RecordDump
 
 from cds_migrator_kit.records.errors import LossyConversion
 from cds_migrator_kit.records.handlers import migration_exception_handler
-from cds_migrator_kit.records.utils import process_fireroles, update_access
 
 cli_logger = logging.getLogger('migrator')
 
 
-class CDSRecordDump(RecordDump):
+class CDSMigKitDump(CDSRecordDump):
     """CDS record dump class."""
 
     def __init__(self,
                  data,
                  source_type='marcxml',
                  latest_only=False,
-                 pid_fetchers=None,
                  dojson_model=marc21,
                  logger=None):
         """Initialize."""
-        super().__init__(data, source_type, latest_only, pid_fetchers,
-                         dojson_model)
+        super().__init__(data, source_type, latest_only, dojson_model)
         self.logger = logger
         cli_logger.info('\n=====#RECID# {0} INIT=====\n'.format(data['recid']))
-
-    @property
-    def collection_access(self):
-        """Calculate the value of the `_access` key.
-
-        Due to the way access rights were defined in Invenio legacy we can only
-        calculate the value of this key at the moment of the dump, therefore
-        only the access rights are correct for the last version.
-        """
-        read_access = set()
-        if self.data['collections']:
-            for coll, restrictions in \
-                    self.data['collections']['restricted'].items():
-                read_access.update(restrictions['users'])
-                read_access.update(
-                    process_fireroles(restrictions['fireroles']))
-            read_access.discard(None)
-
-        return {'read': list(read_access)}
 
     def _prepare_intermediate_revision(self, data):
         """Convert intermediate versions to marc into JSON."""
@@ -72,12 +50,6 @@ class CDSRecordDump(RecordDump):
             return dt, marc_record
         else:
             val = data['json']
-
-        # MARC21 versions of the record are only accessible to admins
-        val['_access'] = {
-            'read': ['cds-admin@cern.ch'],
-            'update': ['cds-admin@cern.ch']
-        }
 
         return dt, val
 
@@ -97,7 +69,6 @@ class CDSRecordDump(RecordDump):
                 missing = self.dojson_model.missing(marc_record)
                 if missing:
                     raise LossyConversion(missing=missing)
-                update_access(val, self.collection_access)
                 return dt, val
             except LossyConversion as e:
                 raise e
@@ -110,7 +81,6 @@ class CDSRecordDump(RecordDump):
             val = data['json']
 
             # Calculate the _access key
-            update_access(val, self.collection_access)
             return dt, val
 
     def prepare_revisions(self):

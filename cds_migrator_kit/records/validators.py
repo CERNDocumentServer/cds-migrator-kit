@@ -14,7 +14,7 @@ from cds_migrator_kit.records.errors import RequiredFieldMissing
 
 def document_validator(record_json):
     """Validates required fields."""
-    required = ["$schema", "title", "authors", "publication_year",
+    required = ["title", "authors", "publication_year",
                 "document_type"]
     for field in required:
         if field not in record_json:

@@ -12,11 +12,14 @@ import json
 import logging
 
 import click
+from cds_ils.importer.providers.cds.models.book import model as book_model
 from cds_ils.importer.providers.cds.models.journal import \
     model as journal_model
 from cds_ils.importer.providers.cds.models.multipart import \
     model as multipart_model
 from cds_ils.importer.providers.cds.models.serial import model as serial_model
+from cds_ils.importer.providers.cds.models.standard import \
+    model as standard_model
 from flask import current_app
 from flask.cli import with_appcontext
 
@@ -24,7 +27,7 @@ from cds_migrator_kit.records.validators import record_validator
 
 from .errors import LossyConversion, RequiredFieldMissing
 from .log import JsonLogger
-from .records import CDSRecordDump
+from .records import CDSMigKitDump
 
 cli_logger = logging.getLogger(__name__)
 
@@ -46,7 +49,7 @@ def load_records(sources, source_type, eager, rectype=None, **params):
         source.close()
         with click.progressbar(data) as records:
             for item in records:
-                dump = CDSRecordDump(data=item, logger=logger, **params)
+                dump = CDSMigKitDump(data=item, logger=logger, **params)
                 click.echo('Processing item {0}...'.format(item['recid']))
                 logger.add_recid_to_stats(item['recid'])
                 try:
@@ -118,8 +121,9 @@ def dryrun(sources, source_type, recid, rectype, model=None):
     elif rectype == 'journal':
         params['dojson_model'] = journal_model
     elif rectype == 'document':
-        # use default model
-        pass
+        params['dojson_model'] = book_model
+    elif rectype == 'standard':
+        params['dojson_model'] = standard_model
     else:
         raise ValueError('invalid rectype: {}'.format(rectype))
     load_records(sources=sources, source_type=source_type, eager=True,
