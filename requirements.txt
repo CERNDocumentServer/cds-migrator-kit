@@ -15,6 +15,7 @@ gunicorn
 # TODO: delete me when cds-dojson merge to master and released
 pyOpenSSL
 -e git+https://github.com/CERNDocumentServer/cds-ils.git@master#egg=cds-ils
+argparse==1.4.0
 alabaster==0.7.12
 alembic==1.4.2
 amqp==2.6.0
