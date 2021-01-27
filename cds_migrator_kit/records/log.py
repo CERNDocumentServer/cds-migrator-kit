@@ -63,7 +63,7 @@ class JsonLogger(object):
             return SerialJsonLogger()
         elif rectype == 'journal':
             return JournalJsonLogger()
-        elif rectype == 'document':
+        elif rectype == 'document' or rectype == 'standard':
             return DocumentJsonLogger()
         elif rectype == 'multipart':
             return MultipartJsonLogger()
