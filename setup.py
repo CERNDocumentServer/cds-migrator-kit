@@ -40,7 +40,7 @@ for reqs in extras_require.values():
 
 setup_requires = [
     'Babel>=1.3',
-    'pytest-runner>=2.6.2',
+    'pytest-runner>=3.0.0,<5',
     'setuptools>=17.1',
 ]
 
@@ -64,7 +64,6 @@ install_requires = [
     'fuzzywuzzy>=0.17.0',
     'python-Levenshtein>=0.12',
     # needed by legacy pip resolver
-    "invenio[base,auth,metadata,files]>=3.3.0,<3.4.0",
 ]
 
 packages = find_packages()
