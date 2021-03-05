@@ -25,6 +25,7 @@ tests_require = [
     'pytest>=4.0.0,<5.0',
     'pytest-invenio>=1.0.5',
     'pytest-flask>=0.15.1,<1.0.0',
+    'pytest-runner>=3.0.0,<5',
 ]
 
 extras_require = {
@@ -40,7 +41,6 @@ for reqs in extras_require.values():
 
 setup_requires = [
     'Babel>=1.3',
-    'pytest-runner>=3.0.0,<5',
     'setuptools>=17.1',
 ]
 
