@@ -45,6 +45,7 @@ setup_requires = [
 ]
 
 install_requires = [
+    'arrow>=0.16',
     'six>=1.12.0',
     'cds-dojson>=0.9.0',
     'Flask-BabelEx>=0.9.3',
