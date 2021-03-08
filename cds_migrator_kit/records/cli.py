@@ -12,7 +12,7 @@ import json
 import logging
 
 import click
-from cds_ils.importer.providers.cds.models.book import model as book_model
+from cds_ils.importer.providers.cds.models.document import model as book_model
 from cds_ils.importer.providers.cds.models.journal import \
     model as journal_model
 from cds_ils.importer.providers.cds.models.multipart import \
