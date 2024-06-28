@@ -14,17 +14,17 @@ import logging
 
 import arrow
 from cds_dojson.marc21.utils import create_record
-from cds_ils.importer import marc21
-from cds_ils.importer.errors import ManualImportRequired, \
-    MissingRequiredField, UnexpectedValue
-from cds_ils.migrator.xml_to_json_dump import CDSRecordDump
+from cds_dojson.overdo import OverdoBase
 from flask import current_app
 
+from cds_migrator_kit.errors import ManualImportRequired, MissingRequiredField, UnexpectedValue
 from cds_migrator_kit.records.errors import LossyConversion
 from cds_migrator_kit.records.handlers import migration_exception_handler
+from cds_migrator_kit.xml_to_json_dump import CDSRecordDump
 
 cli_logger = logging.getLogger('migrator')
 
+marc21 = OverdoBase(entry_point_models="cds.importer.models")
 
 class CDSMigKitDump(CDSRecordDump):
     """CDS record dump class."""

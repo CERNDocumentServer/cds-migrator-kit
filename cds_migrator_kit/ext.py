@@ -29,7 +29,7 @@ class CdsMigratorKit(object):
         self.init_config(app)
         set_logging()
         app.extensions['cds-migrator-kit'] = self
-        app.register_blueprint(blueprint)
+        app.register_blueprint(blueprint, name='cds_migrator_kit_records_bp')
 
     def init_config(self, app):
         """Initialize configuration."""
