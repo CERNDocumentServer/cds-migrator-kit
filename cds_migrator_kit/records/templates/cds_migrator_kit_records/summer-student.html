@@ -1,0 +1,70 @@
+{#
+ Copyright (C) 2015-2018 CERN.
+  cds-migrator-kit is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
+#}
+
+{%- extends config.CDS_MIGRATOR_KIT_BASE_TEMPLATE %}
+
+{%- block page_body %}
+
+  <table class="table table-bordered">
+    <thead class="thead-dark">
+    <tr>
+      <th scope="col" style="position: sticky; top:0; ">Recid</th>
+      <th scope="col" style="position: sticky; top:0; ">Unexpected Value</th>
+      <th scope="col" style="position: sticky; top:0; ">Missing required</th>
+      <th scope="col" style="position: sticky; top:0; ">Manual Migration</th>
+      <th scope="col" style="position: sticky; top:0; ">Lost data fields</th>
+      <th scope="col" style="position: sticky; top:0; ">Document</th>
+    </tr>
+    </thead>
+    <tbody class="table-hover">
+    {% for stat in stats_sorted_by_key %}
+      <tr {% if stat.clean %}class="table-success"{% endif %}>
+        <th scope="row"><a href="https://cds.cern.ch/record/{{ stat.recid }}">{{ stat.recid }}</a></th>
+        <td>
+          {% for val in stat.unexpected_value %}
+            <span data-toggle="tooltip" data-placement="top" title="{{ val.message }}">
+              {{ val.key }}{{ val.subfield or '' }}: <code>{{ val.value }}</code>
+            </span><br />
+          {% endfor %}
+        </td>
+        <td>
+          {% for val in stat.missing_required_field %}
+            <span data-toggle="tooltip" data-placement="left" title="{{ val.message }}">
+              {{ val.key }}{{ val.subfield or '' }}: <code>{{ val.value }}</code>
+            </span><br />
+          {% endfor %}
+        </td>
+        <td>
+          {% for val in stat.manual_migration %}
+            <span data-toggle="tooltip" data-placement="left" title="{{ val.message }}">
+              {{ val.key }}{{ val.subfield or '' }}: <code>{{ val.value }}</code>
+            </span><br />
+          {% endfor %}
+        </td>
+        <td>
+          {% for val in stat.lost_data %}
+            {% for missing in val.missing %}
+              {{ missing }}<br />
+            {% endfor %}
+          {% endfor %}
+        </td>
+        <td>
+          {% if not stat.lost_data %}
+            <a href="/record/summer-student/{{ stat.recid }}">View</a>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  <script>
+    $(function () {
+      $('[data-toggle="tooltip"]').tooltip()
+    })
+  </script>
+
+{%- endblock %}

@@ -13,11 +13,9 @@ import json
 import logging
 import os
 
-from cds_ils.importer.errors import ManualImportRequired, \
-    MissingRequiredField, UnexpectedValue
 from flask import current_app
-from fuzzywuzzy import fuzz
 
+from cds_migrator_kit.errors import ManualImportRequired, MissingRequiredField, UnexpectedValue
 from cds_migrator_kit.records.errors import LossyConversion, \
     RequiredFieldMissing
 from cds_migrator_kit.records.utils import clean_exception_message, \
@@ -67,6 +65,8 @@ class JsonLogger(object):
             return DocumentJsonLogger()
         elif rectype == 'multipart':
             return MultipartJsonLogger()
+        elif rectype == 'summer-student':
+            return RdmJsonLogger()
         else:
             raise Exception('Invalid rectype: {}'.format(rectype))
 
@@ -165,6 +165,30 @@ class DocumentJsonLogger(JsonLogger):
     def __init__(self):
         """Constructor."""
         super().__init__('document_stats.json', 'document_records.json')
+
+    def add_recid_to_stats(self, recid):
+        """Add empty log item."""
+        if recid not in self.stats:
+            self.stats[recid] = {
+                'recid': recid,
+                'manual_migration': [],
+                'unexpected_value': [],
+                'missing_required_field': [],
+                'lost_data': [],
+                'clean': True,
+            }
+
+    def add_record(self, record):
+        """Add record to collected records."""
+        self.records[record['legacy_recid']] = record
+        
+        
+class RdmJsonLogger(JsonLogger):
+    """Log rdm record migration statistic to file controller."""
+
+    def __init__(self):
+        """Constructor."""
+        super().__init__('rdm_stats.json', 'rdm_records.json')
 
     def add_recid_to_stats(self, recid):
         """Add empty log item."""

@@ -5,10 +5,12 @@
 # cds-migrator-kit is free software; you can redistribute it and/or modify it
 # under the terms of the MIT License; see LICENSE file for more details.
 
-FROM python:3.6
+FROM python:3.9
 
 RUN apt-get update -y && apt-get upgrade -y
-RUN apt-get install -y git curl vim
+RUN apt-get install -y git curl vim build-essential python3-dev \
+libldap2-dev libsasl2-dev slapd ldap-utils tox \
+lcov valgrind
 RUN pip install --upgrade setuptools wheel pip pipenv uwsgi uwsgitop uwsgi-tools
 
 RUN python -m site
