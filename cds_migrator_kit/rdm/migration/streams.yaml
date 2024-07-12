@@ -1,0 +1,10 @@
+data_dir: cds_migrator_kit/rdm/migration/data/
+tmp_dir: cds_migrator_kit/rdm/migration/tmp
+state_dir: cds_migrator_kit/rdm/migration/cache
+log_dir: cds_migrator_kit/rdm/migration/log
+db_uri: postgresql://cds-rdm:cds-rdm@localhost:5432/cds-rdm
+old_secret_key: CHANGE_ME
+new_secret_key: CHANGE_ME
+records:
+  extract:
+    dirpath: cds_migrator_kit/rdm/migration/data/summer_student_reports
