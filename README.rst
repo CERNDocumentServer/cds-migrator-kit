@@ -7,26 +7,7 @@
  cds-migrator-kit
 ==================
 
-.. image:: https://img.shields.io/travis/kprzerwa/cds-migrator-kit.svg
-        :target: https://travis-ci.org/kprzerwa/cds-migrator-kit
-
-.. image:: https://img.shields.io/coveralls/kprzerwa/cds-migrator-kit.svg
-        :target: https://coveralls.io/r/kprzerwa/cds-migrator-kit
-
-.. image:: https://img.shields.io/github/tag/kprzerwa/cds-migrator-kit.svg
-        :target: https://github.com/kprzerwa/cds-migrator-kit/releases
-
-.. image:: https://img.shields.io/pypi/dm/cds-migrator-kit.svg
-        :target: https://pypi.python.org/pypi/cds-migrator-kit
-
-.. image:: https://img.shields.io/github/license/kprzerwa/cds-migrator-kit.svg
-        :target: https://github.com/kprzerwa/cds-migrator-kit/blob/master/LICENSE
-
-Migration tool kit from old invenio to new flavours.
-
-*This is an experimental developer preview release.*
-
-TODO: Please provide feature overview of module
-
-Further documentation is available on
-https://cds-migrator-kit.readthedocs.io/
+To run the interface:
+```
+gunicorn -b :8080 --timeout 120 --graceful-timeout 60 cds_migrator_kit.app:app
+```
