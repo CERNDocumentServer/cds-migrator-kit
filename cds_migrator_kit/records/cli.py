@@ -12,15 +12,8 @@ import json
 import logging
 
 import click
-from cds_dojson.marc21.models.books.book import model as book_model
-from cds_dojson.marc21.models.books.journal import \
-    model as journal_model
-from cds_dojson.marc21.models.books.multipart import \
-    model as multipart_model
-from cds_dojson.marc21.models.rdm.summer_student_report import model as summer_student_model
-from cds_dojson.marc21.models.books.standard import \
-    model as standard_model
-from cds_dojson.marc21.models.books.serial import model as serial_model
+
+from cds_migrator_kit.rdm.migration.transform.models.summer_student_report import model as summer_student_model
 from flask import current_app
 from flask.cli import with_appcontext
 
@@ -115,21 +108,11 @@ def report():
 def dryrun(sources, source_type, recid, rectype, model=None):
     """Load records migration dump."""
     params = {}
-    if rectype == 'multipart':
-        params['dojson_model'] = multipart_model
-    elif rectype == 'serial':
-        params['dojson_model'] = serial_model
-    elif rectype == 'journal':
-        params['dojson_model'] = journal_model
-    elif rectype == 'document':
-        params['dojson_model'] = book_model
-    elif rectype == 'standard':
-        params['dojson_model'] = standard_model
-    elif rectype == 'summer-student':
+    if rectype == 'summer-student':
         params['dojson_model'] = summer_student_model
     else:
         raise ValueError('invalid rectype: {}'.format(rectype))
-    # import pdb; pdb.set_trace()
-    
+
+
     load_records(sources=sources, source_type=source_type, eager=True,
                  rectype=rectype, **params)

@@ -20,11 +20,12 @@ from flask import current_app
 from cds_migrator_kit.errors import ManualImportRequired, MissingRequiredField, UnexpectedValue
 from cds_migrator_kit.records.errors import LossyConversion
 from cds_migrator_kit.records.handlers import migration_exception_handler
-from cds_migrator_kit.xml_to_json_dump import CDSRecordDump
+from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
 
 cli_logger = logging.getLogger('migrator')
 
-marc21 = OverdoBase(entry_point_models="cds.importer.models")
+migrator_marc21 = OverdoBase(entry_point_models="cds_migrator_kit.migrator.models")
+
 
 class CDSMigKitDump(CDSRecordDump):
     """CDS record dump class."""
@@ -33,7 +34,7 @@ class CDSMigKitDump(CDSRecordDump):
                  data,
                  source_type='marcxml',
                  latest_only=False,
-                 dojson_model=marc21,
+                 dojson_model=migrator_marc21,
                  logger=None):
         """Initialize."""
         super().__init__(data, source_type, latest_only, dojson_model)
