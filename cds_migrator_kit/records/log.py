@@ -14,65 +14,62 @@ import logging
 import os
 
 from flask import current_app
+from marshmallow import ValidationError
 
-from cds_migrator_kit.errors import ManualImportRequired, MissingRequiredField, UnexpectedValue
-from cds_migrator_kit.records.errors import LossyConversion, \
-    RequiredFieldMissing
+from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import \
+    MissingRequiredField, UnexpectedValue, LossyConversion, ManualImportRequired
 from cds_migrator_kit.records.utils import clean_exception_message, \
     compare_titles, same_issn
 
-
-def set_logging():
-    """Sets additional logging to file for debug."""
-    logger_migrator = logging.getLogger('migrator')
-    logger_migrator.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - '
-                                  '%(message)s - \n '
-                                  '[in %(pathname)s:%(lineno)d]')
-    fh = logging.FileHandler('migrator.log')
-    fh.setFormatter(formatter)
-    fh.setLevel(logging.DEBUG)
-    logger_migrator.addHandler(fh)
-    logger_matcher = logging.getLogger('cds_dojson.matcher.dojson_matcher')
-    logger_matcher.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - '
-                                  '%(message)s - \n '
-                                  '[in %(pathname)s:%(lineno)d]')
-    fh = logging.FileHandler('matcher.log')
-    fh.setFormatter(formatter)
-    fh.setLevel(logging.DEBUG)
-    logger_matcher.addHandler(fh)
-
-    return logger_migrator
-
-
-logger = logging.getLogger('migrator')
 
 
 class JsonLogger(object):
     """Log migration statistic to file controller."""
 
-    LOG_FILEPATH = None
+    logger = None
+    @classmethod
+    def initialize(cls, log_dir):
+        """Constructor."""
+        logger_migrator = logging.getLogger('migrator-rules')
+        logger_migrator.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - '
+                                      '%(message)s - \n '
+                                      '[in %(pathname)s:%(lineno)d]')
+        # errors to file
+        fh = logging.FileHandler(log_dir / "error.log")
+        fh.setLevel(logging.ERROR)
+        fh.setFormatter(formatter)
+        logger_migrator.addHandler(fh)
+        # info to stream/stdout
+        sh = logging.StreamHandler()
+        sh.setFormatter(formatter)
+        sh.setLevel(logging.INFO)
+        logger_migrator.addHandler(sh)
+
+        logger_matcher = logging.getLogger('cds_dojson.matcher.dojson_matcher')
+        logger_matcher.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - '
+                                      '%(message)s - \n '
+                                      '[in %(pathname)s:%(lineno)d]')
+        mh = logging.FileHandler('matcher.log')
+        mh.setFormatter(formatter)
+        mh.setLevel(logging.DEBUG)
+        logger_matcher.addHandler(mh)
 
     @classmethod
-    def get_json_logger(cls, rectype):
+    def get_logger(cls):
+        """Get migration logger."""
+        return logging.getLogger("migrator-rules")
+
+    @classmethod
+    def get_json_logger(cls):
         """Get JsonLogger instance based on the rectype."""
-        if rectype == 'serial':
-            return SerialJsonLogger()
-        elif rectype == 'journal':
-            return JournalJsonLogger()
-        elif rectype == 'document' or rectype == 'standard':
-            return DocumentJsonLogger()
-        elif rectype == 'multipart':
-            return MultipartJsonLogger()
-        elif rectype == 'summer-student':
-            return RdmJsonLogger()
-        else:
-            raise Exception('Invalid rectype: {}'.format(rectype))
+        return RDMJsonLogger
 
     def __init__(self, stats_filename, records_filename):
         """Constructor."""
-        self._logs_path = current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH']
+        from ..migration_config import CDS_MIGRATOR_KIT_LOGS_PATH
+        self._logs_path = CDS_MIGRATOR_KIT_LOGS_PATH
         self.stats = {}
         self.records = {}
         self.STAT_FILEPATH = os.path.join(self._logs_path, stats_filename)
@@ -83,6 +80,7 @@ class JsonLogger(object):
 
     def load(self):
         """Load stats from file as json."""
+        logger = logging.getLogger("migrator-rules")
         logger.warning(self.STAT_FILEPATH)
         with open(self.STAT_FILEPATH, "r") as f:
             self.stats = json.load(f)
@@ -91,6 +89,7 @@ class JsonLogger(object):
 
     def save(self):
         """Save stats from file as json."""
+        logger = logging.getLogger("migrator-rules")
         logger.warning(self.STAT_FILEPATH)
         with open(self.STAT_FILEPATH, "w") as f:
             json.dump(self.stats, f)
@@ -142,7 +141,7 @@ class JsonLogger(object):
                 missing=list(exc.missing),
                 message=exc.message
             ))
-        elif isinstance(exc, RequiredFieldMissing):
+        elif isinstance(exc, ValidationError):
             rec_stats['missing_required_field'].append(dict(
                 value=exc.value,
                 subfield=exc.subfield,
@@ -159,31 +158,7 @@ class JsonLogger(object):
             raise exc
 
 
-class DocumentJsonLogger(JsonLogger):
-    """Log document migration statistic to file controller."""
-
-    def __init__(self):
-        """Constructor."""
-        super().__init__('document_stats.json', 'document_records.json')
-
-    def add_recid_to_stats(self, recid):
-        """Add empty log item."""
-        if recid not in self.stats:
-            self.stats[recid] = {
-                'recid': recid,
-                'manual_migration': [],
-                'unexpected_value': [],
-                'missing_required_field': [],
-                'lost_data': [],
-                'clean': True,
-            }
-
-    def add_record(self, record):
-        """Add record to collected records."""
-        self.records[record['legacy_recid']] = record
-        
-        
-class RdmJsonLogger(JsonLogger):
+class RDMJsonLogger(JsonLogger):
     """Log rdm record migration statistic to file controller."""
 
     def __init__(self):
@@ -205,158 +180,3 @@ class RdmJsonLogger(JsonLogger):
     def add_record(self, record):
         """Add record to collected records."""
         self.records[record['legacy_recid']] = record
-
-
-class JournalJsonLogger(JsonLogger):
-    """Log document migration statistic to file controller."""
-
-    def __init__(self):
-        """Constructor."""
-        super().__init__('journal_stats.json', 'journal_records.json')
-
-    def add_recid_to_stats(self, recid):
-        """Add empty log item."""
-        if recid not in self.stats:
-            self.stats[recid] = {
-                'recid': recid,
-                'manual_migration': [],
-                'unexpected_value': [],
-                'missing_required_field': [],
-                'lost_data': [],
-                'clean': True,
-            }
-
-    def add_record(self, record):
-        """Add record to collected records."""
-        self.records[record['legacy_recid']] = record
-
-
-class MultipartJsonLogger(JsonLogger):
-    """Log multipart statistics to file."""
-
-    def __init__(self):
-        """Constructor."""
-        super().__init__('multipart_stats.json', 'multipart_records.json')
-        self.document_pid = 0
-
-    def add_log(self, exc, key=None, value=None, output=None):
-        """Add exception log."""
-        self.resolve_error_type(exc, output, key, value)
-
-    def next_doc_pid(self):
-        """Get the next available fake doc pid."""
-        self.document_pid += 1
-        return self.document_pid
-
-    def add_recid_to_stats(self, recid):
-        """Add recid to stats."""
-        if recid not in self.stats:
-            self.stats[recid] = {
-                'recid': recid,
-                'manual_migration': [],
-                'unexpected_value': [],
-                'missing_required_field': [],
-                'lost_data': [],
-                'volumes': [],
-                'volumes_found': [],
-                'volumes_expected': 0,
-                'clean': True,
-            }
-
-    def add_record(self, record):
-        """Add log record."""
-        recid = record['legacy_recid']
-        self.records[recid] = record
-        if 'volumes' in record['_migration']:
-            for volume in record['_migration']['volumes']:
-                if 'title' in volume:
-                    self.stats[recid]['volumes'].append(volume)
-                    found = self.stats[recid]['volumes_found']
-                    if volume['volume'] not in found:
-                        found.append(volume['volume'])
-
-        self.stats[recid]['volumes_expected'] = \
-            record.get('number_of_volumes', '-')
-
-
-class SerialJsonLogger(JsonLogger):
-    """Log migration statistic to file controller."""
-
-    def __init__(self):
-        """Constructor."""
-        super().__init__('serial_stats.json', 'serial_records.json')
-
-    def add_log(self, exc, key=None, value=None, output=None):
-        """Add exception log."""
-        pass
-
-    def _add_to_stats(self, record):
-        """Update serial stats."""
-        title = record['title']
-        if title in self.stats:
-            self.stats[title]['documents'].append(record['legacy_recid'])
-        else:
-            self.stats[title] = {
-                'title': title,
-                'issn': record.get('issn', None),
-                'documents': [record['legacy_recid']],
-                'similars': {
-                    'same_issn': [],
-                    'similar_title': [],
-                }
-            }
-
-    def _add_to_record(self, record):
-        """Update serial record."""
-        del record['legacy_recid']
-        title = record['title']
-        self.records[title] = record
-
-    def add_record(self, record):
-        """Add serial to collected records."""
-        if 'title' not in record:
-            record['title'] = ['FIXME - serial has invalid title - field 490']
-
-        title = record['title']
-        if len(title) > 1:
-            for title in record['title']:
-                new_record = copy.deepcopy(record)
-                new_record['title'] = title
-                self._add_to_stats(new_record)
-                self._add_to_record(new_record)
-        else:
-            record['title'] = record['title'][0]
-            self._add_to_stats(record)
-            self._add_to_record(record)
-
-    def _add_children(self):
-        """Add children to collected record."""
-        for record in self.records.values():
-            record['_migration']['children'] = \
-                self.stats[record['title']]['documents']
-
-    def _match_similar(self):
-        """Match similar serials."""
-        items = self.stats.items()
-        for title1, stat1 in items:
-            for title2, stat2 in items:
-                if title1 == title2:
-                    continue
-                if same_issn(stat1, stat2):
-                    if title2 not in stat1['similars']['same_issn']:
-                        stat1['similars']['same_issn'].append(title2)
-                    if title1 not in stat2['similars']['same_issn']:
-                        stat2['similars']['same_issn'].append(title1)
-                else:
-                    ratio = compare_titles(title1, title2)
-                    if 95 <= ratio < 100:
-                        if title2 not in stat1['similars']['similar_title']:
-                            stat1['similars']['similar_title'].append(title2)
-                        if title1 not in stat2['similars']['similar_title']:
-                            stat2['similars']['similar_title'].append(title1)
-
-    def save(self):
-        """Save serials and update children and simliar matches."""
-        self._add_children()
-        self._match_similar()
-        super().save()

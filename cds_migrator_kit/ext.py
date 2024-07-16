@@ -8,10 +8,6 @@
 
 """CDS Migrator app extension."""
 
-from __future__ import absolute_import, print_function
-
-from cds_migrator_kit.records.log import set_logging
-
 from . import config
 from .records.views import blueprint
 
@@ -27,7 +23,6 @@ class CdsMigratorKit(object):
     def init_app(self, app):
         """Flask application initialization."""
         self.init_config(app)
-        set_logging()
         app.extensions['cds-migrator-kit'] = self
         app.register_blueprint(blueprint, name='cds_migrator_kit_records_bp')
 

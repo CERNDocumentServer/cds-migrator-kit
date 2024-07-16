@@ -51,3 +51,9 @@ class MissingRequiredField(CDSMigrationException):
     """The corresponding value is required."""
 
     message = "[MISSING REQUIRED FIELD]"
+
+
+class ManualImportRequired(CDSMigrationException):
+    """The corresponding field should be manually migrated."""
+
+    message = "[MANUAL IMPORT REQUIRED]"

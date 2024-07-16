@@ -26,9 +26,6 @@ def migration():
 @with_appcontext
 def run():
     """Run."""
-    # from flask.globals import _app_ctx_stack
-    # app = _app_ctx_stack.top.app
-    # with app.app_context():
     runner = Runner(
         stream_definitions=[
             RecordStreamDefinition

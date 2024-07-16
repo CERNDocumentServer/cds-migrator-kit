@@ -10,7 +10,10 @@
 import arrow
 from cds_dojson.marc21.utils import create_record
 
+from cds_migrator_kit.rdm.migration.handlers import migration_exception_handler
 from cds_migrator_kit.rdm.migration.transform import migrator_marc21
+from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import \
+    UnexpectedValue, MissingRequiredField
 
 
 class CDSRecordDump:
@@ -64,7 +67,6 @@ class CDSRecordDump:
         # exception_handlers = {
         #     UnexpectedValue: migration_exception_handler,
         #     MissingRequiredField: migration_exception_handler,
-        #     ManualImportRequired: migration_exception_handler,
         # }
 
         marc_record = create_record(data["marcxml"])

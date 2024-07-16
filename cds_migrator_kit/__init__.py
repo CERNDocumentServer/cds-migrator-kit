@@ -8,7 +8,6 @@
 
 """Migration tool kit from old Invenio to new Invenio."""
 
-from __future__ import absolute_import, print_function
 
 from .ext import CdsMigratorKit
 
