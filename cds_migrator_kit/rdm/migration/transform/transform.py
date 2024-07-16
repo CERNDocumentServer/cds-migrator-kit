@@ -16,8 +16,12 @@ from invenio_rdm_migrator.streams.records.transform import (
 )
 
 from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
+from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import \
+    LossyConversion
+from cds_migrator_kit.records.log import RDMJsonLogger
 
 cli_logger = logging.getLogger("migrator")
+logger = RDMJsonLogger()
 
 
 class CDSToRDMRecordEntry(RDMRecordEntry):
@@ -122,25 +126,32 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         record_dump = CDSRecordDump(
             entry,
         )
-
-        record_dump.prepare_revisions()
-
+        try:
+            logger.add_recid_to_stats(entry['recid'])
+            record_dump.prepare_revisions()
+            timestamp, json_data = record_dump.revisions[-1]
+            logger.add_record(json_data)
+            return {
+                "created": self._created(json_data),
+                "updated": self._updated(record_dump),
+                "version_id": self._version_id(record_dump),
+                "index": self._index(record_dump),
+                # "communities": self._communities(json_data),
+                "json": {
+                    "id": self._recid(record_dump),
+                    "pids": self._pids(json_data),
+                    "files": self._files(record_dump),
+                    "metadata": self._metadata(json_data),
+                    "access": self._access(json_data, record_dump),
+                },
+            }
+        except LossyConversion as e:
+            cli_logger.error('[DATA ERROR]: {0}'.format(e.message))
+            logger.add_log(e, output=entry)
+        except Exception as e:
+            logger.add_log(e, output=entry)
+            raise e
         # TODO take only the last
-        timestamp, json_data = record_dump.revisions[-1]
-        return {
-            "created": self._created(json_data),
-            "updated": self._updated(record_dump),
-            "version_id": self._version_id(record_dump),
-            "index": self._index(record_dump),
-            # "communities": self._communities(json_data),
-            "json": {
-                "id": self._recid(record_dump),
-                "pids": self._pids(json_data),
-                "files": self._files(record_dump),
-                "metadata": self._metadata(json_data),
-                "access": self._access(json_data, record_dump),
-            },
-        }
 
 
 class CDSToRDMRecordTransform(RDMRecordTransform):

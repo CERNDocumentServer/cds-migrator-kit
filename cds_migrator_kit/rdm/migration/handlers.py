@@ -10,8 +10,6 @@
 
 import logging
 
-from .log import JsonLogger
-
 cli_logger = logging.getLogger('migrator')
 
 

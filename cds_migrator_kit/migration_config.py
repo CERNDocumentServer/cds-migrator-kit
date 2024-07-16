@@ -333,7 +333,6 @@ CDS_EOS_OFFLOAD_REDIRECT_BASE_PATH = ""
 
 RDM_PERMISSION_POLICY = CDSRDMRecordPermissionPolicy
 
-import idutils
-
-idutils.PID_SCHEMES = PID_SCHEMES = idutils.PID_SCHEMES + [("cds", lambda x: True),
-("inspire", lambda x: True)]
+base_path = os.path.dirname(os.path.realpath(__file__))
+logs_dir = os.path.join(base_path, 'tmp/logs/')
+CDS_MIGRATOR_KIT_LOGS_PATH = logs_dir

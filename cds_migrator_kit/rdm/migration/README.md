@@ -133,3 +133,10 @@ records = db.session.query(model_cls.id).filter(
 
 current_rdm_records_service.indexer.bulk_index((rec.id for rec in records))
 ```
+
+
+### To visualise the errors:
+
+```shell
+gunicorn -b :8080 --timeout 120 --graceful-timeout 60 cds_migrator_kit.app:app
+```

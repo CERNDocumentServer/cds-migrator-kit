@@ -16,6 +16,8 @@ from invenio_rdm_migrator.logging import FailedTxLogger, Logger
 # from .records.state import ParentModelValidator
 from invenio_rdm_migrator.streams import Stream
 
+from cds_migrator_kit.records.log import RDMJsonLogger
+
 
 # local version of the invenio-rdm-migrator Runner class
 # Skipping the default invenio-rdm-migrator StateDB
@@ -45,6 +47,7 @@ class Runner:
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
         Logger.initialize(self.log_dir)
+        RDMJsonLogger.initialize(self.log_dir)
         FailedTxLogger.initialize(self.log_dir)
 
         self.db_uri = config.get("db_uri")
@@ -111,6 +114,8 @@ class Runner:
                 # on successful stream run, persist state
                 # STATE.flush_cache()
                 # self.state.save(filename=f"{stream.name}.db")
+                from cds_migrator_kit.rdm.migration.transform.transform import logger
+                logger.save()
             except Exception:
                 Logger.get_logger().exception(
                     f"Stream {stream.name} failed.", exc_info=1

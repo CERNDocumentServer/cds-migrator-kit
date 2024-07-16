@@ -19,8 +19,6 @@
 
 """CDS-RDM Summer student model."""
 
-from __future__ import unicode_literals
-
 from .overdo import CdsOverdo
 from .base import model as base_model
 
@@ -28,9 +26,10 @@ from .base import model as base_model
 class CMSSummerStudent(CdsOverdo):
     """Translation Index for CDS Books."""
 
-    # __query__ = "037__a:CERN-STUDENTS-Note*" # TODO: define the query, looks like * doesn't work
-    __query__ ="980__:INTNOTEEPPUBLL 980__:NOTE 037__:CERN-STUDENTS-Note-*"
-    __query__ = ""
+    # putting values like 980__ INTNOTEPHPUBL INTNOTEEPPUBL is an overkill since it maps
+    # different departments
+    # __query__ = "980__:INTNOTEEPPUBLL 980__:NOTE 037__:CERN-STUDENTS-Note-\"/(.*?)/\""
+    __query__ = "980__:NOTE 037__:CERN-STUDENTS-Note-*"
 
     __ignore_keys__ = {
         '65017a',

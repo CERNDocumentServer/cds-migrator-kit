@@ -8,10 +8,8 @@
 
 """CDS Migrator Development instance entrypoint."""
 
-from __future__ import absolute_import, print_function
-
 from flask import Flask
-from flask_babelex import Babel
+from flask_babel import Babel
 
 from cds_migrator_kit import CdsMigratorKit
 from cds_migrator_kit.records.views import blueprint

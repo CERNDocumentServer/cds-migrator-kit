@@ -8,13 +8,11 @@
 
 """CDS Migrator Records views."""
 
-from __future__ import absolute_import, print_function
-
 import logging
 
 from flask import Blueprint, abort, current_app, jsonify, render_template
-
-from .log import JsonLogger
+import json
+from .log import JsonLogger, RDMJsonLogger
 
 cli_logger = logging.getLogger('migrator')
 
@@ -34,20 +32,14 @@ def index():
         "cds_migrator_kit_records/welcome.html",
     )
 
-
 @blueprint.route("/results")
-def results():
-    """Render a basic view."""
-    return render_template("cds_migrator_kit_records/index.html", rectype=None)
-
-
-@blueprint.route("/results/<rectype>")
-def results_rectype(rectype=None):
+def results(rectype=None):
     """Render a basic view."""
     try:
-        logger = JsonLogger.get_json_logger(rectype)
+
+        logger = RDMJsonLogger()
         logger.load()
-        template = "cds_migrator_kit_records/{}.html".format(rectype)
+        template = "cds_migrator_kit_records/records.html"
     except FileNotFoundError:
         template = "cds_migrator_kit_records/rectype_missing.html"
 
@@ -63,10 +55,10 @@ def results_rectype(rectype=None):
     )
 
 
-@blueprint.route('/record/<rectype>/<recid>')
-def send_json(rectype, recid):
+@blueprint.route('/record/<recid>')
+def send_json(recid):
     """Serves static json preview output files."""
-    logger = JsonLogger.get_json_logger(rectype)
+    logger = RDMJsonLogger()
     logger.load()
     if recid not in logger.records:
         abort(404)

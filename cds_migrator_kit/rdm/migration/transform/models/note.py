@@ -7,8 +7,6 @@
 
 """CDS-RDM CMS note model."""
 
-from __future__ import unicode_literals
-
 from .overdo import CdsOverdo
 
 
