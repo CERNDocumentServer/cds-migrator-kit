@@ -11,7 +11,9 @@ import functools
 
 from dojson.errors import IgnoreItem, IgnoreKey
 
-from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import MissingRequiredField
+from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
+    MissingRequiredField,
+)
 
 
 def strip_output(fn_decorated):

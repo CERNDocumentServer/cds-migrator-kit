@@ -25,19 +25,19 @@ def _(x):
 
 
 LOGGING_CONSOLE = True
-LOGGING_CONSOLE_LEVEL = 'DEBUG'
+LOGGING_CONSOLE_LEVEL = "DEBUG"
 
 # Rate limiting
 # =============
 #: Storage for ratelimiter.
-RATELIMIT_STORAGE_URL = 'memory://'
+RATELIMIT_STORAGE_URL = "memory://"
 
 # I18N
 # ====
 #: Default language
-BABEL_DEFAULT_LANGUAGE = 'en'
+BABEL_DEFAULT_LANGUAGE = "en"
 #: Default time zone
-BABEL_DEFAULT_TIMEZONE = 'Europe/Zurich'
+BABEL_DEFAULT_TIMEZONE = "Europe/Zurich"
 #: Other supported languages (do not include the default language in list).
 I18N_LANGUAGES = [
     # ('fr', _('French'))
@@ -46,26 +46,26 @@ I18N_LANGUAGES = [
 # Base templates
 # ==============
 #: Global base template.
-BASE_TEMPLATE = 'invenio_theme/page.html'
+BASE_TEMPLATE = "invenio_theme/page.html"
 #: Cover page base template (used for e.g. login/sign-up).
-COVER_TEMPLATE = 'invenio_theme/page_cover.html'
+COVER_TEMPLATE = "invenio_theme/page_cover.html"
 #: Footer base template.
-FOOTER_TEMPLATE = 'invenio_theme/footer.html'
+FOOTER_TEMPLATE = "invenio_theme/footer.html"
 #: Header base template.
-HEADER_TEMPLATE = 'invenio_theme/header.html'
+HEADER_TEMPLATE = "invenio_theme/header.html"
 #: Settings base template.
-SETTINGS_TEMPLATE = 'invenio_theme/page_settings.html'
+SETTINGS_TEMPLATE = "invenio_theme/page_settings.html"
 
 # Theme configuration
 # ===================
 #: Site name
-THEME_SITENAME = _('cds-migrator-kit')
+THEME_SITENAME = _("cds-migrator-kit")
 #: Use default frontpage.
 THEME_FRONTPAGE = True
 #: Frontpage title.
-THEME_FRONTPAGE_TITLE = _('cds-migrator-kit')
+THEME_FRONTPAGE_TITLE = _("cds-migrator-kit")
 #: Frontpage template.
-THEME_FRONTPAGE_TEMPLATE = 'cds_migrator_kit/frontpage.html'
+THEME_FRONTPAGE_TEMPLATE = "cds_migrator_kit/frontpage.html"
 
 # Email configuration
 # ===================
@@ -77,16 +77,16 @@ MAIL_SUPPRESS_SEND = True
 # Assets
 # ======
 #: Static files collection method (defaults to copying files).
-COLLECT_STORAGE = 'flask_collect.storage.file'
+COLLECT_STORAGE = "flask_collect.storage.file"
 
 # Cache
 # =====
-CACHE_TYPE = 'null'
+CACHE_TYPE = "null"
 
 # JSONSchemas
 # ===========
 #: Hostname used in URLs for local JSONSchemas.
-JSONSCHEMAS_HOST = 'cds-migrator-kit.com'
+JSONSCHEMAS_HOST = "cds-migrator-kit.com"
 
 # Flask configuration
 # ===================
@@ -95,7 +95,7 @@ JSONSCHEMAS_HOST = 'cds-migrator-kit.com'
 
 #: Secret key - each installation (dev, production, ...) needs a separate key.
 #: It should be changed before deploying.
-SECRET_KEY = 'CHANGE_ME'
+SECRET_KEY = "CHANGE_ME"
 #: Max upload size for form data via application/mulitpart-formdata.
 MAX_CONTENT_LENGTH = 100 * 1024 * 1024  # 100 MiB
 #: Sets cookie with the secure flag by default
@@ -105,18 +105,18 @@ SESSION_COOKIE_SECURE = True
 #: should be set to the correct host and it is strongly recommended to only
 #: route correct hosts to the application.
 APP_ALLOWED_HOSTS = [
-    '127.0.0.1',
-    'localhost',
+    "127.0.0.1",
+    "localhost",
 ]
 if os.environ.get("ALLOWED_HOST"):
     APP_ALLOWED_HOSTS.append(os.environ.get("ALLOWED_HOST"))
 if os.environ.get("HOSTNAME"):
     APP_ALLOWED_HOSTS.append(os.environ.get("HOSTNAME"))
-APP_DEFAULT_SECURE_HEADERS['force_https'] = False
-APP_DEFAULT_SECURE_HEADERS['content_security_policy'] = {}
+APP_DEFAULT_SECURE_HEADERS["force_https"] = False
+APP_DEFAULT_SECURE_HEADERS["content_security_policy"] = {}
 
 # CDS Migrator Kit
 # ================
-CDS_MIGRATOR_KIT_BASE_TEMPLATE = 'cds_migrator_kit_records/base.html'
+CDS_MIGRATOR_KIT_BASE_TEMPLATE = "cds_migrator_kit_records/base.html"
 # Configuration overridden by env vars when deployed
-CDS_MIGRATOR_KIT_LOGS_PATH = './tmp/logs/'
+CDS_MIGRATOR_KIT_LOGS_PATH = "./tmp/logs/"

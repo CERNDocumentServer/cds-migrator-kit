@@ -14,8 +14,11 @@ from fuzzywuzzy import fuzz
 
 def same_issn(obj1, obj2):
     """Check if two objects have the same ISSN."""
-    return obj1['issn'] is not None and obj2['issn'] is not None and \
-        obj1['issn'] == obj2['issn']
+    return (
+        obj1["issn"] is not None
+        and obj2["issn"] is not None
+        and obj1["issn"] == obj2["issn"]
+    )
 
 
 def compare_titles(title1, title2):
@@ -25,7 +28,7 @@ def compare_titles(title1, title2):
 
 def clean_exception_message(message):
     """Cleanup exception message."""
-    match = re.match(r'^(\[[^\]]*\])?(.*)$', message)
+    match = re.match(r"^(\[[^\]]*\])?(.*)$", message)
     if match:
         return match.group(2).strip().capitalize()
     return message

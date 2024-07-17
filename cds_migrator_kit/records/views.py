@@ -8,20 +8,21 @@
 
 """CDS Migrator Records views."""
 
+import json
 import logging
 
 from flask import Blueprint, abort, current_app, jsonify, render_template
-import json
+
 from .log import JsonLogger, RDMJsonLogger
 
-cli_logger = logging.getLogger('migrator')
+cli_logger = logging.getLogger("migrator")
 
 
 blueprint = Blueprint(
-    'cds_migrator_kit_records',
+    "cds_migrator_kit_records",
     __name__,
-    template_folder='templates',
-    static_folder='static',
+    template_folder="templates",
+    static_folder="static",
 )
 
 
@@ -31,6 +32,7 @@ def index():
     return render_template(
         "cds_migrator_kit_records/welcome.html",
     )
+
 
 @blueprint.route("/results")
 def results(rectype=None):
@@ -46,16 +48,15 @@ def results(rectype=None):
     return render_template(
         template,
         stats_sorted_by_key=[
-            logger.stats[stat]
-            for stat in sorted(logger.stats.keys())
+            logger.stats[stat] for stat in sorted(logger.stats.keys())
         ],
         stats=logger.stats,
         records=logger.records,
-        rectype=rectype
+        rectype=rectype,
     )
 
 
-@blueprint.route('/record/<recid>')
+@blueprint.route("/record/<recid>")
 def send_json(recid):
     """Serves static json preview output files."""
     logger = RDMJsonLogger()

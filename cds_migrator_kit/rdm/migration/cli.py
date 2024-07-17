@@ -8,12 +8,12 @@
 """CDS-RDM command line module."""
 
 from pathlib import Path
-from flask.cli import with_appcontext
+
 import click
+from flask.cli import with_appcontext
 
-
-from cds_migrator_kit.rdm.migration.streams import RecordStreamDefinition
 from cds_migrator_kit.rdm.migration.runner import Runner
+from cds_migrator_kit.rdm.migration.streams import RecordStreamDefinition
 
 
 @click.group()
@@ -27,9 +27,7 @@ def migration():
 def run():
     """Run."""
     runner = Runner(
-        stream_definitions=[
-            RecordStreamDefinition
-        ],
+        stream_definitions=[RecordStreamDefinition],
         config_filepath=Path("cds_migrator_kit/rdm/migration/streams.yaml").absolute(),
     )
     runner.run()

@@ -16,8 +16,9 @@ from invenio_rdm_migrator.streams.records.transform import (
 )
 
 from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
-from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import \
-    LossyConversion
+from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
+    LossyConversion,
+)
 from cds_migrator_kit.records.log import RDMJsonLogger
 
 cli_logger = logging.getLogger("migrator")
@@ -98,8 +99,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     {
                         "person_or_org": {
                             "identifiers": [
-                                {"identifier": "0000-0002-1825-0097",
-                                 "scheme": "orcid"}
+                                {"identifier": "0000-0002-1825-0097", "scheme": "orcid"}
                             ],
                             "given_name": "unknown",
                             "name": "unknown",
@@ -113,6 +113,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             t = "publication-technicalnote"
             st = None
             return {"id": f"{t}-{st}"} if st else {"id": t}
+
         return {
             "creators": creators(json_entry),
             "title": json_entry["title"],
@@ -127,7 +128,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             entry,
         )
         try:
-            logger.add_recid_to_stats(entry['recid'])
+            logger.add_recid_to_stats(entry["recid"])
             record_dump.prepare_revisions()
             timestamp, json_data = record_dump.revisions[-1]
             logger.add_record(json_data)
@@ -146,7 +147,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 },
             }
         except LossyConversion as e:
-            cli_logger.error('[DATA ERROR]: {0}'.format(e.message))
+            cli_logger.error("[DATA ERROR]: {0}".format(e.message))
             logger.add_log(e, output=entry)
         except Exception as e:
             logger.add_log(e, output=entry)

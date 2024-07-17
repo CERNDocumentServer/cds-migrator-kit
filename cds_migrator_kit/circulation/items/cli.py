@@ -15,8 +15,7 @@ import os
 import click
 from flask import current_app
 
-from cds_migrator_kit.circulation.items.api import ItemsMigrator, \
-    LibrariesMigrator
+from cds_migrator_kit.circulation.items.api import ItemsMigrator, LibrariesMigrator
 
 logger = logging.getLogger(__name__)
 
@@ -26,28 +25,27 @@ def libraries(libraries_json):
     total_import_records = 0
     total_migrated_records = 0
 
-    with open(libraries_json, 'r') as fp:
+    with open(libraries_json, "r") as fp:
         libraries = json.load(fp)
         total_import_records = len(libraries)
 
     location, internal_locations = LibrariesMigrator(libraries).migrate()
-    records = dict(location=location,
-                   internal_locations=internal_locations)
+    records = dict(location=location, internal_locations=internal_locations)
 
     total_migrated_records = len(internal_locations) + 1  # 1 location
 
     filepath = os.path.join(
-        current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'],
-        'libraries.json'
+        current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"], "libraries.json"
     )
-    with open(filepath, 'w') as fp:
+    with open(filepath, "w") as fp:
         json.dump(records, fp, indent=2)
 
     _log = "Total number of migrated records: {0}/{1}".format(
-        total_migrated_records, total_import_records)
+        total_migrated_records, total_import_records
+    )
     logger.info(_log)
 
-    click.secho(_log, fg='green')
+    click.secho(_log, fg="green")
 
 
 def items(items_json_folder, locations_json):
@@ -58,13 +56,12 @@ def items(items_json_folder, locations_json):
                 libraries (already migrated)
     """
     output_filepath = os.path.join(
-        current_app.config['CDS_MIGRATOR_KIT_LOGS_PATH'],
-        'items_{0}.json'
+        current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"], "items_{0}.json"
     )
 
-    with open(locations_json, 'r') as fp_locations:
+    with open(locations_json, "r") as fp_locations:
         locations = json.load(fp_locations)
-        internal_locations = locations['internal_locations']
+        internal_locations = locations["internal_locations"]
 
     total_import_records = 0
     total_migrated_records = 0
@@ -72,20 +69,21 @@ def items(items_json_folder, locations_json):
     for i, items_json in enumerate(_files):
         _log = "Importing #{0} file".format(i)
         logger.info(_log)
-        click.secho(_log, fg='yellow')
+        click.secho(_log, fg="yellow")
 
-        with open(items_json, 'r') as fp_items:
+        with open(items_json, "r") as fp_items:
             items = json.load(fp_items)
             total_import_records += len(items)
 
         records = ItemsMigrator(items, internal_locations).migrate()
         total_migrated_records += len(records)
 
-        with open(output_filepath.format(i), 'w') as fp:
+        with open(output_filepath.format(i), "w") as fp:
             json.dump(records, fp, indent=2)
 
     _log = "Total number of migrated records: {0}/{1}".format(
-        total_migrated_records, total_import_records)
+        total_migrated_records, total_import_records
+    )
     logger.info(_log)
 
-    click.secho(_log, fg='green')
+    click.secho(_log, fg="green")

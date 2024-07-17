@@ -25,6 +25,7 @@ from .quality.decorators import (
 )
 from .quality.parsers import clean_str
 
+
 @model.over("communities", "^980__")
 @require(["a"])
 def communities(self, key, value):

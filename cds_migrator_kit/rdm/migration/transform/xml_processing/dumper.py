@@ -12,8 +12,10 @@ from cds_dojson.marc21.utils import create_record
 
 from cds_migrator_kit.rdm.migration.handlers import migration_exception_handler
 from cds_migrator_kit.rdm.migration.transform import migrator_marc21
-from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import \
-    UnexpectedValue, MissingRequiredField
+from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
+    MissingRequiredField,
+    UnexpectedValue,
+)
 
 
 class CDSRecordDump:

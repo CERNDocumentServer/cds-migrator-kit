@@ -13,6 +13,7 @@ import pycountry
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 
+from ...models.base import model
 from ..contributors import extract_json_contributor_ids, get_contributor_role
 from ..dates import get_week_start
 from ..errors import UnexpectedValue
@@ -23,7 +24,6 @@ from ..quality.decorators import (
     strip_output,
 )
 from ..quality.parsers import clean_str
-from ...models.base import model
 
 
 @model.over("legacy_recid", "^001")
@@ -81,7 +81,6 @@ def creators(self, key, value):
     contributor = {
         "person_or_org": {
             "type": "personal",
-
             "family_name": value.get("name") or value.get("a"),
             "identifiers": extract_json_contributor_ids(value),
         }
@@ -139,4 +138,3 @@ def subjects(self, key, value):
         obj = {"subject": subject_e}
         if obj not in _subjects:
             _subjects.append(obj)
-

@@ -19,8 +19,8 @@
 
 """CDS-RDM Summer student model."""
 
-from .overdo import CdsOverdo
 from .base import model as base_model
+from .overdo import CdsOverdo
 
 
 class CMSSummerStudent(CdsOverdo):
@@ -32,68 +32,70 @@ class CMSSummerStudent(CdsOverdo):
     __query__ = "980__:NOTE 037__:CERN-STUDENTS-Note-*"
 
     __ignore_keys__ = {
-        '65017a',
-        '937__c',
-        '960__a',
-        '269__b',
-        '6531_a',
-        '906__p',
-        '269__a',
-        '100__0',
-        '100__u', # Author affiliation
-        '100__9', # Author to check
-        '970__a', # TODO: check it
-        '980__a',
-        '980__c', # TODO: remove this one, it should not appear
+        "65017a",
+        "937__c",
+        "960__a",
+        "269__b",
+        "6531_a",
+        "906__p",
+        "269__a",
+        "100__0",
+        "100__u",  # Author affiliation
+        "100__9",  # Author to check
+        "970__a",  # TODO: check it
+        "980__a",
+        "980__c",  # TODO: remove this one, it should not appear
         # '260__c',
-        '8564_s', # Files
-        '8564_y', # Files
-        '8564_x', # Files
-        '8564_8', # Files
-        '500__a', # Note
-        '246__i', # Abbreviation
-        '246__a', # Abbreviation
-        '595__z', # TODO: check it
-        '0248_q', # TODO: check it
-        '700__9', # Contributors (?)
-        '700__0', # Contributors (cds author)
-        '700__u', # Contributors (affiliation?)
-        '700__m', # Contributors (email)
-        '693__s', # study
-        '693__p', # project
-        '693__b', # TODO: check it
-        '088__a', # RN (manual introduced?)
-        '0248_a',
-        '0248_p',
-        '0247_a', # DOI
-        '0247_2', # DOI
-        '710__g', # Collaboration
-        '981__a', # TODO: check it
-        '562__c', # TODO: check it
-        '970__d', # TODO: check it
-        '270__p', # TODO: check it
-        '270__m', # TODO: check it
-        '035__a', # Inspire ref
-        '035__9', # Inspire ref
-        '693__a',
-        '710__5',
-        '916__w',
-        '690C_a',
-        '595__a',
-        '693__e',
-        '650172',
-        '916__s',
-        '041__a',
-        '937__s',
-        '859__f',
-        '6531_9',
-        '520__a',
-        '963__a',
-        '710__a',
-        '100__a',
-        '100__m',
+        "8564_s",  # Files
+        "8564_y",  # Files
+        "8564_x",  # Files
+        "8564_8",  # Files
+        "500__a",  # Note
+        "246__i",  # Abbreviation
+        "246__a",  # Abbreviation
+        "595__z",  # TODO: check it
+        "0248_q",  # TODO: check it
+        "700__9",  # Contributors (?)
+        "700__0",  # Contributors (cds author)
+        "700__u",  # Contributors (affiliation?)
+        "700__m",  # Contributors (email)
+        "693__s",  # study
+        "693__p",  # project
+        "693__b",  # TODO: check it
+        "088__a",  # RN (manual introduced?)
+        "0248_a",
+        "0248_p",
+        "0247_a",  # DOI
+        "0247_2",  # DOI
+        "710__g",  # Collaboration
+        "981__a",  # TODO: check it
+        "562__c",  # TODO: check it
+        "970__d",  # TODO: check it
+        "270__p",  # TODO: check it
+        "270__m",  # TODO: check it
+        "035__a",  # Inspire ref
+        "035__9",  # Inspire ref
+        "693__a",
+        "710__5",
+        "916__w",
+        "690C_a",
+        "595__a",
+        "693__e",
+        "650172",
+        "916__s",
+        "041__a",
+        "937__s",
+        "859__f",
+        "6531_9",
+        "520__a",
+        "963__a",
+        "710__a",
+        "100__a",
+        "100__m",
     }
     _default_fields = None
 
 
-model = CMSSummerStudent(bases=(base_model,), entry_point_group="cds_migrator_kit.migrator.rules.ssn")
+model = CMSSummerStudent(
+    bases=(base_model,), entry_point_group="cds_migrator_kit.migrator.rules.ssn"
+)
