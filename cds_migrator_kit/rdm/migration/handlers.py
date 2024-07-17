@@ -10,11 +10,12 @@
 
 import logging
 
-cli_logger = logging.getLogger('migrator')
+cli_logger = logging.getLogger("migrator")
 
 
 def migration_exception_handler(logger):
     """Create a migration exception handler with a specific logger."""
+
     def inner(exc, output, key, value, **kwargs):
         """Migration exception handling - log to files.
 
@@ -24,10 +25,12 @@ def migration_exception_handler(logger):
         :param value: MARC field value
         :return:
         """
-        recid = output.get('recid', None) or output['legacy_recid']
+        recid = output.get("recid", None) or output["legacy_recid"]
         cli_logger.error(
-            '#RECID: #{0} - {1}  MARC FIELD: *{2}*, input value: {3}, -> {4}, '
-            .format(recid, exc.message, key, value, output)
+            "#RECID: #{0} - {1}  MARC FIELD: *{2}*, input value: {3}, -> {4}, ".format(
+                recid, exc.message, key, value, output
+            )
         )
         logger.add_log(exc, key, value, output, **kwargs)
+
     return inner

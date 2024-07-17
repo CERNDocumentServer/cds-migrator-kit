@@ -21,7 +21,7 @@ def circulation():
 
 
 @circulation.command()
-@click.argument('users_json', type=click.Path(exists=True))
+@click.argument("users_json", type=click.Path(exists=True))
 @with_appcontext
 def borrowers(users_json):
     """Load users from JSON files and output ILS Records."""
@@ -29,7 +29,7 @@ def borrowers(users_json):
 
 
 @circulation.command()
-@click.argument('libraries_json', type=click.Path(exists=True))
+@click.argument("libraries_json", type=click.Path(exists=True))
 @with_appcontext
 def libraries(libraries_json):
     """Load libraries from JSON files and output ILS Records."""
@@ -37,8 +37,8 @@ def libraries(libraries_json):
 
 
 @circulation.command()
-@click.argument('items_json_folder', type=click.Path(exists=True))
-@click.argument('locations_json', type=click.Path(exists=True))
+@click.argument("items_json_folder", type=click.Path(exists=True))
+@click.argument("locations_json", type=click.Path(exists=True))
 @with_appcontext
 def items(items_json_folder, locations_json):
     """Load items from JSON files.

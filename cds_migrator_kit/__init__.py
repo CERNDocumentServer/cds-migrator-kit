@@ -11,6 +11,6 @@
 
 from .ext import CdsMigratorKit
 
-__all__ = ('__version__', 'CdsMigratorKit')
+__all__ = ("__version__", "CdsMigratorKit")
 
-__version__ = '0.1.0.dev20180000'
+__version__ = "0.1.0.dev20180000"

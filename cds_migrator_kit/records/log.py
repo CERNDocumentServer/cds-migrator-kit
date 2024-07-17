@@ -16,25 +16,34 @@ import os
 from flask import current_app
 from marshmallow import ValidationError
 
-from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import \
-    MissingRequiredField, UnexpectedValue, LossyConversion, ManualImportRequired
-from cds_migrator_kit.records.utils import clean_exception_message, \
-    compare_titles, same_issn
-
+from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
+    LossyConversion,
+    ManualImportRequired,
+    MissingRequiredField,
+    UnexpectedValue,
+)
+from cds_migrator_kit.records.utils import (
+    clean_exception_message,
+    compare_titles,
+    same_issn,
+)
 
 
 class JsonLogger(object):
     """Log migration statistic to file controller."""
 
     logger = None
+
     @classmethod
     def initialize(cls, log_dir):
         """Constructor."""
-        logger_migrator = logging.getLogger('migrator-rules')
+        logger_migrator = logging.getLogger("migrator-rules")
         logger_migrator.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - '
-                                      '%(message)s - \n '
-                                      '[in %(pathname)s:%(lineno)d]')
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - "
+            "%(message)s - \n "
+            "[in %(pathname)s:%(lineno)d]"
+        )
         # errors to file
         fh = logging.FileHandler(log_dir / "error.log")
         fh.setLevel(logging.ERROR)
@@ -46,12 +55,14 @@ class JsonLogger(object):
         sh.setLevel(logging.INFO)
         logger_migrator.addHandler(sh)
 
-        logger_matcher = logging.getLogger('cds_dojson.matcher.dojson_matcher')
+        logger_matcher = logging.getLogger("cds_dojson.matcher.dojson_matcher")
         logger_matcher.setLevel(logging.DEBUG)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - '
-                                      '%(message)s - \n '
-                                      '[in %(pathname)s:%(lineno)d]')
-        mh = logging.FileHandler('matcher.log')
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - "
+            "%(message)s - \n "
+            "[in %(pathname)s:%(lineno)d]"
+        )
+        mh = logging.FileHandler("matcher.log")
         mh.setFormatter(formatter)
         mh.setLevel(logging.DEBUG)
         logger_matcher.addHandler(mh)
@@ -69,6 +80,7 @@ class JsonLogger(object):
     def __init__(self, stats_filename, records_filename):
         """Constructor."""
         from ..migration_config import CDS_MIGRATOR_KIT_LOGS_PATH
+
         self._logs_path = CDS_MIGRATOR_KIT_LOGS_PATH
         self.stats = {}
         self.records = {}
@@ -110,50 +122,58 @@ class JsonLogger(object):
 
     def resolve_error_type(self, exc, output, key, value):
         """Check the type of exception and log to dict."""
-        recid = output.get('recid', None) or output['legacy_recid']
+        recid = output.get("recid", None) or output["legacy_recid"]
         rec_stats = self.stats[recid]
-        rec_stats['clean'] = False
+        rec_stats["clean"] = False
         if isinstance(exc, ManualImportRequired):
-            rec_stats['manual_migration'].append(dict(
-                key=key,
-                value=value,
-                subfield=exc.subfield,
-                message=clean_exception_message(exc.message)
-            ))
+            rec_stats["manual_migration"].append(
+                dict(
+                    key=key,
+                    value=value,
+                    subfield=exc.subfield,
+                    message=clean_exception_message(exc.message),
+                )
+            )
         elif isinstance(exc, UnexpectedValue):
-            rec_stats['unexpected_value'].append(dict(
-                key=key,
-                value=value,
-                subfield=exc.subfield,
-                message=clean_exception_message(exc.message)
-            ))
+            rec_stats["unexpected_value"].append(
+                dict(
+                    key=key,
+                    value=value,
+                    subfield=exc.subfield,
+                    message=clean_exception_message(exc.message),
+                )
+            )
         elif isinstance(exc, MissingRequiredField):
-            rec_stats['missing_required_field'].append(dict(
-                key=key,
-                value=value,
-                subfield=exc.subfield,
-                message=clean_exception_message(exc.message)
-            ))
+            rec_stats["missing_required_field"].append(
+                dict(
+                    key=key,
+                    value=value,
+                    subfield=exc.subfield,
+                    message=clean_exception_message(exc.message),
+                )
+            )
         elif isinstance(exc, LossyConversion):
-            rec_stats['lost_data'].append(dict(
-                key=key,
-                value=value,
-                missing=list(exc.missing),
-                message=exc.message
-            ))
+            rec_stats["lost_data"].append(
+                dict(
+                    key=key, value=value, missing=list(exc.missing), message=exc.message
+                )
+            )
         elif isinstance(exc, ValidationError):
-            rec_stats['missing_required_field'].append(dict(
-                value=exc.value,
-                subfield=exc.subfield,
-                missing=list(exc.missing),
-                message=exc.message
-            ))
+            rec_stats["missing_required_field"].append(
+                dict(
+                    value=exc.value,
+                    subfield=exc.subfield,
+                    missing=list(exc.missing),
+                    message=exc.message,
+                )
+            )
         elif isinstance(exc, KeyError):
-            rec_stats['unexpected_value'].append(str(exc))
+            rec_stats["unexpected_value"].append(str(exc))
         elif isinstance(exc, TypeError) or isinstance(exc, AttributeError):
-            rec_stats['unexpected_value'].append(
+            rec_stats["unexpected_value"].append(
                 "Model definition missing for this record."
-                " Contact CDS team to tune the query")
+                " Contact CDS team to tune the query"
+            )
         else:
             raise exc
 
@@ -163,20 +183,20 @@ class RDMJsonLogger(JsonLogger):
 
     def __init__(self):
         """Constructor."""
-        super().__init__('rdm_stats.json', 'rdm_records.json')
+        super().__init__("rdm_stats.json", "rdm_records.json")
 
     def add_recid_to_stats(self, recid):
         """Add empty log item."""
         if recid not in self.stats:
             self.stats[recid] = {
-                'recid': recid,
-                'manual_migration': [],
-                'unexpected_value': [],
-                'missing_required_field': [],
-                'lost_data': [],
-                'clean': True,
+                "recid": recid,
+                "manual_migration": [],
+                "unexpected_value": [],
+                "missing_required_field": [],
+                "lost_data": [],
+                "clean": True,
             }
 
     def add_record(self, record):
         """Add record to collected records."""
-        self.records[record['legacy_recid']] = record
+        self.records[record["legacy_recid"]] = record

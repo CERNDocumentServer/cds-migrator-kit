@@ -10,7 +10,6 @@
 from pathlib import Path
 
 import yaml
-
 from invenio_rdm_migrator.logging import FailedTxLogger, Logger
 from invenio_rdm_migrator.streams import Stream
 
@@ -113,6 +112,7 @@ class Runner:
                 # STATE.flush_cache()
                 # self.state.save(filename=f"{stream.name}.db")
                 from cds_migrator_kit.rdm.migration.transform.transform import logger
+
                 logger.save()
             except Exception:
                 Logger.get_logger().exception(

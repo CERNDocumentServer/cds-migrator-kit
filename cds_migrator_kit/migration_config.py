@@ -8,15 +8,17 @@ https://inveniordm.docs.cern.ch/reference/configuration/.
 """
 
 import os
-
 from datetime import datetime, timedelta
-from invenio_i18n import lazy_gettext as _
-from cds_rdm.permissions import CDSCommunitiesPermissionPolicy, \
-    CDSRDMRecordPermissionPolicy
+
 from cds_rdm.files import storage_factory
-from invenio_app_rdm.config import *
-from invenio_app_rdm.config import CELERY_BEAT_SCHEDULE as APP_RDM_CELERY_BEAT_SCHEDULE
+from cds_rdm.permissions import (
+    CDSCommunitiesPermissionPolicy,
+    CDSRDMRecordPermissionPolicy,
+)
 from celery.schedules import crontab
+from invenio_app_rdm.config import CELERY_BEAT_SCHEDULE as APP_RDM_CELERY_BEAT_SCHEDULE
+from invenio_app_rdm.config import *
+from invenio_i18n import lazy_gettext as _
 
 
 def _(x):  # needed to avoid start time failure with lazy strings
@@ -42,7 +44,7 @@ SECRET_KEY = "CHANGE_ME"
 # provided, the allowed hosts variable is set to localhost. In production it
 # should be set to the correct host and it is strongly recommended to only
 # route correct hosts to the application.
-APP_ALLOWED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', 'localhost.cern.ch']
+APP_ALLOWED_HOSTS = ["0.0.0.0", "localhost", "127.0.0.1", "localhost.cern.ch"]
 
 # Flask-SQLAlchemy
 # ================
@@ -56,28 +58,28 @@ SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://cds-rdm:cds-rdm@localhost/cds-r
 # See https://invenio-app.readthedocs.io/en/latest/configuration.html
 
 APP_DEFAULT_SECURE_HEADERS = {
-    'content_security_policy': {
-        'default-src': [
+    "content_security_policy": {
+        "default-src": [
             "'self'",
-            'data:',  # for fonts
+            "data:",  # for fonts
             "'unsafe-inline'",  # for inline scripts and styles
             "blob:",  # for pdf preview
             # Add your own policies here (e.g. analytics)
         ],
     },
-    'content_security_policy_report_only': False,
-    'content_security_policy_report_uri': None,
-    'force_file_save': False,
-    'force_https': True,
-    'force_https_permanent': False,
-    'frame_options': 'sameorigin',
-    'frame_options_allow_from': None,
-    'session_cookie_http_only': True,
-    'session_cookie_secure': True,
-    'strict_transport_security': True,
-    'strict_transport_security_include_subdomains': True,
-    'strict_transport_security_max_age': 31556926,  # One year in seconds
-    'strict_transport_security_preload': False,
+    "content_security_policy_report_only": False,
+    "content_security_policy_report_uri": None,
+    "force_file_save": False,
+    "force_https": True,
+    "force_https_permanent": False,
+    "frame_options": "sameorigin",
+    "frame_options_allow_from": None,
+    "session_cookie_http_only": True,
+    "session_cookie_secure": True,
+    "strict_transport_security": True,
+    "strict_transport_security_include_subdomains": True,
+    "strict_transport_security_max_age": 31556926,  # One year in seconds
+    "strict_transport_security_preload": False,
 }
 
 # Flask-Babel
@@ -85,9 +87,9 @@ APP_DEFAULT_SECURE_HEADERS = {
 # See https://python-babel.github.io/flask-babel/#configuration
 
 # Default locale (language)
-BABEL_DEFAULT_LOCALE = 'en'
+BABEL_DEFAULT_LOCALE = "en"
 # Default time zone
-BABEL_DEFAULT_TIMEZONE = 'Europe/Zurich'
+BABEL_DEFAULT_TIMEZONE = "Europe/Zurich"
 
 # Invenio-I18N
 # ============
@@ -106,10 +108,10 @@ I18N_LANGUAGES = [
 # Frontpage title
 THEME_FRONTPAGE_TITLE = "CERN Document Server"
 # Header logo
-THEME_LOGO = 'images/invenio-rdm.svg'
+THEME_LOGO = "images/invenio-rdm.svg"
 THEME_SHOW_FRONTPAGE_INTRO_SECTION = False
 
-THEME_SITENAME = 'CDS'
+THEME_SITENAME = "CDS"
 # Templates
 # THEME_FRONTPAGE_TEMPLATE = 'cds_rdm/frontpage.html'
 # THEME_FOOTER_TEMPLATE = 'cds_rdm/footer.html'
@@ -124,7 +126,7 @@ BASE_TEMPLATE = "cds_rdm/page.html"
 # See https://invenio-app-rdm.readthedocs.io/en/latest/configuration.html
 
 # Instance's theme entrypoint file. Path relative to the ``assets/`` folder.
-INSTANCE_THEME_FILE = './less/theme.less'
+INSTANCE_THEME_FILE = "./less/theme.less"
 
 # Invenio-communities
 # ===================
@@ -148,10 +150,12 @@ APP_RDM_DEPOSIT_FORM_DEFAULTS = {
         {
             "id": "cc-by-4.0",
             "title": "Creative Commons Attribution 4.0 International",
-            "description": ("The Creative Commons Attribution license allows "
-                            "re-distribution and re-use of a licensed work "
-                            "on the condition that the creator is "
-                            "appropriately credited."),
+            "description": (
+                "The Creative Commons Attribution license allows "
+                "re-distribution and re-use of a licensed work "
+                "on the condition that the creator is "
+                "appropriately credited."
+            ),
             "link": "https://creativecommons.org/licenses/by/4.0/legalcode",
         }
     ],
@@ -160,7 +164,7 @@ APP_RDM_DEPOSIT_FORM_DEFAULTS = {
 APP_RDM_RECORD_LANDING_PAGE_TEMPLATE = "cds_rdm/records/detail.html"
 
 # See https://github.com/inveniosoftware/invenio-app-rdm/blob/master/invenio_app_rdm/config.py
-APP_RDM_DEPOSIT_FORM_AUTOCOMPLETE_NAMES = 'search'  # "search_only" or "off"
+APP_RDM_DEPOSIT_FORM_AUTOCOMPLETE_NAMES = "search"  # "search_only" or "off"
 
 # Invenio-RDM-Records
 # ===================
@@ -180,14 +184,18 @@ DATACITE_DATACENTER_SYMBOL = ""
 # ================
 # See https://github.com/inveniosoftware/invenio-accounts/blob/master/invenio_accounts/config.py
 ACCOUNTS_DEFAULT_USERS_VERIFIED = True  # ensure that users are verified by default
-ACCOUNTS_DEFAULT_USER_VISIBILITY = "public"  # enables users to be searchable for invites
+ACCOUNTS_DEFAULT_USER_VISIBILITY = (
+    "public"  # enables users to be searchable for invites
+)
 ACCOUNTS_LOCAL_LOGIN_ENABLED = True  # enable local login
 PERMANENT_SESSION_LIFETIME = timedelta(days=10)
 SECURITY_REGISTERABLE = True  # local login: allow users to register
 SECURITY_RECOVERABLE = False  # local login: allow users to reset the password
 SECURITY_CHANGEABLE = False  # local login: allow users to change psw
 SECURITY_CONFIRMABLE = False  # local login: users can confirm e-mail address
-SECURITY_LOGIN_WITHOUT_CONFIRMATION = True  # require users to confirm email before being able to login
+SECURITY_LOGIN_WITHOUT_CONFIRMATION = (
+    True  # require users to confirm email before being able to login
+)
 
 # Emails sending
 # Disable sending all account-related emails because of CERN SSO usage
@@ -196,22 +204,25 @@ SECURITY_SEND_PASSWORD_RESET_EMAIL = False
 SECURITY_SEND_PASSWORD_RESET_NOTICE_EMAIL = False
 SECURITY_SEND_REGISTER_EMAIL = False
 
+from urllib.parse import quote
+
+from cds_rdm.oidc import (
+    cern_groups_handler,
+    cern_groups_serializer,
+    cern_info_handler,
+    cern_info_serializer,
+    cern_setup_handler,
+    confirm_registration_form,
+)
+
 # Invenio-OAuthclient
 # ===================
 # See https://github.com/inveniosoftware/invenio-oauthclient/blob/master/invenio_oauthclient/config.py
 from invenio_oauthclient.contrib.keycloak import KeycloakSettingsHelper
-from cds_rdm.oidc import (
-    cern_info_handler,
-    cern_info_serializer,
-    confirm_registration_form,
-    cern_groups_serializer,
-    cern_groups_handler,
-    cern_setup_handler,
-)
-from urllib.parse import quote
 
-CERN_KEYCLOAK_BASE_URL = os.environ.get("INVENIO_CERN_KEYCLOAK_BASE_URL",
-                                        "https://keycloak-qa.cern.ch/")
+CERN_KEYCLOAK_BASE_URL = os.environ.get(
+    "INVENIO_CERN_KEYCLOAK_BASE_URL", "https://keycloak-qa.cern.ch/"
+)
 
 _keycloak_helper = KeycloakSettingsHelper(
     title="CERN",
@@ -221,7 +232,7 @@ _keycloak_helper = KeycloakSettingsHelper(
     app_key="CERN_APP_CREDENTIALS",
     logout_url="{}auth/realms/cern/protocol/openid-connect/logout?redirect_uri={}".format(
         CERN_KEYCLOAK_BASE_URL,
-        quote(os.environ.get("INVENIO_SITE_UI_URL", SITE_UI_URL))
+        quote(os.environ.get("INVENIO_SITE_UI_URL", SITE_UI_URL)),
     ),
 )
 OAUTHCLIENT_CERN_REALM_URL = _keycloak_helper.realm_url
@@ -264,12 +275,16 @@ CERN_APP_CREDENTIALS = {
 
 from invenio_oauthclient.views.client import auto_redirect_login
 
-ACCOUNTS_LOGIN_VIEW_FUNCTION = auto_redirect_login  # autoredirect to external login if enabled
+ACCOUNTS_LOGIN_VIEW_FUNCTION = (
+    auto_redirect_login  # autoredirect to external login if enabled
+)
 OAUTHCLIENT_AUTO_REDIRECT_TO_EXTERNAL_LOGIN = True  # autoredirect to external login
 
 # Invenio-UserProfiles
 # ====================
-USERPROFILES_READ_ONLY = False  # allow users to change profile info (name, email, etc...)
+USERPROFILES_READ_ONLY = (
+    False  # allow users to change profile info (name, email, etc...)
+)
 USERPROFILES_EXTEND_SECURITY_FORMS = True
 
 # OAI-PMH
@@ -299,11 +314,15 @@ CELERY_BEAT_SCHEDULE = {
 ###############################################################################
 # CDS-RDM configuration
 ###############################################################################
-CDS_SERVICE_ELEMENT_URL = "https://cern.service-now.com/service-portal?id=service_element&name=CDS-Service"
+CDS_SERVICE_ELEMENT_URL = (
+    "https://cern.service-now.com/service-portal?id=service_element&name=CDS-Service"
+)
 
 # AUTH/LDAP
 CERN_LDAP_URL = "ldap://xldap.cern.ch"
-CERN_AUTHORIZATION_SERVICE_API = "https://authorization-service-api-qa.web.cern.ch/api/v1.0/"
+CERN_AUTHORIZATION_SERVICE_API = (
+    "https://authorization-service-api-qa.web.cern.ch/api/v1.0/"
+)
 CERN_AUTHORIZATION_SERVICE_API_GROUP = "Group"
 
 # Permissions: define who can create new communities
@@ -334,5 +353,5 @@ CDS_EOS_OFFLOAD_REDIRECT_BASE_PATH = ""
 RDM_PERMISSION_POLICY = CDSRDMRecordPermissionPolicy
 
 base_path = os.path.dirname(os.path.realpath(__file__))
-logs_dir = os.path.join(base_path, 'tmp/logs/')
+logs_dir = os.path.join(base_path, "tmp/logs/")
 CDS_MIGRATOR_KIT_LOGS_PATH = logs_dir

@@ -10,6 +10,7 @@ from invenio_rdm_migrator.streams import StreamDefinition
 
 from cds_migrator_kit.rdm.migration.extract import LegacyExtract
 from cds_migrator_kit.rdm.migration.transform.transform import CDSToRDMRecordTransform
+
 from .load import CDSRecordServiceLoad
 
 RecordStreamDefinition = StreamDefinition(

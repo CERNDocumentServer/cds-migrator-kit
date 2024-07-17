@@ -15,15 +15,15 @@ import pytest
 from invenio_app.factory import create_ui
 
 
-@pytest.fixture(scope='module')
+@pytest.fixture(scope="module")
 def app_config(app_config):
     """Application configuration fixture."""
     base_path = os.path.dirname(os.path.realpath(__file__))
-    logs_dir = os.path.join(base_path, 'tmp/logs/')
+    logs_dir = os.path.join(base_path, "tmp/logs/")
     if not os.path.exists(logs_dir):
         os.makedirs(logs_dir)
 
-    app_config['CDS_MIGRATOR_KIT_LOGS_PATH'] = logs_dir
+    app_config["CDS_MIGRATOR_KIT_LOGS_PATH"] = logs_dir
     return app_config
 
 
@@ -36,4 +36,4 @@ def create_app(app_config):
 @pytest.fixture()
 def datadir():
     """Get data directory."""
-    return join(dirname(__file__), 'data')
+    return join(dirname(__file__), "data")

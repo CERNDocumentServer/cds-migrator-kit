@@ -11,7 +11,9 @@ import re
 
 from dojson.utils import force_list
 
-from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import UnexpectedValue
+from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
+    UnexpectedValue,
+)
 
 # "contributors": {
 #   "description": "Contributors in order of importance.",

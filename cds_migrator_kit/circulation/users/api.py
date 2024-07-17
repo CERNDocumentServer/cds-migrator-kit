@@ -14,7 +14,7 @@ from datetime import datetime
 logger = logging.getLogger(__name__)
 
 
-class UserMigrator():
+class UserMigrator:
     """Migrate legacy circulation users to Invenio ILS records.
 
     Expected input format for circulation users:
@@ -38,35 +38,32 @@ class UserMigrator():
     def migrate_user_identity(self, user):
         """Return new user identity entry."""
         return {
-            'id': user['uid'],
-            'method': 'cern',
-            'id_user': user['id'],
+            "id": user["uid"],
+            "method": "cern",
+            "id_user": user["id"],
         }
 
     def migrate_user(self, user):
         """Return new user entry."""
         return {
-            'id': user['id'],
-            'email': user['email'],
-            'active': True,
+            "id": user["id"],
+            "email": user["email"],
+            "active": True,
         }
 
     def migrate_remote_account(self, user):
         """Return new user entry."""
         return {
-            'user_id': user['id'],
-            'extra_data': {
-                'person_id': user['ccid'],
-                'department': user['department']
-            }
+            "user_id": user["id"],
+            "extra_data": {"person_id": user["ccid"], "department": user["department"]},
         }
 
     def migrate_user_profile(self, user):
         """Return new user profile."""
         return {
-            'user_id': user['id'],
-            '_displayname': 'id_' + str(user['id']),
-            'full_name': user['name'],
+            "user_id": user["id"],
+            "_displayname": "id_" + str(user["id"]),
+            "full_name": user["name"],
         }
 
     def migrate(self):

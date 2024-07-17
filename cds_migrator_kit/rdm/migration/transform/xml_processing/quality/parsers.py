@@ -7,7 +7,9 @@
 
 """CDS-RDM migration data cleaning module."""
 
-from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import UnexpectedValue
+from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
+    UnexpectedValue,
+)
 
 
 def clean_str(to_clean):
