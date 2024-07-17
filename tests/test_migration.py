@@ -8,79 +8,35 @@
 
 """CDS migration to CDSLabs tests."""
 
-from cds_migrator_kit.records.records import CDSRecordDump
+from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
 from tests.helpers import load_json
 
 
 def test_migrate_record(datadir, base_app):
     """Test migrate date."""
-    # [[ migrate the book ]]
+    # [[ migrate the record]]
     with base_app.app_context():
-        data = load_json(datadir, "book1.json")
+        data = load_json(datadir, "summer_note.json")
         dump = CDSRecordDump(data=data[0])
         dump.prepare_revisions()
         res = dump.revisions[-1][1]
-        assert res["legacy_recid"] == 262146
+
+        assert res["legacy_recid"] == 2285569
         assert res == {
-            "agency_code": "SzGeCERN",
-            "_created": "2001-03-19",
-            "created_by": {"type": "user"},
-            "number_of_pages": "465",
-            "languages": ["EN"],
-            "title": "Gauge fields, knots and gravity",
-            "legacy_recid": 262146,
-            "provider_recid": "262146",
-            "publication_year": "1994",
-            "identifiers": [
-                {"scheme": "ISBN", "value": "9789810217297"},
-                {"scheme": "ISBN", "value": "9789810220341"},
-                {"scheme": "ISBN", "value": "9810217293"},
-                {"scheme": "ISBN", "value": "9810220340"},
+            "recid": "2285569",
+            "legacy_recid": 2285569,
+            "report_number": "CERN-STUDENTS-Note-2017-222",
+            "languages": ["ENG"],
+            "creators": [
+                {
+                    "person_or_org": {
+                        "type": "personal",
+                        "family_name": "Arzi, Ofir",
+                        "identifiers": [],
+                    },
+                    "role": {"id": "other"},
+                }
             ],
-            "authors": [
-                {"full_name": "Baez, John C", "roles": ["AUTHOR"]},
-                {"full_name": "Muniain, Javier P", "roles": ["AUTHOR"]},
-            ],
-            "keywords": [
-                {"source": "CERN", "value": "electromagnetism"},
-                {"source": "CERN", "value": "gauge fields"},
-                {"source": "CERN", "value": "general relativity"},
-                {"source": "CERN", "value": "knot theory, applications"},
-                {"source": "CERN", "value": "quantum gravity"},
-            ],
-            "internal_notes": [{"value": "newqudc"}],
-            "document_type": "BOOK",
-            "imprint": {
-                "date": "1994-01-14",
-                "publisher": "World Scientific",
-                "place": "Singapore",
-            },
-            "_migration": {
-                "has_tags": False,
-                "has_related": False,
-                "has_serial": False,
-                "has_journal": False,
-                "eitems_ebl": [],
-                "eitems_external": [],
-                "eitems_file_links": [],
-                "eitems_has_ebl": False,
-                "eitems_has_external": False,
-                "eitems_has_files": False,
-                "eitems_has_proxy": False,
-                "eitems_open_access": False,
-                "eitems_proxy": [],
-                "electronic_items": [],
-                "is_multipart": False,
-                "journal_record_legacy_id": "",
-                "record_type": "document",
-                "volumes": [],
-                "serials": [],
-                "tags": [],
-                "related": [],
-                "relation_next": None,
-                "relation_previous": None,
-                "volumes_identifiers": [],
-                "volumes_urls": [],
-                "items": [],
-            },
+            "title": "Deep Learning Methods for Particle Reconstruction in the HGCal",
+            "description": "The High Granularity end-cap Calorimeter is part of the phase-2 CMS upgrade (see Figure \\ref{fig:cms})\\cite{Contardo:2020886}. It's goal it to provide measurements of high resolution in time, space and energy. Given such measurements, the purpose of this work is to discuss the use of Deep Neural Networks for the task of particle and trajectory reconstruction, identification and energy estimation, during my participation in the CERN Summer Students Program.",
         }

@@ -40,4 +40,4 @@ def test_view():
     with app.test_client() as client:
         res = client.get("/")
         assert res.status_code == 200
-        assert "migrator" in str(res.data)
+        assert "Migrator" in str(res.data)
