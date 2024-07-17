@@ -12,8 +12,6 @@ from pathlib import Path
 import yaml
 
 from invenio_rdm_migrator.logging import FailedTxLogger, Logger
-# from invenio_rdm_migrator.state import STATE, StateDB
-# from .records.state import ParentModelValidator
 from invenio_rdm_migrator.streams import Stream
 
 from cds_migrator_kit.records.log import RDMJsonLogger
@@ -23,7 +21,7 @@ from cds_migrator_kit.records.log import RDMJsonLogger
 # Skipping the default invenio-rdm-migrator StateDB
 # most likely it won't be needed
 class Runner:
-    """ETL streams runner"""
+    """ETL streams runner."""
 
     def _read_config(self, filepath):
         """Read config from file."""

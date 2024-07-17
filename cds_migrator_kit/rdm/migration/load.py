@@ -7,10 +7,6 @@
 
 """CDS-RDM migration load module."""
 
-from pathlib import Path
-
-# from invenio_rdm_migrator.streams.records import RDMRecordCopyLoad
-
 from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_access.permissions import system_identity
@@ -28,7 +24,7 @@ class CDSRecordServiceLoad(Load):
         self.entries = entries
 
     def _prepare(self, entry):
-        """Prepare the record"""
+        """Prepare the record."""
         pass
 
     def _load(self, entry):
