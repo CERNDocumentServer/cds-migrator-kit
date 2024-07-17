@@ -13,17 +13,17 @@ import pycountry
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 
-from ..models.note import model
-from .contributors import extract_json_contributor_ids, get_contributor_role
-from .dates import get_week_start
-from .errors import UnexpectedValue
-from .quality.decorators import (
+from ...models.note import model
+from ..contributors import extract_json_contributor_ids, get_contributor_role
+from ..dates import get_week_start
+from ..errors import UnexpectedValue
+from ..quality.decorators import (
     filter_list_values,
     for_each_value,
     require,
     strip_output,
 )
-from .quality.parsers import clean_str
+from ..quality.parsers import clean_str
 
 
 @model.over("communities", "^980__")
