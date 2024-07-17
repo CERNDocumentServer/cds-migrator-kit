@@ -47,6 +47,9 @@ recursive-include tests *.json
 recursive-include scripts *.sh
 recursive-include examples *.py
 recursive-include examples *.sh
+recursive-include cds_migrator_kit *.gitkeep
+recursive-include cds_migrator_kit *.md
+recursive-include cds_migrator_kit *.yaml
 exclude scripts/migrator.sh
 
 
