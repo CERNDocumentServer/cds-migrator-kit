@@ -50,6 +50,7 @@ recursive-include examples *.sh
 recursive-include cds_migrator_kit *.gitkeep
 recursive-include cds_migrator_kit *.md
 recursive-include cds_migrator_kit *.yaml
+recursive-include scripts *.py
 exclude scripts/migrator.sh
 
 
