@@ -9,6 +9,7 @@
 
 import datetime
 import logging
+from pathlib import Path
 
 from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
@@ -84,7 +85,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
     def _files(self, record_dump):
         """Transform the files of a record."""
-        files = record_dump.prepare_files()
+        record_dump.prepare_files()
+        files = record_dump.files
         return {"enabled": True if files else False}
 
     def _communities(self, json_entry):
@@ -158,6 +160,11 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 class CDSToRDMRecordTransform(RDMRecordTransform):
     """CDSToRDMRecordTransform."""
 
+    def __init__(self, workers=None, throw=False, files_dump_dir=None):
+        """Constructor."""
+        self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
+        super().__init__(workers, throw)
+
     def _community_id(self, entry, record):
         communities = record.get("communities")
         if communities:
@@ -201,26 +208,67 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         }
 
     def _record(self, entry):
+        # could be in draft as well, depends on how we decide to publish
         return CDSToRDMRecordEntry().transform(entry)
 
     def _draft(self, entry):
         return None
 
     def _draft_files(self, entry):
-        return None
+        """Point to temporary eos storage to import files from."""
+        _files = entry["files"]
+        draft_files = []
+        legacy_path_root = Path("/opt/cdsweb/var/data/files/")
+        tmp_eos_root = Path(self.files_dump_dir)
+
+        for file in _files:
+            full_path = Path(file["full_path"])
+            draft_files.append(
+                {
+                    "eos_tmp_path": tmp_eos_root
+                    / full_path.relative_to(legacy_path_root),
+                    "key": file["full_name"],
+                    "metadata": {},
+                    "mimetype": file["mime"],
+                    "checksum": file["checksum"],
+                }
+            )
+        return draft_files
 
     def _record_files(self, entry, record):
-        # files = entry["json"].get("_files", [])
-        # return [
-        #     {
-        #         "key": f["key"],
-        #         "object_version": {
-        #             "file": {
-        #                 "size": f["size"],
-        #                 "checksum": f["checksum"],
-        #             },
-        #         },
-        #     }
-        #     for f in files
-        # ]
+        """Record files entries transform."""
+        # TO implement if we decide not to go via draft publish
         return []
+
+    #
+    #
+    # "files": [
+    #   {
+    #     "comment": null,
+    #     "status": "firerole: allow group \"council-full [CERN]\"\ndeny until \"1996-02-01\"\nallow all",
+    #     "version": 1,
+    #     "encoding": null,
+    #     "creation_date": "2009-11-03T12:29:06+00:00",
+    #     "bibdocid": 502379,
+    #     "mime": "application/pdf",
+    #     "full_name": "CM-P00080632-e.pdf",
+    #     "superformat": ".pdf",
+    #     "recids_doctype": [[32097, "Main", "CM-P00080632-e.pdf"]],
+    #     "path": "/opt/cdsweb/var/data/files/g50/502379/CM-P00080632-e.pdf;1",
+    #     "size": 5033532,
+    #     "license": {},
+    #     "modification_date": "2009-11-03T12:29:06+00:00",
+    #     "copyright": {},
+    #     "url": "http://cds.cern.ch/record/32097/files/CM-P00080632-e.pdf",
+    #     "checksum": "ed797ce5d024dcff0040db79c3396da9",
+    #     "description": "English",
+    #     "format": ".pdf",
+    #     "name": "CM-P00080632-e",
+    #     "subformat": "",
+    #     "etag": "\"502379.pdf1\"",
+    #     "recid": 32097,
+    #     "flags": [],
+    #     "hidden": false,
+    #     "type": "Main",
+    #     "full_path": "/opt/cdsweb/var/data/files/g50/502379/CM-P00080632-e.pdf;1"
+    #   },]

@@ -135,8 +135,32 @@ current_rdm_records_service.indexer.bulk_index((rec.id for rec in records))
 ```
 
 
-### To visualise the errors:
+### To visualise the errors (locally):
 
 ```shell
 gunicorn -b :8080 --timeout 120 --graceful-timeout 60 cds_migrator_kit.app:app
 ```
+
+
+
+
+### Full migration workflow of one collection
+
+#### Legacy
+
+```shell
+ssh cds-wn-31 # inveniomigrator tool installed here
+kinit cdsrdmeosdev
+cd /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump
+inveniomigrator dump records -q '980__:NOTE 037__:CERN-STUDENTS-Note-* -980:DELETED' --file-prefix summer-studends-notes --latest-only --chunk-size=1000
+python copy_collection_files.py --dump-folder /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump --files-destination /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/files
+```
+
+
+#### Openshift migration pod
+
+```shell
+invenio migration run
+```
+
+visit https://migration-cds-rdm-dev.app.cern.ch for report

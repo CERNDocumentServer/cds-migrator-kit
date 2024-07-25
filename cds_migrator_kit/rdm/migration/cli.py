@@ -10,6 +10,7 @@
 from pathlib import Path
 
 import click
+from flask import current_app
 from flask.cli import with_appcontext
 
 from cds_migrator_kit.rdm.migration.runner import Runner
@@ -26,8 +27,9 @@ def migration():
 @with_appcontext
 def run():
     """Run."""
+    stream_config = current_app.config["INVENIO_CDS_MIGRATOR_KIT_STREAM_CONFIG"]
     runner = Runner(
         stream_definitions=[RecordStreamDefinition],
-        config_filepath=Path("cds_migrator_kit/rdm/migration/streams.yaml").absolute(),
+        config_filepath=Path(stream_config).absolute(),
     )
     runner.run()

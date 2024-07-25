@@ -8,3 +8,5 @@ new_secret_key: CHANGE_ME
 records:
   extract:
     dirpath: cds_migrator_kit/rdm/migration/data/summer_student_reports
+  transform:
+    files_dump_dir: cds_migrator_kit/rdm/migration/data/files/
