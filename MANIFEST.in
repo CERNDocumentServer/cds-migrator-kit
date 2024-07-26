@@ -51,7 +51,7 @@ recursive-include cds_migrator_kit *.gitkeep
 recursive-include cds_migrator_kit *.md
 recursive-include cds_migrator_kit *.yaml
 recursive-include scripts *.py
+include *.conf
 exclude scripts/migrator.sh
-
 
 
