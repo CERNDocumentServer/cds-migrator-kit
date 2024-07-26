@@ -18,6 +18,7 @@ import os
 
 from invenio_app.config import APP_DEFAULT_SECURE_HEADERS
 
+
 def _(x):
     """Identity function used to trigger string extraction."""
     return x

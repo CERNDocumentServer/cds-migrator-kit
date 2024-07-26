@@ -18,7 +18,7 @@ from cds_migrator_kit.rdm.migration.streams import RecordStreamDefinition
 from cds_migrator_kit.records.log import RDMJsonLogger
 
 cli_logger = logging.getLogger("migrator")
-migration_logger = RDMJsonLogger()
+
 
 @click.group()
 def migration():

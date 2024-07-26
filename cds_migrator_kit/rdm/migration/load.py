@@ -14,8 +14,10 @@ from invenio_db import db
 from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
 
-from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import \
-    ManualImportRequired
+from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
+    ManualImportRequired,
+)
+from cds_migrator_kit.records.log import RDMJsonLogger
 
 cli_logger = logging.getLogger("migrator")
 
@@ -43,8 +45,8 @@ class CDSRecordServiceLoad(Load):
 
     def _load(self, entry):
         """Use the services to load the entries."""
-        from cds_migrator_kit.rdm.migration.cli import migration_logger, cli_logger
         recid = entry.get("record", {}).get("json", {}).get("id")
+        migration_logger = RDMJsonLogger()
         migration_logger.add_recid_to_stats(recid)
         identity = system_identity  # Should we create an identity for the migration?
         draft = current_rdm_records_service.create(identity, entry["record"]["json"])

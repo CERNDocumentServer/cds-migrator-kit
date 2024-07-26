@@ -32,8 +32,8 @@ class CMSSummerStudent(CdsOverdo):
     __query__ = "980__:NOTE 037__:CERN-STUDENTS-Note-*"
 
     __ignore_keys__ = {
-        #"0247_2",  # DOI, summer student notes do not have it
-        #"0247_a",  # DOI
+        # "0247_2",  # DOI, summer student notes do not have it
+        # "0247_a",  # DOI
         "0248_a",  # oai identifier, not needed to migrate, TBD
         "0248_p",  # oai identifier, not needed to migrate, TBD
         # "0248_q",  does appear
@@ -54,7 +54,7 @@ class CMSSummerStudent(CdsOverdo):
         # "270__p",
         # "500__a",  # Note
         # "562__c",  # note
-        "595__a",    # always value CERN EDS, not displayed, TODO: do we keep?
+        "595__a",  # always value CERN EDS, not displayed, TODO: do we keep?
         "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it?
         "650172",  # TODO TBD
         "65017a",  # TODO TBD
@@ -80,8 +80,8 @@ class CMSSummerStudent(CdsOverdo):
         # "906__p", # probably supervisor TODO: check
         # "916__s", # creation date
         # "916__w", # creation date
-        "960__a",   # collection id? usuall y valu 12
-        "963__a",   # restriction
+        "960__a",  # collection id? usuall y valu 12
+        "963__a",  # restriction
         "980__a",
         "980__c",  # TODO: remove this one, it should not appear
     }

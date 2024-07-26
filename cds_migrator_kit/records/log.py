@@ -29,7 +29,19 @@ from cds_migrator_kit.records.utils import (
 )
 
 
-class JsonLogger(object):
+class Singleton(type):
+    """Temporary solution for this logger."""
+
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        """Call."""
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
+
+
+class JsonLogger(metaclass=Singleton):
     """Log migration statistic to file controller."""
 
     logger = None
@@ -79,9 +91,8 @@ class JsonLogger(object):
 
     def __init__(self, stats_filename, records_filename):
         """Constructor."""
-        from ..migration_config import CDS_MIGRATOR_KIT_LOGS_PATH
 
-        self._logs_path = CDS_MIGRATOR_KIT_LOGS_PATH
+        self._logs_path = current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]
         self.stats = {}
         self.records = {}
         self.STAT_FILEPATH = os.path.join(self._logs_path, stats_filename)
@@ -122,7 +133,9 @@ class JsonLogger(object):
 
     def resolve_error_type(self, exc, output, key, value):
         """Check the type of exception and log to dict."""
-        recid = output.get("recid", None) or output.get("record", {}).get("json", {}).get("id")
+        recid = output.get("recid", None) or output.get("record", {}).get(
+            "json", {}
+        ).get("id")
         rec_stats = self.stats[recid]
         rec_stats["clean"] = False
         if isinstance(exc, ManualImportRequired):
@@ -175,7 +188,7 @@ class JsonLogger(object):
                 " Contact CDS team to tune the query"
             )
         else:
-           raise exc
+            raise exc
 
 
 class RDMJsonLogger(JsonLogger):

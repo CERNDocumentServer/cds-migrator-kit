@@ -16,16 +16,13 @@ from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordTransform,
 )
 
-
 from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     LossyConversion,
 )
+from cds_migrator_kit.records.log import RDMJsonLogger
 
-
-CDS_DATACITE_PREFIXES = [
-    "10.17181"
-]
+CDS_DATACITE_PREFIXES = ["10.17181"]
 
 
 class CDSToRDMRecordEntry(RDMRecordEntry):
@@ -85,7 +82,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
     def _pids(self, json_entry):
         return []
 
-
     def _files(self, record_dump):
         """Transform the files of a record."""
         record_dump.prepare_files()
@@ -129,7 +125,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
     def transform(self, entry):
         """Transform a record single entry."""
-        from cds_migrator_kit.rdm.migration.cli import migration_logger, cli_logger
+        migration_logger = RDMJsonLogger()
         record_dump = CDSRecordDump(
             entry,
         )

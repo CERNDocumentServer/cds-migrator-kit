@@ -111,9 +111,7 @@ class Runner:
                 # on successful stream run, persist state
                 # STATE.flush_cache()
                 # self.state.save(filename=f"{stream.name}.db")
-                from cds_migrator_kit.rdm.migration.cli import migration_logger, \
-                    cli_logger
-
+                migration_logger = RDMJsonLogger()
                 migration_logger.save()
             except Exception:
                 Logger.get_logger().exception(
