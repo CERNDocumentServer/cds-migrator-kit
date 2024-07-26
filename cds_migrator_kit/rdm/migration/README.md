@@ -141,12 +141,12 @@ current_rdm_records_service.indexer.bulk_index((rec.id for rec in records))
 gunicorn -b :8080 --timeout 120 --graceful-timeout 60 cds_migrator_kit.app:app
 ```
 
-
-
-
 ### Full migration workflow of one collection
 
 #### Legacy
+
+This is the recipe on how to dump the metadata and files. For local tests it is not necessary to do it often, especially for files which are static.
+It makes sense to dump metadata if any changes are applied on legacy
 
 ```shell
 ssh cds-wn-31 # inveniomigrator tool installed here
@@ -156,6 +156,14 @@ inveniomigrator dump records -q '980__:NOTE 037__:CERN-STUDENTS-Note-* -980:DELE
 python copy_collection_files.py --dump-folder /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump --files-destination /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/files
 ```
 
+## How to mount eos locally on MAC (to copy over the dumps and files)
+
+1. Go to Finder icon on your dock
+2. right click to get the contextual menu
+3. choose connect to server
+4. type `https://cernbox.cern.ch/cernbox/webdav/eos/media/cds/cds-rdm/dev/migration`
+5. click connect
+6. use eos account dev credentials
 
 #### Openshift migration pod
 

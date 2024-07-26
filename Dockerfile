@@ -1,4 +1,4 @@
- Dockerfile that builds a fully functional image of your app.
+# Dockerfile that builds a fully functional image of your app.
 #
 # This image installs all Python dependencies for your application. It's based
 # on Almalinux (https://github.com/inveniosoftware/docker-invenio)
