@@ -122,7 +122,7 @@ class JsonLogger(object):
 
     def resolve_error_type(self, exc, output, key, value):
         """Check the type of exception and log to dict."""
-        recid = output.get("recid", None) or output["legacy_recid"]
+        recid = output.get("recid", None) or output.get("record", {}).get("json", {}).get("id")
         rec_stats = self.stats[recid]
         rec_stats["clean"] = False
         if isinstance(exc, ManualImportRequired):
@@ -175,7 +175,7 @@ class JsonLogger(object):
                 " Contact CDS team to tune the query"
             )
         else:
-            raise exc
+           raise exc
 
 
 class RDMJsonLogger(JsonLogger):

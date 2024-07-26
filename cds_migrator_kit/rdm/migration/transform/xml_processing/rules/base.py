@@ -23,7 +23,7 @@ from ..quality.decorators import (
     require,
     strip_output,
 )
-from ..quality.parsers import clean_str
+from ..quality.parsers import clean_str, clean_val
 
 
 @model.over("legacy_recid", "^001")
@@ -138,3 +138,32 @@ def subjects(self, key, value):
         obj = {"subject": subject_e}
         if obj not in _subjects:
             _subjects.append(obj)
+
+
+@model.over("_created", "(^916__)|(^595__)")
+@strip_output
+def created(self, key, value):
+    """Translates created information to fields."""
+    _created_by = self.get("created_by", {})
+    if key == "916__":
+        if "s" in value:
+            source = clean_val("s", value, str)
+            if source != "n":
+                raise UnexpectedValue(subfield="s")
+            date_values = clean_val(
+                "w", value, int, regex_format=r"^\d{6}$", multiple_values=True
+            )
+            if not date_values or not date_values[0]:
+                return datetime.date.today().isoformat()
+            date = min(date_values)
+            if not (100000 < date < 999999):
+                raise UnexpectedValue("Wrong date format", subfield="w")
+            if date:
+                year, week = str(date)[:4], str(date)[4:]
+                date = get_week_start(int(year), int(week))
+                if date < datetime.date.today():
+                    return date.isoformat()
+                else:
+                    return datetime.date.today().isoformat()
+
+    raise IgnoreKey("_created")

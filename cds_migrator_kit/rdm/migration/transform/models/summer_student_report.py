@@ -32,66 +32,58 @@ class CMSSummerStudent(CdsOverdo):
     __query__ = "980__:NOTE 037__:CERN-STUDENTS-Note-*"
 
     __ignore_keys__ = {
-        "65017a",
-        "937__c",
-        "960__a",
-        "269__b",
-        "6531_a",
-        "906__p",
-        "269__a",
+        #"0247_2",  # DOI, summer student notes do not have it
+        #"0247_a",  # DOI
+        "0248_a",  # oai identifier, not needed to migrate, TBD
+        "0248_p",  # oai identifier, not needed to migrate, TBD
+        # "0248_q",  does appear
+        "035__9",  # Inspire schema
+        "035__a",  # Inspire id value
+        "246__a",  # explanation of abrreviations, TODO: shall we keep it in notes?
+        "246__i",  # abbreviation tag, applies to value of 246__A
+        "088__a",  # RN (manual introduced?)
         "100__0",
-        "100__u",  # Author affiliation
         "100__9",  # Author to check
-        "970__a",  # TODO: check it
+        "100__a",
+        "100__m",  # author's email <-- decided not to keep in RDM,
+        "100__m",  # author's email <-- decided not to keep in RDM,
+        "100__u",  # Author affiliation
+        "246__a",  # Abbreviation
+        "246__i",  # Abbreviation
+        # "270__m",
+        # "270__p",
+        # "500__a",  # Note
+        # "562__c",  # note
+        "595__a",    # always value CERN EDS, not displayed, TODO: do we keep?
+        "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it?
+        "650172",  # TODO TBD
+        "65017a",  # TODO TBD
+        "6531_9",
+        "6531_a",
+        # "693__a",
+        # "693__b",  # TODO: check it
+        # "693__e",
+        # "693__p",  # project
+        # "693__s",  # study
+        # "700__0",  # Contributors (cds author)
+        # "700__9",  # Contributors (?)
+        # "700__m",  # Contributors (email)
+        # "700__u",  # Contributors (affiliation?)
+        # "710__5",
+        # "710__a",
+        # "710__g",  # Collaboration
+        "8564_8",  # Files system field
+        "8564_s",  # Files system field
+        "8564_x",  # Files system field
+        "8564_y",  # Files
+        "859__f",  # creator's email, to be used to determine the owner ???
+        # "906__p", # probably supervisor TODO: check
+        # "916__s", # creation date
+        # "916__w", # creation date
+        "960__a",   # collection id? usuall y valu 12
+        "963__a",   # restriction
         "980__a",
         "980__c",  # TODO: remove this one, it should not appear
-        # '260__c',
-        "8564_s",  # Files
-        "8564_y",  # Files
-        "8564_x",  # Files
-        "8564_8",  # Files
-        "500__a",  # Note
-        "246__i",  # Abbreviation
-        "246__a",  # Abbreviation
-        "595__z",  # TODO: check it
-        "0248_q",  # TODO: check it
-        "700__9",  # Contributors (?)
-        "700__0",  # Contributors (cds author)
-        "700__u",  # Contributors (affiliation?)
-        "700__m",  # Contributors (email)
-        "693__s",  # study
-        "693__p",  # project
-        "693__b",  # TODO: check it
-        "088__a",  # RN (manual introduced?)
-        "0248_a",
-        "0248_p",
-        "0247_a",  # DOI
-        "0247_2",  # DOI
-        "710__g",  # Collaboration
-        "981__a",  # TODO: check it
-        "562__c",  # TODO: check it
-        "970__d",  # TODO: check it
-        "270__p",  # TODO: check it
-        "270__m",  # TODO: check it
-        "035__a",  # Inspire ref
-        "035__9",  # Inspire ref
-        "693__a",
-        "710__5",
-        "916__w",
-        "690C_a",
-        "595__a",
-        "693__e",
-        "650172",
-        "916__s",
-        "041__a",
-        "937__s",
-        "859__f",
-        "6531_9",
-        "520__a",
-        "963__a",
-        "710__a",
-        "100__a",
-        "100__m",
     }
     _default_fields = None
 

@@ -6,7 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM command line module."""
-
+import logging
 from pathlib import Path
 
 import click
@@ -15,7 +15,10 @@ from flask.cli import with_appcontext
 
 from cds_migrator_kit.rdm.migration.runner import Runner
 from cds_migrator_kit.rdm.migration.streams import RecordStreamDefinition
+from cds_migrator_kit.records.log import RDMJsonLogger
 
+cli_logger = logging.getLogger("migrator")
+migration_logger = RDMJsonLogger()
 
 @click.group()
 def migration():

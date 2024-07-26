@@ -16,14 +16,16 @@ from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordTransform,
 )
 
+
 from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     LossyConversion,
 )
-from cds_migrator_kit.records.log import RDMJsonLogger
 
-cli_logger = logging.getLogger("migrator")
-logger = RDMJsonLogger()
+
+CDS_DATACITE_PREFIXES = [
+    "10.17181"
+]
 
 
 class CDSToRDMRecordEntry(RDMRecordEntry):
@@ -81,7 +83,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         return {}
 
     def _pids(self, json_entry):
-        return {}
+        return []
+
 
     def _files(self, record_dump):
         """Transform the files of a record."""
@@ -126,14 +129,15 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
     def transform(self, entry):
         """Transform a record single entry."""
+        from cds_migrator_kit.rdm.migration.cli import migration_logger, cli_logger
         record_dump = CDSRecordDump(
             entry,
         )
         try:
-            logger.add_recid_to_stats(entry["recid"])
+            migration_logger.add_recid_to_stats(entry["recid"])
             record_dump.prepare_revisions()
             timestamp, json_data = record_dump.revisions[-1]
-            logger.add_record(json_data)
+            migration_logger.add_record(json_data)
             return {
                 "created": self._created(json_data),
                 "updated": self._updated(record_dump),
@@ -150,9 +154,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             }
         except LossyConversion as e:
             cli_logger.error("[DATA ERROR]: {0}".format(e.message))
-            logger.add_log(e, output=entry)
+            migration_logger.add_log(e, output=entry)
         except Exception as e:
-            logger.add_log(e, output=entry)
+            migration_logger.add_log(e, output=entry)
             raise e
         # TODO take only the last
 
@@ -183,7 +187,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 # loader is responsible for creating/updating if the PID exists.
                 "id": f'{record["json"]["id"]}-parent',
                 "access": {
-                    # "owned_by": [{"user": o} for o in entry["json"].get("owners", [])]
+                    "owned_by": {"user": "1"},
                 },
                 # "communities": self._community_id(entry, record),
             },
