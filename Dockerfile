@@ -47,13 +47,13 @@ WORKDIR ${WORKING_DIR}/src
 # install all dependencies
 RUN echo "Install app dependencies"
 RUN pip install ."[all]"
+# XRootD
+RUN pip install "invenio-xrootd==2.0.0a2"
+# /XRootD
 
 # Set folder permissions
 RUN chgrp -R 0 ${WORKING_DIR} && \
     chmod -R g=u ${WORKING_DIR}
 
-RUN useradd invenio --uid 1000 --gid 0 && \
-    chown -R invenio:root ${WORKING_DIR}
-USER 1000
 
 ENTRYPOINT [ "bash", "-c"]
