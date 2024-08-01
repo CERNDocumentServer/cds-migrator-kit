@@ -42,7 +42,8 @@ def results(rectype=None):
         logger = RDMJsonLogger()
         logger.load()
         template = "cds_migrator_kit_records/records.html"
-    except FileNotFoundError:
+
+    except FileNotFoundError as e:
         template = "cds_migrator_kit_records/rectype_missing.html"
 
     return render_template(

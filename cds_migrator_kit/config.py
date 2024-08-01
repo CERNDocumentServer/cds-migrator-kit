@@ -119,4 +119,6 @@ APP_DEFAULT_SECURE_HEADERS["content_security_policy"] = {}
 # ================
 CDS_MIGRATOR_KIT_BASE_TEMPLATE = "cds_migrator_kit_records/base.html"
 # Configuration overridden by env vars when deployed
-CDS_MIGRATOR_KIT_LOGS_PATH = "./tmp/logs/"
+base_path = os.path.dirname(os.path.realpath(__file__))
+logs_dir = os.path.join(base_path, "tmp/logs/")
+CDS_MIGRATOR_KIT_LOGS_PATH = logs_dir
