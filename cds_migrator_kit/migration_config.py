@@ -355,4 +355,4 @@ RDM_PERMISSION_POLICY = CDSRDMRecordPermissionPolicy
 base_path = os.path.dirname(os.path.realpath(__file__))
 logs_dir = os.path.join(base_path, "tmp/logs/")
 CDS_MIGRATOR_KIT_LOGS_PATH = logs_dir
-INVENIO_CDS_MIGRATOR_KIT_STREAM_CONFIG = "cds_migrator_kit/rdm/migration/streams.yaml"
+CDS_MIGRATOR_KIT_STREAM_CONFIG = "cds_migrator_kit/rdm/migration/streams.yaml"

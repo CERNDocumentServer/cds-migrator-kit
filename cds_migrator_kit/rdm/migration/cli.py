@@ -30,7 +30,7 @@ def migration():
 @with_appcontext
 def run():
     """Run."""
-    stream_config = current_app.config["INVENIO_CDS_MIGRATOR_KIT_STREAM_CONFIG"]
+    stream_config = current_app.config["CDS_MIGRATOR_KIT_STREAM_CONFIG"]
     runner = Runner(
         stream_definitions=[RecordStreamDefinition],
         config_filepath=Path(stream_config).absolute(),
