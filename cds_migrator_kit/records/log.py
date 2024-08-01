@@ -91,7 +91,6 @@ class JsonLogger(metaclass=Singleton):
 
     def __init__(self, stats_filename, records_filename):
         """Constructor."""
-
         self._logs_path = current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]
         self.stats = {}
         self.records = {}
