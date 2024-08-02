@@ -43,49 +43,95 @@ class CDSRecordServiceLoad(Load):
         """Prepare the record."""
         pass
 
-    def _load(self, entry):
-        """Use the services to load the entries."""
-        recid = entry.get("record", {}).get("json", {}).get("id")
+    def _load_files(self, draft, entry, version_files):
+        """Load files to draft."""
+        recid = entry.get("record", {}).get("recid", {})
         migration_logger = RDMJsonLogger()
         migration_logger.add_recid_to_stats(recid)
+
         identity = system_identity  # Should we create an identity for the migration?
-        draft = current_rdm_records_service.create(identity, entry["record"]["json"])
+
+        filename = next(iter(version_files))
+        file = version_files[filename]
+
+        try:
+            current_rdm_records_service.draft_files.init_files(
+                identity,
+                draft.id,
+                data=[
+                    {
+                        "key": file["key"],
+                        "metadata": file["metadata"],
+                        "access": {"hidden": False},
+                    }
+                ],
+            )
+            current_rdm_records_service.draft_files.set_file_content(
+                identity,
+                draft.id,
+                file["key"],
+                import_legacy_files(file["eos_tmp_path"]),
+            )
+            result = current_rdm_records_service.draft_files.commit_file(
+                identity, draft.id, file["key"]
+            )
+            legacy_checksum = f"md5:{file['checksum']}"
+            new_checksum = result.to_dict()["checksum"]
+            assert legacy_checksum == new_checksum
+        except Exception as e:
+            exc = ManualImportRequired(message=str(e), field="filename",
+                                       value=file["key"])
+            migration_logger.add_log(exc, output=entry)
+
+    def _load_access(self, draft, entry):
+        """Load access rights."""
         parent = draft._record.parent
         access = entry["parent"]["json"]["access"]
         parent.access = access
         parent.commit()
         db.session.commit()
-        draft_files = entry["draft_files"]
 
-        for file in draft_files:
-            try:
-                current_rdm_records_service.draft_files.init_files(
-                    identity,
-                    draft.id,
-                    data=[
-                        {
-                            "key": file["key"],
-                            "metadata": file["metadata"],
-                            "access": {"hidden": False},
-                        }
-                    ],
-                )
-                current_rdm_records_service.draft_files.set_file_content(
-                    identity,
-                    draft.id,
-                    file["key"],
-                    import_legacy_files(file["eos_tmp_path"]),
-                )
-                result = current_rdm_records_service.draft_files.commit_file(
-                    identity, draft.id, file["key"]
-                )
-                legacy_checksum = f"md5:{file['checksum']}"
-                new_checksum = result.to_dict()["checksum"]
-                assert legacy_checksum == new_checksum
-            except Exception as e:
-                exc = ManualImportRequired(message=str(e))
-                migration_logger.add_log(exc, output=entry)
-        current_rdm_records_service.publish(system_identity, draft["id"])
+    def _load_versions(self, draft, entry):
+        """Load other versions of the record."""
+        draft_files = entry["draft_files"]
+        for version in draft_files.keys():
+            file_dict = draft_files.get(version)
+            if version == 1:
+                self._load_files(draft, entry, file_dict)
+            else:
+                draft = current_rdm_records_service.new_version(system_identity,
+                                                                draft["id"])
+
+                self._load_files(draft, entry, file_dict)
+                filename = next(iter(file_dict))
+                file = file_dict[filename]
+                missing_data = {
+                    "metadata": {**draft.to_dict()["metadata"],
+                                 "publication_date": file["creation_date"]}
+                }
+
+                draft = current_rdm_records_service.update_draft(system_identity,
+                                                                 draft["id"],
+                                                                 data=missing_data)
+            record = current_rdm_records_service.publish(system_identity,
+                                                         draft["id"])
+
+    def _load(self, entry):
+        """Use the services to load the entries."""
+        recid = entry.get("record", {}).get("recid", {})
+        migration_logger = RDMJsonLogger()
+        migration_logger.add_recid_to_stats(recid)
+        identity = system_identity  # Should we create an identity for the migration?
+
+        draft = current_rdm_records_service.create(identity,
+                                                   data=entry["record"]["json"])
+
+        try:
+            self._load_access(draft, entry)
+            self._load_versions(draft, entry)
+        except Exception as e:
+            exc = ManualImportRequired(message=str(e), field="validation")
+            migration_logger.add_log(exc, output=entry)
 
     def _cleanup(self, *args, **kwargs):
         """Cleanup the entries."""

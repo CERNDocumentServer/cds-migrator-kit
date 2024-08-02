@@ -14,7 +14,7 @@ from cds_migrator_kit.rdm.migration.handlers import migration_exception_handler
 from cds_migrator_kit.rdm.migration.transform import migrator_marc21
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     MissingRequiredField,
-    UnexpectedValue,
+    UnexpectedValue, LossyConversion,
 )
 
 
@@ -79,8 +79,8 @@ class CDSRecordDump:
             )
         except Exception as e:
             raise e
-            # raise JSONConversionException(e)
         missing = self.dojson_model.missing(marc_record)
+        # TODO uncomment to see the missing rules
         # if missing:
         #     raise LossyConversion(missing=missing)
         return timestamp, json_converted_record
