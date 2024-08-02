@@ -9,8 +9,10 @@
 
 import datetime
 import logging
+from collections import OrderedDict
 from pathlib import Path
 
+import arrow
 from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
@@ -22,7 +24,7 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
 )
 from cds_migrator_kit.records.log import RDMJsonLogger
 
-CDS_DATACITE_PREFIXES = ["10.17181"]
+cli_logger = logging.getLogger("migrator")
 
 
 class CDSToRDMRecordEntry(RDMRecordEntry):
@@ -139,9 +141,11 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "updated": self._updated(record_dump),
                 "version_id": self._version_id(record_dump),
                 "index": self._index(record_dump),
+                "recid": self._recid(record_dump),
                 # "communities": self._communities(json_data),
                 "json": {
-                    "id": self._recid(record_dump),
+                    "created": self._created(json_data),
+                    "updated": self._updated(record_dump),
                     "pids": self._pids(json_data),
                     "files": self._files(record_dump),
                     "metadata": self._metadata(json_data),
@@ -181,7 +185,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             "version_id": record["version_id"],
             "json": {
                 # loader is responsible for creating/updating if the PID exists.
-                "id": f'{record["json"]["id"]}-parent',
+                "id": f'{record["recid"]}-parent',
                 "access": {
                     "owned_by": {"user": "1"},
                 },
@@ -217,22 +221,40 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
     def _draft_files(self, entry):
         """Point to temporary eos storage to import files from."""
         _files = entry["files"]
-        draft_files = []
+        draft_files = OrderedDict()
         legacy_path_root = Path("/opt/cdsweb/var/data/files/")
         tmp_eos_root = Path(self.files_dump_dir)
 
         for file in _files:
             full_path = Path(file["full_path"])
-            draft_files.append(
-                {
+
+            if file["version"] not in draft_files:
+                draft_files[file["version"]] = {}
+
+            # group files by version
+            # {"1": {"filename": {...}}
+            draft_files[file["version"]].update(
+                {file["full_name"]: {
                     "eos_tmp_path": tmp_eos_root
-                    / full_path.relative_to(legacy_path_root),
+                                    / full_path.relative_to(legacy_path_root),
                     "key": file["full_name"],
                     "metadata": {},
                     "mimetype": file["mime"],
                     "checksum": file["checksum"],
+                    "version": file["version"],
+                    "access": file["status"],
+                    "type": file["type"],
+                    "creation_date": arrow.get(file["creation_date"]).date().isoformat()
+                }
                 }
             )
+        versioned_files = {}
+
+        # creates a collection of files per each version
+        for version in draft_files.keys():
+            versioned_files |= draft_files.get(version)
+            draft_files[version] = versioned_files
+
         return draft_files
 
     def _record_files(self, entry, record):

@@ -133,8 +133,8 @@ class JsonLogger(metaclass=Singleton):
     def resolve_error_type(self, exc, output, key, value):
         """Check the type of exception and log to dict."""
         recid = output.get("recid", None) or output.get("record", {}).get(
-            "json", {}
-        ).get("id")
+            "recid", {}
+        )
         rec_stats = self.stats[recid]
         rec_stats["clean"] = False
         if isinstance(exc, ManualImportRequired):
