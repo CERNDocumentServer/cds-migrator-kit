@@ -25,7 +25,9 @@ class CDSMigrationException(DoJSONException):
 
     message = None
 
-    def __init__(self, message=None, field=None, subfield=None, value=None, *args, **kwargs):
+    def __init__(
+        self, message=None, field=None, subfield=None, value=None, *args, **kwargs
+    ):
         """Constructor."""
         self.subfield = subfield
         self.field = field

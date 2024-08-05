@@ -79,8 +79,9 @@ class CDSRecordServiceLoad(Load):
             new_checksum = result.to_dict()["checksum"]
             assert legacy_checksum == new_checksum
         except Exception as e:
-            exc = ManualImportRequired(message=str(e), field="filename",
-                                       value=file["key"])
+            exc = ManualImportRequired(
+                message=str(e), field="filename", value=file["key"]
+            )
             migration_logger.add_log(exc, output=entry)
 
     def _load_access(self, draft, entry):
@@ -99,22 +100,24 @@ class CDSRecordServiceLoad(Load):
             if version == 1:
                 self._load_files(draft, entry, file_dict)
             else:
-                draft = current_rdm_records_service.new_version(system_identity,
-                                                                draft["id"])
+                draft = current_rdm_records_service.new_version(
+                    system_identity, draft["id"]
+                )
 
                 self._load_files(draft, entry, file_dict)
                 filename = next(iter(file_dict))
                 file = file_dict[filename]
                 missing_data = {
-                    "metadata": {**draft.to_dict()["metadata"],
-                                 "publication_date": file["creation_date"]}
+                    "metadata": {
+                        **draft.to_dict()["metadata"],
+                        "publication_date": file["creation_date"],
+                    }
                 }
 
-                draft = current_rdm_records_service.update_draft(system_identity,
-                                                                 draft["id"],
-                                                                 data=missing_data)
-            record = current_rdm_records_service.publish(system_identity,
-                                                         draft["id"])
+                draft = current_rdm_records_service.update_draft(
+                    system_identity, draft["id"], data=missing_data
+                )
+            record = current_rdm_records_service.publish(system_identity, draft["id"])
 
     def _load(self, entry):
         """Use the services to load the entries."""
@@ -123,8 +126,9 @@ class CDSRecordServiceLoad(Load):
         migration_logger.add_recid_to_stats(recid)
         identity = system_identity  # Should we create an identity for the migration?
 
-        draft = current_rdm_records_service.create(identity,
-                                                   data=entry["record"]["json"])
+        draft = current_rdm_records_service.create(
+            identity, data=entry["record"]["json"]
+        )
 
         try:
             self._load_access(draft, entry)
