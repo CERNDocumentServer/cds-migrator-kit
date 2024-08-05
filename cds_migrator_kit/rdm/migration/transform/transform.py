@@ -234,18 +234,21 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             # group files by version
             # {"1": {"filename": {...}}
             draft_files[file["version"]].update(
-                {file["full_name"]: {
-                    "eos_tmp_path": tmp_eos_root
-                                    / full_path.relative_to(legacy_path_root),
-                    "key": file["full_name"],
-                    "metadata": {},
-                    "mimetype": file["mime"],
-                    "checksum": file["checksum"],
-                    "version": file["version"],
-                    "access": file["status"],
-                    "type": file["type"],
-                    "creation_date": arrow.get(file["creation_date"]).date().isoformat()
-                }
+                {
+                    file["full_name"]: {
+                        "eos_tmp_path": tmp_eos_root
+                        / full_path.relative_to(legacy_path_root),
+                        "key": file["full_name"],
+                        "metadata": {},
+                        "mimetype": file["mime"],
+                        "checksum": file["checksum"],
+                        "version": file["version"],
+                        "access": file["status"],
+                        "type": file["type"],
+                        "creation_date": arrow.get(file["creation_date"])
+                        .date()
+                        .isoformat(),
+                    }
                 }
             )
         versioned_files = {}
