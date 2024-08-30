@@ -14,6 +14,10 @@ from dojson.utils import force_list
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     UnexpectedValue,
 )
+from invenio_records_resources.proxies import current_service_registry
+from invenio_access.permissions import system_identity
+
+
 
 # "contributors": {
 #   "description": "Contributors in order of importance.",
@@ -124,11 +128,25 @@ def get_contributor_role(subfield, role, raise_unexpected=False):
     return translations[clean_role].lower()
 
 
+def get_contributor_affiliations(info):
+    aff_results = []
+    affiliations = force_list(info.get("u", ""))
+
+    service = current_service_registry.get("affiliations")
+
+    for affiliation_name in affiliations:
+        vocabulary_result = service.search(system_identity, params={"q": affiliation_name}).to_dict()
+        aff_results.append({"name": affiliation_name, "id": vocabulary_result["hits"]["hits"][0]["id"]})
+
+    return aff_results
+
+
 def extract_json_contributor_ids(info):
     """Extract author IDs from MARC tags."""
     SOURCES = {
         "AUTHOR|(INSPIRE)": "inspire",
         "AUTHOR|(CDS)": "cds",
+        # "AUTHOR|(SzGeCERN)": "CERN", --> ?
     }
     regex = re.compile(r"(AUTHOR\|\((INSPIRE|CDS)\))(.*)")
     ids = []

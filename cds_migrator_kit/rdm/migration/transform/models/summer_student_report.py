@@ -44,12 +44,13 @@ class CMSSummerStudent(CdsOverdo):
         "088__a",  # RN (manual introduced?)
         "100__0",
         "100__9",  # Author to check
-        "100__a",
+        # "100__a",
         "100__m",  # author's email <-- decided not to keep in RDM,
         "100__m",  # author's email <-- decided not to keep in RDM,
-        "100__u",  # Author affiliation
+        # "100__u",  # Author affiliation
         "246__a",  # Abbreviation
         "246__i",  # Abbreviation
+        "260__c",  # Redundant (more detailed value is in 269__c)
         # "270__m",
         # "270__p",
         # "500__a",  # Note
@@ -63,6 +64,7 @@ class CMSSummerStudent(CdsOverdo):
         # "693__a",
         # "693__b",  # TODO: check it
         # "693__e",
+        # "693__f",
         # "693__p",  # project
         # "693__s",  # study
         # "700__0",  # Contributors (cds author)
