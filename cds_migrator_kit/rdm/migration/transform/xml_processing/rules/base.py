@@ -12,9 +12,9 @@ import datetime
 import pycountry
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
-
+from dateutil.parser import parse
 from ...models.base import model
-from ..contributors import extract_json_contributor_ids, get_contributor_role
+from ..contributors import extract_json_contributor_ids, get_contributor_role, get_contributor_affiliations
 from ..dates import get_week_start
 from ..errors import UnexpectedValue
 from ..quality.decorators import (
@@ -73,12 +73,85 @@ def title(self, key, value):
     return value.get("a", "TODO")
 
 
+abbreviations = []
+
+
+@model.over("description", "^246__")
+def description(self, key, value):
+    """Translates description."""
+    is_abbreviation = value.get("i") == "Abbreviation"
+    abbreviations.append(value.get("a"))
+
+    if is_abbreviation:
+        return "Abbreviations: " + "; ".join(abbreviations)
+
+    return
+
+
+@model.over("additional_descriptions", "(^500__)|(^520__)")
+@for_each_value
+@require(["a"])
+def additional_descriptions(self, key, value):
+    """Translates additional description."""
+    description_text = value.get("a")
+
+    if key == "500__":
+        additional_description = {
+            "description": description_text,
+            "type": {
+                "id": "other",  # what's with the lang
+            }
+        }
+    elif key == "520__":
+        additional_description = {
+            "description": description_text,
+            "type": {
+                "id": "abstract",  # what's with the lang
+            }
+        }
+
+    return additional_description
+
+
+@model.over("imprint", "^269__")
+def imprint(self, key, value):
+    """Translates imprint - WARNING - also publisher and publication_date."""
+
+    imprint = {
+        "place": value.get("a"),
+    }
+
+    if not self.get("publication_date"):
+        publication_date(self, key, value)
+
+    if not self.get("publisher"):
+        publisher(self, key, value)
+
+    return imprint
+
+
+def publisher(self, key, value):
+    """Translates publisher."""
+    self["publisher"] = value.get("b")
+    return
+
+
+def publication_date(self, key, value):
+    """Translates publication_date."""
+    publication_date_str = value.get("c")
+    date_obj = parse(publication_date_str)
+
+    self["publication_date"] = date_obj.strftime("%Y-%m-%d")
+    return
+
+
 @model.over("creators", "^100__")
 @for_each_value
 @require(["a"])
 def creators(self, key, value):
     """Translates the creators field."""
     role = get_contributor_role("e", value.get("e", "author"))
+    affiliations = get_contributor_affiliations(value)
 
     contributor = {
         "person_or_org": {
@@ -89,6 +162,9 @@ def creators(self, key, value):
     }
     if role:
         contributor.update({"role": {"id": role}})  # VOCABULARY ID
+
+    if affiliations:
+        contributor.update({"affiliations": affiliations})
 
     return contributor
 
@@ -123,23 +199,45 @@ def languages(self, key, value):
         raise UnexpectedValue(field=key, subfield="a")
 
 
-@model.over("subjects", "^693__")
+@model.over("subjects", "(^693__)|(^650[1_][7_])|(^653[1_]_)")
 @require(["a"])
 @filter_list_values
 def subjects(self, key, value):
-    """Translates languages fields."""
+    """Translates subjects fields."""
     _subjects = self.get("subjects", [])
-    subject_a = value.get("a")
-    subject_e = value.get("e")
 
-    if subject_a:
-        obj = {"subject": subject_a}
-        if obj not in _subjects:
-            _subjects.append(obj)
-    if subject_e:
-        obj = {"subject": subject_e}
-        if obj not in _subjects:
-            _subjects.append(obj)
+    if key == "693__":
+        subject_a = value.get("a")
+        subject_e = value.get("e")
+
+        if subject_a:
+            obj = {"subject": subject_a}
+            if obj not in _subjects:
+                _subjects.append(obj)
+        if subject_e:
+            obj = {"subject": subject_e}
+            if obj not in _subjects:
+                _subjects.append(obj)
+
+    if key == "65017":
+        subject_value = value.get("a")
+        subject = {
+            "id": subject_value,
+            "subject": subject_value,
+            "scheme": "CERN",
+        }
+        _subjects.append(subject)
+
+    if key == "6531_":
+        subject_value = value.get("a")
+        subject = {
+            "id": subject_value,
+            "subject": subject_value,
+            "scheme": "CERN",
+        }
+        _subjects.append(subject)
+
+    return _subjects
 
 
 @model.over("_created", "(^916__)|(^595__)")
