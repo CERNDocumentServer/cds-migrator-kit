@@ -15,7 +15,6 @@ from cds_rdm.permissions import (
     CDSCommunitiesPermissionPolicy,
     CDSRDMRecordPermissionPolicy,
 )
-from celery.schedules import crontab
 from invenio_app_rdm.config import CELERY_BEAT_SCHEDULE as APP_RDM_CELERY_BEAT_SCHEDULE
 from invenio_app_rdm.config import *
 from invenio_i18n import lazy_gettext as _

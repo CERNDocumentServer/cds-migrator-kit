@@ -49,12 +49,14 @@ def created(self, key, value):
     date_values = value.get("w")
     if not date_values or not date_values[0]:
         return datetime.date.today().isoformat()
-    date = min(date_values)
+    if isinstance(date_values, list):
+        date = min(date_values)
+    else:
+        date = int(date_values)
     try:
         if date:
             if not (100000 < int(date) < 999999):
-                raise IgnoreKey
-                # raise UnexpectedValue("Wrong date format", field=key, subfield='w')
+                raise UnexpectedValue("Wrong date format", field=key, subfield='w')
             year, week = str(date)[:4], str(date)[4:]
             date = get_week_start(int(year), int(week))
             if date < datetime.date.today():

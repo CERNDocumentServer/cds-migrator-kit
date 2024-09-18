@@ -121,4 +121,4 @@ CDS_MIGRATOR_KIT_BASE_TEMPLATE = "cds_migrator_kit_records/base.html"
 # Configuration overridden by env vars when deployed
 base_path = os.path.dirname(os.path.realpath(__file__))
 logs_dir = os.path.join(base_path, "tmp/logs/")
-CDS_MIGRATOR_KIT_LOGS_PATH = logs_dir
+CDS_MIGRATOR_KIT_LOGS_PATH = os.environ.get("INVENIO_CDS_MIGRATOR_KIT_LOGS_PATH") or logs_dir

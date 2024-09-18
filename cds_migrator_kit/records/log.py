@@ -112,6 +112,8 @@ class JsonLogger(metaclass=Singleton):
     def save(self):
         """Save stats from file as json."""
         logger = logging.getLogger("migrator-rules")
+        # TODO to use this function on each record, not at the end of migration
+        # TODO check if there is any json logger in logging package
         logger.warning(self.STAT_FILEPATH)
         with open(self.STAT_FILEPATH, "w") as f:
             json.dump(self.stats, f)
