@@ -51,7 +51,7 @@ class CDSRecordServiceLoad(Load):
 
         identity = system_identity  # Should we create an identity for the migration?
 
-        # take first file for the first version
+        # take first file for the fist version
         filename = next(iter(version_files))
 
         file = version_files[filename]
