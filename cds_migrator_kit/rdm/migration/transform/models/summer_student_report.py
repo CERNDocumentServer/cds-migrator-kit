@@ -61,16 +61,17 @@ class CMSSummerStudent(CdsOverdo):
         "65017a",  # TODO TBD
         "6531_9",
         "6531_a",
-        # "693__a",
-        # "693__b",  # TODO: check it
-        # "693__e",
-        # "693__f",
+        # "693__a", # accelerator
+        # "693__b", # value 'H4' in 1 record: 2640381
+        # "693__e", # experiment
+        # "693__f", # facility
         # "693__p",  # project
         # "693__s",  # study
-        # "700__0",  # Contributors (cds author)
-        # "700__9",  # Contributors (?)
+        # "700__0",  # Contributors (cds author id) - TBD if we keep
+        # "700__a",  # Contributors (full name)
+        # "700__9",  # Contributors (?) - value '#BEARD#' in some records - to ignore
         # "700__m",  # Contributors (email)
-        # "700__u",  # Contributors (affiliation?)
+        # "700__u",  # Contributors (affiliation)
         # "710__5",
         # "710__a",
         # "710__g",  # Collaboration
