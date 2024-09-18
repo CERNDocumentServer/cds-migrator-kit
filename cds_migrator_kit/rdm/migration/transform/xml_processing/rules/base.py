@@ -13,6 +13,7 @@ import pycountry
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 from dateutil.parser import parse
+from dateutil.parser._parser import ParserError
 from ...models.base import model
 from ..contributors import extract_json_contributor_ids, get_contributor_role, get_contributor_affiliations
 from ..dates import get_week_start
@@ -85,7 +86,7 @@ def description(self, key, value):
     if is_abbreviation:
         return "Abbreviations: " + "; ".join(abbreviations)
 
-    return
+    raise IgnoreKey("description")
 
 
 @model.over("additional_descriptions", "(^500__)|(^520__)")
@@ -132,17 +133,22 @@ def imprint(self, key, value):
 
 def publisher(self, key, value):
     """Translates publisher."""
-    self["publisher"] = value.get("b")
-    return
+    publisher = value.get("b")
+    if publisher:
+        self["publisher"] = publisher
+    else:
+        raise IgnoreKey("publisher")
 
 
 def publication_date(self, key, value):
     """Translates publication_date."""
     publication_date_str = value.get("c")
-    date_obj = parse(publication_date_str)
-
-    self["publication_date"] = date_obj.strftime("%Y-%m-%d")
-    return
+    try:
+        date_obj = parse(publication_date_str)
+        self["publication_date"] = date_obj.strftime("%Y-%m-%d")
+        return
+    except ParserError:
+        raise UnexpectedValue(field="publication_date", message=f"Can't parse provided publication date. Value: {publication_date_str}")
 
 
 @model.over("creators", "^100__")
@@ -221,21 +227,23 @@ def subjects(self, key, value):
 
     if key == "65017":
         subject_value = value.get("a")
-        subject = {
-            "id": subject_value,
-            "subject": subject_value,
-            "scheme": "CERN",
-        }
-        _subjects.append(subject)
+        if subject_value:
+            subject = {
+                "id": subject_value,
+                "subject": subject_value,
+                "scheme": "CERN", # also not cern
+            }
+            _subjects.append(subject)
 
     if key == "6531_":
         subject_value = value.get("a")
-        subject = {
-            "id": subject_value,
-            "subject": subject_value,
-            "scheme": "CERN",
-        }
-        _subjects.append(subject)
+        if subject_value:
+            subject = {
+                "id": subject_value,
+                "subject": subject_value,
+                "scheme": "CERN",
+            }
+            _subjects.append(subject)
 
     return _subjects
 

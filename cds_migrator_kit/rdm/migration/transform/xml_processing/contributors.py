@@ -10,7 +10,7 @@
 import re
 
 from dojson.utils import force_list
-
+from dojson.errors import IgnoreKey
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     UnexpectedValue,
 )
@@ -130,15 +130,22 @@ def get_contributor_role(subfield, role, raise_unexpected=False):
 
 def get_contributor_affiliations(info):
     aff_results = []
-    affiliations = force_list(info.get("u", ""))
+    affiliations = force_list(info.get("u", None))
 
     service = current_service_registry.get("affiliations")
 
-    for affiliation_name in affiliations:
-        vocabulary_result = service.search(system_identity, params={"q": affiliation_name}).to_dict()
-        aff_results.append({"name": affiliation_name, "id": vocabulary_result["hits"]["hits"][0]["id"]})
+    if affiliations:
+        for affiliation_name in affiliations:
+            vocabulary_result = service.search(system_identity, params={"q": affiliation_name}).to_dict()
+            affiliation_hits = vocabulary_result["hits"]
+            if affiliation_hits["total"] == 0:
+                raise UnexpectedValue(field="creators", subfield="affiliations", message=f"No affiliation found by the name: {affiliation_name}")
+            else:
+                aff_results.append({"name": affiliation_name, "id": affiliation_hits["hits"][0]["id"]})
 
-    return aff_results
+        return aff_results
+    else:
+        raise IgnoreKey("affiliations")
 
 
 def extract_json_contributor_ids(info):
