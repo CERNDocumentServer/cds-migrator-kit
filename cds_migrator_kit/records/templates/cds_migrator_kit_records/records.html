@@ -40,7 +40,7 @@
         <td>
           {% for val in stat.manual_migration %}
             <span data-toggle="tooltip" data-placement="left" title="{{ val.message }}">
-              {{ val.key }}{{ val.subfield or '' }}: <code>{{ val.value }}</code>
+              <code>{{ val.message }}</code>
             </span><br />
           {% endfor %}
         </td>
@@ -53,7 +53,8 @@
         </td>
         <td>
           {% if not stat.lost_data %}
-            <a href="/record/{{ stat.recid }}">View</a>
+            <a href="/record/{{ stat.recid }}">View JSON</a> |
+            <a href="{{ config.CDS_MIGRATOR_KIT_SITE_UI_URL }}/legacy/{{ stat.recid }}">View record</a>
           {% endif %}
         </td>
       </tr>

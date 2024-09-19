@@ -6,12 +6,78 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM migration data cleaning module."""
+import re
+from abc import ABC, abstractmethod
+
 from dojson.utils import force_list
 
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     MissingRequiredField,
     UnexpectedValue,
 )
+
+
+class MarcValue(ABC):
+    def __init__(self, raw_value, required_type, subfield=None, required=False,
+                 default_value=None):
+        """Constructor."""
+        if subfield:
+            self.raw_value = raw_value.get(subfield)
+        else:
+            self.raw_value = raw_value
+        self.casted_value = None
+        self.required_type = required_type
+        self.default_value = default_value
+        self.parsed_value = None
+        self.is_required = required
+        self.subfield = subfield
+
+    def type(self):
+        """Require type."""
+        self.casted_value = self.required_type(self.raw_value)
+        return self.casted_value
+
+    def required(self):
+        """Check if value present if required."""
+        if ((
+            not self.raw_value or not self.parsed_value)
+            and self.is_required and not self.default_value):
+            raise MissingRequiredField(subfield=self.subfield, value=self.raw_value)
+        return self.is_required
+
+    def default(self):
+        return self.default
+
+    @abstractmethod
+    def _clean(self):
+        pass
+
+    def parse(self):
+        self.parsed_value = self._clean()
+        self.required()
+        self.parsed_value = self.type()
+        self.parsed_value = self._clean()
+        return self
+
+class StringValue(MarcValue):
+
+    def _clean(self):
+        return self.raw_value.strip()
+
+    def filter_regex(self, regex):
+        return re.sub(regex, '', self.parsed_value, flags=re.UNICODE)
+
+
+
+class ListValue(MarcValue):
+    def type(self):
+        self.casted_value = force_list(self.raw_value)
+        return super().type()
+
+    def _clean(self):
+        for value in self.casted_value:
+            # list of type
+            self.required_type(value).parse()
 
 
 def clean_str(to_clean):
