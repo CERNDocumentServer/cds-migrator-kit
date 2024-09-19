@@ -18,9 +18,9 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     ManualImportRequired,
 )
 from cds_migrator_kit.records.log import RDMJsonLogger
+from cds_rdm.minters import legacy_recid_minter
 
 cli_logger = logging.getLogger("migrator")
-
 
 def import_legacy_files(filepath):
     """Download file from legacy."""
@@ -102,7 +102,7 @@ class CDSRecordServiceLoad(Load):
             exc = ManualImportRequired(
                 message=str(e), field="filename", value=file["key"]
             )
-            migration_logger.add_log(exc, output=entry)
+            migration_logger.add_log(exc, output=entry, key="filename", value=file["key"])
 
     def _load_access(self, draft, entry):
         """Load access rights."""
@@ -137,6 +137,12 @@ class CDSRecordServiceLoad(Load):
                     system_identity, draft["id"], data=missing_data
                 )
             record = current_rdm_records_service.publish(system_identity, draft["id"])
+            # mint legacy ids for redirections
+            if version == 1:
+                # it seems more intuitive if we mint the lrecid for parent
+                # but then we get a double redirection
+                legacy_recid_minter(entry["record"]["recid"], record._record.parent.model.id)
+
 
     def _load_model_fields(self, draft, entry):
         """Load model fields of the record."""
@@ -149,20 +155,21 @@ class CDSRecordServiceLoad(Load):
 
     def _load(self, entry):
         """Use the services to load the entries."""
-        recid = entry.get("record", {}).get("recid", {})
-        migration_logger = RDMJsonLogger()
-        migration_logger.add_recid_to_stats(recid)
-        identity = system_identity  # Should we create an identity for the migration?
-        draft = current_rdm_records_service.create(
-            identity, data=entry["record"]["json"]
-        )
-        try:
-            self._load_model_fields(draft, entry)
+        if entry:
+            recid = entry.get("record", {}).get("recid", {})
+            migration_logger = RDMJsonLogger()
+            migration_logger.add_recid_to_stats(recid)
+            identity = system_identity  # Should we create an identity for the migration?
+            draft = current_rdm_records_service.create(
+                identity, data=entry["record"]["json"]
+            )
+            try:
+                self._load_model_fields(draft, entry)
 
-            self._load_versions(draft, entry)
-        except Exception as e:
-            exc = ManualImportRequired(message=str(e), field="validation")
-            migration_logger.add_log(exc, output=entry)
+                self._load_versions(draft, entry)
+            except Exception as e:
+                exc = ManualImportRequired(message=str(e), field="validation")
+                migration_logger.add_log(exc, output=entry)
 
     def _cleanup(self, *args, **kwargs):
         """Cleanup the entries."""

@@ -20,7 +20,7 @@ from invenio_rdm_migrator.streams.records.transform import (
 
 from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
-    LossyConversion,
+    LossyConversion, RestrictedFileDetected,
 )
 from cds_migrator_kit.records.log import RDMJsonLogger
 
@@ -127,11 +127,12 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
     def transform(self, entry):
         """Transform a record single entry."""
-        migration_logger = RDMJsonLogger()
+
         record_dump = CDSRecordDump(
             entry,
         )
         try:
+            migration_logger = RDMJsonLogger()
             migration_logger.add_recid_to_stats(entry["recid"])
             record_dump.prepare_revisions()
             timestamp, json_data = record_dump.revisions[-1]
@@ -164,7 +165,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 class CDSToRDMRecordTransform(RDMRecordTransform):
     """CDSToRDMRecordTransform."""
 
-    def __init__(self, workers=None, throw=False, files_dump_dir=None):
+    def __init__(self, workers=None, throw=True, files_dump_dir=None):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
         super().__init__(workers, throw)
@@ -202,14 +203,19 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         # since this is a low level tool used only by users
         # with deep system knowledge providing the flexibility
         # is future proofing and simplifying the interface
-        record = self._record(entry)
-        return {
-            "record": record,
-            "draft": self._draft(entry),
-            "parent": self._parent(entry, record),
-            "record_files": self._record_files(entry, record),
-            "draft_files": self._draft_files(entry),
-        }
+        migration_logger = RDMJsonLogger()
+        try:
+            record = self._record(entry)
+            if record:
+                return {
+                    "record": record,
+                    "draft": self._draft(entry),
+                    "parent": self._parent(entry, record),
+                    "record_files": self._record_files(entry, record),
+                    "draft_files": self._draft_files(entry),
+                }
+        except Exception as e:
+            migration_logger.add_log(e, output=entry)
 
     def _record(self, entry):
         # could be in draft as well, depends on how we decide to publish
@@ -233,7 +239,8 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
 
             # TODO other access types to be dealt later, for now we make sure
             # TODO that no restricted file goes through
-            assert file["status"] == ""
+            if file["status"]:
+                raise RestrictedFileDetected(value=file["full_name"])
             # group files by version
             # {"1": {"filename": {...}}
             draft_files[file["version"]].update(
@@ -267,6 +274,9 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         """Record files entries transform."""
         # TO implement if we decide not to go via draft publish
         return []
+
+    def run(self, entries):
+        return super().run(entries)
 
     #
     #

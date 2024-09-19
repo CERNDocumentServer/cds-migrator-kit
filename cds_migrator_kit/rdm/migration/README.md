@@ -138,7 +138,7 @@ current_rdm_records_service.indexer.bulk_index((rec.id for rec in records))
 ### To visualise the errors (locally):
 
 ```shell
-gunicorn -b :8080 --timeout 120 --graceful-timeout 60 cds_migrator_kit.app:app
+gunicorn -b :8080 --timeout 120 --graceful-timeout 60 cds_migrator_kit.app:app --reload --log-level debug --capture-output --access-logfile '-' --error-logfile '-'
 ```
 
 ### Full migration workflow of one collection

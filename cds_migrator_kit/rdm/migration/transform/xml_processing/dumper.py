@@ -67,21 +67,20 @@ class CDSRecordDump:
     def _prepare_revision(self, data):
         timestamp = arrow.get(data["modification_datetime"]).datetime
 
-        # exception_handlers = {
-        #     UnexpectedValue: migration_exception_handler,
-        #     MissingRequiredField: migration_exception_handler,
-        # }
+        exception_handlers = {
+            UnexpectedValue: migration_exception_handler,
+            MissingRequiredField: migration_exception_handler,
+        }
 
         marc_record = create_record(data["marcxml"])
         try:
             json_converted_record = self.dojson_model.do(
                 marc_record,
-                # exception_handlers=exception_handlers
+                exception_handlers=exception_handlers
             )
         except Exception as e:
             raise e
         missing = self.dojson_model.missing(marc_record)
-        # TODO uncomment to see the missing rules
-        # if missing:
-        #     raise LossyConversion(missing=missing)
+        if missing:
+            raise LossyConversion(missing=missing)
         return timestamp, json_converted_record

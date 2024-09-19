@@ -24,11 +24,3 @@ def same_issn(obj1, obj2):
 def compare_titles(title1, title2):
     """Return the ratio of the fuzzy comparison between two titles."""
     return fuzz.ratio(title1, title2)
-
-
-def clean_exception_message(message):
-    """Cleanup exception message."""
-    match = re.match(r"^(\[[^\]]*\])?(.*)$", message)
-    if match:
-        return match.group(2).strip().capitalize()
-    return message

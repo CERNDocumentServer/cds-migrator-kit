@@ -20,14 +20,8 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     LossyConversion,
     ManualImportRequired,
     MissingRequiredField,
-    UnexpectedValue,
+    UnexpectedValue, RestrictedFileDetected,
 )
-from cds_migrator_kit.records.utils import (
-    clean_exception_message,
-    compare_titles,
-    same_issn,
-)
-
 
 class Singleton(type):
     """Temporary solution for this logger."""
@@ -143,16 +137,16 @@ class JsonLogger(metaclass=Singleton):
                     key=key,
                     value=value,
                     subfield=exc.subfield,
-                    message=clean_exception_message(exc.message),
+                    message=str(exc.message),
                 )
             )
         elif isinstance(exc, UnexpectedValue):
             rec_stats["unexpected_value"].append(
                 dict(
-                    key=key,
+                    key=exc.__name__,
                     value=value,
                     subfield=exc.subfield,
-                    message=clean_exception_message(exc.message),
+                    message=str(exc.message),
                 )
             )
         elif isinstance(exc, MissingRequiredField):
@@ -161,7 +155,7 @@ class JsonLogger(metaclass=Singleton):
                     key=key,
                     value=value,
                     subfield=exc.subfield,
-                    message=clean_exception_message(exc.message),
+                    message=str(exc.message),
                 )
             )
         elif isinstance(exc, LossyConversion):
@@ -170,13 +164,17 @@ class JsonLogger(metaclass=Singleton):
                     key=key, value=value, missing=list(exc.missing), message=exc.message
                 )
             )
+        elif isinstance(exc, RestrictedFileDetected):
+            rec_stats["manual_migration"].append(
+                dict(
+                    subfield=exc.subfield,
+                    message=str(exc.message),
+                )
+            )
         elif isinstance(exc, ValidationError):
             rec_stats["missing_required_field"].append(
                 dict(
-                    value=exc.value,
-                    subfield=exc.subfield,
-                    missing=list(exc.missing),
-                    message=exc.message,
+                    message=str(exc.message),
                 )
             )
         elif isinstance(exc, KeyError):

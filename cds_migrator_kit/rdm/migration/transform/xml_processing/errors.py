@@ -33,7 +33,7 @@ class CDSMigrationException(DoJSONException):
         self.field = field
         self.value = value
 
-        self.message = f"{self.message}: {field}{subfield} ({message}"
+        self.message = f"{self.message}: {field}{subfield} ({message})"
 
         super(CDSMigrationException, self).__init__(*args)
 
@@ -60,3 +60,8 @@ class ManualImportRequired(CDSMigrationException):
     """The corresponding field should be manually migrated."""
 
     message = "[MANUAL IMPORT REQUIRED]"
+
+
+class RestrictedFileDetected(CDSMigrationException):
+
+    message = "[Restricted file detected]"

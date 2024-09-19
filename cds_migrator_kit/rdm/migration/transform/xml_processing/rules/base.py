@@ -15,7 +15,8 @@ from dojson.utils import filter_values, flatten, force_list
 from dateutil.parser import parse
 from dateutil.parser._parser import ParserError
 from ...models.base import model
-from ..contributors import extract_json_contributor_ids, get_contributor_role, get_contributor_affiliations
+from ..quality.contributors import extract_json_contributor_ids, get_contributor_role, \
+    get_contributor_affiliations
 from ..dates import get_week_start
 from ..errors import UnexpectedValue
 from ..quality.decorators import (
@@ -47,6 +48,10 @@ def agency_code(self, key, value):
 @require(["w"])
 def created(self, key, value):
     """Translates created information to fields."""
+    if "s" in value:
+        source = clean_val("s", value, str)
+        if source != "n":
+            raise UnexpectedValue(subfield="s")
     date_values = value.get("w")
     if not date_values or not date_values[0]:
         return datetime.date.today().isoformat()
@@ -74,17 +79,15 @@ def title(self, key, value):
     return value.get("a", "TODO")
 
 
-abbreviations = []
-
-
 @model.over("description", "^246__")
 def description(self, key, value):
     """Translates description."""
+    _abbreviations = []
     is_abbreviation = value.get("i") == "Abbreviation"
-    abbreviations.append(value.get("a"))
+    _abbreviations.append(value.get("a"))
 
     if is_abbreviation:
-        return "Abbreviations: " + "; ".join(abbreviations)
+        return "Abbreviations: " + "; ".join(_abbreviations)
 
     raise IgnoreKey("description")
 
@@ -246,32 +249,3 @@ def subjects(self, key, value):
             _subjects.append(subject)
 
     return _subjects
-
-
-@model.over("_created", "(^916__)|(^595__)")
-@strip_output
-def created(self, key, value):
-    """Translates created information to fields."""
-    _created_by = self.get("created_by", {})
-    if key == "916__":
-        if "s" in value:
-            source = clean_val("s", value, str)
-            if source != "n":
-                raise UnexpectedValue(subfield="s")
-            date_values = clean_val(
-                "w", value, int, regex_format=r"^\d{6}$", multiple_values=True
-            )
-            if not date_values or not date_values[0]:
-                return datetime.date.today().isoformat()
-            date = min(date_values)
-            if not (100000 < date < 999999):
-                raise UnexpectedValue("Wrong date format", subfield="w")
-            if date:
-                year, week = str(date)[:4], str(date)[4:]
-                date = get_week_start(int(year), int(week))
-                if date < datetime.date.today():
-                    return date.isoformat()
-                else:
-                    return datetime.date.today().isoformat()
-
-    raise IgnoreKey("_created")

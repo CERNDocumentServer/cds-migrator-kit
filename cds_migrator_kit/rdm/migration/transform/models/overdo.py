@@ -80,7 +80,7 @@ class CdsOverdo(Overdo):
                 if exc.__class__ in handlers:
                     handler = handlers[exc.__class__]
                     if handler is not None:
-                        handler(exc, output, key, value, rectype=self.rectype)
+                        handler(exc, output, key, value)
                 else:
                     raise exc
         return output
