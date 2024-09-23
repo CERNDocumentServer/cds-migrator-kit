@@ -101,9 +101,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 return [
                     {
                         "person_or_org": {
-                            "identifiers": [
-                                {"identifier": "0000-0002-1825-0097", "scheme": "orcid"}
-                            ],
                             "given_name": "unknown",
                             "name": "unknown",
                             "family_name": "unknown",
@@ -116,18 +113,16 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             t = "publication-technicalnote"
             st = None
             return {"id": f"{t}-{st}"} if st else {"id": t}
-
         return {
             "creators": creators(json_entry),
             "title": json_entry["title"],
             "resource_type": _resource_type(json_entry),
-            "description": json_entry.get("description", ""),
-            "publication_date": "2024-07-11",
+            "description": json_entry.get("description"),
+            "publication_date": json_entry.get("publication_date"),
         }
 
     def transform(self, entry):
         """Transform a record single entry."""
-
         record_dump = CDSRecordDump(
             entry,
         )

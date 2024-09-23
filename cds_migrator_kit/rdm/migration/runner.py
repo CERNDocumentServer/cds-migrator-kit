@@ -27,7 +27,7 @@ class Runner:
         with open(filepath) as f:
             return yaml.safe_load(f)
 
-    def __init__(self, stream_definitions, config_filepath):
+    def __init__(self, stream_definitions, config_filepath, dry_run):
         """Constructor."""
         config = self._read_config(config_filepath)
 
@@ -98,6 +98,7 @@ class Runner:
                             data_dir=data_dir,
                             tmp_dir=tmp_dir,
                             existing_data=existing_data,
+                            dry_run=dry_run,
                             **stream_config.get("load", {}),
                         ),
                     )

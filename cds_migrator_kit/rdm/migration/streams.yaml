@@ -5,6 +5,12 @@ log_dir: cds_migrator_kit/rdm/migration/log
 db_uri: postgresql://cds-rdm:cds-rdm@localhost:5432/cds-rdm
 old_secret_key: CHANGE_ME
 new_secret_key: CHANGE_ME
+#users:
+#  extract:
+#    filepath: cds_migrator_kit/rdm/migration/data/users/active_users.json
+#  load:
+#    db_uri: postgresql://cds-rdm:cds-rdm@localhost:5432/cds-rdm
+#    tmp_dir: site/cds_rdm/migration/data/transform
 records:
   extract:
     dirpath: cds_migrator_kit/rdm/migration/data/summer_student_reports/dump/

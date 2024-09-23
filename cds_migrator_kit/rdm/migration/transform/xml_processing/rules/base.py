@@ -51,7 +51,7 @@ def created(self, key, value):
     if "s" in value:
         source = clean_val("s", value, str)
         if source != "n":
-            raise UnexpectedValue(subfield="s")
+            raise UnexpectedValue(subfield="s", key="key", value=value)
     date_values = value.get("w")
     if not date_values or not date_values[0]:
         return datetime.date.today().isoformat()
@@ -79,20 +79,15 @@ def title(self, key, value):
     return value.get("a", "TODO")
 
 
-@model.over("description", "^246__")
+@model.over("description", "^520__")
 def description(self, key, value):
     """Translates description."""
-    _abbreviations = []
-    is_abbreviation = value.get("i") == "Abbreviation"
-    _abbreviations.append(value.get("a"))
+    description_text = value.get("a")
 
-    if is_abbreviation:
-        return "Abbreviations: " + "; ".join(_abbreviations)
-
-    raise IgnoreKey("description")
+    return description_text
 
 
-@model.over("additional_descriptions", "(^500__)|(^520__)")
+@model.over("additional_descriptions", "(^500__)|(^246__)")
 @for_each_value
 @require(["a"])
 def additional_descriptions(self, key, value):
@@ -106,15 +101,39 @@ def additional_descriptions(self, key, value):
                 "id": "other",  # what's with the lang
             }
         }
-    elif key == "520__":
-        additional_description = {
-            "description": description_text,
-            "type": {
-                "id": "abstract",  # what's with the lang
+    elif key == "246__":
+        _abbreviations = []
+        is_abbreviation = value.get("i") == "Abbreviation"
+        _abbreviations.append(description_text)
+
+        if is_abbreviation:
+            additional_description = {
+                "description": "Abbreviations: " + "; ".join(_abbreviations),
+                "type": {
+                    "id": "other",  # what's with the lang
+                }
             }
-        }
 
     return additional_description
+
+
+def publisher(self, key, value):
+    """Translates publisher."""
+    publisher = value.get("b")
+    if publisher:
+        self["publisher"] = publisher
+    else:
+        raise IgnoreKey("publisher")
+
+def publication_date(self, key, value):
+    """Translates publication_date."""
+    publication_date_str = value.get("c")
+    try:
+        date_obj = parse(publication_date_str)
+        self["publication_date"] = date_obj.strftime("%Y-%m-%d")
+        return
+    except ParserError:
+        raise UnexpectedValue(field="publication_date", message=f"Can't parse provided publication date. Value: {publication_date_str}")
 
 
 @model.over("imprint", "^269__")
@@ -134,38 +153,17 @@ def imprint(self, key, value):
     return imprint
 
 
-def publisher(self, key, value):
-    """Translates publisher."""
-    publisher = value.get("b")
-    if publisher:
-        self["publisher"] = publisher
-    else:
-        raise IgnoreKey("publisher")
-
-
-def publication_date(self, key, value):
-    """Translates publication_date."""
-    publication_date_str = value.get("c")
-    try:
-        date_obj = parse(publication_date_str)
-        self["publication_date"] = date_obj.strftime("%Y-%m-%d")
-        return
-    except ParserError:
-        raise UnexpectedValue(field="publication_date", message=f"Can't parse provided publication date. Value: {publication_date_str}")
-
-
-@model.over("creators", "^100__")
+@model.over("creators", "(^100__)|(^700__)")
 @for_each_value
 @require(["a"])
 def creators(self, key, value):
     """Translates the creators field."""
     role = get_contributor_role("e", value.get("e", "author"))
     affiliations = get_contributor_affiliations(value)
-
     contributor = {
         "person_or_org": {
             "type": "personal",
-            "family_name": value.get("name") or value.get("a"),
+            "family_name": value.get("a"),
             "identifiers": extract_json_contributor_ids(value),
         }
     }
@@ -186,13 +184,6 @@ def contributors(self, key, value):
     return creators(self, key, value)
 
 
-@model.over("description", "^520__")
-@strip_output
-def abstract(self, key, value):
-    """Translates abstracts fields."""
-    return value.get("a", "")
-
-
 @model.over("languages", "^041__")
 @for_each_value
 @require(["a"])
@@ -208,19 +199,20 @@ def languages(self, key, value):
         raise UnexpectedValue(field=key, subfield="a")
 
 
-@model.over("subjects", "(^693__)|(^650[1_][7_])|(^653[1_]_)")
+@model.over("subjects", "(^6931_)|(^650[1_][7_])|(^653[1_]_)")
 @require(["a"])
 @filter_list_values
 def subjects(self, key, value):
     """Translates subjects fields."""
     _subjects = self.get("subjects", [])
+    subject_value = value.get("a")
+    subject_scheme = value.get("2")
 
-    if key == "693__":
-        subject_a = value.get("a")
+    if key == "6931_":
         subject_e = value.get("e")
 
-        if subject_a:
-            obj = {"subject": subject_a}
+        if subject_value:
+            obj = {"subject": subject_value}
             if obj not in _subjects:
                 _subjects.append(obj)
         if subject_e:
@@ -228,23 +220,24 @@ def subjects(self, key, value):
             if obj not in _subjects:
                 _subjects.append(obj)
 
+    if subject_scheme and subject_scheme.lower() != "szgecern":
+        raise UnexpectedValue(field=key, subfield="2")
     if key == "65017":
-        subject_value = value.get("a")
-        if subject_value:
-            subject = {
-                "id": subject_value,
-                "subject": subject_value,
-                "scheme": "CERN", # also not cern
-            }
-            _subjects.append(subject)
-
-    if key == "6531_":
-        subject_value = value.get("a")
         if subject_value:
             subject = {
                 "id": subject_value,
                 "subject": subject_value,
                 "scheme": "CERN",
+            }
+            _subjects.append(subject)
+
+    if key == "6531_":
+        subject_scheme = value.get("9")
+        if subject_value:
+            subject = {
+                "id": subject_value,
+                "subject": subject_value,
+                "scheme": subject_scheme,
             }
             _subjects.append(subject)
 

@@ -136,18 +136,25 @@ def get_contributor_role(subfield, role, raise_unexpected=False):
 
 def get_contributor_affiliations(info):
     aff_results = []
-    affiliations = force_list(info.get("u", ""))
+    u = info.get("u", "")
+    if not u:
+        return
+    if "CERN" not in u:
+        print(u, "-------------------------------")
+    affiliations = force_list(u)
     vocab_type = "affiliations"
     service = current_service_registry.get(vocab_type)
 
-    parsed_affiliations = [StringValue(aff, str).parse().filter_regex(ALPHANUMERIC_ONLY) for
+    parsed_affiliations = [StringValue(aff, str).parse().filter_regex(ALPHANUMERIC_ONLY)
+                           for
                            aff in affiliations]
     vocabulary_type = VocabularyType.query.filter_by(id=vocab_type).one()
     extra_filter = dsl.Q("term", type__id=vocabulary_type.id)
     for affiliation_name in parsed_affiliations:
 
-        title = dsl.Q("term", **{f"title": affiliation_name})
-        title_filter = dsl.query.Bool("must", must=title)
+        title = dsl.Q("match", **{f"title": affiliation_name})
+        acronym = dsl.Q("match_phrase", **{f"acronym.keyword": affiliation_name})
+        title_filter = dsl.query.Bool("should", should=[title, acronym])
 
         vocabulary_result = (service.search(system_identity,
                                             extra_filter=title_filter | extra_filter)
@@ -156,7 +163,10 @@ def get_contributor_affiliations(info):
             aff_results.append({"name": affiliation_name,
                                 "id": vocabulary_result["hits"]["hits"][0]["id"]})
         else:
-            raise UnexpectedValue(subfield="u", message=f"Affiliation {affiliation_name} not found.")
+            raise UnexpectedValue(subfield="u",
+                                  value=affiliation_name,
+                                  field="author",
+                                  message=f"Affiliation {affiliation_name} not found.")
 
     return aff_results
 
