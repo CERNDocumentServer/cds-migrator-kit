@@ -22,6 +22,7 @@ from cds_rdm.minters import legacy_recid_minter
 
 cli_logger = logging.getLogger("migrator")
 
+
 def import_legacy_files(filepath):
     """Download file from legacy."""
     filestream = open(filepath, "rb")
@@ -31,13 +32,15 @@ def import_legacy_files(filepath):
 class CDSRecordServiceLoad(Load):
     """CDSRecordServiceLoad."""
 
-    def __init__(self, db_uri, data_dir, tmp_dir, existing_data=False, entries=None):
+    def __init__(self, db_uri, data_dir, tmp_dir, existing_data=False, entries=None,
+                 dry_run=False):
         """Constructor."""
         self.db_uri = db_uri
         self.data_dir = data_dir
         self.tmp_dir = tmp_dir
         self.existing_data = existing_data
         self.entries = entries
+        self.dry_run = dry_run
 
     def _prepare(self, entry):
         """Prepare the record."""
@@ -102,7 +105,8 @@ class CDSRecordServiceLoad(Load):
             exc = ManualImportRequired(
                 message=str(e), field="filename", value=file["key"]
             )
-            migration_logger.add_log(exc, output=entry, key="filename", value=file["key"])
+            migration_logger.add_log(exc, output=entry, key="filename",
+                                     value=file["key"])
 
     def _load_access(self, draft, entry):
         """Load access rights."""
@@ -141,8 +145,8 @@ class CDSRecordServiceLoad(Load):
             if version == 1:
                 # it seems more intuitive if we mint the lrecid for parent
                 # but then we get a double redirection
-                legacy_recid_minter(entry["record"]["recid"], record._record.parent.model.id)
-
+                legacy_recid_minter(entry["record"]["recid"],
+                                    record._record.parent.model.id)
 
     def _load_model_fields(self, draft, entry):
         """Load model fields of the record."""
@@ -152,24 +156,38 @@ class CDSRecordServiceLoad(Load):
         self._load_access(draft, entry)
         db.session.commit()
 
-
     def _load(self, entry):
         """Use the services to load the entries."""
         if entry:
             recid = entry.get("record", {}).get("recid", {})
             migration_logger = RDMJsonLogger()
             migration_logger.add_recid_to_stats(recid)
-            identity = system_identity  # Should we create an identity for the migration?
-            draft = current_rdm_records_service.create(
-                identity, data=entry["record"]["json"]
-            )
-            try:
-                self._load_model_fields(draft, entry)
+            identity = system_identity  # TODO: load users instead
+            if self.dry_run:
+                try:
 
-                self._load_versions(draft, entry)
-            except Exception as e:
-                exc = ManualImportRequired(message=str(e), field="validation")
-                migration_logger.add_log(exc, output=entry)
+                    current_rdm_records_service.schema.load(
+                        entry["record"]["json"],
+                        context=dict(
+                            identity=system_identity,
+                        ),
+                        raise_errors=True,
+                    )
+                except Exception as e:
+                    exc = ManualImportRequired(message=str(e), field="validation")
+                    migration_logger.add_log(exc, output=entry)
+
+            else:
+                draft = current_rdm_records_service.create(
+                    identity, data=entry["record"]["json"]
+                )
+                try:
+                    self._load_model_fields(draft, entry)
+
+                    self._load_versions(draft, entry)
+                except Exception as e:
+                    exc = ManualImportRequired(message=str(e), field="validation")
+                    migration_logger.add_log(exc, output=entry)
 
     def _cleanup(self, *args, **kwargs):
         """Cleanup the entries."""

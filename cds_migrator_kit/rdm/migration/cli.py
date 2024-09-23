@@ -15,7 +15,6 @@ from flask.cli import with_appcontext
 
 from cds_migrator_kit.rdm.migration.runner import Runner
 from cds_migrator_kit.rdm.migration.streams import RecordStreamDefinition
-from cds_migrator_kit.records.log import RDMJsonLogger
 
 cli_logger = logging.getLogger("migrator")
 
@@ -27,12 +26,17 @@ def migration():
 
 
 @migration.command()
+@click.option(
+    "--dry-run",
+    is_flag=True,
+)
 @with_appcontext
-def run():
+def run(dry_run=False):
     """Run."""
     stream_config = current_app.config["CDS_MIGRATOR_KIT_STREAM_CONFIG"]
     runner = Runner(
         stream_definitions=[RecordStreamDefinition],
         config_filepath=Path(stream_config).absolute(),
+        dry_run=dry_run
     )
     runner.run()

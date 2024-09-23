@@ -12,6 +12,7 @@ import copy
 import json
 import logging
 import os
+import traceback
 
 from flask import current_app
 from marshmallow import ValidationError
@@ -129,6 +130,7 @@ class JsonLogger(metaclass=Singleton):
     def resolve_error_type(self, exc, output, key, value):
         """Check the type of exception and log to dict."""
         recid = output.get("recid", None) or output.get("record", {}).get("recid", {})
+        logger_migrator = logging.getLogger("migrator-rules")
         rec_stats = self.stats[recid]
         rec_stats["clean"] = False
         if isinstance(exc, ManualImportRequired):
@@ -179,11 +181,13 @@ class JsonLogger(metaclass=Singleton):
             )
         elif isinstance(exc, KeyError):
             rec_stats["unexpected_value"].append(str(exc))
+            logger_migrator.exception(exc)
+            logger_migrator.exception(traceback.print_exc(exc))
         elif isinstance(exc, TypeError) or isinstance(exc, AttributeError):
-            rec_stats["unexpected_value"].append(
-                "Model definition missing for this record."
-                " Contact CDS team to tune the query"
-            )
+            rec_stats["unexpected_value"].append(str(exc))
+            logger_migrator.exception(exc)
+            logger_migrator.exception(traceback.print_exc(exc))
+
         else:
             raise exc
 

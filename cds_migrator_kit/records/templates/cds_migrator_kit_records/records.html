@@ -26,7 +26,7 @@
         <td>
           {% for val in stat.unexpected_value %}
             <span data-toggle="tooltip" data-placement="top" title="{{ val.message }}">
-              {{ val.key }}{{ val.subfield or '' }}: <code>{{ val.value }}</code>
+              {{ val }}
             </span><br />
           {% endfor %}
         </td>

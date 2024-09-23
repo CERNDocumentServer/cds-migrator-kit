@@ -7,11 +7,13 @@
 
 """CDS-RDM migration streams module."""
 from invenio_rdm_migrator.streams import StreamDefinition
+# from invenio_rdm_migrator.streams.users.load import UserCopyLoad
 
-from cds_migrator_kit.rdm.migration.extract import LegacyExtract
+from cds_migrator_kit.rdm.migration.extract import LegacyExtract, LegacyUserExtract
 from cds_migrator_kit.rdm.migration.transform.transform import CDSToRDMRecordTransform
 
 from .load import CDSRecordServiceLoad
+from .transform.user_transform import CDSUserTransform
 
 RecordStreamDefinition = StreamDefinition(
     name="records",
@@ -20,3 +22,12 @@ RecordStreamDefinition = StreamDefinition(
     load_cls=CDSRecordServiceLoad,
 )
 """ETL stream for CDS to RDM records."""
+
+
+# UserStreamDefinition = StreamDefinition(
+#     name="users",
+#     extract_cls=LegacyUserExtract,
+#     transform_cls=CDSUserTransform,
+#     load_cls=UserCopyLoad,
+# )
+# """ETL stream for CDS to import users."""
