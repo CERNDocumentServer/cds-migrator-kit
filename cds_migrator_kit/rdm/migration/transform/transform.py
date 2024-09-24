@@ -20,9 +20,12 @@ from invenio_rdm_migrator.streams.records.transform import (
 
 from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
-    LossyConversion, RestrictedFileDetected,
+    LossyConversion, RestrictedFileDetected, UnexpectedValue,
 )
 from cds_migrator_kit.records.log import RDMJsonLogger
+from invenio_access.permissions import system_identity
+from invenio_search.engine import dsl
+from invenio_records_resources.proxies import current_service_registry
 
 cli_logger = logging.getLogger("migrator")
 
@@ -96,23 +99,44 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
     def _metadata(self, json_entry):
         def creators(json):
             try:
+                _creators = json["creators"]
+                vocab_type = "affiliations"
+                service = current_service_registry.get(vocab_type)
+                extra_filter = dsl.Q("term", type__id=vocab_type)
+                for creator in _creators:
+                    affiliations = creator["affiliations"]
+                    transformed_aff = []
+                    for affiliation_name in affiliations:
+
+                        title = dsl.Q("match", **{f"title": affiliation_name})
+                        acronym = dsl.Q("match_phrase",
+                                        **{f"acronym.keyword": affiliation_name})
+                        title_filter = dsl.query.Bool("should", should=[title, acronym])
+
+                        vocabulary_result = (service.search(system_identity,
+                                                            extra_filter=title_filter | extra_filter)
+                                             .to_dict())
+                        if vocabulary_result["hits"]["total"]:
+                            transformed_aff.append({
+                                "name": affiliation_name,
+                                "id": vocabulary_result["hits"]["hits"][0]["id"]}
+                            )
+                        else:
+                            raise UnexpectedValue(subfield="u",
+                                                  value=affiliation_name,
+                                                  field="author",
+                                                  message=f"Affiliation {affiliation_name} not found.")
+                    creator["affiliations"] = transformed_aff
                 return json["creators"]
             except KeyError:
-                return [
-                    {
-                        "person_or_org": {
-                            "given_name": "unknown",
-                            "name": "unknown",
-                            "family_name": "unknown",
-                            "type": "personal",
-                        }
-                    }
-                ]
+                raise UnexpectedValue(field="creators")
 
         def _resource_type(data):
             t = "publication-technicalnote"
             st = None
             return {"id": f"{t}-{st}"} if st else {"id": t}
+
+
         return {
             "creators": creators(json_entry),
             "title": json_entry["title"],
@@ -121,17 +145,53 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "publication_date": json_entry.get("publication_date"),
         }
 
+    def _custom_fields(self, json_entry):
+
+        experiment = json_entry.get("custom_fields", {}).get("cern:experiment")
+        custom_fields = {}
+
+        if experiment:
+            vocab_type = "experiments"
+            service = current_service_registry.get("vocabularies")
+            vocabulary_result = (
+                service.search(system_identity, type=vocab_type,
+                               q=f"{experiment}")
+                .to_dict())
+            if vocabulary_result["hits"]["total"]:
+
+                custom_fields["cern:experiment"] = {
+                    "id": vocabulary_result["hits"]["hits"][0]["id"]
+                }
+
+            else:
+                raise UnexpectedValue(subfield="a",
+                                      value=experiment,
+                                      field="experiment",
+                                      message=f"Experiment {experiment} not found.")
+            return custom_fields
     def transform(self, entry):
         """Transform a record single entry."""
         record_dump = CDSRecordDump(
             entry,
         )
+        migration_logger = RDMJsonLogger()
+        migration_logger.add_recid_to_stats(entry["recid"])
         try:
-            migration_logger = RDMJsonLogger()
-            migration_logger.add_recid_to_stats(entry["recid"])
+
             record_dump.prepare_revisions()
             timestamp, json_data = record_dump.revisions[-1]
             migration_logger.add_record(json_data)
+            json_output = {
+                "created": self._created(json_data),
+                "updated": self._updated(record_dump),
+                "pids": self._pids(json_data),
+                "files": self._files(record_dump),
+                "metadata": self._metadata(json_data),
+                "access": self._access(json_data, record_dump),
+            }
+            custom_fields = self._custom_fields(json_data)
+            if custom_fields:
+                json_output.update({"custom_fields": custom_fields})
             return {
                 "created": self._created(json_data),
                 "updated": self._updated(record_dump),
@@ -139,14 +199,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "index": self._index(record_dump),
                 "recid": self._recid(record_dump),
                 # "communities": self._communities(json_data),
-                "json": {
-                    "created": self._created(json_data),
-                    "updated": self._updated(record_dump),
-                    "pids": self._pids(json_data),
-                    "files": self._files(record_dump),
-                    "metadata": self._metadata(json_data),
-                    "access": self._access(json_data, record_dump),
-                },
+                "json": json_output
             }
         except LossyConversion as e:
             cli_logger.error("[DATA ERROR]: {0}".format(e.message))
@@ -242,7 +295,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 {
                     file["full_name"]: {
                         "eos_tmp_path": tmp_eos_root
-                        / full_path.relative_to(legacy_path_root),
+                                        / full_path.relative_to(legacy_path_root),
                         "key": file["full_name"],
                         "metadata": {},
                         "mimetype": file["mime"],

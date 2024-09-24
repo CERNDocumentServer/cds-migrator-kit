@@ -45,6 +45,9 @@ class CMSSummerStudent(CdsOverdo):
         "8564_u",  # Files
         "8564_x",  # Files system field
         "8564_y",  # Files
+        "100__9",  # #BEARD# tag
+        "700__9",  # #BEARD# tag
+        "700__m",  # Contributors (email)
 
 
         # TO Implement (to remove from here)
@@ -69,20 +72,16 @@ class CMSSummerStudent(CdsOverdo):
         # "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it?
         # "693__a", # accelerator
         # "693__b", # value 'H4' in 1 record: 2640381
-        # "693__e", # experiment
         # "693__f", # facility
         # "693__p",  # project
         # "693__s",  # study
         # "700__0",  # Contributors (cds author id) - TBD if we keep
-        # "700__9",  # Contributors (?) - value '#BEARD#' in some records - to ignore
-        # "700__m",  # Contributors (email)
         # "700__u",  # Contributors (affiliation)
-        # "700__u",  # Contributors (affiliation?)
         # "710__g",  # Collaboration
-        "906__p",  # name, is it supervisor?
+        "906__p",  # name, is it supervisor? # todo migrate as contributor
         # "906__p", # probably supervisor TODO: check
         "960__a",  # collection id? usually value 12
-        "963__a",  # restriction
+        "963__a",  # restriction # todo assert if any record is restricted -> to implement in collection specific rules
         "970__a",  # some kind of identifier? "000732636CER"
         "980__a",  # collection tag
         # "980__c",
@@ -101,9 +100,14 @@ class CMSSummerStudent(CdsOverdo):
         # "520__a",  # Note (-> description.type = abstract
         # "6531_9",  # keyword provenance
         # "6531_a",  # keyword
+        # "6931_a",  # keyword
+        # "6931_9",  # keyword
+        # "693__e",  # custom_fields.cern:experiment  # TODO this field is single value, do we have lists?
+
         # "650172",  # subject provenance
         # "65017a",  # subject value
         # "700__a",  # Contributors (full name)
+        # "700__u",  # Contributors (affiliation)
         # "916__n",
         # "916__s",
         # "916__w",
