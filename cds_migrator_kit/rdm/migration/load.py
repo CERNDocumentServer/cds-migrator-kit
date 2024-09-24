@@ -7,8 +7,8 @@
 
 """CDS-RDM migration load module."""
 import logging
-import os
 
+import arrow
 from invenio_access.permissions import system_identity
 from invenio_db import db
 from invenio_rdm_migrator.load.base import Load
@@ -51,7 +51,9 @@ class CDSRecordServiceLoad(Load):
 
         identity = system_identity  # Should we create an identity for the migration?
 
+        # take first file for the first version
         filename = next(iter(version_files))
+
         file = version_files[filename]
 
         try:
@@ -66,6 +68,24 @@ class CDSRecordServiceLoad(Load):
                     }
                 ],
             )
+            # TODO change to eos move or xrootd command instead of going through the app
+            # TODO leave the init part to pre-create the destination folder
+            # TODO update checksum, size, commit (to be checked on how these methods work)
+            # if current_app.config["XROOTD_ENABLED"]:
+            #     storage = current_files_rest.storage_factory
+            #     current_rdm_records_service.draft_files.set_file_content(
+            #         identity,
+            #         draft.id,
+            #         file["key"],
+            #         BytesIO(b"Placeholder file"),
+            #     )
+            #     obj = None
+            #     for object in draft._record.files.objects:
+            #         if object.key == file["key"]:
+            #             obj = object
+            #     path = obj.file.uri
+            # else:
+            # for local development
             current_rdm_records_service.draft_files.set_file_content(
                 identity,
                 draft.id,
@@ -90,7 +110,6 @@ class CDSRecordServiceLoad(Load):
         access = entry["parent"]["json"]["access"]
         parent.access = access
         parent.commit()
-        db.session.commit()
 
     def _load_versions(self, draft, entry):
         """Load other versions of the record."""
@@ -119,19 +138,27 @@ class CDSRecordServiceLoad(Load):
                 )
             record = current_rdm_records_service.publish(system_identity, draft["id"])
 
+    def _load_model_fields(self, draft, entry):
+        """Load model fields of the record."""
+
+        draft._record.model.created = arrow.get(entry["record"]["created"]).datetime
+        # TODO we can use unit of work when it is moved to invenio-db module
+        self._load_access(draft, entry)
+        db.session.commit()
+
+
     def _load(self, entry):
         """Use the services to load the entries."""
         recid = entry.get("record", {}).get("recid", {})
         migration_logger = RDMJsonLogger()
         migration_logger.add_recid_to_stats(recid)
         identity = system_identity  # Should we create an identity for the migration?
-
         draft = current_rdm_records_service.create(
             identity, data=entry["record"]["json"]
         )
-
         try:
-            self._load_access(draft, entry)
+            self._load_model_fields(draft, entry)
+
             self._load_versions(draft, entry)
         except Exception as e:
             exc = ManualImportRequired(message=str(e), field="validation")

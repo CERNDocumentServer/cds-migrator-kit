@@ -32,7 +32,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
     def _created(self, json_entry):
         try:
-            return json_entry["_created"]
+            return arrow.get(json_entry["_created"])
         except KeyError:
             return datetime.date.today().isoformat()
 
@@ -231,6 +231,9 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             if file["version"] not in draft_files:
                 draft_files[file["version"]] = {}
 
+            # TODO other access types to be dealt later, for now we make sure
+            # TODO that no restricted file goes through
+            assert file["status"] == ""
             # group files by version
             # {"1": {"filename": {...}}
             draft_files[file["version"]].update(
