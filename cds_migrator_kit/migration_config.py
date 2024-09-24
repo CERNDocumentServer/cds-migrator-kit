@@ -18,6 +18,7 @@ from cds_rdm.permissions import (
 from invenio_app_rdm.config import CELERY_BEAT_SCHEDULE as APP_RDM_CELERY_BEAT_SCHEDULE
 from invenio_app_rdm.config import *
 from invenio_i18n import lazy_gettext as _
+from invenio_vocabularies.services.custom_fields import VocabularyCF
 
 
 def _(x):  # needed to avoid start time failure with lazy strings
@@ -350,6 +351,28 @@ CDS_EOS_OFFLOAD_X509_KEY_PATH = ""
 CDS_EOS_OFFLOAD_REDIRECT_BASE_PATH = ""
 
 RDM_PERMISSION_POLICY = CDSRDMRecordPermissionPolicy
+
+
+RDM_NAMESPACES = {
+    # CERN
+    "cern": "https://greybook.cern.ch/",
+}
+
+RDM_CUSTOM_FIELDS = [
+    VocabularyCF(
+        name="cern:experiment",
+        vocabulary_id="experiments",
+        dump_options=True,
+        multiple=False,
+    ),
+    VocabularyCF(
+        name="cern:department",
+        vocabulary_id="departments",
+        dump_options=True,
+        multiple=False,
+    ),
+]
+
 
 base_path = os.path.dirname(os.path.realpath(__file__))
 logs_dir = os.path.join(base_path, "tmp/logs/")

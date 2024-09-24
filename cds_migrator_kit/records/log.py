@@ -145,7 +145,7 @@ class JsonLogger(metaclass=Singleton):
         elif isinstance(exc, UnexpectedValue):
             rec_stats["unexpected_value"].append(
                 dict(
-                    key=exc.__name__,
+                    key=exc.__class__.__name__,
                     value=value,
                     subfield=exc.subfield,
                     message=str(exc.message),

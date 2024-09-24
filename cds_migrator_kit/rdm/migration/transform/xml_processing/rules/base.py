@@ -206,23 +206,11 @@ def subjects(self, key, value):
     """Translates subjects fields."""
     _subjects = self.get("subjects", [])
     subject_value = value.get("a")
-    subject_scheme = value.get("2")
-
-    if key == "6931_":
-        subject_e = value.get("e")
-
-        if subject_value:
-            obj = {"subject": subject_value}
-            if obj not in _subjects:
-                _subjects.append(obj)
-        if subject_e:
-            obj = {"subject": subject_e}
-            if obj not in _subjects:
-                _subjects.append(obj)
+    subject_scheme = value.get("2") or value.get("9")
 
     if subject_scheme and subject_scheme.lower() != "szgecern":
         raise UnexpectedValue(field=key, subfield="2")
-    if key == "65017":
+    if key == "65017" or key == "6531_":
         if subject_value:
             subject = {
                 "id": subject_value,
@@ -230,15 +218,16 @@ def subjects(self, key, value):
                 "scheme": "CERN",
             }
             _subjects.append(subject)
-
-    if key == "6531_":
-        subject_scheme = value.get("9")
-        if subject_value:
-            subject = {
-                "id": subject_value,
-                "subject": subject_value,
-                "scheme": subject_scheme,
-            }
-            _subjects.append(subject)
-
     return _subjects
+
+
+@model.over("custom_fields", "(^693__)")
+def custom_fields(self, key, value):
+    """Translates custom fields."""
+
+    _custom_fields = self.get("custom_fields", {})
+
+    if key == "693__":
+        experiment = value.get("e")
+        _custom_fields["cern:experiment"] = experiment
+    return _custom_fields
