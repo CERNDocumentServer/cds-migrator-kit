@@ -77,13 +77,16 @@ class JsonLogger(metaclass=Singleton):
         """Get migration logger."""
         return logging.getLogger("migrator-rules")
 
-    def __init__(self, stats_filename, records_filename):
+    def __init__(self, stats_filename, records_filename, records_state_filename):
         """Constructor."""
         self._logs_path = current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]
         # self.stats = {}
         # self.records = {}
         self.STAT_FILEPATH = os.path.join(self._logs_path, stats_filename)
         self.RECORD_FILEPATH = os.path.join(self._logs_path, records_filename)
+        self.RECORD_STATE_FILEPATH = os.path.join(
+            self._logs_path, records_state_filename
+        )
 
         if not os.path.exists(self._logs_path):
             os.makedirs(self._logs_path)
@@ -97,8 +100,17 @@ class JsonLogger(metaclass=Singleton):
         self.record_dump_file = open(self.RECORD_FILEPATH, "w")
         self.error_file.truncate(0)
         self.record_dump_file.truncate(0)
-        columns = ['recid', "stage", "type", 'error', "field", "value", "message",
-                   "clean", "priority"]
+        columns = [
+            "recid",
+            "stage",
+            "type",
+            "error",
+            "field",
+            "value",
+            "message",
+            "clean",
+            "priority",
+        ]
         self.log_writer = csv.DictWriter(self.error_file, fieldnames=columns)
         self.log_writer.writeheader()
         self.record_dump_file.write("{\n")
@@ -124,16 +136,22 @@ class JsonLogger(metaclass=Singleton):
         recid = record["legacy_recid"]
         self.record_dump_file.write(f'"{recid}": {json.dumps(record)},\n')
 
+    def add_record_state(self, record, **kwargs):
+        """Add record state."""
+        pass
+
     def add_log(self, exc, record=None, key=None, value=None):
         """Add exception log."""
         logger_migrator = logging.getLogger("migrator-rules")
 
         if record:
-            recid = record.get("recid", None) or record.get("record", {}).get("recid", {})
+            recid = record.get("recid", None) or record.get("record", {}).get(
+                "recid", {}
+            )
         else:
             recid = getattr(exc, "recid", None)
 
-        subfield = exc.subfield if getattr(exc, "subfield", None) else ''
+        subfield = exc.subfield if getattr(exc, "subfield", None) else ""
         error_format = {
             "recid": recid,
             "type": getattr(exc, "type", None),
@@ -143,7 +161,7 @@ class JsonLogger(metaclass=Singleton):
             "stage": getattr(exc, "stage", None),
             "message": getattr(exc, "message", str(exc)),
             "priority": getattr(exc, "priority", None),
-            "clean": False
+            "clean": False,
         }
         self.log_writer.writerow(error_format)
         logger_migrator.error(exc)
@@ -157,4 +175,12 @@ class RDMJsonLogger(JsonLogger):
 
     def __init__(self):
         """Constructor."""
-        super().__init__("rdm_migration_errors.csv", "rdm_records_dump.json")
+        super().__init__(
+            "rdm_migration_errors.csv",
+            "rdm_records_dump.json",
+            "rdm_records_state.json",
+        )
+
+    def add_record_state(self, record_state):
+        """Add record state."""
+        self.records_state.append(record_state)

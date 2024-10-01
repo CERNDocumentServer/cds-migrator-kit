@@ -14,6 +14,7 @@ class LossyConversion(DoJSONException):
     """Data lost during migration."""
 
     description = "[Migration rule missing]"
+
     def __init__(self, missing=None, *args, **kwargs):
         """Exception custom initialisation."""
         self.missing = missing
@@ -30,8 +31,17 @@ class CDSMigrationException(DoJSONException):
     description = None
 
     def __init__(
-        self, message=None, field=None, subfield=None, value=None, stage=None,
-        recid=None, exc=None, priority=None, *args, **kwargs
+        self,
+        message=None,
+        field=None,
+        subfield=None,
+        value=None,
+        stage=None,
+        recid=None,
+        exc=None,
+        priority=None,
+        *args,
+        **kwargs
     ):
         """Constructor."""
         self.subfield = subfield
@@ -73,3 +83,9 @@ class ManualImportRequired(CDSMigrationException):
 class RestrictedFileDetected(CDSMigrationException):
 
     description = "[Restricted file detected]"
+
+
+class RecordStatsNotImported(CDSMigrationException):
+    """The corresponding field should be manually migrated."""
+
+    description = "[RECORD STATS NOT IMPORTED]"

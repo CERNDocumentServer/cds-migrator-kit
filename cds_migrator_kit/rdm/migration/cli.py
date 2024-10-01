@@ -39,6 +39,6 @@ def run(dry_run=False):
         stream_definitions=[RecordStreamDefinition],
         # stream_definitions=[UserStreamDefinition],
         config_filepath=Path(stream_config).absolute(),
-        dry_run=dry_run
+        dry_run=dry_run,
     )
     runner.run()

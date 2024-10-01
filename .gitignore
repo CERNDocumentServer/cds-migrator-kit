@@ -65,3 +65,9 @@ target/
 
 # vscode
 .history/
+
+# migration data folder
+**/migration/data/**
+**/migration/log/**
+
+**.DS_Store

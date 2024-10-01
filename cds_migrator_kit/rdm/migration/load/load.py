@@ -7,6 +7,8 @@
 
 """CDS-RDM migration load module."""
 import logging
+import os
+import json
 
 import arrow
 from invenio_access.permissions import system_identity
@@ -17,7 +19,9 @@ from invenio_rdm_records.proxies import current_rdm_records_service
 
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     ManualImportRequired,
+    RecordStatsNotImported,
 )
+
 from cds_migrator_kit.records.log import RDMJsonLogger
 from cds_rdm.minters import legacy_recid_minter
 
@@ -33,8 +37,15 @@ def import_legacy_files(filepath):
 class CDSRecordServiceLoad(Load):
     """CDSRecordServiceLoad."""
 
-    def __init__(self, db_uri, data_dir, tmp_dir, existing_data=False, entries=None,
-                 dry_run=False):
+    def __init__(
+        self,
+        db_uri,
+        data_dir,
+        tmp_dir,
+        existing_data=False,
+        entries=None,
+        dry_run=False,
+    ):
         """Constructor."""
         self.db_uri = db_uri
         self.data_dir = data_dir
@@ -64,7 +75,10 @@ class CDSRecordServiceLoad(Load):
                     data=[
                         {
                             "key": file_data["key"],
-                            "metadata": file_data["metadata"],
+                            "metadata": {
+                                **file_data["metadata"],
+                                "legacy_file_id": file_data["id_bibdoc"],
+                            },
                             "access": {"hidden": False},
                         }
                     ],
@@ -107,7 +121,7 @@ class CDSRecordServiceLoad(Load):
                     field="filename",
                     value=file_data["key"],
                     stage="file load",
-                    priority="critical"
+                    priority="critical",
                 )
                 migration_logger.add_log(exc, record=entry)
                 raise e
@@ -135,17 +149,21 @@ class CDSRecordServiceLoad(Load):
             # mint legacy ids for redirections
             if version == 1:
                 record._record.model.created = arrow.get(
-                    entry["record"]["created"]).datetime
+                    entry["record"]["created"]
+                ).datetime
                 record._record.commit()
                 # it seems more intuitive if we mint the lrecid for parent
                 # but then we get a double redirection
-                legacy_recid_minter(entry["record"]["recid"],
-                                    record._record.parent.model.id)
+                legacy_recid_minter(
+                    entry["record"]["recid"], record._record.parent.model.id
+                )
+            return record
 
         if not draft_files:
             # when missing files, just publish
             publish_and_mint_recid(draft, 1)
 
+        records = []
         for version in draft_files.keys():
             version_files_dict = draft_files.get(version)
             if version == 1:
@@ -177,7 +195,9 @@ class CDSRecordServiceLoad(Load):
                     system_identity, draft["id"], data=missing_data
                 )
 
-            publish_and_mint_recid(draft, version)
+            record = publish_and_mint_recid(draft, version)
+            records.append(record._record)
+        return records
 
     def _load_model_fields(self, draft, entry):
         """Load model fields of the record."""
@@ -198,6 +218,74 @@ class CDSRecordServiceLoad(Load):
             raise_errors=True,
         )
 
+    def _load_record_state(self, legacy_recid, records):
+        """Compute state for legacy recid.
+
+        Returns
+        {
+            "legacy_recid": "2884810",
+            "parent_recid": "zts3q-6ef46",
+            "latest_version": "1mae4-skq89"
+            "versions": [
+                {
+                    "new_recid": "1mae4-skq89",
+                    "version": 2,
+                    "files": [
+                        {
+                            "legacy_file_id": 1568736,
+                            "bucket_id": "155be22f-3038-49e0-9f17-9518eaac783a",
+                            "file_key": "Summer student program report.pdf",
+                            "file_id": "06cdb9d2-635f-4dbe-89fe-4b27afddeaa2",
+                            "size": "1690854"
+                        }
+                    ]
+                }
+            ]
+        }
+        """
+
+        def convert_file_format(file_entries, bucket_id):
+            """Convert the file metadata into the required format."""
+            return [
+                {
+                    "legacy_file_id": entry["metadata"]["legacy_file_id"],
+                    "bucket_id": bucket_id,
+                    "file_key": entry["key"],
+                    "file_id": entry["file_id"],
+                    "size": str(entry["size"]),
+                }
+                for entry in file_entries.values()
+            ]
+
+        def extract_record_version(record):
+            """Extract relevant details from a single record."""
+            bucket_id = str(record.files.bucket_id)
+            files = record.__class__.files.dump(
+                record, record.files, include_entries=True
+            ).get("entries", {})
+            return {
+                "new_recid": record.pid.pid_value,
+                "version": record.versions.index,
+                "files": convert_file_format(files, bucket_id),
+            }
+
+        recid_state = {"legacy_recid": legacy_recid, "versions": []}
+        parent_recid = None
+
+        for record in records:
+            if parent_recid is None:
+                parent_recid = record.parent.pid.pid_value
+                recid_state["parent_recid"] = parent_recid
+
+            recid_version = extract_record_version(record)
+            # Save the record versions for legacy recid
+            recid_state["versions"].append(recid_version)
+
+            if "latest_version" not in recid_state:
+                recid_state["latest_version"] = record.get_latest_by_parent(
+                    record.parent
+                )["id"]
+        return recid_state
 
     def _load(self, entry):
         """Use the services to load the entries."""
@@ -215,15 +303,25 @@ class CDSRecordServiceLoad(Load):
 
                     self._load_model_fields(draft, entry)
 
-                    self._load_versions(draft, entry)
+                    records = self._load_versions(draft, entry)
+
+                    if records:
+                        legacy_recid = entry["record"]["recid"]
+                        record_state_context = self._load_record_state(
+                            legacy_recid, records
+                        )
+                        # Dump the computed record state. This is useful to migrate then the record stats
+                        if record_state_context:
+                            migration_logger.add_record_state(record_state_context)
                 migration_logger.add_success(recid)
             except Exception as e:
-                exc = ManualImportRequired(message=str(e),
-                                           field="validation",
-                                           stage="load",
-                                           recid=recid,
-                                           priority="warning"
-                                           )
+                exc = ManualImportRequired(
+                    message=str(e),
+                    field="validation",
+                    stage="load",
+                    recid=recid,
+                    priority="warning",
+                )
                 migration_logger.add_log(exc, record=entry)
                 # raise e
 
