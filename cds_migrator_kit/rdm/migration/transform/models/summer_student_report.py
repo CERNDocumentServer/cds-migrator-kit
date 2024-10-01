@@ -32,7 +32,6 @@ class CMSSummerStudent(CdsOverdo):
     __query__ = "980__:NOTE 037__:CERN-STUDENTS-Note-*"
 
     __ignore_keys__ = {
-
         # decided to ignore
         "0247_2",  # DOI, summer student notes do not have it
         "0247_a",  # DOI
@@ -48,7 +47,6 @@ class CMSSummerStudent(CdsOverdo):
         "100__9",  # #BEARD# tag
         "700__9",  # #BEARD# tag
         "700__m",  # Contributors (email)
-
         # TO Implement (to remove from here)
         "035__9",  # Inspire schema
         "035__a",  # Inspire id value
@@ -56,7 +54,6 @@ class CMSSummerStudent(CdsOverdo):
         "710__a",  # organisation author
         # "270__m",  # document contact email
         # "270__p", # document contact person name
-
         # TO DECIDE
         "0248_a",  # oai identifier, not needed to migrate, TBD
         "0248_p",  # oai identifier, not needed to migrate, TBD
@@ -85,9 +82,7 @@ class CMSSummerStudent(CdsOverdo):
         "980__a",
         # collection tag, to decide if this can be used, should it be used to add multiple communities? FE community of summer students and the specific department reports (or maybe it is a collection query?)
         # "980__c",
-
         # IMPLEMENTED
-
         # "001"
         # "003"
         # "041__a",  # languages
@@ -110,7 +105,6 @@ class CMSSummerStudent(CdsOverdo):
         # "916__n",
         # "916__s",
         # "916__w",
-
     }
     _default_fields = None
 

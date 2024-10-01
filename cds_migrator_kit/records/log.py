@@ -21,8 +21,10 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     LossyConversion,
     ManualImportRequired,
     MissingRequiredField,
-    UnexpectedValue, RestrictedFileDetected,
+    UnexpectedValue,
+    RestrictedFileDetected,
 )
+
 
 class Singleton(type):
     """Temporary solution for this logger."""
@@ -84,13 +86,17 @@ class JsonLogger(metaclass=Singleton):
         """Get JsonLogger instance based on the rectype."""
         return RDMJsonLogger
 
-    def __init__(self, stats_filename, records_filename):
+    def __init__(self, stats_filename, records_filename, records_state_filename):
         """Constructor."""
         self._logs_path = current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]
         self.stats = {}
         self.records = {}
+        self.records_state = []
         self.STAT_FILEPATH = os.path.join(self._logs_path, stats_filename)
         self.RECORD_FILEPATH = os.path.join(self._logs_path, records_filename)
+        self.RECORD_STATE_FILEPATH = os.path.join(
+            self._logs_path, records_state_filename
+        )
 
         if not os.path.exists(self._logs_path):
             os.makedirs(self._logs_path)
@@ -114,6 +120,8 @@ class JsonLogger(metaclass=Singleton):
             json.dump(self.stats, f)
         with open(self.RECORD_FILEPATH, "w") as f:
             json.dump(self.records, f)
+        with open(self.RECORD_STATE_FILEPATH, "w") as f:
+            json.dump(self.records_state, f)
 
     def add_recid_to_stats(self, recid, **kwargs):
         """Add recid to stats."""
@@ -121,6 +129,10 @@ class JsonLogger(metaclass=Singleton):
 
     def add_record(self, record, **kwargs):
         """Add record to list of collected records."""
+        pass
+
+    def add_record_state(self, record, **kwargs):
+        """Add record state."""
         pass
 
     def add_log(self, exc, key=None, value=None, output=None):
@@ -197,7 +209,7 @@ class RDMJsonLogger(JsonLogger):
 
     def __init__(self):
         """Constructor."""
-        super().__init__("rdm_stats.json", "rdm_records.json")
+        super().__init__("rdm_stats.json", "rdm_records.json", "rdm_records_state.json")
 
     def add_recid_to_stats(self, recid):
         """Add empty log item."""
@@ -214,3 +226,7 @@ class RDMJsonLogger(JsonLogger):
     def add_record(self, record):
         """Add record to collected records."""
         self.records[record["legacy_recid"]] = record
+
+    def add_record_state(self, record_state):
+        """Add record state."""
+        self.records_state.append(record_state)
