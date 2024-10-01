@@ -32,7 +32,6 @@ class CMSSummerStudent(CdsOverdo):
     __query__ = "980__:NOTE 037__:CERN-STUDENTS-Note-*"
 
     __ignore_keys__ = {
-
         # decided to ignore
         "0247_2",  # DOI, summer student notes do not have it
         "0247_a",  # DOI
@@ -44,7 +43,6 @@ class CMSSummerStudent(CdsOverdo):
         "270__m",  # document contact email
         "595__a",  # always value CERN EDS, not displayed, TODO: do we keep?
         "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it? what does UNCL mean
-
         "710__5",  # department / organisation author
         "710__a",  # organisation author
         "700__m",  # Contributors (email)
@@ -59,11 +57,8 @@ class CMSSummerStudent(CdsOverdo):
         "960__a",  # collection id? usually value 12, to confirm if we ignore
         "980__a",  # collection tag
         # "980__c",  # MIGRATED/DELETED - it shouldn't even make it here
-
-
         # TO Implement (to remove from here)
-
-        "690C_a",    # collection name, not needed values(to drop: INTNOTE, CERN, otherwise parse PUBL to retrieve the department, if department not present in any other field)
+        "690C_a",  # collection name, not needed values(to drop: INTNOTE, CERN, otherwise parse PUBL to retrieve the department, if department not present in any other field)
         # "970__a",  # alternative identifier, scheme ALEPH
         # "037__a",  # decided to ignore (Report number) alternative identifiers -> scheme "CDS REFERENCE"
         # "088__a",  # RN (manual introduced?) second report number (so the identifiers schemas are not unique!)
@@ -84,12 +79,8 @@ class CMSSummerStudent(CdsOverdo):
         "906__p",  # names, is it supervisor? # todo migrate as contributor?
         "963__a",
         # restriction # todo assert if any record is restricted -> to implement in collection specific rules
-
         # TO DECIDE
-
-
         # IMPLEMENTED
-
         # "001"
         # "003"
         # "041__a",  # languages
@@ -113,7 +104,6 @@ class CMSSummerStudent(CdsOverdo):
         # "916__n",
         # "916__s",
         # "916__w",
-
     }
     _default_fields = None
 

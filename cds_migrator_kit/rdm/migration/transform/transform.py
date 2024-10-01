@@ -26,7 +26,10 @@ from sqlalchemy.exc import NoResultFound
 from cds_migrator_kit.rdm.migration.transform.users import CDSMissingUserLoad
 from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
-    LossyConversion, RestrictedFileDetected, UnexpectedValue, ManualImportRequired,
+    LossyConversion,
+    RestrictedFileDetected,
+    UnexpectedValue,
+    ManualImportRequired,
 )
 from cds_migrator_kit.records.log import RDMJsonLogger
 from invenio_access.permissions import system_identity
@@ -40,8 +43,13 @@ cli_logger = logging.getLogger("migrator")
 class CDSToRDMRecordEntry(RDMRecordEntry):
     """Transform Zenodo record to RDM record."""
 
-    def __init__(self, partial=False, missing_users_dir=None,
-                 missing_users_filename="people.csv", dry_run=False):
+    def __init__(
+        self,
+        partial=False,
+        missing_users_dir=None,
+        missing_users_filename="people.csv",
+        dry_run=False,
+    ):
         self.missing_users_dir = missing_users_dir
         self.missing_users_filename = missing_users_filename
         self.dry_run = dry_run
@@ -123,17 +131,20 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
     def _create_owner(self, email):
         logger_users = logging.getLogger("users")
+
         def get_person(email):
-            missing_users_dump = os.path.join(self.missing_users_dir,
-                                              self.missing_users_filename)
+            missing_users_dump = os.path.join(
+                self.missing_users_dir, self.missing_users_filename
+            )
             with open(missing_users_dump) as csv_file:
                 for row in csv.reader(csv_file):
                     if email == row[0]:
                         return row
 
         def get_person_old_db(email):
-            missing_users_dump = os.path.join(self.missing_users_dir,
-                                              "missing_users.json")
+            missing_users_dump = os.path.join(
+                self.missing_users_dir, "missing_users.json"
+            )
             with open(missing_users_dump) as json_file:
                 missing = json.load(json_file)
             person = next((item for item in missing if item["email"] == email), None)
@@ -180,7 +191,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             name=displayname,
             username=username,
             person_id=person_id,
-            extra_data=extra_data)
+            extra_data=extra_data,
+        )
 
         return user.id
 
@@ -196,25 +208,29 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 for affiliation_name in affiliations:
 
                     title = dsl.Q("match", **{f"title": affiliation_name})
-                    acronym = dsl.Q("match_phrase",
-                                    **{f"acronym.keyword": affiliation_name})
+                    acronym = dsl.Q(
+                        "match_phrase", **{f"acronym.keyword": affiliation_name}
+                    )
                     title_filter = dsl.query.Bool("should", should=[title, acronym])
 
-                    vocabulary_result = (service.search(system_identity,
-                                                        extra_filter=title_filter | extra_filter)
-                                         .to_dict())
+                    vocabulary_result = service.search(
+                        system_identity, extra_filter=title_filter | extra_filter
+                    ).to_dict()
                     if vocabulary_result["hits"]["total"]:
-                        transformed_aff.append({
-                            "name": affiliation_name,
-                            "id": vocabulary_result["hits"]["hits"][0]["id"]}
+                        transformed_aff.append(
+                            {
+                                "name": affiliation_name,
+                                "id": vocabulary_result["hits"]["hits"][0]["id"],
+                            }
                         )
                     else:
-                        raise UnexpectedValue(subfield="u",
-                                              value=affiliation_name,
-                                              field="author",
-                                              message=f"Affiliation {affiliation_name} not found.",
-                                              stage="vocabulary match"
-                                              )
+                        raise UnexpectedValue(
+                            subfield="u",
+                            value=affiliation_name,
+                            field="author",
+                            message=f"Affiliation {affiliation_name} not found.",
+                            stage="vocabulary match",
+                        )
                 creator["affiliations"] = transformed_aff
             return _creators
 
@@ -240,18 +256,17 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             vocab_type = "experiments"
             service = current_service_registry.get("vocabularies")
             try:
-                vocabulary_result = (
-                    service.search(system_identity, type=vocab_type,
-                                   q=f"{experiment}")
-                    .to_dict())
+                vocabulary_result = service.search(
+                    system_identity, type=vocab_type, q=f"{experiment}"
+                ).to_dict()
             except RequestError:
-                raise UnexpectedValue(subfield="a",
-                                      value=experiment,
-                                      field="experiment",
-                                      message=f"Experiment {experiment} "
-                                              f"not valid search phrase.",
-                                      stage="vocabulary match"
-                                      )
+                raise UnexpectedValue(
+                    subfield="a",
+                    value=experiment,
+                    field="experiment",
+                    message=f"Experiment {experiment} " f"not valid search phrase.",
+                    stage="vocabulary match",
+                )
             if vocabulary_result["hits"]["total"]:
 
                 custom_fields["cern:experiment"] = {
@@ -259,12 +274,13 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 }
 
             else:
-                raise UnexpectedValue(subfield="a",
-                                      value=experiment,
-                                      field="experiment",
-                                      message=f"Experiment {experiment} not found.",
-                                      stage="vocabulary match"
-                                      )
+                raise UnexpectedValue(
+                    subfield="a",
+                    value=experiment,
+                    field="experiment",
+                    message=f"Experiment {experiment} not found.",
+                    stage="vocabulary match",
+                )
             return custom_fields
 
     def transform(self, entry):
@@ -297,7 +313,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "recid": self._recid(record_dump),
                 "communities": self._communities(json_data),
                 "json": json_output,
-                "owned_by": self._owner(json_data)
+                "owned_by": self._owner(json_data),
             }
         except Exception as e:
             e.recid = entry["recid"]
@@ -309,8 +325,15 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 class CDSToRDMRecordTransform(RDMRecordTransform):
     """CDSToRDMRecordTransform."""
 
-    def __init__(self, workers=None, throw=True, files_dump_dir=None,
-                 missing_users=None, community_slug=None, dry_run=False):
+    def __init__(
+        self,
+        workers=None,
+        throw=True,
+        files_dump_dir=None,
+        missing_users=None,
+        community_slug=None,
+        dry_run=False,
+    ):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
         self.missing_users_dir = Path(missing_users).absolute().as_posix()
@@ -322,9 +345,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         communities = record.get("communities", [])
         communities = [self.community_slug] + [slug for slug in communities]
         if communities:
-            return {"ids": communities,
-                    "default": self.community_slug
-                    }
+            return {"ids": communities, "default": self.community_slug}
         return {}
 
     def _parent(self, entry, record):
@@ -368,9 +389,9 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
 
     def _record(self, entry):
         # could be in draft as well, depends on how we decide to publish
-        return CDSToRDMRecordEntry(missing_users_dir=self.missing_users_dir,
-                                   dry_run=self.dry_run).transform(
-            entry)
+        return CDSToRDMRecordEntry(
+            missing_users_dir=self.missing_users_dir, dry_run=self.dry_run
+        ).transform(entry)
 
     def _draft(self, entry):
         return None
@@ -390,14 +411,17 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             # TODO other access types to be dealt later, for now we make sure
             # TODO that no restricted file goes through
             if file["status"]:
-                raise RestrictedFileDetected(value=file["full_name"], priority="critical")
+                raise RestrictedFileDetected(
+                    value=file["full_name"], priority="critical"
+                )
             # group files by version
-            # {"1": {"filename": {...}}
+            # {"1": {"filename1": {...}, {"filename2": {...}, ...}
             draft_files[file["version"]].update(
                 {
                     file["full_name"]: {
                         "eos_tmp_path": tmp_eos_root
-                                        / full_path.relative_to(legacy_path_root),
+                        / full_path.relative_to(legacy_path_root),
+                        "id_bibdoc": file["bibdocid"],
                         "key": file["full_name"],
                         "metadata": {},
                         "mimetype": file["mime"],
