@@ -6,9 +6,11 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM transform step module."""
-
+import csv
 import datetime
+import json
 import logging
+import os.path
 from collections import OrderedDict
 from pathlib import Path
 
@@ -17,21 +19,30 @@ from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
 )
+from sqlalchemy.exc import NoResultFound
 
+from cds_migrator_kit.rdm.migration.transform.users import CDSMissingUserLoad
 from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
-    LossyConversion, RestrictedFileDetected, UnexpectedValue,
+    LossyConversion, RestrictedFileDetected, UnexpectedValue, ManualImportRequired,
 )
 from cds_migrator_kit.records.log import RDMJsonLogger
 from invenio_access.permissions import system_identity
 from invenio_search.engine import dsl
 from invenio_records_resources.proxies import current_service_registry
+from invenio_accounts.models import User
 
 cli_logger = logging.getLogger("migrator")
 
 
 class CDSToRDMRecordEntry(RDMRecordEntry):
     """Transform Zenodo record to RDM record."""
+
+    def __init__(self, partial=False, missing_users_dir=None,
+                 missing_users_filename="people.csv"):
+        self.missing_users_dir = missing_users_dir
+        self.missing_users_filename = missing_users_filename
+        super().__init__(partial)
 
     def _created(self, json_entry):
         try:
@@ -96,6 +107,52 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
     def _communities(self, json_entry):
         return json_entry["communities"]
 
+    def _owner(self, json_entry):
+        email = json_entry["submitter"]
+        try:
+            user = User.query.filter_by(email=email).one()
+            print("USER found in ldap")
+            return user.id
+        except NoResultFound:
+            print("CREATING NEW USER")
+            user = self._create_owner(email)
+            return user.id
+
+    def _create_owner(self, email):
+        def get_person(email):
+            missing_users_dump = os.path.join(self.missing_users_dir,
+                                              self.missing_users_filename)
+            with open(missing_users_dump) as csv_file:
+                for row in csv.reader(csv_file):
+                    if email == row[0]:
+                        return row
+
+        def get_person_old_db(email):
+            missing_users_dump = os.path.join(self.missing_users_dir,
+                                              "missing_users.json")
+            with open(missing_users_dump) as json_file:
+                missing = json.load(json_file)
+            person = next((item for item in missing if item["email"] == email), None)
+
+            return person
+
+        user_api = CDSMissingUserLoad()
+        person = get_person(email)
+        person_old_db = get_person_old_db(email)
+        if person:
+            person_id = person[1]
+            displayname = f"{person[2]} {person[3]}"
+            user = user_api.create_user(email, displayname, person_id)
+            return user
+        elif person_old_db:
+            user = user_api.create_user(person_old_db["email"],
+                                        f'user {person_old_db["id"]}',
+                                        person_old_db["id"])
+            return user
+        else:
+            print()
+            raise ManualImportRequired(value=email, field="submitter")
+
     def _metadata(self, json_entry):
         def creators(json):
             try:
@@ -136,7 +193,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             st = None
             return {"id": f"{t}-{st}"} if st else {"id": t}
 
-
         return {
             "creators": creators(json_entry),
             "title": json_entry["title"],
@@ -169,6 +225,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                                       field="experiment",
                                       message=f"Experiment {experiment} not found.")
             return custom_fields
+
     def transform(self, entry):
         """Transform a record single entry."""
         record_dump = CDSRecordDump(
@@ -199,7 +256,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "index": self._index(record_dump),
                 "recid": self._recid(record_dump),
                 # "communities": self._communities(json_data),
-                "json": json_output
+                "json": json_output,
+                "owned_by": self._owner(json_data)
             }
         except LossyConversion as e:
             cli_logger.error("[DATA ERROR]: {0}".format(e.message))
@@ -213,9 +271,11 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 class CDSToRDMRecordTransform(RDMRecordTransform):
     """CDSToRDMRecordTransform."""
 
-    def __init__(self, workers=None, throw=True, files_dump_dir=None):
+    def __init__(self, workers=None, throw=True, files_dump_dir=None,
+                 missing_users=None, community_slug=None):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
+        self.missing_users_dir = Path(missing_users).absolute().as_posix()
         super().__init__(workers, throw)
 
     def _community_id(self, entry, record):
@@ -236,7 +296,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 # loader is responsible for creating/updating if the PID exists.
                 "id": f'{record["recid"]}-parent',
                 "access": {
-                    "owned_by": {"user": "1"},
+                    "owned_by": {"user": str(record["owned_by"])},
                 },
                 # "communities": self._community_id(entry, record),
             },
@@ -267,7 +327,8 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
 
     def _record(self, entry):
         # could be in draft as well, depends on how we decide to publish
-        return CDSToRDMRecordEntry().transform(entry)
+        return CDSToRDMRecordEntry(missing_users_dir=self.missing_users_dir).transform(
+            entry)
 
     def _draft(self, entry):
         return None
@@ -278,7 +339,6 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         draft_files = OrderedDict()
         legacy_path_root = Path("/opt/cdsweb/var/data/files/")
         tmp_eos_root = Path(self.files_dump_dir)
-
         for file in _files:
             full_path = Path(file["full_path"])
 

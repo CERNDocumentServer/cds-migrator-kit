@@ -11,6 +11,7 @@ import logging
 import arrow
 from invenio_access.permissions import system_identity
 from invenio_db import db
+from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
 
@@ -54,59 +55,58 @@ class CDSRecordServiceLoad(Load):
 
         identity = system_identity  # Should we create an identity for the migration?
 
-        # take first file for the fist version
-        filename = next(iter(version_files))
+        for filename, file_data in version_files.items():
 
-        file = version_files[filename]
+            file_data = version_files[filename]
 
-        try:
-            current_rdm_records_service.draft_files.init_files(
-                identity,
-                draft.id,
-                data=[
-                    {
-                        "key": file["key"],
-                        "metadata": file["metadata"],
-                        "access": {"hidden": False},
-                    }
-                ],
-            )
-            # TODO change to eos move or xrootd command instead of going through the app
-            # TODO leave the init part to pre-create the destination folder
-            # TODO update checksum, size, commit (to be checked on how these methods work)
-            # if current_app.config["XROOTD_ENABLED"]:
-            #     storage = current_files_rest.storage_factory
-            #     current_rdm_records_service.draft_files.set_file_content(
-            #         identity,
-            #         draft.id,
-            #         file["key"],
-            #         BytesIO(b"Placeholder file"),
-            #     )
-            #     obj = None
-            #     for object in draft._record.files.objects:
-            #         if object.key == file["key"]:
-            #             obj = object
-            #     path = obj.file.uri
-            # else:
-            # for local development
-            current_rdm_records_service.draft_files.set_file_content(
-                identity,
-                draft.id,
-                file["key"],
-                import_legacy_files(file["eos_tmp_path"]),
-            )
-            result = current_rdm_records_service.draft_files.commit_file(
-                identity, draft.id, file["key"]
-            )
-            legacy_checksum = f"md5:{file['checksum']}"
-            new_checksum = result.to_dict()["checksum"]
-            assert legacy_checksum == new_checksum
-        except Exception as e:
-            exc = ManualImportRequired(
-                message=str(e), field="filename", value=file["key"]
-            )
-            migration_logger.add_log(exc, output=entry, key="filename",
-                                     value=file["key"])
+            try:
+                current_rdm_records_service.draft_files.init_files(
+                    identity,
+                    draft.id,
+                    data=[
+                        {
+                            "key": file_data["key"],
+                            "metadata": file_data["metadata"],
+                            "access": {"hidden": False},
+                        }
+                    ],
+                )
+                # TODO change to eos move or xrootd command instead of going through the app
+                # TODO leave the init part to pre-create the destination folder
+                # TODO update checksum, size, commit (to be checked on how these methods work)
+                # if current_app.config["XROOTD_ENABLED"]:
+                #     storage = current_files_rest.storage_factory
+                #     current_rdm_records_service.draft_files.set_file_content(
+                #         identity,
+                #         draft.id,
+                #         file["key"],
+                #         BytesIO(b"Placeholder file"),
+                #     )
+                #     obj = None
+                #     for object in draft._record.files.objects:
+                #         if object.key == file["key"]:
+                #             obj = object
+                #     path = obj.file.uri
+                # else:
+                # for local development
+                current_rdm_records_service.draft_files.set_file_content(
+                    identity,
+                    draft.id,
+                    file_data["key"],
+                    import_legacy_files(file_data["eos_tmp_path"]),
+                )
+                result = current_rdm_records_service.draft_files.commit_file(
+                    identity, draft.id, file_data["key"]
+                )
+                legacy_checksum = f"md5:{file_data['checksum']}"
+                new_checksum = result.to_dict()["checksum"]
+                assert legacy_checksum == new_checksum
+            except Exception as e:
+                exc = ManualImportRequired(
+                    message=str(e), field="filename", value=file_data["key"]
+                )
+                migration_logger.add_log(exc, output=entry, key="filename",
+                                         value=file_data["key"])
 
     def _load_access(self, draft, entry):
         """Load access rights."""
@@ -118,28 +118,8 @@ class CDSRecordServiceLoad(Load):
     def _load_versions(self, draft, entry):
         """Load other versions of the record."""
         draft_files = entry["draft_files"]
-        for version in draft_files.keys():
-            file_dict = draft_files.get(version)
-            if version == 1:
-                self._load_files(draft, entry, file_dict)
-            else:
-                draft = current_rdm_records_service.new_version(
-                    system_identity, draft["id"]
-                )
 
-                self._load_files(draft, entry, file_dict)
-                filename = next(iter(file_dict))
-                file = file_dict[filename]
-                missing_data = {
-                    "metadata": {
-                        **draft.to_dict()["metadata"],
-                        "publication_date": file["creation_date"],
-                    }
-                }
-
-                draft = current_rdm_records_service.update_draft(
-                    system_identity, draft["id"], data=missing_data
-                )
+        def publish_and_mint_recid(draft, version):
             record = current_rdm_records_service.publish(system_identity, draft["id"])
             # mint legacy ids for redirections
             if version == 1:
@@ -147,6 +127,43 @@ class CDSRecordServiceLoad(Load):
                 # but then we get a double redirection
                 legacy_recid_minter(entry["record"]["recid"],
                                     record._record.parent.model.id)
+
+        if not draft_files:
+            # when missing files, just publish
+            publish_and_mint_recid(draft, 1)
+
+        for version in draft_files.keys():
+            version_files_dict = draft_files.get(version)
+            if version == 1:
+                self._load_files(draft, entry, version_files_dict)
+            else:
+                draft = current_rdm_records_service.new_version(
+                    system_identity, draft["id"]
+                )
+
+                self._load_files(draft, entry, version_files_dict)
+
+                # attention! the metadata of new version
+                # will be taken from the first file
+                # on the list TODO can we improve this for publication accuracy?
+                # maybe sorting by creation date would be better?
+                filename = next(iter(version_files_dict))
+                file = version_files_dict[filename]
+                # add missing metadata for new version
+                missing_data = {
+                    "metadata": {
+                        # copy over the previous draft metadata
+                        **draft.to_dict()["metadata"],
+                        # add missing publication date based on the time of creation of the new file version
+                        "publication_date": file["creation_date"],
+                    }
+                }
+
+                draft = current_rdm_records_service.update_draft(
+                    system_identity, draft["id"], data=missing_data
+                )
+
+            publish_and_mint_recid(draft, version)
 
     def _load_model_fields(self, draft, entry):
         """Load model fields of the record."""
@@ -185,9 +202,12 @@ class CDSRecordServiceLoad(Load):
                     self._load_model_fields(draft, entry)
 
                     self._load_versions(draft, entry)
+                except PIDAlreadyExists:
+                    pass
                 except Exception as e:
                     exc = ManualImportRequired(message=str(e), field="validation")
                     migration_logger.add_log(exc, output=entry)
+                    raise e
 
     def _cleanup(self, *args, **kwargs):
         """Cleanup the entries."""

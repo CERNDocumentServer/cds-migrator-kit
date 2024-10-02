@@ -7,12 +7,15 @@ old_secret_key: CHANGE_ME
 new_secret_key: CHANGE_ME
 #users:
 #  extract:
-#    filepath: cds_migrator_kit/rdm/migration/data/users/active_users.json
+#    dirpath: cds_migrator_kit/rdm/migration/data/users/dump
 #  load:
-#    db_uri: postgresql://cds-rdm:cds-rdm@localhost:5432/cds-rdm
-#    tmp_dir: site/cds_rdm/migration/data/transform
+#    filepath: cds_migrator_kit/rdm/migration/data/users/people.csv
 records:
   extract:
     dirpath: cds_migrator_kit/rdm/migration/data/summer_student_reports/dump/
   transform:
     files_dump_dir: cds_migrator_kit/rdm/migration/data/summer_student_reports/files/
+#    missing_users: /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/users
+    missing_users: cds_migrator_kit/rdm/migration/data/users
+    community_slug: summer-student-reports
+

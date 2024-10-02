@@ -46,7 +46,7 @@ class LegacyUserExtract(Extract):
         """Constructor."""
         self.filepath = Path(filepath).absolute()
 
-    def run(self):
+    def extract(self, email):
         """Run."""
         with open(self.filepath, "r") as dump_file:
             data = json.load(dump_file)
