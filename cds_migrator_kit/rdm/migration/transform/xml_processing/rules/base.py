@@ -125,6 +125,7 @@ def publisher(self, key, value):
     else:
         raise IgnoreKey("publisher")
 
+
 def publication_date(self, key, value):
     """Translates publication_date."""
     publication_date_str = value.get("c")
@@ -133,7 +134,8 @@ def publication_date(self, key, value):
         self["publication_date"] = date_obj.strftime("%Y-%m-%d")
         return
     except ParserError:
-        raise UnexpectedValue(field="publication_date", message=f"Can't parse provided publication date. Value: {publication_date_str}")
+        raise UnexpectedValue(field="publication_date",
+                              message=f"Can't parse provided publication date. Value: {publication_date_str}")
 
 
 @model.over("imprint", "^269__")
@@ -231,3 +233,9 @@ def custom_fields(self, key, value):
         experiment = value.get("e")
         _custom_fields["cern:experiment"] = experiment
     return _custom_fields
+
+
+@model.over("submitter", "(^859__)")
+def record_submitter(self, key, value):
+    return value.get("f")
+

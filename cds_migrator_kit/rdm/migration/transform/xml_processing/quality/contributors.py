@@ -148,22 +148,22 @@ def extract_json_contributor_ids(info):
     SOURCES = {
         "AUTHOR|(INSPIRE)": "inspire",
         "AUTHOR|(CDS)": "cds",
-        # "AUTHOR|(SzGeCERN)": "CERN", --> ?
+        "AUTHOR|(SzGeCERN)": "cern",
     }
     regex = re.compile(r"(AUTHOR\|\((INSPIRE|CDS)\))(.*)")
     ids = []
     author_ids = force_list(info.get("0", ""))
     for author_id in author_ids:
         match = regex.match(author_id)
-        if match:
-            # ids.append(
-            #     {"identifier": match.group(3), "scheme": SOURCES[match.group(1)]}
-            # )
-            pass
-    # try:
-    #     ids.append({"identifier": info["inspireid"], "scheme": "inspire"})
-    # except KeyError:
-    #     pass
+        # if match:
+        #     ids.append(
+        #         {"identifier": match.group(3), "scheme": SOURCES[match.group(1)]}
+        #     )
+        #     pass
+    try:
+        ids.append({"identifier": info["inspireid"], "scheme": "inspire"})
+    except KeyError:
+        pass
 
     author_orcid = info.get("k")
     if author_orcid:

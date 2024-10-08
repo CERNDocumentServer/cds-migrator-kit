@@ -49,43 +49,42 @@ class CMSSummerStudent(CdsOverdo):
         "700__9",  # #BEARD# tag
         "700__m",  # Contributors (email)
 
-
         # TO Implement (to remove from here)
         "035__9",  # Inspire schema
         "035__a",  # Inspire id value
         "710__5",  # department / organisation author
         "710__a",  # organisation author
-        "859__f",  # creator's email, to be used to determine the owner ???
+        # "270__m",  # document contact email
+        # "270__p", # document contact person name
 
         # TO DECIDE
         "0248_a",  # oai identifier, not needed to migrate, TBD
         "0248_p",  # oai identifier, not needed to migrate, TBD
-        # "0248_q",  does appear
-        # "088__a",  # RN (manual introduced?)
+        # "0248_q",  does appear in data, what is this field
+        # "088__a",  # RN (manual introduced?) second report number (so the identifiers schemas are not unique!)
         # "100__0",
-        # "100__9",  # Author to check
+        # "100__9",  # Author, to check
         # "246__i",  # abbreviation tag, applies to value of 246__A
-        # "270__m",
-        # "270__p",
         # "562__c",  # note
         "595__a",  # always value CERN EDS, not displayed, TODO: do we keep?
-        # "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it?
-        # "693__a", # accelerator
-        # "693__b", # value 'H4' in 1 record: 2640381
-        # "693__f", # facility
-        # "693__p",  # project
-        # "693__s",  # study
-        # "700__0",  # Contributors (cds author id) - TBD if we keep
-        # "700__u",  # Contributors (affiliation)
-        # "710__g",  # Collaboration
-        "906__p",  # name, is it supervisor? # todo migrate as contributor
-        # "906__p", # probably supervisor TODO: check
-        "960__a",  # collection id? usually value 12
-        "963__a",  # restriction # todo assert if any record is restricted -> to implement in collection specific rules
+        "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it? what does UNCL mean
+        "693__a",  # accelerator, do we create a custom field?
+        # "693__b", # value 'H4' in 1 record: 2640381, to be discarded?
+        # "693__f", # facility, do we create a custom field?
+        # "693__p",  # project, do we create a custom field?
+        # "693__s",  # study,  do we create a custom field?
+        # "700__0",  # Contributors (cds author id) - TBD if we keep, same with INSPIRE ID
+        # "710__g",  # Collaboration, OK to migrate as corporate contributor (not creator)?
+        "906__p",  # names, is it supervisor? # todo migrate as contributor?
+        # "937__c", # what are those fields, what does the date mean?
+        # "937__s", # what are those fields
+        "960__a",  # collection id? usually value 12, to confirm if we ignore
+        "963__a",
+        # restriction # todo assert if any record is restricted -> to implement in collection specific rules
         "970__a",  # some kind of identifier? "000732636CER"
-        "980__a",  # collection tag
+        "980__a",
+        # collection tag, to decide if this can be used, should it be used to add multiple communities? FE community of summer students and the specific department reports (or maybe it is a collection query?)
         # "980__c",
-
 
         # IMPLEMENTED
 
@@ -103,7 +102,7 @@ class CMSSummerStudent(CdsOverdo):
         # "6931_a",  # keyword
         # "6931_9",  # keyword
         # "693__e",  # custom_fields.cern:experiment  # TODO this field is single value, do we have lists?
-
+        # "859__f",  # creator's email, to be used to determine the owner
         # "650172",  # subject provenance
         # "65017a",  # subject value
         # "700__a",  # Contributors (full name)

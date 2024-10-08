@@ -19,20 +19,37 @@
 """Common RDM fields."""
 
 from cds_dojson.marc21.fields.utils import clean_val, out_strip
-from dojson.errors import IgnoreKey
+from dojson.utils import force_list
+
+from ..quality.decorators import for_each_value
 # ATTENTION when COPYING! important which model you use as decorator
-from ...models.summer_student_report import model
+from ...models.people import model
 
 
-# TODO: not working
-@model.over("report_number", "^037__")
+@model.over("email", "^371__")
 @out_strip
-def report_number(self, key, value):
+def email(self, key, value):
     """Translates report_number fields."""
-    report_number = clean_val("a", value, str)
-    if report_number:
-        return report_number
-    else:
-        raise IgnoreKey("preprint_date")
+    self["department"] = clean_val("i", value, str)
+    return clean_val("m", value, str)
 
 
+@model.over("person_id", "^035__")
+def person_id(self, key, value):
+    # _person_id = clean_val("a", value, str)
+    _ids = force_list(value.get("a"))
+    for i in _ids:
+        if "AUTHOR|(INSPIRE)" in i:
+            pass
+        else:
+            person_id = i.replace("AUTHOR|(SzGeCERN)", "").strip()
+            return person_id
+
+@model.over("surname", "^1001_")
+def surname(self, key, value):
+    return clean_val("a", value, str)
+
+
+@model.over("given_names", "^1000_")
+def given_names(self, key, value):
+    return clean_val("a", value, str)

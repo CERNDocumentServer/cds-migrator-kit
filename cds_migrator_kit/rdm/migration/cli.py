@@ -14,7 +14,8 @@ from flask import current_app
 from flask.cli import with_appcontext
 
 from cds_migrator_kit.rdm.migration.runner import Runner
-from cds_migrator_kit.rdm.migration.streams import RecordStreamDefinition
+from cds_migrator_kit.rdm.migration.streams import RecordStreamDefinition, \
+    UserStreamDefinition
 
 cli_logger = logging.getLogger("migrator")
 
@@ -36,6 +37,7 @@ def run(dry_run=False):
     stream_config = current_app.config["CDS_MIGRATOR_KIT_STREAM_CONFIG"]
     runner = Runner(
         stream_definitions=[RecordStreamDefinition],
+        # stream_definitions=[UserStreamDefinition],
         config_filepath=Path(stream_config).absolute(),
         dry_run=dry_run
     )

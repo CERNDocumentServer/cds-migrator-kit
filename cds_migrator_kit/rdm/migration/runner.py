@@ -46,24 +46,7 @@ class Runner:
         Logger.initialize(self.log_dir)
         RDMJsonLogger.initialize(self.log_dir)
         FailedTxLogger.initialize(self.log_dir)
-
         self.db_uri = config.get("db_uri")
-        # self.state = StateDB(
-        #     db_dir=self.state_dir, validators={"parents": ParentModelValidator}
-        # )
-        # STATE.initialized_state(
-        #     self.state,
-        #     cache=config.get("state_cache", True),
-        #     search_cache=config.get("state_search_cache", True),
-        # )
-        # set up secret keys
-        # for key in ("old_secret_key", "new_secret_key"):
-        #     stored_value = STATE.VALUES.get(key)
-        #     if stored_value:
-        #         STATE.VALUES.update(key, {"value": bytes(config.get(key), "utf-8")})
-        #     else:
-        #         STATE.VALUES.add(key, {"value": bytes(config.get(key), "utf-8")})
-
         # start parsing streams
         self.streams = []
         for definition in stream_definitions:
@@ -82,9 +65,11 @@ class Runner:
                     if definition.extract_cls:
                         extract = definition.extract_cls(
                             **stream_config.get("extract", {})
+
                         )
                     if definition.transform_cls:
                         transform = definition.transform_cls(
+                            dry_run=dry_run,
                             **stream_config.get("transform", {})
                         )
 
