@@ -60,24 +60,6 @@ class CDSUserEntry(Entry):
         record_dump.prepare_revisions()
         timestamp, json_data = record_dump.revisions[-1]
         return json_data
-        #
-        # return {
-        #     "id": self._id(entry),
-        #     "email": self._email(entry),
-        #     "active": self._active(entry),
-        #     "preferences": self._preferences(entry),
-        #     "login_information": self._login_information(entry),
-        # }
-
-
-#
-# class CDSUserStream:
-#     def __init__(self, dump_filepath):
-#         self.dump_filepath = dump_filepath
-#         super().__init__()
-#
-#     def run(self):
-#         dump = LegacyUserExtract(self.dump_filepath)
 
 
 class CDSRDMUserTransform(Transform):
@@ -172,5 +154,4 @@ class CDSMissingUserLoad:
         remote_account = self.create_invenio_remote_account(user_id, extra_data)
         db.session.add(remote_account)
 
-        # Automatically confirm the user
         return user

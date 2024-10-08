@@ -114,10 +114,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         email = json_entry["submitter"]
         try:
             user = User.query.filter_by(email=email).one()
-            print("USER found in ldap")
             return user.id
         except NoResultFound:
-            print("CREATING NEW USER")
             if not self.dry_run:
                 user_id = self._create_owner(email)
                 return user_id
