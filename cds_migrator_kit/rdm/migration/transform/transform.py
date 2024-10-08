@@ -12,6 +12,7 @@ import json
 import logging
 import os.path
 from collections import OrderedDict
+from copy import deepcopy
 from pathlib import Path
 
 import arrow
@@ -19,6 +20,7 @@ from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
 )
+from opensearchpy import RequestError
 from sqlalchemy.exc import NoResultFound
 
 from cds_migrator_kit.rdm.migration.transform.users import CDSMissingUserLoad
@@ -39,9 +41,10 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
     """Transform Zenodo record to RDM record."""
 
     def __init__(self, partial=False, missing_users_dir=None,
-                 missing_users_filename="people.csv"):
+                 missing_users_filename="people.csv", dry_run=False):
         self.missing_users_dir = missing_users_dir
         self.missing_users_filename = missing_users_filename
+        self.dry_run = dry_run
         super().__init__(partial)
 
     def _created(self, json_entry):
@@ -105,7 +108,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         return {"enabled": True if files else False}
 
     def _communities(self, json_entry):
-        return json_entry["communities"]
+        return json_entry.get("communities", [])
 
     def _owner(self, json_entry):
         email = json_entry["submitter"]
@@ -115,8 +118,10 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             return user.id
         except NoResultFound:
             print("CREATING NEW USER")
-            user = self._create_owner(email)
-            return user.id
+            if not self.dry_run:
+                user_id = self._create_owner(email)
+                return user_id
+            return "-1"
 
     def _create_owner(self, email):
         def get_person(email):
@@ -139,54 +144,73 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         user_api = CDSMissingUserLoad()
         person = get_person(email)
         person_old_db = get_person_old_db(email)
+
+        person_id = None
+        displayname = None
+        username = None
+        extra_data = {"migration": {}}
+
         if person:
-            person_id = person[1]
+            # person id might be missing from people collection
+            person_id = person[1] if person[1] else None
             displayname = f"{person[2]} {person[3]}"
-            user = user_api.create_user(email, displayname, person_id)
-            return user
+            username = f"{person[2][0]}{person[3]}".lower().replace(" ", "")
+            if len(person) == 5:
+                extra_data["department"] = person[4]
+            extra_data["migration"]["source"] = (
+                f"PEOPLE COLLECTION, "
+                f"{'PERSON_ID FOUND' if person_id else 'PERSON_ID NOT FOUND'}"
+            )
         elif person_old_db:
-            user = user_api.create_user(person_old_db["email"],
-                                        f'user {person_old_db["id"]}',
-                                        person_old_db["id"])
-            return user
+            names = "".join(person_old_db["displayname"].split())
+            username = names.lower().replace(".", "")
+            if not username:
+                username = f'MIGRATED{email.replace("@", "").replace(".", "")}'
+            displayname = person_old_db["displayname"]
+            extra_data["migration"]["source"] = "LEGACY DB, PERSON ID MISSING"
         else:
-            print()
-            raise ManualImportRequired(value=email, field="submitter")
+            username = email.replace("@", "").replace(".", "")
+            extra_data["migration"]["source"] = "RECORD, EMAIL NOT FOUND IN ANY SOURCE"
+        extra_data["migration"]["note"] = "MIGRATED INACTIVE ACCOUNT"
+
+        user = user_api.create_user(
+            email,
+            name=displayname,
+            username=username,
+            person_id=person_id)
+        return user.id
 
     def _metadata(self, json_entry):
         def creators(json):
-            try:
-                _creators = json["creators"]
-                vocab_type = "affiliations"
-                service = current_service_registry.get(vocab_type)
-                extra_filter = dsl.Q("term", type__id=vocab_type)
-                for creator in _creators:
-                    affiliations = creator["affiliations"]
-                    transformed_aff = []
-                    for affiliation_name in affiliations:
+            _creators = deepcopy(json.get("creators", []))
+            vocab_type = "affiliations"
+            service = current_service_registry.get(vocab_type)
+            extra_filter = dsl.Q("term", type__id=vocab_type)
+            for creator in _creators:
+                affiliations = creator.get("affiliations", [])
+                transformed_aff = []
+                for affiliation_name in affiliations:
 
-                        title = dsl.Q("match", **{f"title": affiliation_name})
-                        acronym = dsl.Q("match_phrase",
-                                        **{f"acronym.keyword": affiliation_name})
-                        title_filter = dsl.query.Bool("should", should=[title, acronym])
+                    title = dsl.Q("match", **{f"title": affiliation_name})
+                    acronym = dsl.Q("match_phrase",
+                                    **{f"acronym.keyword": affiliation_name})
+                    title_filter = dsl.query.Bool("should", should=[title, acronym])
 
-                        vocabulary_result = (service.search(system_identity,
-                                                            extra_filter=title_filter | extra_filter)
-                                             .to_dict())
-                        if vocabulary_result["hits"]["total"]:
-                            transformed_aff.append({
-                                "name": affiliation_name,
-                                "id": vocabulary_result["hits"]["hits"][0]["id"]}
-                            )
-                        else:
-                            raise UnexpectedValue(subfield="u",
-                                                  value=affiliation_name,
-                                                  field="author",
-                                                  message=f"Affiliation {affiliation_name} not found.")
-                    creator["affiliations"] = transformed_aff
-                return json["creators"]
-            except KeyError:
-                raise UnexpectedValue(field="creators")
+                    vocabulary_result = (service.search(system_identity,
+                                                        extra_filter=title_filter | extra_filter)
+                                         .to_dict())
+                    if vocabulary_result["hits"]["total"]:
+                        transformed_aff.append({
+                            "name": affiliation_name,
+                            "id": vocabulary_result["hits"]["hits"][0]["id"]}
+                        )
+                    else:
+                        raise UnexpectedValue(subfield="u",
+                                              value=affiliation_name,
+                                              field="author",
+                                              message=f"Affiliation {affiliation_name} not found.")
+                creator["affiliations"] = transformed_aff
+            return _creators
 
         def _resource_type(data):
             t = "publication-technicalnote"
@@ -209,10 +233,17 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         if experiment:
             vocab_type = "experiments"
             service = current_service_registry.get("vocabularies")
-            vocabulary_result = (
-                service.search(system_identity, type=vocab_type,
-                               q=f"{experiment}")
-                .to_dict())
+            try:
+                vocabulary_result = (
+                    service.search(system_identity, type=vocab_type,
+                                   q=f"{experiment}")
+                    .to_dict())
+            except RequestError:
+                raise UnexpectedValue(subfield="a",
+                                      value=experiment,
+                                      field="experiment",
+                                      message=f"Experiment {experiment} "
+                                              f"not valid search phrase.")
             if vocabulary_result["hits"]["total"]:
 
                 custom_fields["cern:experiment"] = {
@@ -255,7 +286,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "version_id": self._version_id(record_dump),
                 "index": self._index(record_dump),
                 "recid": self._recid(record_dump),
-                # "communities": self._communities(json_data),
+                "communities": self._communities(json_data),
                 "json": json_output,
                 "owned_by": self._owner(json_data)
             }
@@ -272,19 +303,21 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
     """CDSToRDMRecordTransform."""
 
     def __init__(self, workers=None, throw=True, files_dump_dir=None,
-                 missing_users=None, community_slug=None):
+                 missing_users=None, community_slug=None, dry_run=False):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
         self.missing_users_dir = Path(missing_users).absolute().as_posix()
+        self.community_slug = community_slug
+        self.dry_run = dry_run
         super().__init__(workers, throw)
 
     def _community_id(self, entry, record):
-        communities = record.get("communities")
+        communities = record.get("communities", [])
+        communities = [self.community_slug] + [slug for slug in communities]
         if communities:
-            # TODO: handle all slugs
-            slug = communities[0]
-            if slug:
-                return {"ids": [slug], "default": slug}
+            return {"ids": communities,
+                    "default": self.community_slug
+                    }
         return {}
 
     def _parent(self, entry, record):
@@ -298,7 +331,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 "access": {
                     "owned_by": {"user": str(record["owned_by"])},
                 },
-                # "communities": self._community_id(entry, record),
+                "communities": self._community_id(entry, record),
             },
         }
 
@@ -327,7 +360,8 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
 
     def _record(self, entry):
         # could be in draft as well, depends on how we decide to publish
-        return CDSToRDMRecordEntry(missing_users_dir=self.missing_users_dir).transform(
+        return CDSToRDMRecordEntry(missing_users_dir=self.missing_users_dir,
+                                   dry_run=self.dry_run).transform(
             entry)
 
     def _draft(self, entry):

@@ -54,6 +54,8 @@ class CMSSummerStudent(CdsOverdo):
         "035__a",  # Inspire id value
         "710__5",  # department / organisation author
         "710__a",  # organisation author
+        # "270__m",  # document contact email
+        # "270__p", # document contact person name
 
         # TO DECIDE
         "0248_a",  # oai identifier, not needed to migrate, TBD
@@ -63,12 +65,10 @@ class CMSSummerStudent(CdsOverdo):
         # "100__0",
         # "100__9",  # Author, to check
         # "246__i",  # abbreviation tag, applies to value of 246__A
-        # "270__m",
-        # "270__p",
         # "562__c",  # note
         "595__a",  # always value CERN EDS, not displayed, TODO: do we keep?
-        # "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it? what does UNCL mean
-        "693__a", # accelerator, do we create a custom field?
+        "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it? what does UNCL mean
+        "693__a",  # accelerator, do we create a custom field?
         # "693__b", # value 'H4' in 1 record: 2640381, to be discarded?
         # "693__f", # facility, do we create a custom field?
         # "693__p",  # project, do we create a custom field?

@@ -65,9 +65,11 @@ class Runner:
                     if definition.extract_cls:
                         extract = definition.extract_cls(
                             **stream_config.get("extract", {})
+
                         )
                     if definition.transform_cls:
                         transform = definition.transform_cls(
+                            dry_run=dry_run,
                             **stream_config.get("transform", {})
                         )
 

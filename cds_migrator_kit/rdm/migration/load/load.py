@@ -115,6 +115,13 @@ class CDSRecordServiceLoad(Load):
         parent.access = access
         parent.commit()
 
+    def _load_communities(self, draft, entry):
+        parent = draft._record.parent
+        communities = entry["parent"]["json"]["communities"]["ids"]
+        for community in communities:
+            parent.communities.add(community)
+        parent.commit()
+
     def _load_versions(self, draft, entry):
         """Load other versions of the record."""
         draft_files = entry["draft_files"]
@@ -123,6 +130,9 @@ class CDSRecordServiceLoad(Load):
             record = current_rdm_records_service.publish(system_identity, draft["id"])
             # mint legacy ids for redirections
             if version == 1:
+                record._record.model.created = arrow.get(
+                    entry["record"]["created"]).datetime
+
                 # it seems more intuitive if we mint the lrecid for parent
                 # but then we get a double redirection
                 legacy_recid_minter(entry["record"]["recid"],
@@ -171,6 +181,7 @@ class CDSRecordServiceLoad(Load):
         draft._record.model.created = arrow.get(entry["record"]["created"]).datetime
         # TODO we can use unit of work when it is moved to invenio-db module
         self._load_access(draft, entry)
+        self._load_communities(draft, entry)
         db.session.commit()
 
     def _load(self, entry):
@@ -207,7 +218,7 @@ class CDSRecordServiceLoad(Load):
                 except Exception as e:
                     exc = ManualImportRequired(message=str(e), field="validation")
                     migration_logger.add_log(exc, output=entry)
-                    raise e
+                    # raise e
 
     def _cleanup(self, *args, **kwargs):
         """Cleanup the entries."""

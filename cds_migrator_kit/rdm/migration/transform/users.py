@@ -15,6 +15,7 @@ from invenio_rdm_migrator.load import Load
 from invenio_rdm_migrator.streams.users import UserEntry, UserTransform
 from invenio_rdm_migrator.transform.base import Transform, Entry
 from invenio_userprofiles import UserProfile
+from sqlalchemy.exc import IntegrityError
 
 from cds_migrator_kit.rdm.migration.extract import LegacyUserExtract
 from invenio_accounts.models import User, UserIdentity
@@ -93,7 +94,7 @@ class CDSUserIntermediaryLoad(Load):
     def __init__(self, filepath, **kwargs):
         self.filepath = filepath
         self.dumpfile = open(self.filepath, 'w', newline='')
-        fieldnames = ['email', 'person_id', "surname", "given_names"]
+        fieldnames = ['email', 'person_id', "surname", "given_names", "department"]
         self.writer = csv.DictWriter(self.dumpfile, fieldnames=fieldnames)
         self.writer.writeheader()
 
@@ -101,7 +102,8 @@ class CDSUserIntermediaryLoad(Load):
         self.writer.writerow({'email': entry["email"],
                               'person_id': entry["person_id"],
                               "surname": entry['surname'].upper(),
-                              "given_names": entry['given_names']
+                              "given_names": entry['given_names'],
+                              "department": entry['department']
                               })
     def _cleanup(self):  # pragma: no cover
         """Cleanup data after loading."""
@@ -116,12 +118,19 @@ class CDSMissingUserLoad:
             "consumer_key"
         ]
 
-    def create_invenio_user(self, email, name):
+    def create_invenio_user(self, email,username):
         """Commit new user in db."""
-        user = User(email=email, username="".join(name.split()), active=False)
-        db.session.add(user)
-        db.session.commit()
-        return user
+        try:
+            user = User(email=email, username=username, active=False)
+            db.session.add(user)
+            db.session.commit()
+            return user
+        except IntegrityError as e:
+            db.session.rollback()
+            user = User(email=email, username=f"duplicate{username}", active=False)
+            db.session.add(user)
+            db.session.commit()
+            return user
 
     def create_invenio_user_identity(self, user_id, person_id):
         """Return new user identity entry."""
@@ -137,26 +146,30 @@ class CDSMissingUserLoad:
         user_profile.full_name = name
         return user_profile
 
-    def create_invenio_remote_account(self, user_id):
+    def create_invenio_remote_account(self, user_id, extra_data=None):
         """Return new user entry."""
 
+        if not extra_data:
+            extra_data = {}
         return RemoteAccount.create(
             client_id=self.client_id,
             user_id=user_id,
-            extra_data=dict()
+            extra_data=extra_data
         )
 
-    def create_user(self, email, name, person_id):
-        user = self.create_invenio_user(email, name)
+    def create_user(self, email, name, person_id, username, extra_data=None):
+        user = self.create_invenio_user(email, username)
         user_id = user.id
 
-        identity = self.create_invenio_user_identity(user_id, person_id)
-        db.session.add(identity)
+        if person_id:
+            identity = self.create_invenio_user_identity(user_id, person_id)
+            db.session.add(identity)
 
-        profile = self.create_invenio_user_profile(user, name)
-        db.session.add(profile)
+        if name:
+            profile = self.create_invenio_user_profile(user, name)
+            db.session.add(profile)
 
-        remote_account = self.create_invenio_remote_account(user_id)
+        remote_account = self.create_invenio_remote_account(user_id, extra_data)
         db.session.add(remote_account)
 
         # Automatically confirm the user
