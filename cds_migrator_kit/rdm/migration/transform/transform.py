@@ -249,10 +249,12 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 }
 
             else:
-                raise UnexpectedValue(subfield="a",
-                                      value=experiment,
-                                      field="experiment",
-                                      message=f"Experiment {experiment} not found.")
+                raise UnexpectedValue(
+                    subfield="a",
+                    value=experiment,
+                    field="experiment",
+                    message=f"Experiment {experiment} not found.",
+                )
             return custom_fields
 
     def transform(self, entry):
@@ -382,12 +384,13 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             if file["status"]:
                 raise RestrictedFileDetected(value=file["full_name"])
             # group files by version
-            # {"1": {"filename": {...}}
+            # {"1": {"filename1": {...}, {"filename2": {...}, ...}
             draft_files[file["version"]].update(
                 {
                     file["full_name"]: {
                         "eos_tmp_path": tmp_eos_root
-                                        / full_path.relative_to(legacy_path_root),
+                        / full_path.relative_to(legacy_path_root),
+                        "id_bibdoc": file["bibdocid"],
                         "key": file["full_name"],
                         "metadata": {},
                         "mimetype": file["mime"],
