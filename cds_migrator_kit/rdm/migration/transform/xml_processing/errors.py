@@ -13,55 +13,63 @@ from dojson.errors import DoJSONException
 class LossyConversion(DoJSONException):
     """Data lost during migration."""
 
+    description = "[Migration rule missing]"
     def __init__(self, missing=None, *args, **kwargs):
         """Exception custom initialisation."""
         self.missing = missing
-        self.message = "Lossy conversion: {0}".format(self.missing or "")
+        self.stage = "transform"
+        self.field = self.missing
+        self.type = self.__class__.__name__
+        self.priority = "warning"
         super().__init__(*args)
 
 
 class CDSMigrationException(DoJSONException):
     """CDSDoJSONException class."""
 
-    message = None
+    description = None
 
     def __init__(
-        self, message=None, field=None, subfield=None, value=None, *args, **kwargs
+        self, message=None, field=None, subfield=None, value=None, stage=None,
+        recid=None, exc=None, priority=None, *args, **kwargs
     ):
         """Constructor."""
         self.subfield = subfield
         self.field = field
         self.value = value
-
-        self.message = f"{self.message}: {field}{subfield} ({message})"
-
+        self.stage = stage
+        self.recid = recid
+        self.type = str(self.__class__.__name__)
+        self.exc = exc
+        self.message = message
+        self.priority = priority
         super(CDSMigrationException, self).__init__(*args)
 
 
 class RecordModelMissing(CDSMigrationException):
     """Missing record model exception."""
 
-    message = "[Record did not match any available model]"
+    description = "[Record did not match any available model]"
 
 
 class UnexpectedValue(CDSMigrationException):
     """The corresponding value is unexpected."""
 
-    message = "[UNEXPECTED INPUT VALUE]"
+    description = "[UNEXPECTED INPUT VALUE]"
 
 
 class MissingRequiredField(CDSMigrationException):
     """The corresponding value is required."""
 
-    message = "[MISSING REQUIRED FIELD]"
+    description = "[MISSING REQUIRED FIELD]"
 
 
 class ManualImportRequired(CDSMigrationException):
     """The corresponding field should be manually migrated."""
 
-    message = "[MANUAL IMPORT REQUIRED]"
+    description = "[MANUAL IMPORT REQUIRED]"
 
 
 class RestrictedFileDetected(CDSMigrationException):
 
-    message = "[Restricted file detected]"
+    description = "[Restricted file detected]"

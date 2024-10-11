@@ -92,17 +92,15 @@ class Runner:
     def run(self):
         """Run ETL streams."""
         migration_logger = RDMJsonLogger()
+        migration_logger.start_log()
         for stream in self.streams:
             try:
                 stream.run()
-                # on successful stream run, persist state
-                # STATE.flush_cache()
-                # self.state.save(filename=f"{stream.name}.db")
-
-                migration_logger.save()
             except Exception as e:
                 Logger.get_logger().exception(
                     f"Stream {stream.name} failed.", exc_info=1
                 )
-                migration_logger.save()
+                migration_logger.add_log(e)
                 continue
+            finally:
+                migration_logger.finalise()

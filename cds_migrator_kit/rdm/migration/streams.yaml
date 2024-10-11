@@ -15,7 +15,5 @@ records:
     dirpath: cds_migrator_kit/rdm/migration/data/summer_student_reports/dump/
   transform:
     files_dump_dir: cds_migrator_kit/rdm/migration/data/summer_student_reports/files/
-#    missing_users: /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/users
     missing_users: cds_migrator_kit/rdm/migration/data/users
-    community_slug: 570cf612-2d61-4bd8-9bc0-8e57d04e5d8f
-
+    community_slug: 23cca474-1edb-42aa-a613-c79c55357a4c

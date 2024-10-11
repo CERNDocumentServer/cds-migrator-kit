@@ -8,21 +8,15 @@
 
 """CDS Migrator Records loggers."""
 
-import copy
-import json
-import logging
+import csv
 import os
 import traceback
 
 from flask import current_app
-from marshmallow import ValidationError
 
-from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
-    LossyConversion,
-    ManualImportRequired,
-    MissingRequiredField,
-    UnexpectedValue, RestrictedFileDetected,
-)
+import logging
+import json
+
 
 class Singleton(type):
     """Temporary solution for this logger."""
@@ -45,6 +39,7 @@ class JsonLogger(metaclass=Singleton):
     def initialize(cls, log_dir):
         """Constructor."""
         logger_migrator = logging.getLogger("migrator-rules")
+        logger_users = logging.getLogger("users")
         logger_migrator.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
             "%(asctime)s - %(name)s - "
@@ -56,6 +51,9 @@ class JsonLogger(metaclass=Singleton):
         fh.setLevel(logging.ERROR)
         fh.setFormatter(formatter)
         logger_migrator.addHandler(fh)
+        fh = logging.FileHandler(log_dir / "users.log")
+        fh.setFormatter(formatter)
+        logger_users.addHandler(fh)
         # info to stream/stdout
         sh = logging.StreamHandler()
         sh.setFormatter(formatter)
@@ -79,117 +77,79 @@ class JsonLogger(metaclass=Singleton):
         """Get migration logger."""
         return logging.getLogger("migrator-rules")
 
-    @classmethod
-    def get_json_logger(cls):
-        """Get JsonLogger instance based on the rectype."""
-        return RDMJsonLogger
-
     def __init__(self, stats_filename, records_filename):
         """Constructor."""
         self._logs_path = current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]
-        self.stats = {}
-        self.records = {}
+        # self.stats = {}
+        # self.records = {}
         self.STAT_FILEPATH = os.path.join(self._logs_path, stats_filename)
         self.RECORD_FILEPATH = os.path.join(self._logs_path, records_filename)
 
         if not os.path.exists(self._logs_path):
             os.makedirs(self._logs_path)
 
-    def load(self):
+        self.error_file = None
+        self.record_dump_file = None
+
+    def start_log(self):
+        # init log files
+        self.error_file = open(self.STAT_FILEPATH, "w")
+        self.record_dump_file = open(self.RECORD_FILEPATH, "w")
+        self.error_file.truncate(0)
+        self.record_dump_file.truncate(0)
+        columns = ['recid', "stage", "type", 'error', "field", "value", "message",
+                   "clean", "priority"]
+        self.log_writer = csv.DictWriter(self.error_file, fieldnames=columns)
+        self.log_writer.writeheader()
+        self.record_dump_file.write("{\n")
+
+    def read_log(self):
+        self.error_file = open(self.STAT_FILEPATH, "r")
+        reader = csv.DictReader(self.error_file)
+        for row in reader:
+            yield row
+
+    def load_record_dumps(self):
         """Load stats from file as json."""
-        logger = logging.getLogger("migrator-rules")
-        logger.warning(self.STAT_FILEPATH)
-        with open(self.STAT_FILEPATH, "r") as f:
-            self.stats = json.load(f)
-        with open(self.RECORD_FILEPATH, "r") as f:
-            self.records = json.load(f)
+        self.record_dump_file = open(self.RECORD_FILEPATH, "r")
+        return json.load(self.record_dump_file)
 
-    def save(self):
-        """Save stats from file as json."""
-        logger = logging.getLogger("migrator-rules")
-        # TODO to use this function on each record, not at the end of migration
-        # TODO check if there is any json logger in logging package
-        logger.warning(self.STAT_FILEPATH)
-        with open(self.STAT_FILEPATH, "w") as f:
-            json.dump(self.stats, f)
-        with open(self.RECORD_FILEPATH, "w") as f:
-            json.dump(self.records, f)
-
-    def add_recid_to_stats(self, recid, **kwargs):
-        """Add recid to stats."""
-        pass
+    def finalise(self):
+        self.error_file.close()
+        self.record_dump_file.write("}")
+        self.record_dump_file.close()
 
     def add_record(self, record, **kwargs):
         """Add record to list of collected records."""
-        pass
+        recid = record["legacy_recid"]
+        self.record_dump_file.write(f'"{recid}": {json.dumps(record)},\n')
 
-    def add_log(self, exc, key=None, value=None, output=None):
+    def add_log(self, exc, record=None, key=None, value=None):
         """Add exception log."""
-        self.resolve_error_type(exc, output, key, value)
-
-    def resolve_error_type(self, exc, output, key, value):
-        """Check the type of exception and log to dict."""
-        recid = output.get("recid", None) or output.get("record", {}).get("recid", {})
         logger_migrator = logging.getLogger("migrator-rules")
-        rec_stats = self.stats[recid]
-        rec_stats["clean"] = False
-        if isinstance(exc, ManualImportRequired):
-            rec_stats["manual_migration"].append(
-                dict(
-                    key=key,
-                    value=value,
-                    subfield=exc.subfield,
-                    message=str(exc.message),
-                )
-            )
-        elif isinstance(exc, UnexpectedValue):
-            rec_stats["unexpected_value"].append(
-                dict(
-                    key=exc.__class__.__name__,
-                    value=value,
-                    subfield=exc.subfield,
-                    message=str(exc.message),
-                )
-            )
-        elif isinstance(exc, MissingRequiredField):
-            rec_stats["missing_required_field"].append(
-                dict(
-                    key=key,
-                    value=value,
-                    subfield=exc.subfield,
-                    message=str(exc.message),
-                )
-            )
-        elif isinstance(exc, LossyConversion):
-            rec_stats["lost_data"].append(
-                dict(
-                    key=key, value=value, missing=list(exc.missing), message=exc.message
-                )
-            )
-        elif isinstance(exc, RestrictedFileDetected):
-            rec_stats["manual_migration"].append(
-                dict(
-                    subfield=exc.subfield,
-                    message=str(exc.message),
-                )
-            )
-        elif isinstance(exc, ValidationError):
-            rec_stats["missing_required_field"].append(
-                dict(
-                    message=str(exc.message),
-                )
-            )
-        elif isinstance(exc, KeyError):
-            rec_stats["unexpected_value"].append(str(exc))
-            logger_migrator.exception(exc)
-            logger_migrator.exception(traceback.print_exc(exc))
-        elif isinstance(exc, TypeError) or isinstance(exc, AttributeError):
-            rec_stats["unexpected_value"].append(str(exc))
-            logger_migrator.exception(exc)
-            logger_migrator.exception(traceback.print_exc(exc))
 
+        if record:
+            recid = record.get("recid", None) or record.get("record", {}).get("recid", {})
         else:
-            raise exc
+            recid = getattr(exc, "recid", None)
+
+        subfield = exc.subfield if getattr(exc, "subfield", None) else ''
+        error_format = {
+            "recid": recid,
+            "type": getattr(exc, "type", None),
+            "error": getattr(exc, "description", None),
+            "field": f"{getattr(exc, 'field', key)} subfield:{subfield}",
+            "value": getattr(exc, "value", value),
+            "stage": getattr(exc, "stage", None),
+            "message": getattr(exc, "message", str(exc)),
+            "priority": getattr(exc, "priority", None),
+            "clean": False
+        }
+        self.log_writer.writerow(error_format)
+        logger_migrator.error(exc)
+
+    def add_success(self, recid):
+        self.log_writer.writerow({"recid": recid, "clean": True})
 
 
 class RDMJsonLogger(JsonLogger):
@@ -197,20 +157,4 @@ class RDMJsonLogger(JsonLogger):
 
     def __init__(self):
         """Constructor."""
-        super().__init__("rdm_stats.json", "rdm_records.json")
-
-    def add_recid_to_stats(self, recid):
-        """Add empty log item."""
-        if recid not in self.stats:
-            self.stats[recid] = {
-                "recid": recid,
-                "manual_migration": [],
-                "unexpected_value": [],
-                "missing_required_field": [],
-                "lost_data": [],
-                "clean": True,
-            }
-
-    def add_record(self, record):
-        """Add record to collected records."""
-        self.records[record["legacy_recid"]] = record
+        super().__init__("rdm_migration_errors.csv", "rdm_records_dump.json")

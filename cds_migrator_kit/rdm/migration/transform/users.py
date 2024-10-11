@@ -131,7 +131,7 @@ class CDSMissingUserLoad:
     def create_invenio_remote_account(self, user_id, extra_data=None):
         """Return new user entry."""
 
-        if not extra_data:
+        if extra_data is None:
             extra_data = {}
         return RemoteAccount.create(
             client_id=self.client_id,

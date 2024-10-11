@@ -12,60 +12,52 @@
     <thead class="thead-dark">
     <tr>
       <th scope="col" style="position: sticky; top:0; ">Recid</th>
-      <th scope="col" style="position: sticky; top:0; ">Unexpected Value</th>
-      <th scope="col" style="position: sticky; top:0; ">Missing required</th>
-      <th scope="col" style="position: sticky; top:0; ">Manual Migration</th>
-      <th scope="col" style="position: sticky; top:0; ">Lost data fields</th>
+      <th scope="col" style="position: sticky; top:0; ">Stage</th>
+      <th scope="col" style="position: sticky; top:0; ">Type</th>
+      <th scope="col" style="position: sticky; top:0; ">Error</th>
+      <th scope="col" style="position: sticky; top:0; ">Field</th>
+      <th scope="col" style="position: sticky; top:0; ">Value</th>
+      <th scope="col" style="position: sticky; top:0; ">Message</th>
       <th scope="col" style="position: sticky; top:0; ">Document</th>
     </tr>
     </thead>
     <tbody class="table-hover">
-    {% for stat in stats_sorted_by_key %}
-      <tr {% if stat.clean %}class="table-success"{% endif %}>
-        <th scope="row"><a href="https://cds.cern.ch/record/{{ stat.recid }}">{{ stat.recid }}</a></th>
+    {% for row in record_logs %}
+      <tr {% if row["clean"] == "True" %}class="table-success"{% endif %}
+          {% if row["priority"] == "critical" %}class="table-danger"{% endif %}
+          {% if row["priority"] == "warning" %}class="table-warning"{% endif %}
+      >
+        <th scope="row"><a
+          href="https://cds.cern.ch/record/{{ row["recid"] }}">{{ row["recid"] }}</a>
+        </th>
         <td>
-          {% for val in stat.unexpected_value %}
-            <span data-toggle="tooltip" data-placement="top" title="{{ val.message }}">
-              {{ val }}
-            </span><br />
-          {% endfor %}
+          {{ row["stage"] }}
         </td>
         <td>
-          {% for val in stat.missing_required_field %}
-            <span data-toggle="tooltip" data-placement="left" title="{{ val.message }}">
-              {{ val.key }}{{ val.subfield or '' }}: <code>{{ val.value }}</code>
-            </span><br />
-          {% endfor %}
+          {{ row["type"] }}
         </td>
         <td>
-          {% for val in stat.manual_migration %}
-            <span data-toggle="tooltip" data-placement="left" title="{{ val.message }}">
-              <code>{{ val.message }}</code>
-            </span><br />
-          {% endfor %}
+          {{ row["error"] }}
         </td>
         <td>
-          {% for val in stat.lost_data %}
-            {% for missing in val.missing %}
-              {{ missing }}<br />
-            {% endfor %}
-          {% endfor %}
+          {{ row["field"] }}
         </td>
         <td>
-          {% if not stat.lost_data %}
-            <a href="/record/{{ stat.recid }}">View JSON</a> |
-            <a href="{{ config.CDS_MIGRATOR_KIT_SITE_UI_URL }}/legacy/{{ stat.recid }}">View record</a>
+          {{ row["value"] }}
+        </td>
+        <td>
+          {{ row["message"] }}
+        </td>
+        <td>
+          {% if row["recid"] %}
+            <a href="/record/{{ row["recid"] }}">View JSON</a> |
+            <a
+              href="{{ config.CDS_MIGRATOR_KIT_SITE_UI_URL }}/legacy/{{ row["recid"] }}">View
+              record</a>
           {% endif %}
         </td>
       </tr>
     {% endfor %}
     </tbody>
   </table>
-
-  <script>
-    $(function () {
-      $('[data-toggle="tooltip"]').tooltip()
-    })
-  </script>
-
 {%- endblock %}

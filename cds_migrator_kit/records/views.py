@@ -40,28 +40,24 @@ def results(rectype=None):
     try:
 
         logger = RDMJsonLogger()
-        logger.load()
+        record_logs = logger.read_log()
         template = "cds_migrator_kit_records/records.html"
-
+        return render_template(
+            template,
+            record_logs=record_logs,
+        )
     except FileNotFoundError as e:
         template = "cds_migrator_kit_records/rectype_missing.html"
-
-    return render_template(
-        template,
-        stats_sorted_by_key=[
-            logger.stats[stat] for stat in sorted(logger.stats.keys())
-        ],
-        stats=logger.stats,
-        records=logger.records,
-        rectype=rectype,
-    )
+        return render_template(
+            template,
+        )
 
 
 @blueprint.route("/record/<recid>")
 def send_json(recid):
     """Serves static json preview output files."""
     logger = RDMJsonLogger()
-    logger.load()
-    if recid not in logger.records:
+    records = logger.load_record_dumps()
+    if recid not in records:
         abort(404)
-    return jsonify(logger.records[recid])
+    return jsonify(records[recid])

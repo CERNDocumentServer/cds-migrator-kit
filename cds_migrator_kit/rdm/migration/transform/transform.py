@@ -122,6 +122,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             return "-1"
 
     def _create_owner(self, email):
+        logger_users = logging.getLogger("users")
         def get_person(email):
             missing_users_dump = os.path.join(self.missing_users_dir,
                                               self.missing_users_filename)
@@ -159,6 +160,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 f"PEOPLE COLLECTION, "
                 f"{'PERSON_ID FOUND' if person_id else 'PERSON_ID NOT FOUND'}"
             )
+            logger_users.warning(f"User {email} found in people collection")
         elif person_old_db:
             names = "".join(person_old_db["displayname"].split())
             username = names.lower().replace(".", "")
@@ -166,16 +168,20 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 username = f'MIGRATED{email.replace("@", "").replace(".", "")}'
             displayname = person_old_db["displayname"]
             extra_data["migration"]["source"] = "LEGACY DB, PERSON ID MISSING"
+            logger_users.warning(f"User {email} found in legacy DB")
         else:
             username = email.replace("@", "").replace(".", "")
             extra_data["migration"]["source"] = "RECORD, EMAIL NOT FOUND IN ANY SOURCE"
+            logger_users.warning(f"User {email} not found.")
         extra_data["migration"]["note"] = "MIGRATED INACTIVE ACCOUNT"
 
         user = user_api.create_user(
             email,
             name=displayname,
             username=username,
-            person_id=person_id)
+            person_id=person_id,
+            extra_data=extra_data)
+
         return user.id
 
     def _metadata(self, json_entry):
@@ -206,7 +212,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         raise UnexpectedValue(subfield="u",
                                               value=affiliation_name,
                                               field="author",
-                                              message=f"Affiliation {affiliation_name} not found.")
+                                              message=f"Affiliation {affiliation_name} not found.",
+                                              stage="vocabulary match"
+                                              )
                 creator["affiliations"] = transformed_aff
             return _creators
 
@@ -241,7 +249,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                                       value=experiment,
                                       field="experiment",
                                       message=f"Experiment {experiment} "
-                                              f"not valid search phrase.")
+                                              f"not valid search phrase.",
+                                      stage="vocabulary match"
+                                      )
             if vocabulary_result["hits"]["total"]:
 
                 custom_fields["cern:experiment"] = {
@@ -252,7 +262,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 raise UnexpectedValue(subfield="a",
                                       value=experiment,
                                       field="experiment",
-                                      message=f"Experiment {experiment} not found.")
+                                      message=f"Experiment {experiment} not found.",
+                                      stage="vocabulary match"
+                                      )
             return custom_fields
 
     def transform(self, entry):
@@ -261,7 +273,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             entry,
         )
         migration_logger = RDMJsonLogger()
-        migration_logger.add_recid_to_stats(entry["recid"])
         try:
 
             record_dump.prepare_revisions()
@@ -288,11 +299,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "json": json_output,
                 "owned_by": self._owner(json_data)
             }
-        except LossyConversion as e:
-            cli_logger.error("[DATA ERROR]: {0}".format(e.message))
-            migration_logger.add_log(e, output=entry)
         except Exception as e:
-            migration_logger.add_log(e, output=entry)
+            e.recid = entry["recid"]
+            migration_logger.add_log(e, record=entry)
             raise e
         # TODO take only the last
 
@@ -325,6 +334,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             "version_id": record["version_id"],
             "json": {
                 # loader is responsible for creating/updating if the PID exists.
+                # this part will be simply omitted
                 "id": f'{record["recid"]}-parent',
                 "access": {
                     "owned_by": {"user": str(record["owned_by"])},
@@ -354,7 +364,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                     "draft_files": self._draft_files(entry),
                 }
         except Exception as e:
-            migration_logger.add_log(e, output=entry)
+            migration_logger.add_log(e, record=entry)
 
     def _record(self, entry):
         # could be in draft as well, depends on how we decide to publish
@@ -380,7 +390,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             # TODO other access types to be dealt later, for now we make sure
             # TODO that no restricted file goes through
             if file["status"]:
-                raise RestrictedFileDetected(value=file["full_name"])
+                raise RestrictedFileDetected(value=file["full_name"], priority="critical")
             # group files by version
             # {"1": {"filename": {...}}
             draft_files[file["version"]].update(
