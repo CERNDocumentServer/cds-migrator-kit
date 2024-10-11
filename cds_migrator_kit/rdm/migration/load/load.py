@@ -51,8 +51,6 @@ class CDSRecordServiceLoad(Load):
         """Load files to draft."""
         recid = entry.get("record", {}).get("recid", {})
         migration_logger = RDMJsonLogger()
-        migration_logger.add_recid_to_stats(recid)
-
         identity = system_identity  # Should we create an identity for the migration?
 
         for filename, file_data in version_files.items():
@@ -101,12 +99,18 @@ class CDSRecordServiceLoad(Load):
                 legacy_checksum = f"md5:{file_data['checksum']}"
                 new_checksum = result.to_dict()["checksum"]
                 assert legacy_checksum == new_checksum
+
             except Exception as e:
                 exc = ManualImportRequired(
-                    message=str(e), field="filename", value=file_data["key"]
+                    recid=recid,
+                    message=str(e),
+                    field="filename",
+                    value=file_data["key"],
+                    stage="file load",
+                    priority="critical"
                 )
-                migration_logger.add_log(exc, output=entry, key="filename",
-                                         value=file_data["key"])
+                migration_logger.add_log(exc, record=entry)
+                raise e
 
     def _load_access(self, draft, entry):
         """Load access rights."""
@@ -132,7 +136,7 @@ class CDSRecordServiceLoad(Load):
             if version == 1:
                 record._record.model.created = arrow.get(
                     entry["record"]["created"]).datetime
-
+                record._record.commit()
                 # it seems more intuitive if we mint the lrecid for parent
                 # but then we get a double redirection
                 legacy_recid_minter(entry["record"]["recid"],
@@ -179,46 +183,49 @@ class CDSRecordServiceLoad(Load):
         """Load model fields of the record."""
 
         draft._record.model.created = arrow.get(entry["record"]["created"]).datetime
+        draft._record.commit()
         # TODO we can use unit of work when it is moved to invenio-db module
         self._load_access(draft, entry)
         self._load_communities(draft, entry)
         db.session.commit()
+
+    def _dry_load(self, entry):
+        current_rdm_records_service.schema.load(
+            entry["record"]["json"],
+            context=dict(
+                identity=system_identity,
+            ),
+            raise_errors=True,
+        )
+
 
     def _load(self, entry):
         """Use the services to load the entries."""
         if entry:
             recid = entry.get("record", {}).get("recid", {})
             migration_logger = RDMJsonLogger()
-            migration_logger.add_recid_to_stats(recid)
             identity = system_identity  # TODO: load users instead
-            if self.dry_run:
-                try:
-
-                    current_rdm_records_service.schema.load(
-                        entry["record"]["json"],
-                        context=dict(
-                            identity=system_identity,
-                        ),
-                        raise_errors=True,
+            try:
+                if self.dry_run:
+                    self._dry_load(entry)
+                else:
+                    draft = current_rdm_records_service.create(
+                        identity, data=entry["record"]["json"]
                     )
-                except Exception as e:
-                    exc = ManualImportRequired(message=str(e), field="validation")
-                    migration_logger.add_log(exc, output=entry)
 
-            else:
-                draft = current_rdm_records_service.create(
-                    identity, data=entry["record"]["json"]
-                )
-                try:
                     self._load_model_fields(draft, entry)
 
                     self._load_versions(draft, entry)
-                except PIDAlreadyExists:
-                    pass
-                except Exception as e:
-                    exc = ManualImportRequired(message=str(e), field="validation")
-                    migration_logger.add_log(exc, output=entry)
-                    # raise e
+                migration_logger.add_success(recid)
+            except Exception as e:
+                exc = ManualImportRequired(message=str(e),
+                                           field="validation",
+                                           stage="load",
+                                           recid=recid,
+                                           priority="warning"
+                                           )
+                migration_logger.add_log(exc, record=entry)
+                # raise e
 
     def _cleanup(self, *args, **kwargs):
         """Cleanup the entries."""

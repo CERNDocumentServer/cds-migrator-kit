@@ -15,7 +15,7 @@ from cds_migrator_kit.rdm.migration.transform import migrator_marc21
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     LossyConversion,
     MissingRequiredField,
-    UnexpectedValue,
+    UnexpectedValue, RecordModelMissing,
 )
 
 
@@ -73,13 +73,17 @@ class CDSRecordDump:
         }
 
         marc_record = create_record(data["marcxml"])
+
+        # exception handlers are passed in this way to avoid overriding
+        # .do method implementation
         try:
             json_converted_record = self.dojson_model.do(
                 marc_record,
                 exception_handlers=exception_handlers
             )
-        except Exception as e:
-            raise e
+        except AttributeError as e:
+            raise RecordModelMissing(exc=e)
+
         missing = self.dojson_model.missing(marc_record)
         if missing:
             raise LossyConversion(missing=missing)
