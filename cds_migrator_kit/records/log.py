@@ -98,8 +98,10 @@ class JsonLogger(metaclass=Singleton):
         # init log files
         self.error_file = open(self.STAT_FILEPATH, "w")
         self.record_dump_file = open(self.RECORD_FILEPATH, "w")
+        self.records_state_dump_file = open(self.RECORD_STATE_FILEPATH, "w")
         self.error_file.truncate(0)
         self.record_dump_file.truncate(0)
+        self.records_state_dump_file.truncate(0)
         columns = [
             "recid",
             "stage",
@@ -114,6 +116,7 @@ class JsonLogger(metaclass=Singleton):
         self.log_writer = csv.DictWriter(self.error_file, fieldnames=columns)
         self.log_writer.writeheader()
         self.record_dump_file.write("{\n")
+        self.records_state_dump_file.write("[\n")
 
     def read_log(self):
         self.error_file = open(self.STAT_FILEPATH, "r")
@@ -130,15 +133,17 @@ class JsonLogger(metaclass=Singleton):
         self.error_file.close()
         self.record_dump_file.write("}")
         self.record_dump_file.close()
+        self.records_state_dump_file.write("]")
+        self.records_state_dump_file.close()
 
     def add_record(self, record, **kwargs):
         """Add record to list of collected records."""
         recid = record["legacy_recid"]
         self.record_dump_file.write(f'"{recid}": {json.dumps(record)},\n')
 
-    def add_record_state(self, record, **kwargs):
+    def add_record_state(self, record_state, **kwargs):
         """Add record state."""
-        pass
+        self.records_state_dump_file.write(f"{json.dumps(record_state)},\n")
 
     def add_log(self, exc, record=None, key=None, value=None):
         """Add exception log."""
@@ -180,7 +185,3 @@ class RDMJsonLogger(JsonLogger):
             "rdm_records_dump.json",
             "rdm_records_state.json",
         )
-
-    def add_record_state(self, record_state):
-        """Add record state."""
-        self.records_state.append(record_state)

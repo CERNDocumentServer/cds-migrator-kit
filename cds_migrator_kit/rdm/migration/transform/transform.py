@@ -331,21 +331,21 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         throw=True,
         files_dump_dir=None,
         missing_users=None,
-        community_slug=None,
+        community_id=None,
         dry_run=False,
     ):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
         self.missing_users_dir = Path(missing_users).absolute().as_posix()
-        self.community_slug = community_slug
+        self.community_id = community_id
         self.dry_run = dry_run
         super().__init__(workers, throw)
 
     def _community_id(self, entry, record):
         communities = record.get("communities", [])
-        communities = [self.community_slug] + [slug for slug in communities]
+        communities = [self.community_id] + [slug for slug in communities]
         if communities:
-            return {"ids": communities, "default": self.community_slug}
+            return {"ids": communities, "default": self.community_id}
         return {}
 
     def _parent(self, entry, record):
