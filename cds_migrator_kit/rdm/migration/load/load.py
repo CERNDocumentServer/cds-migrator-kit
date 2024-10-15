@@ -140,9 +140,10 @@ class CDSRecordServiceLoad(Load):
             parent.communities.add(community)
         parent.commit()
 
-    def _load_versions(self, draft, entry):
+    def _load_versions(self, draft, entry, logger):
         """Load other versions of the record."""
         draft_files = entry["draft_files"]
+        legacy_recid = entry["record"]["recid"]
 
         def publish_and_mint_recid(draft, version):
             record = current_rdm_records_service.publish(system_identity, draft["id"])
@@ -154,9 +155,7 @@ class CDSRecordServiceLoad(Load):
                 record._record.commit()
                 # it seems more intuitive if we mint the lrecid for parent
                 # but then we get a double redirection
-                legacy_recid_minter(
-                    entry["record"]["recid"], record._record.parent.model.id
-                )
+                legacy_recid_minter(legacy_recid, record._record.parent.model.id)
             return record
 
         if not draft_files:
@@ -197,17 +196,18 @@ class CDSRecordServiceLoad(Load):
 
             record = publish_and_mint_recid(draft, version)
             records.append(record._record)
-        return records
+
+        if records:
+            record_state_context = self._load_record_state(legacy_recid, records)
+            # Dump the computed record state. This is useful to migrate then the record stats
+            if record_state_context:
+                logger.add_record_state(record_state_context)
 
     def _load_model_fields(self, draft, entry):
         """Load model fields of the record."""
-
         draft._record.model.created = arrow.get(entry["record"]["created"]).datetime
+        draft._record.model.updated = arrow.get(entry["record"]["created"]).datetime
         draft._record.commit()
-        # TODO we can use unit of work when it is moved to invenio-db module
-        self._load_access(draft, entry)
-        self._load_communities(draft, entry)
-        db.session.commit()
 
     def _dry_load(self, entry):
         current_rdm_records_service.schema.load(
@@ -300,19 +300,13 @@ class CDSRecordServiceLoad(Load):
                     draft = current_rdm_records_service.create(
                         identity, data=entry["record"]["json"]
                     )
-
                     self._load_model_fields(draft, entry)
+                    # TODO we can use unit of work when it is moved to invenio-db module
+                    self._load_access(draft, entry)
+                    self._load_communities(draft, entry)
+                    db.session.commit()
+                    self._load_versions(draft, entry, migration_logger)
 
-                    records = self._load_versions(draft, entry)
-
-                    if records:
-                        legacy_recid = entry["record"]["recid"]
-                        record_state_context = self._load_record_state(
-                            legacy_recid, records
-                        )
-                        # Dump the computed record state. This is useful to migrate then the record stats
-                        if record_state_context:
-                            migration_logger.add_record_state(record_state_context)
                 migration_logger.add_success(recid)
             except Exception as e:
                 exc = ManualImportRequired(
