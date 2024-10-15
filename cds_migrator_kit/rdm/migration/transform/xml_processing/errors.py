@@ -81,11 +81,12 @@ class ManualImportRequired(CDSMigrationException):
 
 
 class RestrictedFileDetected(CDSMigrationException):
+    """Record has restricted files record."""
 
     description = "[Restricted file detected]"
 
 
 class RecordStatsNotImported(CDSMigrationException):
-    """The corresponding field should be manually migrated."""
+    """Record statistics error."""
 
     description = "[RECORD STATS NOT IMPORTED]"

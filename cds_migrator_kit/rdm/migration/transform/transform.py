@@ -41,7 +41,7 @@ cli_logger = logging.getLogger("migrator")
 
 
 class CDSToRDMRecordEntry(RDMRecordEntry):
-    """Transform Zenodo record to RDM record."""
+    """Transform CDS record to RDM record."""
 
     def __init__(
         self,
@@ -50,6 +50,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         missing_users_filename="people.csv",
         dry_run=False,
     ):
+        """Constructor."""
         self.missing_users_dir = missing_users_dir
         self.missing_users_filename = missing_users_filename
         self.dry_run = dry_run
@@ -450,6 +451,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         return []
 
     def run(self, entries):
+        """Run transformation step."""
         return super().run(entries)
 
     #

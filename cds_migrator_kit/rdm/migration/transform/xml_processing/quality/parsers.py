@@ -18,8 +18,16 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
 
 
 class MarcValue(ABC):
-    def __init__(self, raw_value, required_type, subfield=None, required=False,
-                 default_value=None):
+    """Abstract class for Marc value."""
+
+    def __init__(
+        self,
+        raw_value,
+        required_type,
+        subfield=None,
+        required=False,
+        default_value=None,
+    ):
         """Constructor."""
         if subfield:
             self.raw_value = raw_value.get(subfield)
@@ -39,9 +47,11 @@ class MarcValue(ABC):
 
     def required(self):
         """Check if value present if required."""
-        if ((
-            not self.raw_value or not self.parsed_value)
-            and self.is_required and not self.default_value):
+        if (
+            (not self.raw_value or not self.parsed_value)
+            and self.is_required
+            and not self.default_value
+        ):
             raise MissingRequiredField(subfield=self.subfield, value=self.raw_value)
         return self.is_required
 
@@ -59,14 +69,14 @@ class MarcValue(ABC):
         self.parsed_value = self._clean()
         return self
 
+
 class StringValue(MarcValue):
 
     def _clean(self):
         return self.raw_value.strip()
 
     def filter_regex(self, regex):
-        return re.sub(regex, '', self.parsed_value, flags=re.UNICODE)
-
+        return re.sub(regex, "", self.parsed_value, flags=re.UNICODE)
 
 
 class ListValue(MarcValue):
