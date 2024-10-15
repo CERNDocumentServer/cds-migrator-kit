@@ -5,9 +5,7 @@ from .config import LEGACY_TO_RDM_EVENTS_MAP, DEST_SEARCH_INDEX_PREFIX
 
 
 def process_download_event(entry, rec_context):
-    """Format
-
-    Entry from legacy stat events:
+    """Entry from legacy stat events format.
 
     {
         "id_bibrec": 2884810,
@@ -96,9 +94,8 @@ def process_download_event(entry, rec_context):
 
 
 def process_pageview_event(entry, rec_context):
-    """Format
+    """Entry from legacy stat events format.
 
-    Entry from legacy stat events:
     {
         "_index": "cds-2023",
         "_id": "AYy3LvO8Bd18JHv_G38-",
@@ -167,6 +164,7 @@ def process_pageview_event(entry, rec_context):
 
 
 def prepare_new_doc(data, rec_context, logger, doc_type):
+    """Produce a new statistic event for the destination cluster."""
     for doc in data["hits"]["hits"]:
         try:
             new_doc = deepcopy(doc)

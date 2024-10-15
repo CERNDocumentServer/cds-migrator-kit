@@ -19,7 +19,7 @@ from .event_generator import prepare_new_doc
 from .search import src_os_client, dest_os_client, os_search, os_scroll
 
 
-def generate_new_events(os_client, data, rec_context, logger, doc_type, dry_run=True):
+def _generate_new_events(os_client, data, rec_context, logger, doc_type, dry_run=True):
     try:
         new_docs = prepare_new_doc(data, rec_context, logger, doc_type)
         if dry_run:
@@ -31,7 +31,7 @@ def generate_new_events(os_client, data, rec_context, logger, doc_type, dry_run=
         logger.error(ex)
 
 
-def run_process(index, t, recid, rec_context, dry_run=True):
+def _run_process(index, t, recid, rec_context, dry_run=True):
     logger = logging.getLogger("{0}-{1}-logger".format(index, t))
     if not logger.handlers:
         # Avoid adding multiple handlers
@@ -49,7 +49,7 @@ def run_process(index, t, recid, rec_context, dry_run=True):
         scroll_size = len(data["hits"]["hits"])
         total = data["hits"]["total"]["value"]
         logger.info("Total number of results for id: {0} <{1}>".format(total, recid))
-        generate_new_events(
+        _generate_new_events(
             dest_os_client, data, rec_context, logger, doc_type=t, dry_run=dry_run
         )
         tot_chunks = total // SRC_SEARCH_SIZE
@@ -72,7 +72,7 @@ def run_process(index, t, recid, rec_context, dry_run=True):
             if total == 0:
                 continue
 
-            generate_new_events(
+            _generate_new_events(
                 dest_os_client,
                 data,
                 rec_context,

@@ -25,6 +25,7 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRe
 
 
 class CDSUserEntry(Entry):
+    """Transform CDS user record to RDM user record."""
 
     def _email(self, entry):
         """Returns the email."""
@@ -73,34 +74,40 @@ class CDSRDMUserTransform(Transform):
 
 
 class CDSUserIntermediaryLoad(Load):
+    """CDS user intermediate load class."""
+
     def __init__(self, filepath, **kwargs):
+        """Constructor."""
         self.filepath = filepath
-        self.dumpfile = open(self.filepath, 'w', newline='')
-        fieldnames = ['email', 'person_id', "surname", "given_names", "department"]
+        self.dumpfile = open(self.filepath, "w", newline="")
+        fieldnames = ["email", "person_id", "surname", "given_names", "department"]
         self.writer = csv.DictWriter(self.dumpfile, fieldnames=fieldnames)
         self.writer.writeheader()
 
     def _load(self, entry, *args, **kwargs):
-        self.writer.writerow({'email': entry["email"],
-                              'person_id': entry["person_id"],
-                              "surname": entry['surname'].upper(),
-                              "given_names": entry['given_names'],
-                              "department": entry['department']
-                              })
+        self.writer.writerow(
+            {
+                "email": entry["email"],
+                "person_id": entry["person_id"],
+                "surname": entry["surname"].upper(),
+                "given_names": entry["given_names"],
+                "department": entry["department"],
+            }
+        )
+
     def _cleanup(self):  # pragma: no cover
         """Cleanup data after loading."""
         pass
 
 
 class CDSMissingUserLoad:
+    """CDS missing user load class."""
 
     def __init__(self, remote_account_client_id=None):
         """Constructor."""
-        self.client_id = current_app.config["CERN_APP_CREDENTIALS"][
-            "consumer_key"
-        ]
+        self.client_id = current_app.config["CERN_APP_CREDENTIALS"]["consumer_key"]
 
-    def create_invenio_user(self, email,username):
+    def create_invenio_user(self, email, username):
         """Commit new user in db."""
         try:
             user = User(email=email, username=username, active=False)
@@ -130,16 +137,14 @@ class CDSMissingUserLoad:
 
     def create_invenio_remote_account(self, user_id, extra_data=None):
         """Return new user entry."""
-
         if extra_data is None:
             extra_data = {}
         return RemoteAccount.create(
-            client_id=self.client_id,
-            user_id=user_id,
-            extra_data=extra_data
+            client_id=self.client_id, user_id=user_id, extra_data=extra_data
         )
 
     def create_user(self, email, name, person_id, username, extra_data=None):
+        """Create an invenio user."""
         user = self.create_invenio_user(email, username)
         user_id = user.id
 

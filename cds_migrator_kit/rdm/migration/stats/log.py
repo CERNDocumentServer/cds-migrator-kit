@@ -8,6 +8,7 @@ formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s: %(message
 
 
 def setup_logger(name, filename, level=logging.INFO):
+    """Setup statistics migration logger."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
 

@@ -95,6 +95,7 @@ class JsonLogger(metaclass=Singleton):
         self.record_dump_file = None
 
     def start_log(self):
+        """Initialize logging file descriptors."""
         # init log files
         self.error_file = open(self.STAT_FILEPATH, "w")
         self.record_dump_file = open(self.RECORD_FILEPATH, "w")
@@ -119,6 +120,7 @@ class JsonLogger(metaclass=Singleton):
         self.records_state_dump_file.write("[\n")
 
     def read_log(self):
+        """Read error log file."""
         self.error_file = open(self.STAT_FILEPATH, "r")
         reader = csv.DictReader(self.error_file)
         for row in reader:
@@ -130,6 +132,7 @@ class JsonLogger(metaclass=Singleton):
         return json.load(self.record_dump_file)
 
     def finalise(self):
+        """Finalise logging files."""
         self.error_file.close()
         self.record_dump_file.write("}")
         self.record_dump_file.close()
@@ -172,6 +175,7 @@ class JsonLogger(metaclass=Singleton):
         logger_migrator.error(exc)
 
     def add_success(self, recid):
+        """Log recid as success."""
         self.log_writer.writerow({"recid": recid, "clean": True})
 
 
