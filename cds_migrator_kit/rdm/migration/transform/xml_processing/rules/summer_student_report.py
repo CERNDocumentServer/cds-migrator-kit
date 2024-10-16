@@ -24,7 +24,6 @@ from dojson.errors import IgnoreKey
 from ...models.summer_student_report import model
 
 
-# TODO: not working
 @model.over("report_number", "^037__")
 @out_strip
 def report_number(self, key, value):

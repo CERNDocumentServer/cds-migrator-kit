@@ -10,7 +10,6 @@
 
 import csv
 import os
-import traceback
 
 from flask import current_app
 
@@ -80,8 +79,6 @@ class JsonLogger(metaclass=Singleton):
     def __init__(self, stats_filename, records_filename, records_state_filename):
         """Constructor."""
         self._logs_path = current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]
-        # self.stats = {}
-        # self.records = {}
         self.STAT_FILEPATH = os.path.join(self._logs_path, stats_filename)
         self.RECORD_FILEPATH = os.path.join(self._logs_path, records_filename)
         self.RECORD_STATE_FILEPATH = os.path.join(
@@ -134,6 +131,9 @@ class JsonLogger(metaclass=Singleton):
     def finalise(self):
         """Finalise logging files."""
         self.error_file.close()
+        # remove last comma and newline in the json dump
+        self.record_dump_file.seek(self.record_dump_file.tell() - 2, os.SEEK_SET)
+        # close the dict
         self.record_dump_file.write("}")
         self.record_dump_file.close()
         self.records_state_dump_file.write("]")
