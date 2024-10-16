@@ -133,7 +133,7 @@ def clean_val(
         if value_to_clean is not None:
             try:
                 if var_type is str:
-                    return clean_str(value_to_clean, regex_format, req, transform)
+                    return clean_str(value_to_clean)
                 elif var_type is bool:
                     return bool(value_to_clean)
                 elif var_type is int:

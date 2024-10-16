@@ -179,8 +179,10 @@ class CDSRecordServiceLoad(Load):
                 draft = current_rdm_records_service.create(
                     identity, data=entry["record"]["json"]
                 )
-                self._load_model_fields(draft, entry)
-
+                # TODO we can use unit of work when it is moved to invenio-db module
+                self._load_parent_access(draft, entry)
+                self._load_communities(draft, entry)
+                db.session.commit()
             else:
                 draft = current_rdm_records_service.new_version(
                     system_identity, draft["id"]
@@ -202,6 +204,9 @@ class CDSRecordServiceLoad(Load):
             self._load_files(draft, entry, files)
 
             record = publish_and_mint_recid(draft, version)
+            # Force the created date. This can be done after publish as the service
+            # overrides the `created` date otherwise.
+            self._load_model_fields(record)
             records.append(record._record)
         if records:
             record_state_context = self._load_record_state(legacy_recid, records)
@@ -209,14 +214,10 @@ class CDSRecordServiceLoad(Load):
             if record_state_context:
                 logger.add_record_state(record_state_context)
 
-    def _load_model_fields(self, draft, entry):
+    def _load_model_fields(self, record, entry):
         """Load model fields of the record."""
-        draft._record.model.created = arrow.get(entry["record"]["created"]).datetime
-        draft._record.model.updated = arrow.get(entry["record"]["created"]).datetime
-        draft._record.commit()
-        # TODO we can use unit of work when it is moved to invenio-db module
-        self._load_parent_access(draft, entry)
-        self._load_communities(draft, entry)
+        record._record.model.created = arrow.get(entry["record"]["created"]).datetime
+        record._record.commit()
         db.session.commit()
 
     def _dry_load(self, entry):
