@@ -134,64 +134,6 @@ records = db.session.query(model_cls.id).filter(
 current_rdm_records_service.indexer.bulk_index((rec.id for rec in records))
 ```
 
-### Migrate the statistics for the successfully migrated records
-
-When the `invenio migration run` command ends it will produce a `records_state.json` file which has linked information about the migrated records and the old system. The format will be similar to below:
-
-```json
-{
-  "legacy_recid": "2884810",
-  "parent_recid": "zts3q-6ef46",
-  "latest_version": "1mae4-skq89",
-  "versions": [
-    {
-      "new_recid": "1mae4-skq89",
-      "version": 2,
-      "files": [
-        {
-          "legacy_file_id": 1568736,
-          "bucket_id": "155be22f-3038-49e0-9f17-9518eaac783a",
-          "file_key": "Summer student program report.pdf",
-          "file_id": "06cdb9d2-635f-4dbe-89fe-4b27afddeaa2",
-          "size": "1690854"
-        }
-      ]
-    }
-  ]
-}
-```
-
-- Open the `cds_migrator_kit/rdm/migration/stats/config.py` and
-
-  - set the `RECID_LIST_FILE` to that path
-  - set the credentials of the legacy prod cluster so we can query it i.e `SRC_SEARCH_AUTH`
-
-- Open a python shell and run the following commands
-
-```python
-from cds_migrator_kit.rdm.migration.stats.run import run
-
-run(dry_run=False)
-```
-
-This will migrate only the raw statistic events. When all events are ingested to the new cluster then we will need to aggregate them.
-
-To do so, you need to run after you have set the correct bookmark for each event:
-
-```
-from invenio_stats.tasks import aggregate_events
-
-start_date = '2000-01-01'
-end_date = '2024-12-01'
-
-aggregations = ["record-view-agg", "file-download-agg"]
-aggregate_events(aggregations)
-
-from invenio_rdm_records.services.tasks import reindex_stats
-stats_indices = [ "stats-record-view", "stats-file-download",]
-
-reindex_stats(stats_indices)
-```
 
 ### To visualise the errors (locally):
 
@@ -228,5 +170,73 @@ python copy_collection_files.py --dump-folder /eos/media/cds/cds-rdm/dev/migrati
 ```shell
 invenio migration run
 ```
+
+Once it has finished, run the re-indexing:
+
+```
+invenio rdm rebuild-all-indices
+```
+
+
+### Migrate the statistics for the successfully migrated records
+
+When the `invenio migration run` command ends it will produce a `records_state.json` file which has linked information about the migrated records and the old system. The format will be similar to below:
+
+```json
+{
+  "legacy_recid": "2884810",
+  "parent_recid": "zts3q-6ef46",
+  "latest_version": "1mae4-skq89",
+  "versions": [
+    {
+      "new_recid": "1mae4-skq89",
+      "version": 2,
+      "files": [
+        {
+          "legacy_file_id": 1568736,
+          "bucket_id": "155be22f-3038-49e0-9f17-9518eaac783a",
+          "file_key": "Summer student program report.pdf",
+          "file_id": "06cdb9d2-635f-4dbe-89fe-4b27afddeaa2",
+          "size": "1690854"
+        }
+      ]
+    }
+  ]
+}
+```
+
+- Open the `cds_migrator_kit/rdm/migration/stats/config.py` and
+
+  - set the `RECID_LIST_FILE` to that path
+  - set the credentials of the legacy prod cluster so we can query it i.e `SRC_SEARCH_AUTH`
+  - you find the credentials by `tbag show LEGACY_PRODUCTION_OPENSEARCH_PASSWORD --hg cds`
+
+- Open a python shell and run the following commands
+
+```python
+from cds_migrator_kit.rdm.migration.stats.run import run
+
+run(dry_run=False)
+```
+
+This will migrate only the raw statistic events. When all events are ingested to the new cluster then we will need to aggregate them.
+
+To do so, you need to run after you have set the correct bookmark for each event:
+
+```
+from invenio_stats.tasks import aggregate_events
+
+start_date = '2000-01-01'
+end_date = '2024-12-01'
+
+aggregations = ["record-view-agg", "file-download-agg"]
+aggregate_events(aggregations)
+
+from invenio_rdm_records.services.tasks import reindex_stats
+stats_indices = [ "stats-record-view", "stats-file-download",]
+
+reindex_stats(stats_indices)
+```
+
 
 visit https://migration-cds-rdm-dev.app.cern.ch for report
