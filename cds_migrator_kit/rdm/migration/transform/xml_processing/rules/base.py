@@ -15,8 +15,11 @@ from dojson.utils import filter_values, flatten, force_list
 from dateutil.parser import parse
 from dateutil.parser._parser import ParserError
 from ...models.base import model
-from ..quality.contributors import extract_json_contributor_ids, get_contributor_role, \
-    get_contributor_affiliations
+from ..quality.contributors import (
+    extract_json_contributor_ids,
+    get_contributor_role,
+    get_contributor_affiliations,
+)
 from ..dates import get_week_start
 from ..errors import UnexpectedValue
 from ..quality.decorators import (
@@ -62,7 +65,7 @@ def created(self, key, value):
     try:
         if date:
             if not (100000 < int(date) < 999999):
-                raise UnexpectedValue("Wrong date format", field=key, subfield='w')
+                raise UnexpectedValue("Wrong date format", field=key, subfield="w")
             year, week = str(date)[:4], str(date)[4:]
             date = get_week_start(int(year), int(week))
             if date < datetime.date.today():
@@ -99,7 +102,7 @@ def additional_descriptions(self, key, value):
             "description": description_text,
             "type": {
                 "id": "other",  # what's with the lang
-            }
+            },
         }
     elif key == "246__":
         _abbreviations = []
@@ -111,7 +114,7 @@ def additional_descriptions(self, key, value):
                 "description": "Abbreviations: " + "; ".join(_abbreviations),
                 "type": {
                     "id": "other",  # what's with the lang
-                }
+                },
             }
 
     return additional_description
@@ -134,8 +137,10 @@ def publication_date(self, key, value):
         self["publication_date"] = date_obj.strftime("%Y-%m-%d")
         return
     except ParserError:
-        raise UnexpectedValue(field="publication_date",
-                              message=f"Can't parse provided publication date. Value: {publication_date_str}")
+        raise UnexpectedValue(
+            field="publication_date",
+            message=f"Can't parse provided publication date. Value: {publication_date_str}",
+        )
 
 
 @model.over("imprint", "^269__")
@@ -247,5 +252,6 @@ def record_restriction(self, key, value):
     if parsed == "PUBLIC":
         return "public"
     else:
-        raise UnexpectedValue(field="963", subfield="a", message="Record restricted",
-                              priority="critical")
+        raise UnexpectedValue(
+            field="963", subfield="a", message="Record restricted", priority="critical"
+        )
