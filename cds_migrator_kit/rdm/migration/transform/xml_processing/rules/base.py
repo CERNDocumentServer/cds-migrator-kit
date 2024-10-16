@@ -25,7 +25,7 @@ from ..quality.decorators import (
     require,
     strip_output,
 )
-from ..quality.parsers import clean_str, clean_val
+from ..quality.parsers import clean_str, clean_val, StringValue
 
 
 @model.over("legacy_recid", "^001")
@@ -239,3 +239,13 @@ def custom_fields(self, key, value):
 def record_submitter(self, key, value):
     return value.get("f")
 
+
+@model.over("record_restriction", "(^963__)")
+def record_restriction(self, key, value):
+    restr = value.get("a")
+    parsed = StringValue(restr).parse().parsed_value
+    if parsed == "PUBLIC":
+        return "public"
+    else:
+        raise UnexpectedValue(field="963", subfield="a", message="Record restricted",
+                              priority="critical")

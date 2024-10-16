@@ -101,6 +101,6 @@ class Runner:
                     f"Stream {stream.name} failed.", exc_info=1
                 )
                 migration_logger.add_log(e)
-                continue
+                raise e
             finally:
                 migration_logger.finalise()

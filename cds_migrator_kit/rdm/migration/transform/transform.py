@@ -71,15 +71,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         return 1
 
     def _access(self, entry, record_dump):
-        is_file_public = True
-
-        for key, value in record_dump.files.items():
-            if value[0]["hidden"]:
-                is_file_public = False
-        return {
-            "record": "public",
-            "files": "public" if is_file_public else "restricted",
-        }
+        return entry["record_restriction"]
 
     def _index(self, record_dump):
         """Returns the version index of the record."""
@@ -301,7 +293,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "pids": self._pids(json_data),
                 "files": self._files(record_dump),
                 "metadata": self._metadata(json_data),
-                "access": self._access(json_data, record_dump),
+
             }
             custom_fields = self._custom_fields(json_data)
             if custom_fields:
@@ -314,7 +306,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "recid": self._recid(record_dump),
                 "communities": self._communities(json_data),
                 "json": json_output,
-                "owned_by": self._owner(json_data),
+                "access": self._access(json_data, record_dump),
+                "owned_by": self._owner(json_data)
             }
         except Exception as e:
             e.recid = entry["recid"]
@@ -369,24 +362,19 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
 
     def _transform(self, entry):
         """Transform a single entry."""
-        # the functions receive the full record/data entry
-        # while in most cases the full view is not needed
-        # since this is a low level tool used only by users
-        # with deep system knowledge providing the flexibility
-        # is future proofing and simplifying the interface
+        # creates the output structure for load step
         migration_logger = RDMJsonLogger()
         try:
             record = self._record(entry)
             if record:
                 return {
                     "record": record,
-                    "draft": self._draft(entry),
+                    "versions": self._versions(entry, record),
                     "parent": self._parent(entry, record),
-                    "record_files": self._record_files(entry, record),
-                    "draft_files": self._draft_files(entry),
                 }
         except Exception as e:
             migration_logger.add_log(e, record=entry)
+            # raise e
 
     def _record(self, entry):
         # could be in draft as well, depends on how we decide to publish
@@ -397,27 +385,41 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
     def _draft(self, entry):
         return None
 
-    def _draft_files(self, entry):
-        """Point to temporary eos storage to import files from."""
-        _files = entry["files"]
-        draft_files = OrderedDict()
-        legacy_path_root = Path("/opt/cdsweb/var/data/files/")
-        tmp_eos_root = Path(self.files_dump_dir)
-        for file in _files:
-            full_path = Path(file["full_path"])
+    def _parse_file_status(self, file_status):
+        pass
 
-            if file["version"] not in draft_files:
-                draft_files[file["version"]] = {}
+    def _versions(self, entry, record):
 
-            # TODO other access types to be dealt later, for now we make sure
-            # TODO that no restricted file goes through
+        def compute_access(file, record_access):
+
+            if not file["status"]:
+                return {"access_obj": {"record": record_access,
+                                       "files": record_access,
+                                       }
+                        }
+
             if file["status"]:
-                raise RestrictedFileDetected(
-                    value=file["full_name"], priority="critical"
-                )
-            # group files by version
-            # {"1": {"filename1": {...}, {"filename2": {...}, ...}
-            draft_files[file["version"]].update(
+                # if we have anything in the status string,
+                # it means the file is restricted
+                # we pass this information to parse later in load step
+                return {
+                    "access_obj": {"record": record_access,
+                                   "files": "restricted"},
+                    "meta": file["status"]
+                }
+
+        def compute_files(file_dump, versions_dict):
+            legacy_path_root = Path("/opt/cdsweb/var/data/files/")
+            tmp_eos_root = Path(self.files_dump_dir)
+            full_path = Path(file["full_path"])
+            if file["hidden"]:
+                raise RestrictedFileDetected(field=file["full_name"],
+                                             value=file["status"], priority="critical",
+                                             message="File marked as hidden")
+            if file["status"] and file["status"] != "SSO":
+                raise RestrictedFileDetected(field=file["full_name"],
+                                             value=file["status"], priority="critical")
+            versions_dict[file_dump["version"]]["files"].update(
                 {
                     file["full_name"]: {
                         "eos_tmp_path": tmp_eos_root
@@ -436,14 +438,36 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                     }
                 }
             )
+
+        # grouping draft attributes by version
+        # we build temporary representation of each version
+        # {"1": {"access": {...}, "files": [], "publication_date": None}
+        # {"2": {"access": {...}, "files": [], "publication_date: "2021-04-21"}
+        versions = OrderedDict()
+        # we start versions from files (because this is the only way from legacy)
+        _files = entry["files"]
+        record_access = record["access"]
+
+        for file in _files:
+            if file["version"] not in versions:
+                versions[file["version"]] = {
+                    "files": {},
+                    "publication_date": arrow.get(file["creation_date"]),
+                    "access": compute_access(file, record_access)
+                }
+
+            compute_files(file, versions)
+
         versioned_files = {}
-
         # creates a collection of files per each version
-        for version in draft_files.keys():
-            versioned_files |= draft_files.get(version)
-            draft_files[version] = versioned_files
+        # lets say record has 2 files: A & B
+        # if for file A new version was uploaded (version 2),
+        # we need to preserve the file B for version 2 of the record
+        for version in versions.keys():
+            versioned_files |= versions.get(version, {}).get("files")
+            versions[version]["files"] = versioned_files
 
-        return draft_files
+        return versions
 
     def _record_files(self, entry, record):
         """Record files entries transform."""

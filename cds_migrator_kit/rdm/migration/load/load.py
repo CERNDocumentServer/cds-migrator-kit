@@ -126,12 +126,19 @@ class CDSRecordServiceLoad(Load):
                 migration_logger.add_log(exc, record=entry)
                 raise e
 
-    def _load_access(self, draft, entry):
+    def _load_parent_access(self, draft, entry):
         """Load access rights."""
         parent = draft._record.parent
         access = entry["parent"]["json"]["access"]
         parent.access = access
         parent.commit()
+
+    def _load_record_access(self, draft, access_dict):
+        record = draft._record
+        # TODO hook in here if we want to share with groups
+
+        record.access = access_dict["access_obj"]
+        record.commit()
 
     def _load_communities(self, draft, entry):
         parent = draft._record.parent
@@ -140,10 +147,12 @@ class CDSRecordServiceLoad(Load):
             parent.communities.add(community)
         parent.commit()
 
-    def _load_versions(self, draft, entry, logger):
+    def _load_versions(self, entry, logger):
         """Load other versions of the record."""
-        draft_files = entry["draft_files"]
+        versions = entry["versions"]
         legacy_recid = entry["record"]["recid"]
+        record = entry["record"]
+        parent = entry["parent"]
 
         def publish_and_mint_recid(draft, version):
             record = current_rdm_records_service.publish(system_identity, draft["id"])
@@ -158,45 +167,42 @@ class CDSRecordServiceLoad(Load):
                 legacy_recid_minter(legacy_recid, record._record.parent.model.id)
             return record
 
-        if not draft_files:
-            # when missing files, just publish
-            publish_and_mint_recid(draft, 1)
+        identity = system_identity  # TODO: load users instead ?
 
         records = []
-        for version in draft_files.keys():
-            version_files_dict = draft_files.get(version)
+        for version in versions.keys():
+            files = versions[version]["files"]
+            publication_date = versions[version]["publication_date"]
+            access = versions[version]["access"]
+
             if version == 1:
-                self._load_files(draft, entry, version_files_dict)
+                draft = current_rdm_records_service.create(
+                    identity, data=entry["record"]["json"]
+                )
+                self._load_model_fields(draft, entry)
+
             else:
                 draft = current_rdm_records_service.new_version(
                     system_identity, draft["id"]
                 )
-
-                self._load_files(draft, entry, version_files_dict)
-
-                # attention! the metadata of new version
-                # will be taken from the first file
-                # on the list TODO can we improve this for publication accuracy?
-                # maybe sorting by creation date would be better?
-                filename = next(iter(version_files_dict))
-                file = version_files_dict[filename]
-                # add missing metadata for new version
                 missing_data = {
                     "metadata": {
                         # copy over the previous draft metadata
                         **draft.to_dict()["metadata"],
-                        # add missing publication date based on the time of creation of the new file version
-                        "publication_date": file["creation_date"],
+                        # add missing publication date based
+                        # on the time of creation of the new file version
+                        "publication_date": publication_date.date().isoformat(),
                     }
                 }
-
                 draft = current_rdm_records_service.update_draft(
                     system_identity, draft["id"], data=missing_data
                 )
 
+            self._load_record_access(draft, access)
+            self._load_files(draft, entry, files)
+
             record = publish_and_mint_recid(draft, version)
             records.append(record._record)
-
         if records:
             record_state_context = self._load_record_state(legacy_recid, records)
             # Dump the computed record state. This is useful to migrate then the record stats
@@ -208,6 +214,10 @@ class CDSRecordServiceLoad(Load):
         draft._record.model.created = arrow.get(entry["record"]["created"]).datetime
         draft._record.model.updated = arrow.get(entry["record"]["created"]).datetime
         draft._record.commit()
+        # TODO we can use unit of work when it is moved to invenio-db module
+        self._load_parent_access(draft, entry)
+        self._load_communities(draft, entry)
+        db.session.commit()
 
     def _dry_load(self, entry):
         current_rdm_records_service.schema.load(
@@ -292,22 +302,16 @@ class CDSRecordServiceLoad(Load):
         if entry:
             recid = entry.get("record", {}).get("recid", {})
             migration_logger = RDMJsonLogger()
-            identity = system_identity  # TODO: load users instead
             try:
                 if self.dry_run:
                     self._dry_load(entry)
                 else:
-                    draft = current_rdm_records_service.create(
-                        identity, data=entry["record"]["json"]
-                    )
-                    self._load_model_fields(draft, entry)
-                    # TODO we can use unit of work when it is moved to invenio-db module
-                    self._load_access(draft, entry)
-                    self._load_communities(draft, entry)
-                    db.session.commit()
-                    self._load_versions(draft, entry, migration_logger)
-
+                    self._load_versions(entry, migration_logger)
                 migration_logger.add_success(recid)
+            except PIDAlreadyExists:
+                # TODO remove when there is a way of cleaning local environment from
+                # previous run of migration
+                pass
             except Exception as e:
                 exc = ManualImportRequired(
                     message=str(e),

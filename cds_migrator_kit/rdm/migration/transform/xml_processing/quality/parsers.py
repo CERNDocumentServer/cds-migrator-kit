@@ -72,6 +72,11 @@ class MarcValue(ABC):
 
 class StringValue(MarcValue):
 
+
+    def __init__(self, raw_value, required_type=str, subfield=None, required=False,
+                 default_value=None):
+        super().__init__(raw_value, required_type, subfield, required, default_value)
+
     def _clean(self):
         return self.raw_value.strip()
 

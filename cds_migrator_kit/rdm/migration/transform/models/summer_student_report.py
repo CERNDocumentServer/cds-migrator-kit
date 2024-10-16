@@ -77,8 +77,7 @@ class CMSSummerStudent(CdsOverdo):
         # "700__0",  # Contributors (cds author id) - TBD if we keep, same with INSPIRE ID
         # "710__g",  # Collaboration, OK to migrate as corporate contributor (not creator)?
         "906__p",  # names, is it supervisor? # todo migrate as contributor?
-        "963__a",
-        # restriction # todo assert if any record is restricted -> to implement in collection specific rules
+
         # TO DECIDE
         # IMPLEMENTED
         # "001"
@@ -104,6 +103,7 @@ class CMSSummerStudent(CdsOverdo):
         # "916__n",
         # "916__s",
         # "916__w",
+        # "963__a",
     }
     _default_fields = None
 
