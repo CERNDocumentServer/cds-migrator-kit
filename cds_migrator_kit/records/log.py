@@ -136,6 +136,7 @@ class JsonLogger(metaclass=Singleton):
         # close the dict
         self.record_dump_file.write("}")
         self.record_dump_file.close()
+        self.records_state_dump_file.seek(self.record_dump_file.tell() - 2, os.SEEK_SET)
         self.records_state_dump_file.write("]")
         self.records_state_dump_file.close()
 

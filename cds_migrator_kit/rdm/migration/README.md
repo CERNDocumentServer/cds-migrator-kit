@@ -223,6 +223,28 @@ This will migrate only the raw statistic events. When all events are ingested to
 
 To do so, you need to run after you have set the correct bookmark for each event:
 
+on opensearch
+```shell
+DELETE /cds-rdm-stats-bookmarks
+
+POST /cds-rdm-stats-bookmarks/_doc
+{
+  "date": "2000-06-26T15:56:05.755394",
+  "aggregation_type": "file-download-agg"
+}
+POST /cds-rdm-stats-bookmarks/_doc
+{
+  "date": "2000-06-26T15:56:05.755394",
+  "aggregation_type": "record-view-agg"
+}
+POST /cds-rdm-stats-bookmarks/_doc
+{
+  "date": "2000-06-26T15:56:05.755394",
+  "aggregation_type": "stats_reindex"
+}
+```
+
+
 ```
 from invenio_stats.tasks import aggregate_events
 
@@ -237,6 +259,7 @@ stats_indices = [ "stats-record-view", "stats-file-download",]
 
 reindex_stats(stats_indices)
 ```
+
 
 
 visit https://migration-cds-rdm-dev.app.cern.ch for report
