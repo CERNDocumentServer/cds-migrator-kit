@@ -122,7 +122,7 @@ def run(dry_run=True):
             for legacy_record in records:
                 for index_name in LEGACY_INDICES:
                     for t in EVENT_TYPES:
-                        run_process(
+                        _run_process(
                             index_name,
                             t,
                             legacy_record["legacy_recid"],

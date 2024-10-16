@@ -20,7 +20,7 @@ SRC_SEARCH_AUTH = ("", "")
 
 SRC_SEARCH_SIZE = 5000
 SRC_SEARCH_SCROLL = "1h"
-DEST_SEARCH_INDEX_PREFIX = "cds-rdm-sandbox-events-stats"
+DEST_SEARCH_INDEX_PREFIX = "cds-rdm-events-stats"
 DEST_SEARCH_URL = "http://127.0.0.1:9200/"
 DEST_SEARCH_AUTH = ("", "")
 
