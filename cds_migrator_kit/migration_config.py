@@ -7,6 +7,7 @@ For the full list of settings and their values, see
 https://inveniordm.docs.cern.ch/reference/configuration/.
 """
 
+import json
 import os
 from datetime import datetime, timedelta
 
@@ -378,3 +379,16 @@ base_path = os.path.dirname(os.path.realpath(__file__))
 logs_dir = os.path.join(base_path, "tmp/logs/")
 CDS_MIGRATOR_KIT_LOGS_PATH = logs_dir
 CDS_MIGRATOR_KIT_STREAM_CONFIG = "cds_migrator_kit/rdm/migration/streams.yaml"
+
+CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(
+    ####### Search ##############
+    SRC_SEARCH_HOSTS=json.loads(
+        os.environ.get("CDS_MIGRATOR_KIT_SRC_SEARCH_HOSTS", "[]")
+    ),
+    SRC_SEARCH_SIZE=5000,
+    SRC_SEARCH_SCROLL="1h",
+    DEST_SEARCH_HOSTS=json.loads(
+        os.environ.get("CDS_MIGRATOR_KIT_DEST_SEARCH_HOSTS", "[]")
+    ),
+)
+"""Config for record statistics migration."""

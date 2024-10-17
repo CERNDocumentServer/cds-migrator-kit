@@ -1,21 +1,42 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2022 CERN.
+#
+# CDS-RDM is free software; you can redistribute it and/or modify it under
+# the terms of the MIT License; see LICENSE file for more details.
+
+"""CDS-RDM migration record stats logger module."""
+
 import logging
-import os
-from logging import FileHandler
-from .config import ROOT_PATH
 
 
-formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s: %(message)s")
+class StatsLogger:
+    """Migrator stats logger."""
 
+    @classmethod
+    def initialize(cls, log_dir):
+        """Constructor."""
+        formatter = logging.Formatter(
+            fmt="%(asctime)s %(levelname)-8s %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+        )
+        logger = logging.getLogger("migrator")
+        fh = logging.FileHandler(log_dir / "success.log")
+        logger.setLevel(logging.WARNING)
+        logger.addHandler(fh)
 
-def setup_logger(name, filename, level=logging.INFO):
-    """Setup statistics migration logger."""
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
+        # errors to file
+        fh = logging.FileHandler(log_dir / "error.log")
+        fh.setLevel(logging.ERROR)
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
 
-    filepath = os.path.join(ROOT_PATH, filename)
-    handler1 = FileHandler(filepath)
-    handler1.setFormatter(formatter)
+        # info to stream/stdout
+        sh = logging.StreamHandler()
+        sh.setFormatter(formatter)
+        sh.setLevel(logging.INFO)
+        logger.addHandler(sh)
 
-    logger.addHandler(handler1)
-
-    return logger
+    @classmethod
+    def get_logger(cls):
+        """Get migration logger."""
+        return logging.getLogger("migrator")

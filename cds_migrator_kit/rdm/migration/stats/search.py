@@ -1,58 +1,46 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2024 CERN.
+#
+# CDS-RDM is free software; you can redistribute it and/or modify it under
+# the terms of the MIT License; see LICENSE file for more details.
+
+"""CDS-RDM migration stats search module."""
+
 import time
 
 from copy import deepcopy
 from opensearchpy import OpenSearch
 from opensearchpy.exceptions import OpenSearchException
 
-from .config import (
-    SRC_SEARCH_URL,
-    SRC_SEARCH_AUTH,
-    SRC_SEARCH_SCROLL,
-    SRC_SEARCH_SIZE,
-    DEST_SEARCH_URL,
-    DEST_SEARCH_AUTH,
-    LEGACY_TO_RDM_EVENTS_MAP,
-)
 
-src_os_client = dest_os_client = OpenSearch(
-    SRC_SEARCH_URL,
-    http_auth=SRC_SEARCH_AUTH,
-    use_ssl=True,  # set to True if your cluster is using HTTPS
-    verify_certs=False,  # set to False if you do not want to verify SSL certificates
-    ssl_show_warn=False,  # set to False to suppress SSL warnings)
-)
-
-
-# Initialize the OpenSearch client
-dest_os_client = OpenSearch(
-    DEST_SEARCH_URL,
-    http_auth=DEST_SEARCH_AUTH,
-    use_ssl=(
-        True if "https" in DEST_SEARCH_URL else False
-    ),  # set to True if your cluster is using HTTPS
-    verify_certs=False,  # set to False if you do not want to verify SSL certificates
-    ssl_show_warn=False,  # set to False to suppress SSL warnings)
-)
-
-
-def generate_query(doc_type, identifier):
-    q = deepcopy(LEGACY_TO_RDM_EVENTS_MAP[doc_type]["query"])
+def generate_query(doc_type, identifier, legacy_to_rdm_events_map):
+    """Generate legacy query based on event type."""
+    q = deepcopy(legacy_to_rdm_events_map[doc_type]["query"])
     q["query"]["bool"]["must"][0]["match"]["id_bibrec"] = identifier
     q["query"]["bool"]["must"][1]["match"]["event_type"] = doc_type
 
     return q
 
 
-def os_search(index, doc_type, identifier):
+def os_search(
+    src_os_client,
+    index,
+    doc_type,
+    identifier,
+    search_size,
+    search_scroll,
+    legacy_to_rdm_events_map,
+):
     ex = None
     i = 0
-    q = generate_query(doc_type, identifier)
+    q = generate_query(doc_type, identifier, legacy_to_rdm_events_map)
     while i < 10:
         try:
             return src_os_client.search(
                 index=index,
-                size=SRC_SEARCH_SIZE,
-                scroll=SRC_SEARCH_SCROLL,
+                size=search_size,
+                scroll=search_scroll,
                 body=q,
             )
         except OpenSearchException as _ex:
@@ -62,12 +50,28 @@ def os_search(index, doc_type, identifier):
     raise ex
 
 
-def os_scroll(scroll_id):
+def os_scroll(src_os_client, scroll_id, scroll_size):
     ex = None
     i = 0
     while i < 10:
         try:
-            return src_os_client.scroll(scroll_id=scroll_id, scroll=SRC_SEARCH_SCROLL)
+            return src_os_client.scroll(scroll_id=scroll_id, scroll=scroll_size)
+        except OpenSearchException as _ex:
+            i += 1
+            ex = _ex
+            time.sleep(10)
+    raise ex
+
+
+def os_count(src_os_client, index, q):
+    ex = None
+    i = 0
+    while i < 10:
+        try:
+            return src_os_client.count(
+                index=index,
+                body=q,
+            )
         except OpenSearchException as _ex:
             i += 1
             ex = _ex
