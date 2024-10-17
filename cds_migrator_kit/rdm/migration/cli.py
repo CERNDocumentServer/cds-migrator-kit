@@ -14,8 +14,12 @@ from flask import current_app
 from flask.cli import with_appcontext
 
 from cds_migrator_kit.rdm.migration.runner import Runner
-from cds_migrator_kit.rdm.migration.streams import RecordStreamDefinition, \
-    UserStreamDefinition
+from cds_migrator_kit.rdm.migration.stats.runner import RecordStatsRunner
+from cds_migrator_kit.rdm.migration.streams import (
+    RecordStreamDefinition,
+    UserStreamDefinition,
+)
+from cds_migrator_kit.rdm.migration.stats.streams import RecordStatsStreamDefinition
 
 cli_logger = logging.getLogger("migrator")
 
@@ -39,6 +43,42 @@ def run(dry_run=False):
         stream_definitions=[RecordStreamDefinition],
         # stream_definitions=[UserStreamDefinition],
         config_filepath=Path(stream_config).absolute(),
+        dry_run=dry_run,
+    )
+    runner.run()
+
+
+@migration.group()
+def stats():
+    """Migration CLI for statistics."""
+    pass
+
+
+@stats.command()
+@click.option(
+    "--dry-run",
+    is_flag=True,
+)
+@click.option(
+    "--filepath",
+    help="Path to the list of records file that the legacy statistics will be migrated.",
+)
+@with_appcontext
+def run(filepath, dry_run=False):
+    """Migrate the legacy statistics for the records in `filepath`"""
+    stream_config = current_app.config["CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG"]
+    stream_config["DEST_SEARCH_INDEX_PREFIX"] = (
+        f"{current_app.config['SEARCH_INDEX_PREFIX']}events-stats"
+    )
+
+    if not stream_config["DEST_SEARCH_HOSTS"]:
+        stream_config["DEST_SEARCH_HOSTS"] = current_app.config["SEARCH_HOSTS"]
+    log_dir = current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]
+    runner = RecordStatsRunner(
+        stream_definition=RecordStatsStreamDefinition,
+        filepath=filepath,
+        config=stream_config,
+        log_dir=log_dir,
         dry_run=dry_run,
     )
     runner.run()

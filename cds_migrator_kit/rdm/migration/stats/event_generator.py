@@ -1,7 +1,14 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2024 CERN.
+#
+# CDS-RDM is free software; you can redistribute it and/or modify it under
+# the terms of the MIT License; see LICENSE file for more details.
+
+"""CDS-RDM migration stats events generator module."""
+
 from datetime import datetime
 from copy import deepcopy
-
-from .config import LEGACY_TO_RDM_EVENTS_MAP, DEST_SEARCH_INDEX_PREFIX
 
 
 def process_download_event(entry, rec_context):
@@ -163,7 +170,14 @@ def process_pageview_event(entry, rec_context):
     }
 
 
-def prepare_new_doc(data, rec_context, logger, doc_type):
+def prepare_new_doc(
+    data,
+    rec_context,
+    logger,
+    doc_type,
+    legacy_to_rdm_events_map,
+    dest_search_index_prefix,
+):
     """Produce a new statistic event for the destination cluster."""
     for doc in data["hits"]["hits"]:
         try:
@@ -180,10 +194,10 @@ def prepare_new_doc(data, rec_context, logger, doc_type):
             processed_doc = {}
             if event_type == "events.downloads":
                 processed_doc = process_download_event(new_doc["_source"], rec_context)
-                index_type = LEGACY_TO_RDM_EVENTS_MAP[event_type]["type"]
+                index_type = legacy_to_rdm_events_map[event_type]["type"]
             elif event_type == "events.pageviews":
                 processed_doc = process_pageview_event(new_doc["_source"], rec_context)
-                index_type = LEGACY_TO_RDM_EVENTS_MAP[event_type]["type"]
+                index_type = legacy_to_rdm_events_map[event_type]["type"]
             else:
                 continue
 
@@ -196,7 +210,7 @@ def prepare_new_doc(data, rec_context, logger, doc_type):
 
             yield {
                 "_op_type": "index",
-                "_index": f"{DEST_SEARCH_INDEX_PREFIX}-{index_type}-{year}-{month}",
+                "_index": f"{dest_search_index_prefix}-{index_type}-{year}-{month}",
                 "_source": processed_doc,
             }
         except Exception as ex:

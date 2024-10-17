@@ -11,6 +11,7 @@ import datetime
 import json
 import logging
 import os.path
+import re
 from collections import OrderedDict
 from copy import deepcopy
 from pathlib import Path
@@ -180,7 +181,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             username = re.sub(r"\W+", "", username)
             extra_data["migration"]["source"] = "RECORD, EMAIL NOT FOUND IN ANY SOURCE"
             logger_users.warning(f"User {email} not found.")
-        extra_data["migration"]["note"] = "MIGRATED INACTIVE ACCOUNT"
+            extra_data["migration"]["note"] = "MIGRATED INACTIVE ACCOUNT"
 
         user = user_api.create_user(
             email,

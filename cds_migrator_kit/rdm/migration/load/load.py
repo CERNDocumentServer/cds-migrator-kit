@@ -206,7 +206,7 @@ class CDSRecordServiceLoad(Load):
             record = publish_and_mint_recid(draft, version)
             # Force the created date. This can be done after publish as the service
             # overrides the `created` date otherwise.
-            self._load_model_fields(record)
+            self._load_model_fields(record, entry)
             records.append(record._record)
         if records:
             record_state_context = self._load_record_state(legacy_recid, records)
