@@ -387,8 +387,5 @@ CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(
     ),
     SRC_SEARCH_SIZE=5000,
     SRC_SEARCH_SCROLL="1h",
-    DEST_SEARCH_HOSTS=json.loads(
-        os.environ.get("CDS_MIGRATOR_KIT_DEST_SEARCH_HOSTS", "[]")
-    ),
 )
 """Config for record statistics migration."""

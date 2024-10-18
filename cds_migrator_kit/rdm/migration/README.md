@@ -134,7 +134,6 @@ records = db.session.query(model_cls.id).filter(
 current_rdm_records_service.indexer.bulk_index((rec.id for rec in records))
 ```
 
-
 ### To visualise the errors (locally):
 
 ```shell
@@ -177,10 +176,9 @@ Once it has finished, run the re-indexing:
 invenio rdm rebuild-all-indices
 ```
 
-
 ### Migrate the statistics for the successfully migrated records
 
-When the `invenio migration run` command ends it will produce a `records_state.json` file which has linked information about the migrated records and the old system. The format will be similar to below:
+When the `invenio migration run` command ends it will produce a `rdm_records_state.json` file which has linked information about the migrated records and the old system. The format will be similar to below:
 
 ```json
 {
@@ -207,16 +205,15 @@ When the `invenio migration run` command ends it will produce a `records_state.j
 
 - Open the `cds_migrator_kit/rdm/migration/stats/config.py` and
 
-  - set the `RECID_LIST_FILE` to that path
-  - set the credentials of the legacy prod cluster so we can query it i.e `SRC_SEARCH_AUTH`
-  - you find the credentials by `tbag show LEGACY_PRODUCTION_OPENSEARCH_PASSWORD --hg cds`
+  - export the below 2 environmental variables
+    - `CDS_MIGRATOR_KIT_SRC_SEARCH_HOSTS`: e.g `export CDS_MIGRATOR_KIT_SRC_SEARCH_HOSTS='[{"host": "os-cds-legacy.cern.ch", "url_prefix": "/os", "timeout": 30, "port": 443, "use_ssl": true, "verify_certs": false, "http_auth": ["LEGACY_PRODUCTION_OPENSEARCH_USERNAME", "<LEGACY_PRODUCTION_OPENSEARCH_PASSWORD>"]}]'`
+      - you find the credentials for `LEGACY_PRODUCTION_OPENSEARCH_PASSWORD` by `tbag show LEGACY_PRODUCTION_OPENSEARCH_PASSWORD --hg cds`
+      - you find the credentials for `LEGACY_PRODUCTION_OPENSEARCH_USERNAME` by `tbag show LEGACY_PRODUCTION_OPENSEARCH_USERNAME --hg cds`
 
-- Open a python shell and run the following commands
+- Open a shell and run the following commands
 
-```python
-from cds_migrator_kit.rdm.migration.stats.run import run
-
-run(dry_run=False)
+```bash
+$ invenio migration stats run --filepath "path/to/file/of/rdm_records_state.json"
 ```
 
 This will migrate only the raw statistic events. When all events are ingested to the new cluster then we will need to aggregate them.
@@ -224,6 +221,7 @@ This will migrate only the raw statistic events. When all events are ingested to
 To do so, you need to run after you have set the correct bookmark for each event:
 
 on opensearch
+
 ```shell
 DELETE /cds-rdm-stats-bookmarks
 
@@ -244,7 +242,6 @@ POST /cds-rdm-stats-bookmarks/_doc
 }
 ```
 
-
 ```
 from invenio_stats.tasks import aggregate_events
 
@@ -259,7 +256,5 @@ stats_indices = [ "stats-record-view", "stats-file-download",]
 
 reindex_stats(stats_indices)
 ```
-
-
 
 visit https://migration-cds-rdm-dev.app.cern.ch for report
