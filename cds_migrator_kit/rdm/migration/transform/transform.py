@@ -158,6 +158,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             person_id = person[1] if person[1] else None
             displayname = f"{person[2]} {person[3]}"
             username = f"{person[2][0]}{person[3]}".lower().replace(" ", "")
+            username = re.sub(r"\W+", "", username)
             if len(person) == 5:
                 extra_data["department"] = person[4]
             extra_data["migration"]["source"] = (
@@ -169,12 +170,14 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             names = "".join(person_old_db["displayname"].split())
             username = names.lower().replace(".", "")
             if not username:
-                username = f'MIGRATED{email.replace("@", "").replace(".", "")}'
+                username = f'MIGRATED{email.split("@")[0].replace(".", "")}'
+                username = re.sub(r"\W+", "", username)
             displayname = person_old_db["displayname"]
             extra_data["migration"]["source"] = "LEGACY DB, PERSON ID MISSING"
             logger_users.warning(f"User {email} found in legacy DB")
         else:
-            username = email.replace("@", "").replace(".", "")
+            username = email.split("@")[0].replace(".", "")
+            username = re.sub(r"\W+", "", username)
             extra_data["migration"]["source"] = "RECORD, EMAIL NOT FOUND IN ANY SOURCE"
             logger_users.warning(f"User {email} not found.")
         extra_data["migration"]["note"] = "MIGRATED INACTIVE ACCOUNT"
@@ -293,7 +296,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "pids": self._pids(json_data),
                 "files": self._files(record_dump),
                 "metadata": self._metadata(json_data),
-
             }
             custom_fields = self._custom_fields(json_data)
             if custom_fields:
@@ -307,7 +309,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "communities": self._communities(json_data),
                 "json": json_output,
                 "access": self._access(json_data, record_dump),
-                "owned_by": self._owner(json_data)
+                "owned_by": self._owner(json_data),
             }
         except Exception as e:
             e.recid = entry["recid"]
@@ -393,19 +395,20 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         def compute_access(file, record_access):
 
             if not file["status"]:
-                return {"access_obj": {"record": record_access,
-                                       "files": record_access,
-                                       }
-                        }
+                return {
+                    "access_obj": {
+                        "record": record_access,
+                        "files": record_access,
+                    }
+                }
 
             if file["status"]:
                 # if we have anything in the status string,
                 # it means the file is restricted
                 # we pass this information to parse later in load step
                 return {
-                    "access_obj": {"record": record_access,
-                                   "files": "restricted"},
-                    "meta": file["status"]
+                    "access_obj": {"record": record_access, "files": "restricted"},
+                    "meta": file["status"],
                 }
 
         def compute_files(file_dump, versions_dict):
@@ -413,12 +416,16 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             tmp_eos_root = Path(self.files_dump_dir)
             full_path = Path(file["full_path"])
             if file["hidden"]:
-                raise RestrictedFileDetected(field=file["full_name"],
-                                             value=file["status"], priority="critical",
-                                             message="File marked as hidden")
+                raise RestrictedFileDetected(
+                    field=file["full_name"],
+                    value=file["status"],
+                    priority="critical",
+                    message="File marked as hidden",
+                )
             if file["status"] and file["status"] != "SSO":
-                raise RestrictedFileDetected(field=file["full_name"],
-                                             value=file["status"], priority="critical")
+                raise RestrictedFileDetected(
+                    field=file["full_name"], value=file["status"], priority="critical"
+                )
             versions_dict[file_dump["version"]]["files"].update(
                 {
                     file["full_name"]: {
@@ -453,7 +460,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 versions[file["version"]] = {
                     "files": {},
                     "publication_date": arrow.get(file["creation_date"]),
-                    "access": compute_access(file, record_access)
+                    "access": compute_access(file, record_access),
                 }
 
             compute_files(file, versions)
