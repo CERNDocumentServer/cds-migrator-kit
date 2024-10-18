@@ -182,7 +182,6 @@ def prepare_new_doc(
     for doc in data["hits"]["hits"]:
         try:
             new_doc = deepcopy(doc)
-
             # remove to avoid reindexing
             new_doc.pop("_id", None)
             new_doc.pop("_score", None)
