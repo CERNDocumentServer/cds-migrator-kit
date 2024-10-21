@@ -27,6 +27,7 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
 
 from cds_migrator_kit.records.log import RDMJsonLogger
 from cds_rdm.minters import legacy_recid_minter
+from cds_rdm.models import CDSMigrationLegacyRecord
 
 cli_logger = logging.getLogger("migrator")
 
@@ -216,6 +217,7 @@ class CDSRecordServiceLoad(Load):
             # Dump the computed record state. This is useful to migrate then the record stats
             if record_state_context:
                 logger.add_record_state(record_state_context)
+                return record_state_context
 
     def _load_model_fields(self, record, entry):
         """Load model fields of the record."""
@@ -239,7 +241,9 @@ class CDSRecordServiceLoad(Load):
         {
             "legacy_recid": "2884810",
             "parent_recid": "zts3q-6ef46",
+            "parent_object_uuid": "435be22f-3038-49e0-9f17-9518eaac783a",
             "latest_version": "1mae4-skq89"
+            "latest_version_object_uuid": "895be22f-3038-49e0-9f17-9518eaac783a",
             "versions": [
                 {
                     "new_recid": "1mae4-skq89",
@@ -288,18 +292,36 @@ class CDSRecordServiceLoad(Load):
 
         for record in records:
             if parent_recid is None:
+                parent_id = str(record.parent.id)
                 parent_recid = record.parent.pid.pid_value
                 recid_state["parent_recid"] = parent_recid
+                recid_state["parent_object_uuid"] = parent_id
 
             recid_version = extract_record_version(record)
             # Save the record versions for legacy recid
             recid_state["versions"].append(recid_version)
 
             if "latest_version" not in recid_state:
-                recid_state["latest_version"] = record.get_latest_by_parent(
-                    record.parent
-                )["id"]
+                rec = record.get_latest_by_parent(record.parent)
+                recid_state["latest_version"] = rec["id"]
+                recid_state["latest_version_object_uuid"] = str(rec.id)
         return recid_state
+
+    def _save_original_dumped_record(self, entry, recid_state, logger):
+        """Save the original dumped record.
+
+        This is the originally extracted record before any transformation.
+        """
+        _original_dump = entry["_original_dump"]
+
+        _original_dump_model = CDSMigrationLegacyRecord(
+            json=_original_dump,
+            parent_object_uuid=recid_state["parent_object_uuid"],
+            migrated_record_object_uuid=recid_state["latest_version_object_uuid"],
+            legacy_recid=entry["record"]["recid"],
+        )
+        db.session.add(_original_dump_model)
+        db.session.commit()
 
     def _load(self, entry):
         """Use the services to load the entries."""
@@ -310,7 +332,13 @@ class CDSRecordServiceLoad(Load):
                 if self.dry_run:
                     self._dry_load(entry)
                 else:
-                    self._load_versions(entry, migration_logger)
+                    recid_state_after_load = self._load_versions(
+                        entry, migration_logger
+                    )
+                    if recid_state_after_load:
+                        self._save_original_dumped_record(
+                            entry, recid_state_after_load, migration_logger
+                        )
                 migration_logger.add_success(recid)
             except (PIDAlreadyExists, UniqueViolation) as e:
                 # TODO remove when there is a way of cleaning local environment from

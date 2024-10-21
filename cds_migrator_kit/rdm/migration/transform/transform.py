@@ -30,7 +30,9 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     LossyConversion,
     RestrictedFileDetected,
     UnexpectedValue,
-    ManualImportRequired, CDSMigrationException, MissingRequiredField,
+    ManualImportRequired,
+    CDSMigrationException,
+    MissingRequiredField,
 )
 from cds_migrator_kit.records.log import RDMJsonLogger
 from invenio_access.permissions import system_identity
@@ -236,6 +238,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             t = "publication-technicalnote"
             st = None
             return {"id": f"{t}-{st}"} if st else {"id": t}
+
         return {
             "creators": creators(json_entry),
             "title": json_entry["title"],
@@ -247,7 +250,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "subjects": json_entry.get("subjects"),
             "publisher": json_entry.get("publisher"),
             "additional_descriptions": json_entry.get("additional_descriptions"),
-            "identifiers": json_entry.get("identifiers")
+            "identifiers": json_entry.get("identifiers"),
         }
 
     def _custom_fields(self, json_entry):
@@ -280,9 +283,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     )
                 if vocabulary_result["hits"]["total"]:
 
-                    custom_fields["cern:experiments"].append({
-                        "id": vocabulary_result["hits"]["hits"][0]["id"]
-                    })
+                    custom_fields["cern:experiments"].append(
+                        {"id": vocabulary_result["hits"]["hits"][0]["id"]}
+                    )
 
                 else:
                     raise UnexpectedValue(
@@ -311,9 +314,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         stage="vocabulary match",
                     )
                 if vocabulary_result["hits"]["total"]:
-                    custom_fields["cern:departments"].append({
-                        "id": vocabulary_result["hits"]["hits"][0]["id"]
-                    })
+                    custom_fields["cern:departments"].append(
+                        {"id": vocabulary_result["hits"]["hits"][0]["id"]}
+                    )
 
                 else:
                     raise UnexpectedValue(
@@ -338,14 +341,15 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         subfield="a",
                         value=accelerator,
                         field="experiment",
-                        message=f"Accelerator {accelerator} " f"not valid search phrase.",
+                        message=f"Accelerator {accelerator} "
+                        f"not valid search phrase.",
                         stage="vocabulary match",
                     )
                 if vocabulary_result["hits"]["total"]:
 
-                    custom_fields["cern:accelerators"].append({
-                        "id": vocabulary_result["hits"]["hits"][0]["id"]
-                    })
+                    custom_fields["cern:accelerators"].append(
+                        {"id": vocabulary_result["hits"]["hits"][0]["id"]}
+                    )
 
                 else:
                     raise UnexpectedValue(
@@ -356,11 +360,14 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         stage="vocabulary match",
                     )
         custom_fields["cern:projects"] = json_entry.get("custom_fields", {}).get(
-            "cern:projects", [])
+            "cern:projects", []
+        )
         custom_fields["cern:facilities"] = json_entry.get("custom_fields", {}).get(
-            "cern:facilities", [])
+            "cern:facilities", []
+        )
         custom_fields["cern:studies"] = json_entry.get("custom_fields", {}).get(
-            "cern:studies", [])
+            "cern:studies", []
+        )
         return custom_fields
 
     def transform(self, entry):
@@ -372,7 +379,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         try:
 
             record_dump.prepare_revisions()
-            timestamp, json_data = record_dump.revisions[-1]
+            timestamp, json_data = record_dump.latest_revision
             migration_logger.add_record(json_data)
             json_output = {
                 "created": self._created(json_data),
@@ -394,6 +401,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "json": json_output,
                 "access": self._access(json_data, record_dump),
                 "owned_by": self._owner(json_data),
+                # keep the original extracted entry for storing it
+                "_original_dump": entry,
             }
         except Exception as e:
             e.recid = entry["recid"]
@@ -450,17 +459,22 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         migration_logger = RDMJsonLogger()
         try:
             record = self._record(entry)
+            original_dump = record.pop("_original_dump", {})
             if record:
                 return {
                     "record": record,
                     "versions": self._versions(entry, record),
                     "parent": self._parent(entry, record),
+                    "_original_dump": original_dump,
                 }
-        except (LossyConversion,
-                RestrictedFileDetected,
-                UnexpectedValue,
-                ManualImportRequired,
-                CDSMigrationException, MissingRequiredField) as e:
+        except (
+            LossyConversion,
+            RestrictedFileDetected,
+            UnexpectedValue,
+            ManualImportRequired,
+            CDSMigrationException,
+            MissingRequiredField,
+        ) as e:
             migration_logger.add_log(e, record=entry)
 
     def _record(self, entry):
@@ -515,7 +529,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 {
                     file["full_name"]: {
                         "eos_tmp_path": tmp_eos_root
-                                        / full_path.relative_to(legacy_path_root),
+                        / full_path.relative_to(legacy_path_root),
                         "id_bibdoc": file["bibdocid"],
                         "key": file["full_name"],
                         "metadata": {},
