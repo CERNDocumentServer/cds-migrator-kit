@@ -17,7 +17,6 @@ from .log import JsonLogger, RDMJsonLogger
 
 cli_logger = logging.getLogger("migrator")
 
-
 blueprint = Blueprint(
     "cds_migrator_kit_records",
     __name__,
@@ -42,9 +41,29 @@ def results(rectype=None):
         logger = RDMJsonLogger()
         record_logs = logger.read_log()
         template = "cds_migrator_kit_records/records.html"
+        record_logs = list(record_logs)
+        critical = 0
+        warning = 0
+        errored = 0
+        migrated = 0
+        total =len(record_logs)
+        for log in record_logs:
+            if log["priority"] == "critical":
+                critical += 1
+            if log["priority"] == "warning":
+                warning += 1
+            if log["clean"] == "False":
+                errored += 1
+            if log["clean"] == "True":
+                migrated += 1
         return render_template(
             template,
             record_logs=record_logs,
+            total=total if total != 0 else 1,
+            critical=critical,
+            warning=warning,
+            migrated=migrated,
+            errored=errored,
         )
     except FileNotFoundError as e:
         template = "cds_migrator_kit_records/rectype_missing.html"

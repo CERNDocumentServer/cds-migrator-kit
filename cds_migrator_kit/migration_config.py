@@ -19,6 +19,7 @@ from cds_rdm.permissions import (
 from invenio_app_rdm.config import CELERY_BEAT_SCHEDULE as APP_RDM_CELERY_BEAT_SCHEDULE
 from invenio_app_rdm.config import *
 from invenio_i18n import lazy_gettext as _
+from invenio_records_resources.services.custom_fields import KeywordCF
 from invenio_vocabularies.services.custom_fields import VocabularyCF
 
 
@@ -353,7 +354,6 @@ CDS_EOS_OFFLOAD_REDIRECT_BASE_PATH = ""
 
 RDM_PERMISSION_POLICY = CDSRDMRecordPermissionPolicy
 
-
 RDM_NAMESPACES = {
     # CERN
     "cern": "https://greybook.cern.ch/",
@@ -361,24 +361,47 @@ RDM_NAMESPACES = {
 
 RDM_CUSTOM_FIELDS = [
     VocabularyCF(
-        name="cern:experiment",
+        name="cern:experiments",
         vocabulary_id="experiments",
         dump_options=True,
-        multiple=False,
+        multiple=True,
     ),
     VocabularyCF(
-        name="cern:department",
+        name="cern:departments",
         vocabulary_id="departments",
         dump_options=True,
-        multiple=False,
+        multiple=True,
     ),
+    VocabularyCF(
+        name="cern:accelerators",
+        vocabulary_id="accelerators",
+        dump_options=True,
+        multiple=True,
+    ),
+    KeywordCF(name="cern:projects", multiple=True),
+    KeywordCF(name="cern:facilities", multiple=True),
+    KeywordCF(name="cern:studies", multiple=True),
 ]
-
 
 base_path = os.path.dirname(os.path.realpath(__file__))
 logs_dir = os.path.join(base_path, "tmp/logs/")
 CDS_MIGRATOR_KIT_LOGS_PATH = logs_dir
 CDS_MIGRATOR_KIT_STREAM_CONFIG = "cds_migrator_kit/rdm/migration/streams.yaml"
+
+from invenio_rdm_records.config import RDM_RECORDS_IDENTIFIERS_SCHEMES, always_valid
+from cds_rdm import schemes
+
+RDM_RECORDS_IDENTIFIERS_SCHEMES = {**RDM_RECORDS_IDENTIFIERS_SCHEMES,
+                                   **{"cds_ref": {"label": _("CDS Reference"),
+                                                  "validator": always_valid,
+                                                  "datacite": "CDS"},
+                                      "aleph": {"label": _("Aleph number"),
+                                                "validator": schemes.is_aleph,
+                                                "datacite": "ALEPH"},
+                                      "inspire": {"label": _("Inspire"),
+                                                  "validator": schemes.is_inspire,
+                                                  "datacite": "INSPIRE"}}}
+
 
 CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(
     ####### Search ##############

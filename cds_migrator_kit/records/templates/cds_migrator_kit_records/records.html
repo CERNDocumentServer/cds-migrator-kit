@@ -8,6 +8,7 @@
 
 {%- block page_body %}
 
+  <h2>Records: {{ total }} | Migrated: {{ migrated }} | Errored: {{ errored  }} | Warning: {{ warning }} | Critical: {{ critical }} | Success rate: {{ "%.2f" | format((migrated/total)*100) }}%</h2>
   <table class="table table-bordered">
     <thead class="thead-dark">
     <tr>
