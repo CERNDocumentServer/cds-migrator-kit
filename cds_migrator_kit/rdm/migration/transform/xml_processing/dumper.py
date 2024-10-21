@@ -15,7 +15,8 @@ from cds_migrator_kit.rdm.migration.transform import migrator_marc21
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     LossyConversion,
     MissingRequiredField,
-    UnexpectedValue, RecordModelMissing,
+    UnexpectedValue,
+    RecordModelMissing,
 )
 
 
@@ -34,19 +35,17 @@ class CDSRecordDump:
         self.source_type = source_type
         self.latest_only = latest_only
         self.dojson_model = dojson_model
-        self.revisions = None
+        self.latest_revision = None
         self.files = None
 
     @property
     def created(self):
         """Get creation date."""
-        return self.revisions[0][0]
+        return self.latest_revision[0]
 
     def prepare_revisions(self):
         """Prepare revisions."""
-        # TODO get all revisions
-        latest = self.data["record"][-1]
-        self.revisions = [self._prepare_revision(latest)]
+        self.latest_revision = self._prepare_revision(self.data["record"].pop(-1))
 
     def prepare_files(self):
         """Get files from data dump."""
@@ -78,8 +77,7 @@ class CDSRecordDump:
         # .do method implementation
         # try:
         json_converted_record = self.dojson_model.do(
-            marc_record,
-            exception_handlers=exception_handlers
+            marc_record, exception_handlers=exception_handlers
         )
         # except AttributeError as e:
         #     import ipdb;ipdb.set_trace()
