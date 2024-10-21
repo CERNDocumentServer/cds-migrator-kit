@@ -11,7 +11,7 @@ from datetime import datetime
 from copy import deepcopy
 
 
-def process_download_event(entry, rec_context):
+def process_download_event(entry, rec_context, logger):
     """Entry from legacy stat events format.
 
     {
@@ -62,8 +62,11 @@ def process_download_event(entry, rec_context):
     _record_version = [
         rec for rec in rec_context["versions"] if rec["version"] == _legacy_file_version
     ]
-    if _record_version:
-        _record_version = _record_version[0]
+    if not _record_version:
+        logger.error(f"No record version found for {rec_context['legacy_recid']}")
+        return {}
+
+    _record_version = _record_version[0]
 
     _file_context = list(
         filter(
@@ -75,6 +78,9 @@ def process_download_event(entry, rec_context):
     )
 
     if not _file_context:
+        logger.warning(
+            f"No file version found for {rec_context['legacy_recid']} and bibdoc {entry['id_bibdoc']}"
+        )
         return {}
     else:
         _file_context = _file_context[0]
@@ -100,7 +106,7 @@ def process_download_event(entry, rec_context):
     }
 
 
-def process_pageview_event(entry, rec_context):
+def process_pageview_event(entry, rec_context, logger):
     """Entry from legacy stat events format.
 
     {
@@ -151,7 +157,7 @@ def process_pageview_event(entry, rec_context):
     assert str(entry["id_bibrec"]) == str(rec_context["legacy_recid"])
 
     if not rec_context.get("latest_version"):
-        print("Check recid, ", json.dumps(rec_context))
+        logger.error("Check recid, ", json.dumps(rec_context))
         return {}
 
     return {
@@ -192,14 +198,28 @@ def prepare_new_doc(
                 raise Exception("Inconsistent doc type")
             processed_doc = {}
             if event_type == "events.downloads":
-                processed_doc = process_download_event(new_doc["_source"], rec_context)
+                processed_doc = process_download_event(
+                    new_doc["_source"], rec_context, logger
+                )
                 index_type = legacy_to_rdm_events_map[event_type]["type"]
             elif event_type == "events.pageviews":
-                processed_doc = process_pageview_event(new_doc["_source"], rec_context)
+                processed_doc = process_pageview_event(
+                    new_doc["_source"], rec_context, logger
+                )
                 index_type = legacy_to_rdm_events_map[event_type]["type"]
             else:
                 continue
 
+            if not processed_doc:
+                logger.warning(
+                    "[SKIPPING] index: {0} - type: {1} - id: {2} - source: {3}".format(
+                        doc["_index"],
+                        doc["_source"]["event_type"],
+                        doc["_id"],
+                        doc["_source"],
+                    )
+                )
+                continue
             logger.info("Processed: {0}".format(doc["_id"]))
 
             # Retrieve year and month from timestamp
