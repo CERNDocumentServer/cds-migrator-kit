@@ -16,10 +16,13 @@ from invenio_db import db
 from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
+from invenio_records.systemfields.relations import InvalidRelationValue
+from marshmallow import ValidationError
+from psycopg.errors import UniqueViolation
 
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     ManualImportRequired,
-    RecordStatsNotImported,
+    RecordStatsNotImported, CDSMigrationException,
 )
 
 from cds_migrator_kit.records.log import RDMJsonLogger
@@ -309,11 +312,21 @@ class CDSRecordServiceLoad(Load):
                 else:
                     self._load_versions(entry, migration_logger)
                 migration_logger.add_success(recid)
-            except PIDAlreadyExists:
+            except (PIDAlreadyExists, UniqueViolation) as e:
                 # TODO remove when there is a way of cleaning local environment from
                 # previous run of migration
-                pass
-            except Exception as e:
+                exc = ManualImportRequired(
+                    message=str(e),
+                    field="validation",
+                    stage="load",
+                    description="RECORD Already exists.",
+                    recid=recid,
+                    priority="warning",
+                    value=e.pid_value,
+                    subfield="PID"
+                )
+                migration_logger.add_log(exc, record=entry)
+            except (CDSMigrationException, ValidationError, InvalidRelationValue) as e:
                 exc = ManualImportRequired(
                     message=str(e),
                     field="validation",
@@ -322,7 +335,6 @@ class CDSRecordServiceLoad(Load):
                     priority="warning",
                 )
                 migration_logger.add_log(exc, record=entry)
-                # raise e
 
     def _cleanup(self, *args, **kwargs):
         """Cleanup the entries."""
