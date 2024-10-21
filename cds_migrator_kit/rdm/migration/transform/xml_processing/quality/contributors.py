@@ -138,7 +138,7 @@ def get_contributor_affiliations(info):
     affiliations = force_list(u)
 
     parsed_affiliations = \
-        [StringValue(aff, str).parse().filter_regex(ALPHANUMERIC_ONLY) for
+        [StringValue(aff).parse(filter_regex=ALPHANUMERIC_ONLY) for
          aff in affiliations]
     return parsed_affiliations
 

@@ -10,6 +10,7 @@
 import datetime
 
 import pycountry
+from cds_dojson.marc21.fields.utils import out_strip
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 from dateutil.parser import parse
@@ -160,12 +161,18 @@ def imprint(self, key, value):
     return imprint
 
 
-@model.over("creators", "(^100__)|(^700__)")
+@model.over("creators", "^100__")
 @for_each_value
 @require(["a"])
 def creators(self, key, value):
     """Translates the creators field."""
     role = get_contributor_role("e", value.get("e", "author"))
+    beard = value.get("9")
+    if beard is not None and beard != "#BEARD#":
+        # checking if anything else stored in this field
+        # historically it was some kind of automatic script tagging
+        # and it should be ignored if value == #BEARD#
+        raise UnexpectedValue(field=key, subfield="9", value=beard)
     affiliations = get_contributor_affiliations(value)
     contributor = {
         "person_or_org": {
@@ -176,6 +183,8 @@ def creators(self, key, value):
     }
     if role:
         contributor.update({"role": {"id": role}})  # VOCABULARY ID
+    else:
+        contributor.update({"role": {"id": "other"}})
 
     if affiliations:
         contributor.update({"affiliations": affiliations})
@@ -184,7 +193,7 @@ def creators(self, key, value):
 
 
 @model.over("contributors", "^700__")
-@for_each_value
+# @for_each_value
 @require(["a"])
 def contributors(self, key, value):
     """Translates contributors."""
@@ -212,17 +221,23 @@ def languages(self, key, value):
 def subjects(self, key, value):
     """Translates subjects fields."""
     _subjects = self.get("subjects", [])
-    subject_value = value.get("a")
+    subject_value = StringValue(value.get("a")).parse()
     subject_scheme = value.get("2") or value.get("9")
 
     if subject_scheme and subject_scheme.lower() != "szgecern":
         raise UnexpectedValue(field=key, subfield="2")
-    if key == "65017" or key == "6531_":
+    if key == "65017":
         if subject_value:
             subject = {
                 "id": subject_value,
                 "subject": subject_value,
                 "scheme": "CERN",
+            }
+            _subjects.append(subject)
+    if key.startswith("653"):
+        if subject_value:
+            subject = {
+                "subject": subject_value,
             }
             _subjects.append(subject)
     return _subjects
@@ -233,10 +248,24 @@ def custom_fields(self, key, value):
     """Translates custom fields."""
 
     _custom_fields = self.get("custom_fields", {})
-
+    experiments, accelerators, projects, facilities, studies = [], [], [], [], []
     if key == "693__":
-        experiment = value.get("e")
-        _custom_fields["cern:experiment"] = experiment
+        if "e" in value and value.get("e"):
+            experiments += [StringValue(v).parse() for v in force_list(value.get("e"))]
+        if "a" in value and value.get("a"):
+            accelerators += [StringValue(v).parse() for v in force_list(value.get("a"))]
+        if "p" in value and value.get("p"):
+            projects += [StringValue(v).parse() for v in force_list(value.get("p"))]
+        if "f" in value and value.get("f"):
+            facilities += [StringValue(v).parse() for v in force_list(value.get("f"))]
+        if "s" in value and value.get("s"):
+            studies += [StringValue(v).parse() for v in force_list(value.get("s"))]
+
+        _custom_fields["cern:experiments"] = experiments
+        _custom_fields["cern:accelerators"] = accelerators
+        _custom_fields["cern:projects"] = projects
+        _custom_fields["cern:facilities"] = facilities
+        _custom_fields["cern:studies"] = studies
     return _custom_fields
 
 
@@ -248,10 +277,44 @@ def record_submitter(self, key, value):
 @model.over("record_restriction", "(^963__)")
 def record_restriction(self, key, value):
     restr = value.get("a")
-    parsed = StringValue(restr).parse().parsed_value
+    parsed = StringValue(restr).parse()
     if parsed == "PUBLIC":
         return "public"
     else:
         raise UnexpectedValue(
             field="963", subfield="a", message="Record restricted", priority="critical"
         )
+
+
+@model.over("identifiers", "(^037__)|(^088__)")
+@for_each_value
+def report_number(self, key, value):
+    """Translates report_number fields."""
+    report_number = StringValue(value.get("a")).parse()
+    if report_number:
+        return {"scheme": "cds_ref", "identifier": report_number}
+    else:
+        raise IgnoreKey("preprint_date")
+
+
+@model.over("identifiers", "^970__")
+@for_each_value
+def aleph_number(self, key, value):
+    aleph = StringValue(value.get("a")).parse()
+    if aleph:
+        return {"scheme": "aleph", "identifier": aleph}
+
+
+@model.over("identifiers", "^035__")
+@for_each_value
+def inspire_number(self, key, value):
+    id_value = StringValue(value.get("a")).parse()
+    scheme = StringValue(value.get("9")).parse()
+
+    if scheme.upper() != "INSPIRE":
+        raise UnexpectedValue(field=key, subfield="9",
+                              message="INSPIRE ID SCHEME MISSING",
+                              priority="warning")
+
+    if id_value:
+        return {"scheme": "inspire", "identifier": id_value}

@@ -58,27 +58,33 @@ class MarcValue(ABC):
     def default(self):
         return self.default
 
-    @abstractmethod
     def _clean(self):
-        pass
+        return self.parsed_value
 
     def parse(self):
-        self.parsed_value = self._clean()
-        self.required()
-        self.parsed_value = self.type()
-        self.parsed_value = self._clean()
-        return self
+        try:
+            self.parsed_value = self._clean()
+            self.required()
+            self.parsed_value = self.type()
+            self.parsed_value = self._clean()
+            return self.parsed_value
+        except Exception as e:
+            raise UnexpectedValue(value=self.raw_value, message=str(e), stage="transform", exc=e)
 
 
 class StringValue(MarcValue):
-
-
     def __init__(self, raw_value, required_type=str, subfield=None, required=False,
                  default_value=None):
         super().__init__(raw_value, required_type, subfield, required, default_value)
 
     def _clean(self):
         return self.raw_value.strip()
+
+    def parse(self, filter_regex=None):
+        super().parse()
+        if filter_regex:
+            self.parsed_value = self.filter_regex(filter_regex)
+        return self.parsed_value
 
     def filter_regex(self, regex):
         return re.sub(regex, "", self.parsed_value, flags=re.UNICODE)

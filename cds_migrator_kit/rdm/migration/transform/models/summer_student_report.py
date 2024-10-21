@@ -33,11 +33,11 @@ class CMSSummerStudent(CdsOverdo):
 
     __ignore_keys__ = {
         # decided to ignore
-        "0247_2",  # DOI, summer student notes do not have it
-        "0247_a",  # DOI
+        # "0247_2",  # DOI, summer student notes do not have it
+        # "0247_a",  # DOI
         "0248_a",  # oai identifier, not needed to migrate, TBD
         "0248_p",  # oai identifier, not needed to migrate, TBD
-        # "0248_q",  does appear in data, what is this field
+        "0248_q",  # does appear in data, what is this field recid 2778897
         "100__m",  # author's email <-- decided not to keep in RDM,
         "260__c",  # Redundant (more detailed value is in 269__c imprint.pub_date)
         "270__m",  # document contact email
@@ -57,26 +57,12 @@ class CMSSummerStudent(CdsOverdo):
         "960__a",  # collection id? usually value 12, to confirm if we ignore
         "980__a",  # collection tag
         # "980__c",  # MIGRATED/DELETED - it shouldn't even make it here
+
         # TO Implement (to remove from here)
         "690C_a",  # collection name, not needed values(to drop: INTNOTE, CERN, otherwise parse PUBL to retrieve the department, if department not present in any other field)
-        # "970__a",  # alternative identifier, scheme ALEPH
-        # "037__a",  # decided to ignore (Report number) alternative identifiers -> scheme "CDS REFERENCE"
-        # "088__a",  # RN (manual introduced?) second report number (so the identifiers schemas are not unique!)
-        # "035__9",  # Inspire schema
-        # "035__a",  # Inspire id value
-        # "100__9",  # #BEARD# tag
-        # "100__9",  # Author, to check for BEARD
-        # "700__9",  # #BEARD# tag
-        # "270__p",  # document contact person name
         # "562__c",  # note
-        "693__a",  # accelerator, do we create a custom field?
-        # "693__b",  # beams
-        # "693__f",  # facility, do we create a custom field?
-        # "693__p",  # project, do we create a custom field?
-        # "693__s",  # study,  do we create a custom field?
         # "700__0",  # Contributors (cds author id) - TBD if we keep, same with INSPIRE ID
-        # "710__g",  # Collaboration, OK to migrate as corporate contributor (not creator)?
-        "906__p",  # names, is it supervisor? # todo migrate as contributor?
+        # "693__b",  # beams recid: 2640381
 
         # TO DECIDE
         # IMPLEMENTED
@@ -85,25 +71,40 @@ class CMSSummerStudent(CdsOverdo):
         # "041__a",  # languages
         # "100__a",
         # "100__u",  # Author affiliation
+        # "100__9",  # #BEARD# tag
         # "246__a",
         # "246__i",  # abbreviation
         # "246__i",  # abbreviation tag, applies to value of 246__A
+        # "270__p",  # document contact person name
         # "500__a",  # Note (-> description.type = other)
         # "520__a",  # Note (-> description.type = abstract
+        # "562__c",  # note
         # "650172",  # subject provenance
         # "65017a",  # subject value
         # "6531_9",  # keyword provenance
         # "6531_a",  # keyword
         # "6931_9",  # keyword
         # "6931_a",  # keyword
-        # "693__e",  # custom_fields.cern:experiment  # TODO this field is single value, do we have lists?
+        # "693__e",  # custom_fields.cern:experiments
         # "700__a",  # Contributors (full name)
         # "700__u",  # Contributors (affiliation)
+        # "710__g",  # Collaboration, OK to migrate as corporate contributor (not creator)?
+        # "700__9",  # #BEARD# tag
         # "859__f",  # creator's email, to be used to determine the owner
         # "916__n",
         # "916__s",
         # "916__w",
         # "963__a",
+        # "693__a",  # accelerator, do we create a custom field?
+        # "693__f",  # facility, do we create a custom field?
+        # "693__p",  # project, do we create a custom field?
+        # "693__s",  # study,  do we create a custom field?
+        # "906__p",  # names, is it supervisor?
+        # "970__a",  # alternative identifier, scheme ALEPH
+        # "037__a",  # (Report number) alternative identifiers -> scheme "CDS REFERENCE"
+        # "088__a",  # RN (manual introduced?) second report number (so the identifiers schemas are not unique!)
+        # "035__9",  # Inspire schema
+        # "035__a",  # Inspire id value
     }
     _default_fields = None
 
