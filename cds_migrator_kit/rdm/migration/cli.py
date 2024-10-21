@@ -71,7 +71,7 @@ def run(filepath, dry_run=False):
         f"{current_app.config['SEARCH_INDEX_PREFIX']}events-stats"
     )
     stream_config["DEST_SEARCH_HOSTS"] = current_app.config["SEARCH_HOSTS"]
-    log_dir = current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]
+    log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "stats"
     runner = RecordStatsRunner(
         stream_definition=RecordStatsStreamDefinition,
         filepath=filepath,
