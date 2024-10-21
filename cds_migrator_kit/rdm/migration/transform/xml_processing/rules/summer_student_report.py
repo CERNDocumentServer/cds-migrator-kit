@@ -20,18 +20,67 @@
 
 from cds_dojson.marc21.fields.utils import clean_val, out_strip
 from dojson.errors import IgnoreKey
+
+from ..errors import UnexpectedValue, MissingRequiredField
+from ..quality.decorators import for_each_value
+from ..quality.parsers import StringValue
 # ATTENTION when COPYING! important which model you use as decorator
 from ...models.summer_student_report import model
 
 
-@model.over("report_number", "^037__")
-@out_strip
-def report_number(self, key, value):
-    """Translates report_number fields."""
-    report_number = clean_val("a", value, str)
-    if report_number:
-        return report_number
-    else:
-        raise IgnoreKey("preprint_date")
+@model.over("contributors", "^270__")
+@for_each_value
+def contact_person(self, key, value):
+    contributor = {
+        "person_or_org": {
+            "type": "personal",
+            "name": StringValue(value.get("p")).parse(),
+            "family_name": StringValue(value.get("p")).parse(),
+        },
+        "role": {"id": "contactperson"}
+    }
+    return contributor
 
 
+@model.over("contributors", "^906__")
+@for_each_value
+def supervisor(self, key, value):
+    supervisor = StringValue(value.get("p"))
+    if not supervisor:
+        raise MissingRequiredField(field=key, subfield="p",
+                                   priority="warning")
+    contributor = {
+        "person_or_org": {
+            "type": "personal",
+            "name": StringValue(value.get("p")).parse(),
+            "family_name": StringValue(value.get("p")).parse(),
+        },
+        "role": {"id": "supervisor"}
+    }
+
+    return contributor
+
+
+@model.over("contributors", "^710__")
+@for_each_value
+def corporate_author(self, key, value):
+    if "g" in value:
+        contributor = {
+            "person_or_org": {
+                "type": "organizational",
+                "name": StringValue(value.get("g")).parse(),
+                "family_name": StringValue(value.get("g")).parse(),
+            },
+            "role": {"id": "hostinginstitution"},
+        }
+        return contributor
+    if "5" in value:
+        department = StringValue(value.get("5")).parse()
+        self.get("custom_fields", {}).get("cern:departments", []).append(department)
+        raise IgnoreKey
+
+
+@model.over("internal_notes", "^562__")
+@for_each_value
+def note(self, key, value):
+    return StringValue(value.get("c")).parse()

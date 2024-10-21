@@ -76,13 +76,14 @@ class CDSRecordDump:
 
         # exception handlers are passed in this way to avoid overriding
         # .do method implementation
-        try:
-            json_converted_record = self.dojson_model.do(
-                marc_record,
-                exception_handlers=exception_handlers
-            )
-        except AttributeError as e:
-            raise RecordModelMissing(exc=e)
+        # try:
+        json_converted_record = self.dojson_model.do(
+            marc_record,
+            exception_handlers=exception_handlers
+        )
+        # except AttributeError as e:
+        #     import ipdb;ipdb.set_trace()
+        #     raise RecordModelMissing(exc=e)
 
         missing = self.dojson_model.missing(marc_record)
         if missing:
