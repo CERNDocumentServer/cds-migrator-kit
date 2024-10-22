@@ -17,6 +17,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import arrow
+import requests
 from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
@@ -24,6 +25,7 @@ from invenio_rdm_migrator.streams.records.transform import (
 from opensearchpy import RequestError
 from sqlalchemy.exc import NoResultFound
 
+from cds_migrator_kit.rdm.migration.affiliations.transform import affiliations_search
 from cds_migrator_kit.rdm.migration.transform.users import CDSMissingUserLoad
 from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
@@ -33,12 +35,16 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     ManualImportRequired,
     CDSMigrationException,
     MissingRequiredField,
+    RecordAffiliationFlagged,
 )
 from cds_migrator_kit.records.log import RDMJsonLogger
+from cds_rdm.models import CDSMigrationAffiliationMapping
 from invenio_access.permissions import system_identity
 from invenio_search.engine import dsl
 from invenio_records_resources.proxies import current_service_registry
 from invenio_accounts.models import User
+from invenio_db import db
+from idutils import normalize_ror
 
 cli_logger = logging.getLogger("migrator")
 
@@ -51,11 +57,13 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         partial=False,
         missing_users_dir=None,
         missing_users_filename="people.csv",
+        affiliations_mapping=None,
         dry_run=False,
     ):
         """Constructor."""
         self.missing_users_dir = missing_users_dir
         self.missing_users_filename = missing_users_filename
+        self.affiliations_mapping = affiliations_mapping
         self.dry_run = dry_run
         super().__init__(partial)
 
@@ -192,43 +200,54 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
         return user.id
 
+    def _match_affiliation(self, affiliation_name):
+        """Match an affiliation against `CDSMigrationAffiliationMapping` db table."""
+
+        # Step 1: search in the affiliation mapping (ROR organizations)
+        match = self.affiliations_mapping.query.filter_by(
+            legacy_affiliation_input=affiliation_name
+        ).one_or_none()
+        if match:
+            # Step 1: check if there is a curated input
+            if match.curated_affiliation:
+                return match.curated_affiliation
+            elif match.ror_exact_match:
+                return {"id": normalize_ror(match.ror_exact_match)}
+            elif match.ror_not_exact_match:
+                raise RecordAffiliationFlagged(
+                    subfield="u",
+                    value={"id": normalize_ror(match.ror_not_exact_match)},
+                    field="author",
+                    message=f"Affiliation {normalize_ror(match.ror_not_exact_match)} not found as an exact match, ROR id should be checked.",
+                    stage="vocabulary match",
+                )
+        else:
+            raise RecordAffiliationFlagged(
+                subfield="u",
+                value={"name": affiliation_name},
+                field="author",
+                message=f"Affiliation {affiliation_name} not found as an exact match, custom value should be checked.",
+                stage="vocabulary match",
+            )
+
     def _metadata(self, json_entry):
 
-        def affiliations(creator):
-            vocab_type = "affiliations"
-            service = current_service_registry.get(vocab_type)
-            extra_filter = dsl.Q("term", type__id=vocab_type)
+        def creator_affiliations(creator):
             affiliations = creator.get("affiliations", [])
             transformed_aff = []
 
-
             for affiliation_name in affiliations:
-
-                title = dsl.Q("match", **{f"title": affiliation_name})
-                acronym = dsl.Q(
-                    "match_phrase", **{f"acronym.keyword": affiliation_name}
-                )
-                title_filter = dsl.query.Bool("should", should=[title, acronym])
-
-                vocabulary_result = service.search(
-                    system_identity, extra_filter=title_filter | extra_filter
-                ).to_dict()
-                if vocabulary_result["hits"]["total"]:
-                    transformed_aff.append(
-                        {
-                            "name": affiliation_name,
-                            "id": vocabulary_result["hits"]["hits"][0]["id"],
-                        }
+                try:
+                    affiliation = self._match_affiliation(affiliation_name)
+                    transformed_aff.append(affiliation)
+                except RecordAffiliationFlagged as exc:
+                    # Save not exact match affiliation and reraise to flag the record
+                    RDMJsonLogger().add_success_state(
+                        json_entry["recid"],
+                        {"message": exc.message, "value": exc.value},
                     )
-                else:
-                    raise UnexpectedValue(
-                        subfield="u",
-                        value=affiliation_name,
-                        field="author",
-                        message=f"Affiliation {affiliation_name} not found.",
-                        stage="vocabulary match",
-                    )
-                creator["affiliations"] = transformed_aff
+                    transformed_aff.append(exc.value)
+            creator["affiliations"] = transformed_aff
 
         def creator_identifiers(creator):
             processed_identifiers = []
@@ -248,7 +267,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             _creators = deepcopy(json.get(key, []))
             _creators = list(filter(lambda x: x is not None, _creators))
             for creator in _creators:
-                affiliations(creator)
+                creator_affiliations(creator)
                 creator_identifiers(creator)
             return _creators
 
@@ -438,6 +457,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         files_dump_dir=None,
         missing_users=None,
         community_id=None,
+        affiliations_mapping_path=None,
         dry_run=False,
     ):
         """Constructor."""
@@ -445,6 +465,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         self.missing_users_dir = Path(missing_users).absolute().as_posix()
         self.community_id = community_id
         self.dry_run = dry_run
+        self.db_state = {"affiliations": CDSMigrationAffiliationMapping}
         super().__init__(workers, throw)
 
     def _community_id(self, entry, record):
@@ -499,7 +520,9 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
     def _record(self, entry):
         # could be in draft as well, depends on how we decide to publish
         return CDSToRDMRecordEntry(
-            missing_users_dir=self.missing_users_dir, dry_run=self.dry_run
+            missing_users_dir=self.missing_users_dir,
+            affiliations_mapping=self.db_state["affiliations"],
+            dry_run=self.dry_run,
         ).transform(entry)
 
     def _draft(self, entry):

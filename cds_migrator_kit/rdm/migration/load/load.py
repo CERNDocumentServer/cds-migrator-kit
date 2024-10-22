@@ -22,7 +22,7 @@ from psycopg.errors import UniqueViolation
 
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     ManualImportRequired,
-    RecordStatsNotImported, CDSMigrationException,
+    CDSMigrationException,
 )
 
 from cds_migrator_kit.records.log import RDMJsonLogger
@@ -52,6 +52,7 @@ class CDSRecordServiceLoad(Load):
     ):
         """Constructor."""
         self.db_uri = db_uri
+
         self.data_dir = data_dir
         self.tmp_dir = tmp_dir
         self.existing_data = existing_data
@@ -349,7 +350,7 @@ class CDSRecordServiceLoad(Load):
                     recid=recid,
                     priority="warning",
                     value=e.pid_value,
-                    subfield="PID"
+                    subfield="PID",
                 )
                 migration_logger.add_log(exc, record=entry)
             except (CDSMigrationException, ValidationError, InvalidRelationValue) as e:

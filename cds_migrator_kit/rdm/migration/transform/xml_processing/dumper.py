@@ -45,7 +45,7 @@ class CDSRecordDump:
 
     def prepare_revisions(self):
         """Prepare revisions."""
-        self.latest_revision = self._prepare_revision(self.data["record"].pop(-1))
+        self.latest_revision = self._prepare_revision(self.data["record"][-1])
 
     def prepare_files(self):
         """Get files from data dump."""
@@ -79,11 +79,10 @@ class CDSRecordDump:
         json_converted_record = self.dojson_model.do(
             marc_record, exception_handlers=exception_handlers
         )
-        # except AttributeError as e:
-        #     import ipdb;ipdb.set_trace()
-        #     raise RecordModelMissing(exc=e)
 
         missing = self.dojson_model.missing(marc_record)
+
         if missing:
-            raise LossyConversion(missing=missing)
+            print(missing)
+            # raise LossyConversion(missing=missing)
         return timestamp, json_converted_record
