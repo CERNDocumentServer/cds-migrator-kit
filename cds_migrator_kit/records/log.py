@@ -90,6 +90,7 @@ class JsonLogger(metaclass=Singleton):
 
         self.error_file = None
         self.record_dump_file = None
+        self._success_state_cache = {}
 
     def start_log(self):
         """Initialize logging file descriptors."""
@@ -177,9 +178,17 @@ class JsonLogger(metaclass=Singleton):
         self.log_writer.writerow(error_format)
         logger_migrator.error(exc)
 
+    def add_success_state(self, recid, state):
+        """Save a temporary success state for recid.
+
+        For example, we store affiliation warnings when we don't match.
+        """
+        self._success_state_cache[recid] = state
+
     def add_success(self, recid):
         """Log recid as success."""
-        self.log_writer.writerow({"recid": recid, "clean": True})
+        _state = self._success_state_cache.pop(recid, {})
+        self.log_writer.writerow({"recid": recid, "clean": True, **_state})
 
 
 class RDMJsonLogger(JsonLogger):

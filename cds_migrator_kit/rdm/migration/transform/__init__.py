@@ -11,3 +11,7 @@ from cds_dojson.overdo import OverdoBase
 
 # Matching to a correct model is happening here
 migrator_marc21 = OverdoBase(entry_point_models="cds_migrator_kit.migrator.models")
+
+affiliations_migrator_marc21 = OverdoBase(
+    entry_point_models="cds_migrator_kit.migrator.affiliations.model"
+)

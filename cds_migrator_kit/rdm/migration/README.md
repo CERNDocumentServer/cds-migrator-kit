@@ -164,6 +164,27 @@ python copy_collection_files.py --dump-folder /eos/media/cds/cds-rdm/dev/migrati
 5. click connect
 6. use eos account dev credentials
 
+### Collect and dump affiliation mapping
+
+In order to collect all affiliations from the collection dump folder run the following
+command pointing to the `cds_migrator_kit.rdm.migration.data.summer_student_reports.dump`
+folder:
+
+```
+invenio migration affiliations run --filepath /path/to/cds_migrator_kit/rdm/migration/data/summer_student_reports/dump
+```
+
+This will collect and check each affiliation against the ROR organization API, and store them in the `cds_rdm.models.CDSMigrationAffiliationMapping` table.
+
+The model is then used during record migration to normalize the affiliation content following the below principles
+to map the legacy input to a normalized value:
+
+1. If curated affiliation that might or not have a ROR ID exists then this value is used.
+2. A ROR exact match
+3. A ROR not exact match with a level of confidence of >= 90%. This will also flag the
+   record for further curation to validate the value.
+4. The legacy affiliation value, and flag the record.
+
 #### Openshift migration pod
 
 ```shell
@@ -184,7 +205,9 @@ When the `invenio migration run` command ends it will produce a `rdm_records_sta
 {
   "legacy_recid": "2884810",
   "parent_recid": "zts3q-6ef46",
+  "parent_object_uuid": "155be22f-3038-49e0-9f17-9518eaac783a",
   "latest_version": "1mae4-skq89",
+  "latest_version_object_uuid": "155be22f-3038-49e0-9f17-9518eaac783a",
   "versions": [
     {
       "new_recid": "1mae4-skq89",
@@ -258,3 +281,48 @@ reindex_stats(stats_indices)
 ```
 
 visit https://migration-cds-rdm-dev.app.cern.ch for report
+
+## Rerun migration from clean state without setup everything again
+
+If you want to cleanup a previous migration run without having to re setup everything
+i.e not repopulating all vocabularies which takes a lot of time, then run the following
+recipe:
+
+- Cleanup db tables from pgadmin
+
+```sql
+DELETE FROM rdm_versions_state;
+DELETE FROM rdm_records_files;
+DELETE FROM rdm_drafts_files;
+DELETE FROM rdm_records_metadata;
+DELETE FROM rdm_drafts_metadata;
+DELETE FROM rdm_parents_metadata;
+DELETE FROM communities_metadata;
+DELETE FROM files_objecttags;
+DELETE FROM files_object;
+DELETE FROM files_buckettags;
+DELETE FROM files_bucket;
+DELETE FROM files_files;
+DELETE FROM pidstore_pid WHERE pid_type = 'lrecid';
+DELETE FROM pidstore_pid WHERE pid_type = 'recid';
+```
+
+- Cleanup indexed documents from opensearch
+
+```
+POST /cds-rdm-rdmrecords/_delete_by_query
+{
+  "query": {
+    "match_all": {}
+  }
+}
+POST /cds-rdm-communities/_delete_by_query
+{
+  "query": {
+    "match_all": {}
+  }
+}
+```
+
+- Recreate the community and copy the `community_id` in your `streams.yaml` file
+- Rerun `invenio migration run`

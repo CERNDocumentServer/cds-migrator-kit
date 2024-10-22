@@ -16,4 +16,4 @@ records:
   transform:
     files_dump_dir: cds_migrator_kit/rdm/migration/data/summer_student_reports/files/
     missing_users: cds_migrator_kit/rdm/migration/data/users
-    community_id: 94ae20a9-57f1-4a4e-bcac-4ef802b88e5d
+    community_id: 463a8eb6-c2f7-4715-83e3-49fad9595b40

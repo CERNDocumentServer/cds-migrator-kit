@@ -86,7 +86,7 @@ class RestrictedFileDetected(CDSMigrationException):
     description = "[Restricted file detected]"
 
 
-class RecordStatsNotImported(CDSMigrationException):
+class RecordAffiliationFlagged(CDSMigrationException):
     """Record statistics error."""
 
-    description = "[RECORD STATS NOT IMPORTED]"
+    description = "[Record affiliation needs to be checked]"

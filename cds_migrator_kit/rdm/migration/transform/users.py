@@ -59,7 +59,7 @@ class CDSUserEntry(Entry):
         )
 
         record_dump.prepare_revisions()
-        timestamp, json_data = record_dump.revisions[-1]
+        timestamp, json_data = record_dump.latest_revision
         return json_data
 
 
