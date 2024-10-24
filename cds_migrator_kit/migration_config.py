@@ -388,7 +388,7 @@ logs_dir = os.path.join(base_path, "tmp/logs/")
 CDS_MIGRATOR_KIT_LOGS_PATH = logs_dir
 CDS_MIGRATOR_KIT_STREAM_CONFIG = "cds_migrator_kit/rdm/migration/streams.yaml"
 
-from invenio_rdm_records.config import RDM_RECORDS_IDENTIFIERS_SCHEMES, always_valid
+from invenio_rdm_records.config import RDM_RECORDS_IDENTIFIERS_SCHEMES, always_valid, RDM_RECORDS_PERSONORG_SCHEMES
 from cds_rdm import schemes
 
 RDM_RECORDS_IDENTIFIERS_SCHEMES = {**RDM_RECORDS_IDENTIFIERS_SCHEMES,
@@ -401,6 +401,11 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {**RDM_RECORDS_IDENTIFIERS_SCHEMES,
                                       "inspire": {"label": _("Inspire"),
                                                   "validator": schemes.is_inspire,
                                                   "datacite": "INSPIRE"}}}
+
+RDM_RECORDS_PERSONORG_SCHEMES = {**RDM_RECORDS_PERSONORG_SCHEMES,
+                                 **{"inspire": {"label": _("Inspire"),
+                                                "validator": schemes.is_inspire,
+                                                "datacite": "INSPIRE"}}}
 
 
 CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(

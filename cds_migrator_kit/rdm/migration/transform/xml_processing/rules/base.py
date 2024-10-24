@@ -80,13 +80,15 @@ def created(self, key, value):
 @model.over("title", "^245__")
 def title(self, key, value):
     """Translates title."""
-    return value.get("a", "TODO")
+    title = StringValue(value.get("a"))
+    title.required()
+    return title.parse()
 
 
 @model.over("description", "^520__")
 def description(self, key, value):
     """Translates description."""
-    description_text = value.get("a")
+    description_text = StringValue(value.get("a")).parse()
 
     return description_text
 
@@ -97,9 +99,9 @@ def description(self, key, value):
 def additional_descriptions(self, key, value):
     """Translates additional description."""
     description_text = value.get("a")
-
+    _additional_description = {}
     if key == "500__":
-        additional_description = {
+        _additional_description = {
             "description": description_text,
             "type": {
                 "id": "other",  # what's with the lang
@@ -111,54 +113,15 @@ def additional_descriptions(self, key, value):
         _abbreviations.append(description_text)
 
         if is_abbreviation:
-            additional_description = {
+            _additional_description = {
                 "description": "Abbreviations: " + "; ".join(_abbreviations),
                 "type": {
                     "id": "other",  # what's with the lang
                 },
             }
-
-    return additional_description
-
-
-def publisher(self, key, value):
-    """Translates publisher."""
-    publisher = value.get("b")
-    if publisher:
-        self["publisher"] = publisher
-    else:
-        raise IgnoreKey("publisher")
-
-
-def publication_date(self, key, value):
-    """Translates publication_date."""
-    publication_date_str = value.get("c")
-    try:
-        date_obj = parse(publication_date_str)
-        self["publication_date"] = date_obj.strftime("%Y-%m-%d")
-        return
-    except ParserError:
-        raise UnexpectedValue(
-            field="publication_date",
-            message=f"Can't parse provided publication date. Value: {publication_date_str}",
-        )
-
-
-@model.over("imprint", "^269__")
-def imprint(self, key, value):
-    """Translates imprint - WARNING - also publisher and publication_date."""
-
-    imprint = {
-        "place": value.get("a"),
-    }
-
-    if not self.get("publication_date"):
-        publication_date(self, key, value)
-
-    if not self.get("publisher"):
-        publisher(self, key, value)
-
-    return imprint
+    if _additional_description:
+        return _additional_description
+    raise IgnoreKey("additional_descriptions")
 
 
 @model.over("creators", "^100__")
@@ -166,7 +129,9 @@ def imprint(self, key, value):
 @require(["a"])
 def creators(self, key, value):
     """Translates the creators field."""
-    role = get_contributor_role("e", value.get("e", "author"))
+    role = value.get("e")
+    if role:
+        role = get_contributor_role("e", role)
     beard = value.get("9")
     if beard is not None and beard != "#BEARD#":
         # checking if anything else stored in this field
@@ -182,8 +147,9 @@ def creators(self, key, value):
         }
     }
     if role:
-        contributor.update({"role": {"id": role}})  # VOCABULARY ID
-    else:
+        contributor.update({"role": {"id": role}})
+    elif not role and key == "700__":
+        # creator does not require role, so if the key == 100 role can be skipped
         contributor.update({"role": {"id": "other"}})
 
     if affiliations:
@@ -193,7 +159,6 @@ def creators(self, key, value):
 
 
 @model.over("contributors", "^700__")
-# @for_each_value
 @require(["a"])
 def contributors(self, key, value):
     """Translates contributors."""
@@ -210,7 +175,7 @@ def languages(self, key, value):
     if lang:
         lang = lang.lower()
     try:
-        return pycountry.languages.lookup(lang).alpha_3.upper()
+        return {"id": pycountry.languages.lookup(lang).alpha_3.lower()}
     except (KeyError, AttributeError, LookupError):
         raise UnexpectedValue(field=key, subfield="a")
 
@@ -246,7 +211,6 @@ def subjects(self, key, value):
 @model.over("custom_fields", "(^693__)")
 def custom_fields(self, key, value):
     """Translates custom fields."""
-
     _custom_fields = self.get("custom_fields", {})
     experiments, accelerators, projects, facilities, studies = [], [], [], [], []
     if key == "693__":
@@ -260,6 +224,15 @@ def custom_fields(self, key, value):
             facilities += [StringValue(v).parse() for v in force_list(value.get("f"))]
         if "s" in value and value.get("s"):
             studies += [StringValue(v).parse() for v in force_list(value.get("s"))]
+        if "b" in value and value.get("b"):
+            # migrates beams field to subjects/keywords
+            _subjects = self.get("subjects", [])
+            subject_value = StringValue(value.get("a")).parse()
+            subject = {
+                "subject": subject_value,
+            }
+            _subjects.append(subject)
+            raise IgnoreKey("custom_fields")
 
         _custom_fields["cern:experiments"] = experiments
         _custom_fields["cern:accelerators"] = accelerators
@@ -271,11 +244,13 @@ def custom_fields(self, key, value):
 
 @model.over("submitter", "(^859__)")
 def record_submitter(self, key, value):
+    """Translate record submitter."""
     return value.get("f")
 
 
 @model.over("record_restriction", "(^963__)")
 def record_restriction(self, key, value):
+    """Translate record restriction field."""
     restr = value.get("a")
     parsed = StringValue(restr).parse()
     if parsed == "PUBLIC":
@@ -300,6 +275,11 @@ def report_number(self, key, value):
 @model.over("identifiers", "^970__")
 @for_each_value
 def aleph_number(self, key, value):
+    """Translates identifiers: ALEPH.
+
+        Attention:  035 might contain aleph number
+        https://github.com/CERNDocumentServer/cds-migrator-kit/issues/21
+    """
     aleph = StringValue(value.get("a")).parse()
     if aleph:
         return {"scheme": "aleph", "identifier": aleph}
@@ -308,6 +288,11 @@ def aleph_number(self, key, value):
 @model.over("identifiers", "^035__")
 @for_each_value
 def inspire_number(self, key, value):
+    """Translates identifiers.
+
+        Attention: might contain aleph number
+        https://github.com/CERNDocumentServer/cds-migrator-kit/issues/21
+    """
     id_value = StringValue(value.get("a")).parse()
     scheme = StringValue(value.get("9")).parse()
 

@@ -131,7 +131,6 @@ def get_contributor_role(subfield, role, raise_unexpected=False):
 
 
 def get_contributor_affiliations(info):
-    aff_results = []
     u = info.get("u", "")
     if not u:
         return
@@ -155,15 +154,12 @@ def extract_json_contributor_ids(info):
     author_ids = force_list(info.get("0", ""))
     for author_id in author_ids:
         match = regex.match(author_id)
-        # if match:
-        #     ids.append(
-        #         {"identifier": match.group(3), "scheme": SOURCES[match.group(1)]}
-        #     )
-        #     pass
-    try:
-        ids.append({"identifier": info["inspireid"], "scheme": "inspire"})
-    except KeyError:
-        pass
+        if match:
+            identifier = match.group(3)
+            identifier = identifier.replace("INSPIRE-", "")
+            ids.append(
+                {"identifier": identifier, "scheme": SOURCES[match.group(1)]}
+            )
 
     author_orcid = info.get("k")
     if author_orcid:

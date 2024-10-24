@@ -155,21 +155,19 @@ class CDSRecordServiceLoad(Load):
         """Load other versions of the record."""
         versions = entry["versions"]
         legacy_recid = entry["record"]["recid"]
-        record = entry["record"]
-        parent = entry["parent"]
 
         def publish_and_mint_recid(draft, version):
-            record = current_rdm_records_service.publish(system_identity, draft["id"])
+            record_item = current_rdm_records_service.publish(system_identity, draft["id"])
             # mint legacy ids for redirections
             if version == 1:
-                record._record.model.created = arrow.get(
+                record_item._record.model.created = arrow.get(
                     entry["record"]["created"]
                 ).datetime
-                record._record.commit()
+                record_item._record.commit()
                 # it seems more intuitive if we mint the lrecid for parent
                 # but then we get a double redirection
-                legacy_recid_minter(legacy_recid, record._record.parent.model.id)
-            return record
+                legacy_recid_minter(legacy_recid, record_item._record.parent.model.id)
+            return record_item
 
         identity = system_identity  # TODO: load users instead ?
 

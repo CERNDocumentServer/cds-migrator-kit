@@ -21,7 +21,6 @@
 from cds_dojson.marc21.fields.utils import clean_val, out_strip
 from dojson.utils import force_list
 
-from ..quality.decorators import for_each_value
 # ATTENTION when COPYING! important which model you use as decorator
 from ...models.people import model
 

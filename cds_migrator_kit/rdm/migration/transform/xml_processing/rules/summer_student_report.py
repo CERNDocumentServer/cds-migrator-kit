@@ -17,9 +17,9 @@
 # along with Invenio; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 """Common RDM fields."""
-
-from cds_dojson.marc21.fields.utils import clean_val, out_strip
+from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
+from dojson.utils import force_list
 
 from ..errors import UnexpectedValue, MissingRequiredField
 from ..quality.decorators import for_each_value
@@ -31,6 +31,7 @@ from ...models.summer_student_report import model
 @model.over("contributors", "^270__")
 @for_each_value
 def contact_person(self, key, value):
+    """Translates contact person."""
     contributor = {
         "person_or_org": {
             "type": "personal",
@@ -45,7 +46,8 @@ def contact_person(self, key, value):
 @model.over("contributors", "^906__")
 @for_each_value
 def supervisor(self, key, value):
-    supervisor = StringValue(value.get("p"))
+    """Translates supervisor."""
+    supervisor = StringValue(value.get("p")).parse()
     if not supervisor:
         raise MissingRequiredField(field=key, subfield="p",
                                    priority="warning")
@@ -64,6 +66,7 @@ def supervisor(self, key, value):
 @model.over("contributors", "^710__")
 @for_each_value
 def corporate_author(self, key, value):
+    """Translates corporate author."""
     if "g" in value:
         contributor = {
             "person_or_org": {
@@ -77,10 +80,51 @@ def corporate_author(self, key, value):
     if "5" in value:
         department = StringValue(value.get("5")).parse()
         self.get("custom_fields", {}).get("cern:departments", []).append(department)
-        raise IgnoreKey
+        raise IgnoreKey("contributors")
 
 
 @model.over("internal_notes", "^562__")
 @for_each_value
 def note(self, key, value):
-    return StringValue(value.get("c")).parse()
+    """Translates notes"""
+    return {"note": StringValue(value.get("c")).parse()}
+
+
+@model.over("custom_fields", "^690C_")
+def department(self, key, value):
+    """Translates department."""
+    values = force_list(value.get("a"))
+    for v in values:
+        if "PUBL" in v:
+            department = v.replace("PUBL", "").strip()
+            departments = self.get("custom_fields", {}).get("cern:departments", [])
+            if department not in departments:
+                departments.append(department)
+    raise IgnoreKey("custom_fields")
+
+
+@model.over("publication_date", "^269__")
+def imprint_info(self, key, value):
+    """Translates imprint - WARNING - also publisher and publication_date.
+
+        In case of summer student notes this field contains only date
+        but it needs to be reimplemented for the base set of rules -
+        it will contain also imprint place
+    """
+    publication_date_str = value.get("c")
+    _publisher = value.get("b")
+
+    if _publisher and not self.get("publisher"):
+        self["publisher"] = _publisher
+
+    try:
+        date_obj = parse(publication_date_str)
+        return date_obj.strftime("%Y-%m-%d")
+    except ParserError:
+        raise UnexpectedValue(
+            field=key,
+            value=value,
+            message=f"Can't parse provided publication date. Value: {publication_date_str}",
+        )
+
+
