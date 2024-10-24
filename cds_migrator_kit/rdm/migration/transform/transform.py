@@ -84,9 +84,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         """Returns the recid of the record."""
         return str(record_dump.data["recid"])
 
-    def _pids(self, json_entry):
-        return {}
-
     def _bucket_id(self, json_entry):
         return
 
@@ -196,62 +193,85 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         return user.id
 
     def _metadata(self, json_entry):
-        def creators(json, key="creators"):
-            _creators = deepcopy(json.get(key, []))
+
+        def affiliations(creator):
             vocab_type = "affiliations"
             service = current_service_registry.get(vocab_type)
             extra_filter = dsl.Q("term", type__id=vocab_type)
+            affiliations = creator.get("affiliations", [])
+            transformed_aff = []
+
+
+            for affiliation_name in affiliations:
+
+                title = dsl.Q("match", **{f"title": affiliation_name})
+                acronym = dsl.Q(
+                    "match_phrase", **{f"acronym.keyword": affiliation_name}
+                )
+                title_filter = dsl.query.Bool("should", should=[title, acronym])
+
+                vocabulary_result = service.search(
+                    system_identity, extra_filter=title_filter | extra_filter
+                ).to_dict()
+                if vocabulary_result["hits"]["total"]:
+                    transformed_aff.append(
+                        {
+                            "name": affiliation_name,
+                            "id": vocabulary_result["hits"]["hits"][0]["id"],
+                        }
+                    )
+                else:
+                    raise UnexpectedValue(
+                        subfield="u",
+                        value=affiliation_name,
+                        field="author",
+                        message=f"Affiliation {affiliation_name} not found.",
+                        stage="vocabulary match",
+                    )
+                creator["affiliations"] = transformed_aff
+
+        def creator_identifiers(creator):
+            processed_identifiers = []
+            inner_dict = creator.get("person_or_org", {})
+            identifiers = inner_dict.get("identifiers", [])
+            for identifier in identifiers:
+                # TODO process CDS and CERN Ids when names vocabulary ready
+                if identifier["scheme"] == "inspire":
+                    processed_identifiers.append(identifier)
+            if processed_identifiers:
+
+                inner_dict["identifiers"] = processed_identifiers
+            else:
+                inner_dict.pop("identifiers", None)
+
+        def creators(json, key="creators"):
+            _creators = deepcopy(json.get(key, []))
             _creators = list(filter(lambda x: x is not None, _creators))
             for creator in _creators:
-                affiliations = creator.get("affiliations", [])
-                transformed_aff = []
-                for affiliation_name in affiliations:
-
-                    title = dsl.Q("match", **{f"title": affiliation_name})
-                    acronym = dsl.Q(
-                        "match_phrase", **{f"acronym.keyword": affiliation_name}
-                    )
-                    title_filter = dsl.query.Bool("should", should=[title, acronym])
-
-                    vocabulary_result = service.search(
-                        system_identity, extra_filter=title_filter | extra_filter
-                    ).to_dict()
-                    if vocabulary_result["hits"]["total"]:
-                        transformed_aff.append(
-                            {
-                                "name": affiliation_name,
-                                "id": vocabulary_result["hits"]["hits"][0]["id"],
-                            }
-                        )
-                    else:
-                        raise UnexpectedValue(
-                            subfield="u",
-                            value=affiliation_name,
-                            field="author",
-                            message=f"Affiliation {affiliation_name} not found.",
-                            stage="vocabulary match",
-                        )
-                creator["affiliations"] = transformed_aff
+                affiliations(creator)
+                creator_identifiers(creator)
             return _creators
 
-        def _resource_type(data):
-            t = "publication-technicalnote"
-            st = None
-            return {"id": f"{t}-{st}"} if st else {"id": t}
+        def _resource_type(entry):
+            return entry["resource_type"]
 
-        return {
+        metadata = {
             "creators": creators(json_entry),
             "title": json_entry["title"],
             "resource_type": _resource_type(json_entry),
             "description": json_entry.get("description"),
             "publication_date": json_entry.get("publication_date"),
             "contributors": creators(json_entry, key="contributors"),
-            "notes": json_entry.get("internal_notes"),
             "subjects": json_entry.get("subjects"),
             "publisher": json_entry.get("publisher"),
             "additional_descriptions": json_entry.get("additional_descriptions"),
             "identifiers": json_entry.get("identifiers"),
+            "languages": json_entry.get("languages"),
+            "_internal_notes": json_entry.get("internal_notes"),
+            # "imprint": json_entry.get("imprint"), # TODO
         }
+        # filter empty keys
+        return {k: v for k, v in metadata.items() if v}
 
     def _custom_fields(self, json_entry):
 
@@ -384,7 +404,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             json_output = {
                 "created": self._created(json_data),
                 "updated": self._updated(record_dump),
-                "pids": self._pids(json_data),
                 "files": self._files(record_dump),
                 "metadata": self._metadata(json_data),
             }

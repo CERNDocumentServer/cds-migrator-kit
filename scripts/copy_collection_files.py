@@ -2,17 +2,19 @@ import argparse
 import json
 import os
 import shutil
-
+import io
 
 def copy_collection_file(dump_files, destination_prefix, working_dir):
-    file_log = open(os.path.join(working_dir, "files.log"), "w")
+    file_log = open(os.path.join(working_dir, "files.log"), "wb")
 
     for dump_file in dump_files:
-        with open(os.path.join(working_dir, dump_file), "r") as json_dump:
+        with open(dump_file, "r") as json_dump:
             data = json.load(json_dump)
             for record in data:
                 legacy_record_files = record["files"]
+                recid = record["recid"]
                 for legacy_record_file in legacy_record_files:
+                    print("Processing {}".format(recid))
                     full_path = legacy_record_file["full_path"]
                     # important: last slash
                     path_to_replace = "/opt/cdsweb/var/data/files/"
@@ -22,14 +24,17 @@ def copy_collection_file(dump_files, destination_prefix, working_dir):
                     parent_dest_path = os.path.dirname(destination_path)
                     if not os.path.exists(parent_dest_path):
                         os.makedirs(parent_dest_path)
-                    shutil.copy(full_path, destination_path)
-                    file_log.writelines(
-                        [
-                            f"RECID: {record['recid']},"
-                            f" bibdocid: {legacy_record_file['bibdocid']}"
-                            f" file: {legacy_record_file['full_name']},"
-                            f" destination: {destination_path}"
-                        ]
+                    if not os.path.exists(destination_path):
+                        shutil.copy(full_path, destination_path)
+
+                    filename = legacy_record_file['full_name'].encode("utf-8")
+                    file_log.write(
+                        u"RECID: %s bibdocid: %s file: %s, destination: %s \n" % (
+                            record['recid'],
+                            legacy_record_file['bibdocid'],
+                            filename,
+                            destination_path.encode("utf-8")
+                        )
                     )
     file_log.close()
 
