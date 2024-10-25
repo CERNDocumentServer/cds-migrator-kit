@@ -35,7 +35,7 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     ManualImportRequired,
     CDSMigrationException,
     MissingRequiredField,
-    RecordAffiliationFlagged,
+    RecordFlaggedCuration,
 )
 from cds_migrator_kit.records.log import RDMJsonLogger
 from cds_rdm.models import CDSMigrationAffiliationMapping
@@ -47,6 +47,23 @@ from invenio_db import db
 from idutils import normalize_ror
 
 cli_logger = logging.getLogger("migrator")
+
+
+def search_vocabulary(term, vocab_type):
+    service = current_service_registry.get("vocabularies")
+    try:
+        vocabulary_result = service.search(
+            system_identity, type=vocab_type, q=f"{term}"
+        ).to_dict()
+        return vocabulary_result
+    except RequestError:
+        raise UnexpectedValue(
+            subfield="a",
+            value=term,
+            field=vocab_type,
+            message=f"Vocabulary {vocab_type} term {term} not valid search phrase.",
+            stage="vocabulary match",
+        )
 
 
 class CDSToRDMRecordEntry(RDMRecordEntry):
@@ -94,9 +111,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
     def _bucket_id(self, json_entry):
         return
-
-    def _custom_fields(self, json_entry):
-        return {}
 
     def _id(self, entry):
         return
@@ -214,7 +228,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             elif match.ror_exact_match:
                 return {"id": normalize_ror(match.ror_exact_match)}
             elif match.ror_not_exact_match:
-                raise RecordAffiliationFlagged(
+                raise RecordFlaggedCuration(
                     subfield="u",
                     value={"id": normalize_ror(match.ror_not_exact_match)},
                     field="author",
@@ -222,7 +236,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     stage="vocabulary match",
                 )
         else:
-            raise RecordAffiliationFlagged(
+            raise RecordFlaggedCuration(
                 subfield="u",
                 value={"name": affiliation_name},
                 field="author",
@@ -240,7 +254,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 try:
                     affiliation = self._match_affiliation(affiliation_name)
                     transformed_aff.append(affiliation)
-                except RecordAffiliationFlagged as exc:
+                except RecordFlaggedCuration as exc:
                     # Save not exact match affiliation and reraise to flag the record
                     RDMJsonLogger().add_success_state(
                         json_entry["recid"],
@@ -292,102 +306,57 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
 
-    def _custom_fields(self, json_entry):
 
-        experiments = json_entry.get("custom_fields", {}).get("cern:experiments")
-        custom_fields = {
-            "cern:experiments": [],
-            "cern:departments": [],
-            "cern:accelerators": [],
-            "cern:projects": [],
-            "cern:facilities": [],
-            "cern:studies": [],
-        }
 
-        if experiments:
-            vocab_type = "experiments"
-            service = current_service_registry.get("vocabularies")
+    def _custom_fields(self, json_entry, json_output):
+
+        def field_experiments(record_json, custom_fields_dict):
+            experiments = record_json.get("custom_fields", {}).get("cern:experiments", [])
             for experiment in experiments:
-                try:
-                    vocabulary_result = service.search(
-                        system_identity, type=vocab_type, q=f"{experiment}"
-                    ).to_dict()
-                except RequestError:
-                    raise UnexpectedValue(
-                        subfield="a",
-                        value=experiment,
-                        field="experiments",
-                        message=f"Experiment {experiment} " f"not valid search phrase.",
-                        stage="vocabulary match",
-                    )
-                if vocabulary_result["hits"]["total"]:
+                result = search_vocabulary(experiment, "experiments")
 
-                    custom_fields["cern:experiments"].append(
-                        {"id": vocabulary_result["hits"]["hits"][0]["id"]}
+                if result["hits"]["total"]:
+                    custom_fields_dict["cern:experiments"].append(
+                        {"id": result["hits"]["hits"][0]["id"]}
                     )
-
                 else:
-                    raise UnexpectedValue(
-                        subfield="a",
+                    subj = json_output["metadata"].get("subjects", [])
+                    subj.append({"subject": experiment})
+                    json_output["metadata"]["subjects"] = subj
+                    raise RecordFlaggedCuration(
+                        subfield="u",
                         value=experiment,
-                        field="experiment",
-                        message=f"Experiment {experiment} not found.",
+                        field="author",
+                        message=f"Experiment {experiment} not found, added as a subject",
                         stage="vocabulary match",
                     )
 
-        departments = json_entry.get("custom_fields", {}).get("cern:departments")
-        if departments:
-            vocab_type = "departments"
-            service = current_service_registry.get("vocabularies")
+
+        def field_departments(record_json, custom_fields_dict):
+            departments = record_json.get("custom_fields", {}).get("cern:departments", [])
             for department in departments:
-                try:
-                    vocabulary_result = service.search(
-                        system_identity, type=vocab_type, q=f"{department}"
-                    ).to_dict()
-                except RequestError:
-                    raise UnexpectedValue(
-                        subfield="a",
-                        value=department,
-                        field="experiment",
-                        message=f"Department {department} " f"not valid search phrase.",
-                        stage="vocabulary match",
+                result = search_vocabulary(department, "departments")
+                if result["hits"]["total"]:
+                    custom_fields_dict["cern:departments"].append(
+                        {"id": result["hits"]["hits"][0]["id"]}
                     )
-                if vocabulary_result["hits"]["total"]:
-                    custom_fields["cern:departments"].append(
-                        {"id": vocabulary_result["hits"]["hits"][0]["id"]}
-                    )
-
                 else:
                     raise UnexpectedValue(
                         subfield="a",
                         value=department,
-                        field="experiment",
+                        field="department",
                         message=f"Department {department} not found.",
                         stage="vocabulary match",
                     )
 
-        accelerators = json_entry.get("custom_fields", {}).get("cern:accelerators")
-        if accelerators:
-            vocab_type = "accelerators"
-            service = current_service_registry.get("vocabularies")
+        def field_accelerators(record_json, custom_fields_dict):
+            accelerators = record_json.get("custom_fields", {}).get("cern:accelerators", [])
             for accelerator in accelerators:
-                try:
-                    vocabulary_result = service.search(
-                        system_identity, type=vocab_type, q=f"{accelerator}"
-                    ).to_dict()
-                except RequestError:
-                    raise UnexpectedValue(
-                        subfield="a",
-                        value=accelerator,
-                        field="experiment",
-                        message=f"Accelerator {accelerator} "
-                        f"not valid search phrase.",
-                        stage="vocabulary match",
-                    )
-                if vocabulary_result["hits"]["total"]:
+                result = search_vocabulary(accelerator, "accelerators")
+                if result["hits"]["total"]:
 
-                    custom_fields["cern:accelerators"].append(
-                        {"id": vocabulary_result["hits"]["hits"][0]["id"]}
+                    custom_fields_dict["cern:accelerators"].append(
+                        {"id": result["hits"]["hits"][0]["id"]}
                     )
 
                 else:
@@ -398,6 +367,24 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         message=f"Accelerator {accelerator} not found.",
                         stage="vocabulary match",
                     )
+
+        custom_fields = {
+            "cern:experiments": [],
+            "cern:departments": [],
+            "cern:accelerators": [],
+            "cern:projects": [],
+            "cern:facilities": [],
+            "cern:studies": [],
+        }
+        try:
+            field_experiments(json_entry, custom_fields)
+        except RecordFlaggedCuration as exc:
+            RDMJsonLogger().add_success_state(
+                json_entry["recid"],
+                {"message": exc.message, "value": exc.value},
+            )
+        field_departments(json_entry, custom_fields)
+        field_accelerators(json_entry, custom_fields)
         custom_fields["cern:projects"] = json_entry.get("custom_fields", {}).get(
             "cern:projects", []
         )
@@ -426,9 +413,10 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "files": self._files(record_dump),
                 "metadata": self._metadata(json_data),
             }
-            custom_fields = self._custom_fields(json_data)
+            custom_fields = self._custom_fields(json_data, json_output)
             if custom_fields:
                 json_output.update({"custom_fields": custom_fields})
+
             return {
                 "created": self._created(json_data),
                 "updated": self._updated(record_dump),
@@ -571,7 +559,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 {
                     file["full_name"]: {
                         "eos_tmp_path": tmp_eos_root
-                        / full_path.relative_to(legacy_path_root),
+                                        / full_path.relative_to(legacy_path_root),
                         "id_bibdoc": file["bibdocid"],
                         "key": file["full_name"],
                         "metadata": {},
