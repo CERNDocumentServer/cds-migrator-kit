@@ -82,27 +82,34 @@ class CDSToRDMAffiliationTransform(RDMRecordTransform):
             for affiliation_name in affiliations:
                 if not affiliation_name:
                     continue
+
+                _affiliation = {
+                    "original_input": affiliation_name,
+                }
+
                 (chosen, match_or_suggestions) = affiliations_search(affiliation_name)
+
                 if chosen:
-                    _affiliations.append(
+                    _affiliation.update(
                         {
-                            "original_input": affiliation_name,
                             "ror_exact_match": match_or_suggestions["organization"][
                                 "id"
                             ],
                         }
                     )
                 else:
-                    for not_exact_match in match_or_suggestions:
-                        if not_exact_match["score"] >= 0.9:
-                            _affiliations.append(
-                                {
-                                    "original_input": affiliation_name,
-                                    "ror_not_exact_match": not_exact_match[
-                                        "organization"
-                                    ]["id"],
-                                }
-                            )
+                    if match_or_suggestions:
+                        for not_exact_match in match_or_suggestions:
+                            if not_exact_match["score"] >= 0.9:
+                                _affiliation.update(
+                                    {
+                                        "ror_not_exact_match": not_exact_match[
+                                            "organization"
+                                        ]["id"],
+                                    }
+                                )
+                                break
+                _affiliations.append(_affiliation)
 
         return _affiliations
 
