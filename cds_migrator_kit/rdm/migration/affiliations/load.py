@@ -48,10 +48,14 @@ class CDSAffiliationsLoad(Load):
                         legacy_affiliation_input=_original_input,
                         ror_exact_match=affiliation["ror_exact_match"],
                     )
-                else:
+                elif affiliation.get("ror_not_exact_match"):
                     _affiliation_model = CDSMigrationAffiliationMapping(
                         legacy_affiliation_input=_original_input,
                         ror_not_exact_match=affiliation["ror_not_exact_match"],
+                    )
+                else:
+                    _affiliation_model = CDSMigrationAffiliationMapping(
+                        legacy_affiliation_input=_original_input,
                     )
                 db.session.add(_affiliation_model)
                 db.session.commit()
