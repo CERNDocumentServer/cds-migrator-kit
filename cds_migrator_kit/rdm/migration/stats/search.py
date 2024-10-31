@@ -7,11 +7,13 @@
 
 """CDS-RDM migration stats search module."""
 
+import json
 import time
 
 from copy import deepcopy
 from opensearchpy import OpenSearch
 from opensearchpy.exceptions import OpenSearchException
+from opensearchpy.helpers import parallel_bulk, BulkIndexError
 
 
 def generate_query(doc_type, identifier, legacy_to_rdm_events_map):
@@ -77,3 +79,37 @@ def os_count(src_os_client, index, q):
             ex = _ex
             time.sleep(10)
     raise ex
+
+
+def bulk_index_documents(
+    client,
+    documents,
+    logger,
+    chunk_size=500,
+    max_chunk_bytes=50 * 1024 * 1024,
+):
+    """
+    Index documents into Opensearch using parallel_bulk with improved readability and error handling.
+    """
+    try:
+        # Execute parallel_bulk with configuration for improved performance
+        for ok, action in parallel_bulk(
+            client,
+            actions=documents,
+            chunk_size=chunk_size,
+            max_chunk_bytes=max_chunk_bytes,
+            raise_on_error=True,  # Handle errors manually for better control
+            raise_on_exception=True,
+            ignore_status=409,  # Ignore 409 Conflict status for existing documents
+        ):
+            pass
+
+    except BulkIndexError as e:
+        for error in e.errors:
+            _failed_doc = {
+                "_op_type": "create",
+                "_index": error["create"]["_index"],
+                "_source": error["create"]["data"],
+                "_id": error["create"]["_id"],
+            }
+            logger.error(f"Failed to index: {json.dumps(_failed_doc)}")

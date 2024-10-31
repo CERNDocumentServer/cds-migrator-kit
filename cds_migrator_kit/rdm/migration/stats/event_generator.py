@@ -99,7 +99,7 @@ def process_download_event(entry, rec_context, logger):
         "via_api": False,
         "is_robot": entry.get("bot", False),
         "country": entry.get("country", ""),
-        "visitor_id": entry["visitor_id"],
+        "visitor_id": entry.get("visitor_id", ""),
         "unique_session_id": entry["unique_session_id"],
         # Note: id_bibrec doesn't have the new format pids
         "unique_id": f"ui_{_record_version['new_recid']}",
@@ -168,7 +168,7 @@ def process_pageview_event(entry, rec_context, logger):
         "referrer": None,
         "via_api": False,
         "is_robot": entry.get("bot", False),
-        "visitor_id": entry["visitor_id"],
+        "visitor_id": entry.get("visitor_id", ""),
         # Note: id_bibrec doesn't have the new format pids
         "unique_id": f"ui_{rec_context['latest_version']}",
         "unique_session_id": entry["unique_session_id"],
@@ -189,14 +189,15 @@ def prepare_new_doc(
         try:
             new_doc = deepcopy(doc)
             # remove to avoid reindexing
-            new_doc.pop("_id", None)
+            new_doc["_id"] = f"migrated_{new_doc['_id']}"
+
             new_doc.pop("_score", None)
 
             event_type = new_doc["_source"].pop("event_type", None)
 
             if event_type != doc_type:
                 raise Exception("Inconsistent doc type")
-            processed_doc = {}
+
             if event_type == "events.downloads":
                 processed_doc = process_download_event(
                     new_doc["_source"], rec_context, logger
@@ -228,9 +229,10 @@ def prepare_new_doc(
             month = f"{date_object.month:02}"
 
             yield {
-                "_op_type": "index",
+                "_op_type": "create",
                 "_index": f"{dest_search_index_prefix}-{index_type}-{year}-{month}",
                 "_source": processed_doc,
+                "_id": new_doc["_id"],
             }
         except Exception as ex:
             logger.error(
