@@ -19,6 +19,7 @@ from cds_migrator_kit.rdm.migration.stats.search import (
     os_count,
     os_scroll,
     os_search,
+    bulk_index_documents,
 )
 
 
@@ -26,7 +27,7 @@ logger = StatsLogger.get_logger()
 
 from opensearchpy import OpenSearch
 from opensearchpy.exceptions import OpenSearchException
-from opensearchpy.helpers import bulk
+from opensearchpy.helpers import bulk, parallel_bulk, BulkIndexError
 
 _QUERY_VIEWS = {
     "query": {
@@ -83,12 +84,13 @@ class CDSRecordStatsLoad(Load):
                 self.config["DEST_SEARCH_INDEX_PREFIX"],
             )
             if self.dry_run:
-                for new_doc in new_docs:
+                for new_doc in new_docs_generated:
                     logger.info(json.dumps(new_doc))
             else:
-                bulk(self.dest_os_client, new_docs_generated, raise_on_error=True)
+                bulk_index_documents(self.dest_os_client, new_docs_generated, logger)
+
         except Exception as ex:
-            logger.error(ex)
+            logger.error(str(ex))
 
     def _process_legacy_events_for_recid(self, recid, rec_context, index, event_type):
         data = os_search(
@@ -169,7 +171,7 @@ class CDSRecordStatsLoad(Load):
             )
         except AssertionError as e:
             logger.error(
-                f"Not all events of type {event_type} were migrated for record: {recid}"
+                f"Not all events of type {event_type} were migrated for record: {recid}. Legacy count: {legacy_total['count']} - RDM count: {new_total['count']}"
             )
 
     def _load(self, entry):

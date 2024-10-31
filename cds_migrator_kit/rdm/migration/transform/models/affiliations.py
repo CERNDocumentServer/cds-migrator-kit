@@ -33,6 +33,7 @@ class CDSAffiliations(CdsOverdo):
 
     __ignore_keys__ = {
         # IGNORED
+        "037__9",
         "0247_2",  # DOI, summer student notes do not have it
         "0247_a",  # DOI
         "0248_a",  # oai identifier, not needed to migrate, TBD
@@ -45,6 +46,7 @@ class CDSAffiliations(CdsOverdo):
         "269__a",
         "269__b",
         "269__c",
+        "300__a",
         "270__m",  # document contact email
         "595__a",  # always value CERN EDS, not displayed, TODO: do we keep?
         "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it? what does UNCL mean

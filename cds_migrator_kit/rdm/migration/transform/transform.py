@@ -225,17 +225,21 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             # Step 1: check if there is a curated input
             if match.curated_affiliation:
                 return match.curated_affiliation
+            # Step 2: check if there is an exact match
             elif match.ror_exact_match:
                 return {"id": normalize_ror(match.ror_exact_match)}
+            # Step 3: check if there is not exact match
             elif match.ror_not_exact_match:
+                _affiliation_ror_id = normalize_ror(match.ror_not_exact_match)
                 raise RecordFlaggedCuration(
                     subfield="u",
-                    value={"id": normalize_ror(match.ror_not_exact_match)},
+                    value={"id": _affiliation_ror_id},
                     field="author",
-                    message=f"Affiliation {normalize_ror(match.ror_not_exact_match)} not found as an exact match, ROR id should be checked.",
+                    message=f"Affiliation {_affiliation_ror_id} not found as an exact match, ROR id should be checked.",
                     stage="vocabulary match",
                 )
         else:
+            # Step 4: set the originally inserted value from legacy
             raise RecordFlaggedCuration(
                 subfield="u",
                 value={"name": affiliation_name},
@@ -306,12 +310,12 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
 
-
-
     def _custom_fields(self, json_entry, json_output):
 
         def field_experiments(record_json, custom_fields_dict):
-            experiments = record_json.get("custom_fields", {}).get("cern:experiments", [])
+            experiments = record_json.get("custom_fields", {}).get(
+                "cern:experiments", []
+            )
             for experiment in experiments:
                 result = search_vocabulary(experiment, "experiments")
 
@@ -331,9 +335,10 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         stage="vocabulary match",
                     )
 
-
         def field_departments(record_json, custom_fields_dict):
-            departments = record_json.get("custom_fields", {}).get("cern:departments", [])
+            departments = record_json.get("custom_fields", {}).get(
+                "cern:departments", []
+            )
             for department in departments:
                 result = search_vocabulary(department, "departments")
                 if result["hits"]["total"]:
@@ -350,7 +355,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     )
 
         def field_accelerators(record_json, custom_fields_dict):
-            accelerators = record_json.get("custom_fields", {}).get("cern:accelerators", [])
+            accelerators = record_json.get("custom_fields", {}).get(
+                "cern:accelerators", []
+            )
             for accelerator in accelerators:
                 result = search_vocabulary(accelerator, "accelerators")
                 if result["hits"]["total"]:
@@ -559,7 +566,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 {
                     file["full_name"]: {
                         "eos_tmp_path": tmp_eos_root
-                                        / full_path.relative_to(legacy_path_root),
+                        / full_path.relative_to(legacy_path_root),
                         "id_bibdoc": file["bibdocid"],
                         "key": file["full_name"],
                         "metadata": {},
