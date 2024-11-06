@@ -38,7 +38,7 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     RecordFlaggedCuration,
 )
 from cds_migrator_kit.records.log import RDMJsonLogger
-from cds_rdm.models import CDSMigrationAffiliationMapping
+from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
 from invenio_access.permissions import system_identity
 from invenio_search.engine import dsl
 from invenio_records_resources.proxies import current_service_registry
@@ -382,6 +382,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "cern:projects": [],
             "cern:facilities": [],
             "cern:studies": [],
+            "cern:beams": [],
         }
         try:
             field_experiments(json_entry, custom_fields)
@@ -400,6 +401,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         )
         custom_fields["cern:studies"] = json_entry.get("custom_fields", {}).get(
             "cern:studies", []
+        )
+        custom_fields["cern:beams"] = json_entry.get("custom_fields", {}).get(
+            "cern:beams", []
         )
         return custom_fields
 

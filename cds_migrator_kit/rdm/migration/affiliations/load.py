@@ -15,7 +15,7 @@ from invenio_db import db
 from invenio_rdm_migrator.load.base import Load
 from sqlalchemy.exc import IntegrityError
 
-from cds_rdm.models import CDSMigrationAffiliationMapping
+from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
 
 from .log import AffiliationsLogger
 

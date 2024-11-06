@@ -27,7 +27,7 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
 
 from cds_migrator_kit.records.log import RDMJsonLogger
 from cds_rdm.minters import legacy_recid_minter
-from cds_rdm.models import CDSMigrationLegacyRecord
+from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 
 cli_logger = logging.getLogger("migrator")
 
