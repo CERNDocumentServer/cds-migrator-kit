@@ -212,7 +212,14 @@ def subjects(self, key, value):
 def custom_fields(self, key, value):
     """Translates custom fields."""
     _custom_fields = self.get("custom_fields", {})
-    experiments, accelerators, projects, facilities, studies = [], [], [], [], []
+    experiments, accelerators, projects, facilities, studies, beams = (
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+    )
     if key == "693__":
         if "e" in value and value.get("e"):
             experiments += [StringValue(v).parse() for v in force_list(value.get("e"))]
@@ -225,20 +232,14 @@ def custom_fields(self, key, value):
         if "s" in value and value.get("s"):
             studies += [StringValue(v).parse() for v in force_list(value.get("s"))]
         if "b" in value and value.get("b"):
-            # migrates beams field to subjects/keywords
-            _subjects = self.get("subjects", [])
-            subject_value = StringValue(value.get("a")).parse()
-            subject = {
-                "subject": subject_value,
-            }
-            _subjects.append(subject)
-            raise IgnoreKey("custom_fields")
+            beams += [StringValue(v).parse() for v in force_list(value.get("b"))]
 
         _custom_fields["cern:experiments"] = experiments
         _custom_fields["cern:accelerators"] = accelerators
         _custom_fields["cern:projects"] = projects
         _custom_fields["cern:facilities"] = facilities
         _custom_fields["cern:studies"] = studies
+        _custom_fields["cern:beams"] = beams
     return _custom_fields
 
 
@@ -277,8 +278,8 @@ def report_number(self, key, value):
 def aleph_number(self, key, value):
     """Translates identifiers: ALEPH.
 
-        Attention:  035 might contain aleph number
-        https://github.com/CERNDocumentServer/cds-migrator-kit/issues/21
+    Attention:  035 might contain aleph number
+    https://github.com/CERNDocumentServer/cds-migrator-kit/issues/21
     """
     aleph = StringValue(value.get("a")).parse()
     if aleph:
@@ -290,16 +291,19 @@ def aleph_number(self, key, value):
 def inspire_number(self, key, value):
     """Translates identifiers.
 
-        Attention: might contain aleph number
-        https://github.com/CERNDocumentServer/cds-migrator-kit/issues/21
+    Attention: might contain aleph number
+    https://github.com/CERNDocumentServer/cds-migrator-kit/issues/21
     """
     id_value = StringValue(value.get("a")).parse()
     scheme = StringValue(value.get("9")).parse()
 
     if scheme.upper() != "INSPIRE":
-        raise UnexpectedValue(field=key, subfield="9",
-                              message="INSPIRE ID SCHEME MISSING",
-                              priority="warning")
+        raise UnexpectedValue(
+            field=key,
+            subfield="9",
+            message="INSPIRE ID SCHEME MISSING",
+            priority="warning",
+        )
 
     if id_value:
         return {"scheme": "inspire", "identifier": id_value}

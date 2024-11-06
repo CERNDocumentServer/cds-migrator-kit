@@ -381,6 +381,7 @@ RDM_CUSTOM_FIELDS = [
     KeywordCF(name="cern:projects", multiple=True),
     KeywordCF(name="cern:facilities", multiple=True),
     KeywordCF(name="cern:studies", multiple=True),
+    KeywordCF(name="cern:beams", multiple=True),
 ]
 
 base_path = os.path.dirname(os.path.realpath(__file__))
@@ -388,24 +389,44 @@ logs_dir = os.path.join(base_path, "tmp/logs/")
 CDS_MIGRATOR_KIT_LOGS_PATH = logs_dir
 CDS_MIGRATOR_KIT_STREAM_CONFIG = "cds_migrator_kit/rdm/migration/streams.yaml"
 
-from invenio_rdm_records.config import RDM_RECORDS_IDENTIFIERS_SCHEMES, always_valid, RDM_RECORDS_PERSONORG_SCHEMES
+from invenio_rdm_records.config import (
+    RDM_RECORDS_IDENTIFIERS_SCHEMES,
+    always_valid,
+    RDM_RECORDS_PERSONORG_SCHEMES,
+)
 from cds_rdm import schemes
 
-RDM_RECORDS_IDENTIFIERS_SCHEMES = {**RDM_RECORDS_IDENTIFIERS_SCHEMES,
-                                   **{"cds_ref": {"label": _("CDS Reference"),
-                                                  "validator": always_valid,
-                                                  "datacite": "CDS"},
-                                      "aleph": {"label": _("Aleph number"),
-                                                "validator": schemes.is_aleph,
-                                                "datacite": "ALEPH"},
-                                      "inspire": {"label": _("Inspire"),
-                                                  "validator": schemes.is_inspire,
-                                                  "datacite": "INSPIRE"}}}
+RDM_RECORDS_IDENTIFIERS_SCHEMES = {
+    **RDM_RECORDS_IDENTIFIERS_SCHEMES,
+    **{
+        "cds_ref": {
+            "label": _("CDS Reference"),
+            "validator": always_valid,
+            "datacite": "CDS",
+        },
+        "aleph": {
+            "label": _("Aleph number"),
+            "validator": schemes.is_aleph,
+            "datacite": "ALEPH",
+        },
+        "inspire": {
+            "label": _("Inspire"),
+            "validator": schemes.is_inspire,
+            "datacite": "INSPIRE",
+        },
+    },
+}
 
-RDM_RECORDS_PERSONORG_SCHEMES = {**RDM_RECORDS_PERSONORG_SCHEMES,
-                                 **{"inspire": {"label": _("Inspire"),
-                                                "validator": schemes.is_inspire,
-                                                "datacite": "INSPIRE"}}}
+RDM_RECORDS_PERSONORG_SCHEMES = {
+    **RDM_RECORDS_PERSONORG_SCHEMES,
+    **{
+        "inspire": {
+            "label": _("Inspire"),
+            "validator": schemes.is_inspire,
+            "datacite": "INSPIRE",
+        }
+    },
+}
 
 
 CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(
