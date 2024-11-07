@@ -189,14 +189,16 @@ def subjects(self, key, value):
     subject_value = StringValue(value.get("a")).parse()
     subject_scheme = value.get("2") or value.get("9")
 
-    if subject_scheme and subject_scheme.lower() != "szgecern":
-        raise UnexpectedValue(field=key, subfield="2")
+    is_cern_scheme = subject_scheme.lower() == "szgecern" or subject_scheme.lower() == "cern"
+
+    if subject_scheme and not is_cern_scheme:
+        raise UnexpectedValue(field=key, subfield="2", value=subject_scheme)
     if key == "65017":
         if subject_value:
             subject = {
                 "id": subject_value,
                 "subject": subject_value,
-                "scheme": "CERN",
+                # "scheme": "CERN", # scheme not accepted when ID is supplied
             }
             _subjects.append(subject)
     if key.startswith("653"):
@@ -269,7 +271,7 @@ def report_number(self, key, value):
     if report_number:
         return {"scheme": "cds_ref", "identifier": report_number}
     else:
-        raise IgnoreKey("preprint_date")
+        raise IgnoreKey("report_number")
 
 
 @model.over("identifiers", "^970__")

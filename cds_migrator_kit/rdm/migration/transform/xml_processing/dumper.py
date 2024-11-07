@@ -77,12 +77,11 @@ class CDSRecordDump:
         # .do method implementation
         # try:
         json_converted_record = self.dojson_model.do(
-            marc_record, exception_handlers=exception_handlers
+            marc_record,
         )
 
         missing = self.dojson_model.missing(marc_record)
 
         if missing:
-            print(missing)
-            # raise LossyConversion(missing=missing)
+            raise LossyConversion(missing=missing)
         return timestamp, json_converted_record

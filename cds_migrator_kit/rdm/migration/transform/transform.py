@@ -38,7 +38,7 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     RecordFlaggedCuration,
 )
 from cds_migrator_kit.records.log import RDMJsonLogger
-from cds_rdm.models import CDSMigrationAffiliationMapping
+from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
 from invenio_access.permissions import system_identity
 from invenio_search.engine import dsl
 from invenio_records_resources.proxies import current_service_registry
@@ -238,6 +238,15 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     message=f"Affiliation {_affiliation_ror_id} not found as an exact match, ROR id should be checked.",
                     stage="vocabulary match",
                 )
+            else:
+                # Step 4: set the originally inserted value from legacy
+                raise RecordFlaggedCuration(
+                    subfield="u",
+                    value={"name": affiliation_name},
+                    field="author",
+                    message=f"Affiliation {affiliation_name} not found as an exact match, custom value should be checked.",
+                    stage="vocabulary match",
+                )
         else:
             # Step 4: set the originally inserted value from legacy
             raise RecordFlaggedCuration(
@@ -304,7 +313,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "additional_descriptions": json_entry.get("additional_descriptions"),
             "identifiers": json_entry.get("identifiers"),
             "languages": json_entry.get("languages"),
-            "_internal_notes": json_entry.get("internal_notes"),
             # "imprint": json_entry.get("imprint"), # TODO
         }
         # filter empty keys
@@ -409,37 +417,35 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             entry,
         )
         migration_logger = RDMJsonLogger()
-        try:
 
-            record_dump.prepare_revisions()
-            timestamp, json_data = record_dump.latest_revision
-            migration_logger.add_record(json_data)
-            json_output = {
-                "created": self._created(json_data),
-                "updated": self._updated(record_dump),
-                "files": self._files(record_dump),
-                "metadata": self._metadata(json_data),
-            }
-            custom_fields = self._custom_fields(json_data, json_output)
-            if custom_fields:
-                json_output.update({"custom_fields": custom_fields})
-
-            return {
-                "created": self._created(json_data),
-                "updated": self._updated(record_dump),
-                "version_id": self._version_id(record_dump),
-                "index": self._index(record_dump),
-                "recid": self._recid(record_dump),
-                "communities": self._communities(json_data),
-                "json": json_output,
-                "access": self._access(json_data, record_dump),
-                "owned_by": self._owner(json_data),
-                # keep the original extracted entry for storing it
-                "_original_dump": entry,
-            }
-        except Exception as e:
-            e.recid = entry["recid"]
-            raise e
+        record_dump.prepare_revisions()
+        timestamp, json_data = record_dump.latest_revision
+        migration_logger.add_record(json_data)
+        json_output = {
+            "created": self._created(json_data),
+            "updated": self._updated(record_dump),
+            "files": self._files(record_dump),
+            "metadata": self._metadata(json_data),
+        }
+        custom_fields = self._custom_fields(json_data, json_output)
+        internal_notes = json_data.get("internal_notes")
+        if custom_fields:
+            json_output.update({"custom_fields": custom_fields})
+        if internal_notes:
+            json_output.update({"internal_notes": json_data.get("internal_notes")})
+        return {
+            "created": self._created(json_data),
+            "updated": self._updated(record_dump),
+            "version_id": self._version_id(record_dump),
+            "index": self._index(record_dump),
+            "recid": self._recid(record_dump),
+            "communities": self._communities(json_data),
+            "json": json_output,
+            "access": self._access(json_data, record_dump),
+            "owned_by": self._owner(json_data),
+            # keep the original extracted entry for storing it
+            "_original_dump": entry,
+        }
 
 
 class CDSToRDMRecordTransform(RDMRecordTransform):
@@ -507,7 +513,6 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             RestrictedFileDetected,
             UnexpectedValue,
             ManualImportRequired,
-            CDSMigrationException,
             MissingRequiredField,
         ) as e:
             migration_logger.add_log(e, record=entry)
