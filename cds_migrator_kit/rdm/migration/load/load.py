@@ -27,7 +27,7 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
 
 from cds_migrator_kit.records.log import RDMJsonLogger
 from cds_rdm.minters import legacy_recid_minter
-from cds_rdm.models import CDSMigrationLegacyRecord
+from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 
 cli_logger = logging.getLogger("migrator")
 
@@ -182,6 +182,17 @@ class CDSRecordServiceLoad(Load):
                 draft = current_rdm_records_service.create(
                     identity, data=entry["record"]["json"]
                 )
+                if draft.errors:
+                    raise ManualImportRequired(
+                        message=str(draft.errors),
+                        field="validation",
+                        stage="load",
+                        description="Draft has errors",
+                        recid=entry["record"]["recid"],
+                        priority="warning",
+                        value=draft._record.pid.pid_value,
+                        subfield=None,
+                    )
                 # TODO we can use unit of work when it is moved to invenio-db module
                 self._load_parent_access(draft, entry)
                 self._load_communities(draft, entry)
@@ -339,6 +350,8 @@ class CDSRecordServiceLoad(Load):
                             entry, recid_state_after_load, migration_logger
                         )
                 migration_logger.add_success(recid)
+            except (ManualImportRequired) as e:
+                migration_logger.add_log(e, record=entry)
             except (PIDAlreadyExists, UniqueViolation) as e:
                 # TODO remove when there is a way of cleaning local environment from
                 # previous run of migration
