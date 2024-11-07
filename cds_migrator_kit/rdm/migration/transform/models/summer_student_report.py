@@ -29,7 +29,7 @@ class CMSSummerStudent(CdsOverdo):
     # putting values like 980__ INTNOTEPHPUBL INTNOTEEPPUBL is an overkill since it maps
     # different departments
     # __query__ = "980__:INTNOTEEPPUBLL 980__:NOTE 037__:CERN-STUDENTS-Note-\"/(.*?)/\""
-    __query__ = "980__:NOTE 037__:CERN-STUDENTS-Note-*"
+    __query__ = "037__:CERN-STUDENTS-Note-*"
 
     __ignore_keys__ = {
         # decided to ignore
@@ -53,6 +53,7 @@ class CMSSummerStudent(CdsOverdo):
         "937__s",  # modification person
         "960__a",  # collection id? usually value 12, to confirm if we ignore
         "980__a",  # collection tag
+        "981__a",  # duplicate record id
 
         # IMPLEMENTED
         # "001"
