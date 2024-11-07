@@ -151,7 +151,7 @@ It makes sense to dump metadata if any changes are applied on legacy
 ssh cds-wn-31 # inveniomigrator tool installed here
 kinit cdsrdmeosdev
 cd /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump
-inveniomigrator dump records -q '980__:NOTE 037__:CERN-STUDENTS-Note-* -980:DELETED' --file-prefix summer-studends-notes --latest-only --chunk-size=1000
+inveniomigrator dump records -q '037__:CERN-STUDENTS-Note-* -980:DELETED' --file-prefix summer-studends-notes --latest-only --chunk-size=1000
 python copy_collection_files.py --dump-folder /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump --files-destination /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/files
 ```
 
@@ -326,3 +326,9 @@ POST /cds-rdm-communities/_delete_by_query
 
 - Recreate the community and copy the `community_id` in your `streams.yaml` file
 - Rerun `invenio migration run`
+
+
+
+```
+ invenio files location --default eos root://eosmedia.cern.ch//eos/media/cds/cds-rdm/dev/
+```
