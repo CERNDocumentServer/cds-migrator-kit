@@ -2,7 +2,16 @@ import argparse
 import json
 import os
 import shutil
-import io
+import sys
+
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
+destination_prefix = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes/files"
+working_dir = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes"
+json_dump_dir = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump"
+
+
 
 def copy_collection_file(dump_files, destination_prefix, working_dir):
     file_log = open(os.path.join(working_dir, "files.log"), "wb")
@@ -28,38 +37,23 @@ def copy_collection_file(dump_files, destination_prefix, working_dir):
                         shutil.copy(full_path, destination_path)
 
                     filename = legacy_record_file['full_name'].encode("utf-8")
+                    destination_path = destination_path.encode("utf-8")
+                    print(filename)
+                    print(destination_path)
                     file_log.write(
                         u"RECID: %s bibdocid: %s file: %s, destination: %s \n" % (
                             record['recid'],
                             legacy_record_file['bibdocid'],
                             filename,
-                            destination_path.encode("utf-8")
+                            destination_path
                         )
                     )
     file_log.close()
 
 
-def get_dump_files_paths(working_dir):
+def get_dump_files_paths(json_dump_dir):
     dump_files = []
     # get all dump files in the folder
-    for root, dirs, files in os.walk(working_dir, topdown=True):
+    for root, dirs, files in os.walk(json_dump_dir, topdown=True):
         dump_files += [os.path.join(root, filename) for filename in files]
     return dump_files
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Copy files over script")
-    parser.add_argument(
-        "--dump-folder", metavar="path", required=True, help="the path to dump folder"
-    )
-    parser.add_argument(
-        "--files-destination",
-        metavar="path",
-        required=True,
-        help="path to destination folder on EOS",
-    )
-    args = parser.parse_args()
-
-    dump_folder = args.dump_folder
-
-    collection_dump_file_list = get_dump_files_paths(dump_folder)
