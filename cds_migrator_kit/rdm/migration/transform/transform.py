@@ -122,7 +122,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         return {}
 
     def _pids(self, json_entry):
-        return []
+        return json_entry["_pids"]
 
     def _files(self, record_dump):
         """Transform the files of a record."""
@@ -200,6 +200,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         else:
             username = email.split("@")[0].replace(".", "")
             username = re.sub(r"\W+", "", username)
+            username = f"MIGRATED{username}"
             extra_data["migration"]["source"] = "RECORD, EMAIL NOT FOUND IN ANY SOURCE"
             logger_users.warning(f"User {email} not found.")
         extra_data["migration"]["note"] = "MIGRATED INACTIVE ACCOUNT"
@@ -425,26 +426,28 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         record_dump.prepare_revisions()
         timestamp, json_data = record_dump.latest_revision
         migration_logger.add_record(json_data)
-        json_output = {
+        record_json_output = {
             "created": self._created(json_data),
             "updated": self._updated(record_dump),
             "files": self._files(record_dump),
             "metadata": self._metadata(json_data),
+            # "pids": self._pids(json_data), # TODO uncomment to include pids
         }
-        custom_fields = self._custom_fields(json_data, json_output)
+        custom_fields = self._custom_fields(json_data, record_json_output)
         internal_notes = json_data.get("internal_notes")
         if custom_fields:
-            json_output.update({"custom_fields": custom_fields})
+            record_json_output.update({"custom_fields": custom_fields})
         if internal_notes:
-            json_output.update({"internal_notes": json_data.get("internal_notes")})
+            record_json_output.update({"internal_notes": json_data.get("internal_notes")})
         return {
             "created": self._created(json_data),
             "updated": self._updated(record_dump),
+
             "version_id": self._version_id(record_dump),
             "index": self._index(record_dump),
             "recid": self._recid(record_dump),
             "communities": self._communities(json_data),
-            "json": json_output,
+            "json": record_json_output,
             "access": self._access(json_data, record_dump),
             "owned_by": self._owner(json_data),
             # keep the original extracted entry for storing it

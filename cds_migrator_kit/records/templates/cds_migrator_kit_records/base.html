@@ -15,7 +15,18 @@
       .tooltip-inner {
         max-width: 300px;
       }
+      .hidden{
+        display: none;
+      }
     </style>
+    <script>
+       jQuery(document).ready(function () {
+         jQuery("#filter-error").click(() => {
+           jQuery(".table-success").toggleClass("hidden");
+           jQuery("#filter-on").toggleClass("hidden");
+         })
+       });
+    </script>
   </head>
   <body>
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
