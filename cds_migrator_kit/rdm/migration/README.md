@@ -1,10 +1,17 @@
-# Migration manual
+# Migration model manual
+
+## Dump users
+
+! Attention If you need to dump the users from legacy DB or you need to process the people collection
+
+https://gitlab.cern.ch/cds-team/production_scripts/-/blob/master/cds-rdm/migration/dump_users.py?ref_type=heads
 
 ## Dump a subset of records on legacy
 
-```bash
+on webnode: `cds-migration-01`
 
-inveniomigrator dump records -q '980:INTNOTECMSPUBL 980:NOTE -980:DELETED' --file-prefix cms-notes --latest-only --chunk-size=1000
+```bash
+inveniomigrator dump records -q '980:INTNOTECMSPUBL 980:NOTE -980:DELETED' --file-prefix cms-notes --chunk-size=1000
 
 ```
 
@@ -148,11 +155,21 @@ This is the recipe on how to dump the metadata and files. For local tests it is 
 It makes sense to dump metadata if any changes are applied on legacy
 
 ```shell
-ssh cds-wn-31 # inveniomigrator tool installed here
-kinit cdsrdmeosdev
-cd /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump
+ssh cds-migration-01 # inveniomigrator tool installed here
+cd /tmp/current-collection-dump
 inveniomigrator dump records -q '037__:CERN-STUDENTS-Note-* -980:DELETED' --file-prefix summer-studends-notes --latest-only --chunk-size=1000
-python copy_collection_files.py --dump-folder /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump --files-destination /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/files
+
+cd /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump
+kinit cdsrdmeosdev
+cp /tmp/current-collection-dump/* .
+
+
+# copy over all files to temporary location
+ipython
+# run script available in /scripts/copy_collection_files.py
+# destination_prefix = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes/files"
+# working_dir = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes"
+# json_dump_dir = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump"
 ```
 
 ## How to mount eos locally on MAC (to copy over the dumps and files)
@@ -163,6 +180,7 @@ python copy_collection_files.py --dump-folder /eos/media/cds/cds-rdm/dev/migrati
 4. type `https://cernbox.cern.ch/cernbox/webdav/eos/media/cds/cds-rdm/dev/migration`
 5. click connect
 6. use eos account dev credentials
+
 
 ### Collect and dump affiliation mapping
 
