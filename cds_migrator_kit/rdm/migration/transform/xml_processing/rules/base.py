@@ -305,3 +305,16 @@ def inspire_number(self, key, value):
 
     if id_value:
         return {"scheme": "inspire", "identifier": id_value}
+
+#
+# @model.over("_pids", "^0247_")
+# def _pids(self, key, value):
+#     """Translates external_system_identifiers fields."""
+#     pid_dict = self.get("_pids")
+#     scheme = StringValue(value.get("2")).parse()
+#     identifier = StringValue(value.get("a")).parse()
+#     if scheme.upper() != "DOI":
+#         raise UnexpectedValue(field=key, subfield="2",
+#                               message="Unexpected scheme. (should be DOI)",
+#                               priority="warning")
+#     return {"doi": {"identifier": identifier, "provider": "external"}}
