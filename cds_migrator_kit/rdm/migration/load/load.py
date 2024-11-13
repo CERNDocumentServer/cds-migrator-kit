@@ -11,9 +11,11 @@ import os
 import json
 
 import arrow
+from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_db import db
 from invenio_pidstore.errors import PIDAlreadyExists
+from invenio_pidstore.models import PersistentIdentifier
 from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_records.systemfields.relations import InvalidRelationValue
@@ -152,88 +154,114 @@ class CDSRecordServiceLoad(Load):
             parent.communities.add(community)
         parent.commit()
 
+    def _after_publish_update_dois(self, identity, record, entry):
+        """Update DOIs post publish."""
+        pids = record._record.pids
+        # if doi then register pid beforehand so that a DOI update is issued during
+        # publish
+        for pid_type, identifier in pids.items():
+            if pid_type == "doi":
+                # If a DOI was already minted from legacy then on publish the datacite
+                # will return a warning that "This DOI has already been taken"
+                # In that case, we edit and republish to force an update of the doi with
+                # the new published metadata as in the new system we have more information available
+                _draft = current_rdm_records_service.edit(identity, record["id"])
+                current_rdm_records_service.publish(identity, _draft["id"])
+
+    def _after_publish_update_created(self, record, entry):
+        """Update created timestamp post publish."""
+        # Fix the `created` timestamp forcing the one from the legacy system
+        # Force the created date. This can be done after publish as the service
+        # overrides the `created` date otherwise.
+        record._record.model.created = arrow.get(entry["record"]["created"]).datetime
+        record._record.commit()
+
+    def _after_publish_mint_recid(self, record, entry, version):
+        """Mint legacy ids for redirections assigned to the parent."""
+        legacy_recid = entry["record"]["recid"]
+        if version == 1:
+            # it seems more intuitive if we mint the lrecid for parent
+            # but then we get a double redirection
+            legacy_recid_minter(legacy_recid, record._record.parent.model.id)
+
+    def _after_publish(self, identity, published_record, entry, version):
+        """Run fixes after record publish."""
+        self._after_publish_update_dois(identity, published_record, entry)
+        self._after_publish_update_created(published_record, entry)
+        self._after_publish_mint_recid(published_record, entry, version)
+        db.session.commit()
+
+    def _pre_publish(self, identity, entry, version):
+        """Create and process draft before publish."""
+        versions = entry["versions"]
+        files = versions[version]["files"]
+        publication_date = versions[version]["publication_date"]
+        access = versions[version]["access"]
+
+        if version == 1:
+            draft = current_rdm_records_service.create(
+                identity, data=entry["record"]["json"]
+            )
+            if draft.errors:
+                raise ManualImportRequired(
+                    message=str(draft.errors),
+                    field="validation",
+                    stage="load",
+                    description="Draft has errors",
+                    recid=entry["record"]["recid"],
+                    priority="warning",
+                    value=draft._record.pid.pid_value,
+                    subfield=None,
+                )
+            # TODO we can use unit of work when it is moved to invenio-db module
+            self._load_parent_access(draft, entry)
+            self._load_communities(draft, entry)
+            db.session.commit()
+        else:
+            draft = current_rdm_records_service.new_version(identity, draft["id"])
+            missing_data = {
+                "metadata": {
+                    # copy over the previous draft metadata
+                    **draft.to_dict()["metadata"],
+                    # add missing publication date based
+                    # on the time of creation of the new file version
+                    "publication_date": publication_date.date().isoformat(),
+                }
+            }
+            draft = current_rdm_records_service.update_draft(
+                identity, draft["id"], data=missing_data
+            )
+
+        self._load_record_access(draft, access)
+        self._load_files(draft, entry, files)
+        return draft
+
     def _load_versions(self, entry, logger):
         """Load other versions of the record."""
         versions = entry["versions"]
         legacy_recid = entry["record"]["recid"]
 
-        def publish_and_mint_recid(draft, version):
-            record_item = current_rdm_records_service.publish(system_identity, draft["id"])
-            # mint legacy ids for redirections
-            if version == 1:
-                record_item._record.model.created = arrow.get(
-                    entry["record"]["created"]
-                ).datetime
-                record_item._record.commit()
-                # it seems more intuitive if we mint the lrecid for parent
-                # but then we get a double redirection
-                legacy_recid_minter(legacy_recid, record_item._record.parent.model.id)
-            return record_item
-
-        identity = system_identity  # TODO: load users instead ?
+        identity = system_identity
 
         records = []
         for version in versions.keys():
-            files = versions[version]["files"]
-            publication_date = versions[version]["publication_date"]
-            access = versions[version]["access"]
+            # Create and prepare draft
+            draft = self._pre_publish(identity, entry, version)
 
-            if version == 1:
-                draft = current_rdm_records_service.create(
-                    identity, data=entry["record"]["json"]
-                )
-                if draft.errors:
-                    raise ManualImportRequired(
-                        message=str(draft.errors),
-                        field="validation",
-                        stage="load",
-                        description="Draft has errors",
-                        recid=entry["record"]["recid"],
-                        priority="warning",
-                        value=draft._record.pid.pid_value,
-                        subfield=None,
-                    )
-                # TODO we can use unit of work when it is moved to invenio-db module
-                self._load_parent_access(draft, entry)
-                self._load_communities(draft, entry)
-                db.session.commit()
-            else:
-                draft = current_rdm_records_service.new_version(
-                    system_identity, draft["id"]
-                )
-                missing_data = {
-                    "metadata": {
-                        # copy over the previous draft metadata
-                        **draft.to_dict()["metadata"],
-                        # add missing publication date based
-                        # on the time of creation of the new file version
-                        "publication_date": publication_date.date().isoformat(),
-                    }
-                }
-                draft = current_rdm_records_service.update_draft(
-                    system_identity, draft["id"], data=missing_data
-                )
+            # Publish draft
+            published_record = current_rdm_records_service.publish(
+                identity, draft["id"]
+            )
+            # Run after publish fixes
+            self._after_publish(identity, published_record, entry, version)
+            records.append(published_record._record)
 
-            self._load_record_access(draft, access)
-            self._load_files(draft, entry, files)
-
-            record = publish_and_mint_recid(draft, version)
-            # Force the created date. This can be done after publish as the service
-            # overrides the `created` date otherwise.
-            self._load_model_fields(record, entry)
-            records.append(record._record)
         if records:
             record_state_context = self._load_record_state(legacy_recid, records)
             # Dump the computed record state. This is useful to migrate then the record stats
             if record_state_context:
                 logger.add_record_state(record_state_context)
                 return record_state_context
-
-    def _load_model_fields(self, record, entry):
-        """Load model fields of the record."""
-        record._record.model.created = arrow.get(entry["record"]["created"]).datetime
-        record._record.commit()
-        db.session.commit()
 
     def _dry_load(self, entry):
         current_rdm_records_service.schema.load(
@@ -350,7 +378,7 @@ class CDSRecordServiceLoad(Load):
                             entry, recid_state_after_load, migration_logger
                         )
                 migration_logger.add_success(recid)
-            except (ManualImportRequired) as e:
+            except ManualImportRequired as e:
                 migration_logger.add_log(e, record=entry)
             except (PIDAlreadyExists, UniqueViolation) as e:
                 # TODO remove when there is a way of cleaning local environment from

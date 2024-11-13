@@ -54,7 +54,6 @@ class CMSSummerStudent(CdsOverdo):
         "960__a",  # collection id? usually value 12, to confirm if we ignore
         "980__a",  # collection tag
         "981__a",  # duplicate record id
-
         # IMPLEMENTED
         # "001"
         # "003"
@@ -98,11 +97,9 @@ class CMSSummerStudent(CdsOverdo):
         # "916__w",
         # "963__a",
         # "970__a",  # alternative identifier, scheme ALEPH
-        "269__a", # imprint place # TODO
+        "269__a",
     }
-    _default_fields = {
-        "resource_type": {"id": "publication-technicalnote"}
-    }
+    _default_fields = {"resource_type": {"id": "publication-technicalnote"}}
 
 
 model = CMSSummerStudent(

@@ -181,7 +181,6 @@ ipython
 5. click connect
 6. use eos account dev credentials
 
-
 ### Collect and dump affiliation mapping
 
 In order to collect all affiliations from the collection dump folder run the following
@@ -192,7 +191,7 @@ folder:
 invenio migration affiliations run --filepath /path/to/cds_migrator_kit/rdm/migration/data/summer_student_reports/dump
 ```
 
-This will collect and check each affiliation against the ROR organization API, and store them in the `cds_rdm.models.CDSMigrationAffiliationMapping` table.
+This will collect and check each affiliation against the ROR organization API, and store them in the `cds_rdm.legacy.models.CDSMigrationAffiliationMapping` table.
 
 The model is then used during record migration to normalize the affiliation content following the below principles
 to map the legacy input to a normalized value:
@@ -323,6 +322,7 @@ DELETE FROM files_bucket;
 DELETE FROM files_files;
 DELETE FROM pidstore_pid WHERE pid_type = 'lrecid';
 DELETE FROM pidstore_pid WHERE pid_type = 'recid';
+DELETE FROM pidstore_pid WHERE pid_type = 'doi';
 ```
 
 - Cleanup indexed documents from opensearch
@@ -344,8 +344,6 @@ POST /cds-rdm-communities/_delete_by_query
 
 - Recreate the community and copy the `community_id` in your `streams.yaml` file
 - Rerun `invenio migration run`
-
-
 
 ```
  invenio files location --default eos root://eosmedia.cern.ch//eos/media/cds/cds-rdm/dev/

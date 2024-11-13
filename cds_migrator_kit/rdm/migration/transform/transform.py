@@ -431,18 +431,19 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "updated": self._updated(record_dump),
             "files": self._files(record_dump),
             "metadata": self._metadata(json_data),
-            # "pids": self._pids(json_data), # TODO uncomment to include pids
+            "pids": self._pids(json_data),
         }
         custom_fields = self._custom_fields(json_data, record_json_output)
         internal_notes = json_data.get("internal_notes")
         if custom_fields:
             record_json_output.update({"custom_fields": custom_fields})
         if internal_notes:
-            record_json_output.update({"internal_notes": json_data.get("internal_notes")})
+            record_json_output.update(
+                {"internal_notes": json_data.get("internal_notes")}
+            )
         return {
             "created": self._created(json_data),
             "updated": self._updated(record_dump),
-
             "version_id": self._version_id(record_dump),
             "index": self._index(record_dump),
             "recid": self._recid(record_dump),
