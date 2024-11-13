@@ -189,7 +189,9 @@ def subjects(self, key, value):
     subject_value = StringValue(value.get("a")).parse()
     subject_scheme = value.get("2") or value.get("9")
 
-    is_cern_scheme = subject_scheme.lower() == "szgecern" or subject_scheme.lower() == "cern"
+    is_cern_scheme = (
+        subject_scheme.lower() == "szgecern" or subject_scheme.lower() == "cern"
+    )
 
     if subject_scheme and not is_cern_scheme:
         raise UnexpectedValue(field=key, subfield="2", value=subject_scheme)
@@ -310,15 +312,27 @@ def inspire_number(self, key, value):
     if id_value:
         return {"scheme": "inspire", "identifier": id_value}
 
-#
-# @model.over("_pids", "^0247_")
-# def _pids(self, key, value):
-#     """Translates external_system_identifiers fields."""
-#     pid_dict = self.get("_pids")
-#     scheme = StringValue(value.get("2")).parse()
-#     identifier = StringValue(value.get("a")).parse()
-#     if scheme.upper() != "DOI":
-#         raise UnexpectedValue(field=key, subfield="2",
-#                               message="Unexpected scheme. (should be DOI)",
-#                               priority="warning")
-#     return {"doi": {"identifier": identifier, "provider": "external"}}
+
+@model.over("_pids", "^0247_")
+def _pids(self, key, value):
+    """Translates external_system_identifiers fields."""
+    pid_dict = self.get("_pids")
+    scheme = StringValue(value.get("2")).parse()
+    identifier = StringValue(value.get("a")).parse()
+    if scheme.upper() != "DOI":
+        raise UnexpectedValue(
+            field=key,
+            subfield="2",
+            message="Unexpected scheme. (should be DOI)",
+            priority="warning",
+        )
+    from flask import current_app
+
+    DATACITE_PREFIX = current_app.config["DATACITE_PREFIX"]
+    doi_identifier = {"identifier": identifier}
+    if identifier.startswith(DATACITE_PREFIX):
+        doi_identifier["provider"] = "datacite"
+    else:
+        doi_identifier["provider"] = "external"
+
+    return {"doi": doi_identifier}
