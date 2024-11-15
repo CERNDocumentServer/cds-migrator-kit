@@ -26,9 +26,6 @@ from .overdo import CdsOverdo
 class CDSAffiliations(CdsOverdo):
     """Translation Index for CDS Books."""
 
-    # putting values like 980__ INTNOTEPHPUBL INTNOTEEPPUBL is an overkill since it maps
-    # different departments
-    # __query__ = "980__:INTNOTEEPPUBLL 980__:NOTE 037__:CERN-STUDENTS-Note-\"/(.*?)/\""
     __query__ = ""
 
     __ignore_keys__ = {
