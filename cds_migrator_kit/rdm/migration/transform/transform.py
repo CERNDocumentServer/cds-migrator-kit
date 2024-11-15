@@ -122,7 +122,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         return {}
 
     def _pids(self, json_entry):
-        return json_entry["_pids"]
+        return json_entry.get("_pids", {})
 
     def _files(self, record_dump):
         """Transform the files of a record."""
@@ -421,6 +421,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         record_dump = CDSRecordDump(
             entry,
         )
+
         migration_logger = RDMJsonLogger()
 
         record_dump.prepare_revisions()
@@ -466,7 +467,6 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         files_dump_dir=None,
         missing_users=None,
         community_id=None,
-        affiliations_mapping_path=None,
         dry_run=False,
     ):
         """Constructor."""
