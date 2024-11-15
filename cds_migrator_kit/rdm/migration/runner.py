@@ -65,12 +65,10 @@ class Runner:
                     if definition.extract_cls:
                         extract = definition.extract_cls(
                             **stream_config.get("extract", {})
-
                         )
                     if definition.transform_cls:
                         transform = definition.transform_cls(
-                            dry_run=dry_run,
-                            **stream_config.get("transform", {})
+                            dry_run=dry_run, **stream_config.get("transform", {})
                         )
 
                 self.streams.append(
@@ -95,7 +93,7 @@ class Runner:
         migration_logger.start_log()
         for stream in self.streams:
             try:
-                stream.run()
+                stream.run(cleanup=True)
             except Exception as e:
                 Logger.get_logger().exception(
                     f"Stream {stream.name} failed.", exc_info=1

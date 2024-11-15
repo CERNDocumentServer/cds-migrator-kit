@@ -30,8 +30,7 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
 from cds_migrator_kit.records.log import RDMJsonLogger
 from cds_rdm.minters import legacy_recid_minter
 from cds_rdm.legacy.models import CDSMigrationLegacyRecord
-
-cli_logger = logging.getLogger("migrator")
+from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 
 
 def import_legacy_files(filepath):
@@ -51,6 +50,7 @@ class CDSRecordServiceLoad(Load):
         existing_data=False,
         entries=None,
         dry_run=False,
+        legacy_pids_to_redirect=None,
     ):
         """Constructor."""
         self.db_uri = db_uri
@@ -60,6 +60,11 @@ class CDSRecordServiceLoad(Load):
         self.existing_data = existing_data
         self.entries = entries
         self.dry_run = dry_run
+        self.legacy_pids_to_redirect = {}
+
+        if legacy_pids_to_redirect is not None:
+            with open(legacy_pids_to_redirect, "r") as fp:
+                self.legacy_pids_to_redirect = json.load(fp)
 
     def _prepare(self, entry):
         """Prepare the record."""
@@ -85,6 +90,7 @@ class CDSRecordServiceLoad(Load):
                             "metadata": {
                                 **file_data["metadata"],
                                 "legacy_file_id": file_data["id_bibdoc"],
+                                "legacy_recid": recid,
                             },
                             "access": {"hidden": False},
                         }
@@ -365,6 +371,9 @@ class CDSRecordServiceLoad(Load):
         """Use the services to load the entries."""
         if entry:
             recid = entry.get("record", {}).get("recid", {})
+            if recid in self.legacy_pids_to_redirect:
+                # Do not load the record but save it for post process
+                return
             migration_logger = RDMJsonLogger()
             try:
                 if self.dry_run:
@@ -405,5 +414,16 @@ class CDSRecordServiceLoad(Load):
                 migration_logger.add_log(exc, record=entry)
 
     def _cleanup(self, *args, **kwargs):
-        """Cleanup the entries."""
-        pass
+        """Post migration process."""
+        migration_logger = RDMJsonLogger.get_logger()
+        for legacy_src_pid, legacy_dest_pid in self.legacy_pids_to_redirect.items():
+            try:
+                parent_dest_pid = get_pid_by_legacy_recid(str(legacy_dest_pid))
+                assert str(parent_dest_pid.status) == "R"
+                legacy_recid_minter(legacy_src_pid, parent_dest_pid.object_uuid)
+                db.session.commit()
+            except Exception as exc:
+                db.session.rollback()
+                migration_logger.error(
+                    f"Failed to redirect {legacy_src_pid} to {legacy_dest_pid}: {str(exc)}"
+                )
