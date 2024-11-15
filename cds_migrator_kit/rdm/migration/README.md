@@ -172,6 +172,12 @@ ipython
 # json_dump_dir = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump"
 ```
 
+Identify and dump duplicated records i.e. records with same title, description and file
+checksums (excluding deleted files) on EOS. If duplicates found, then we keep the recid
+that has restricted files or if not any, then the first one from the list.
+
+In a python shell run the script `scripts/dump_legacy_recids_to_redirect.py`.
+
 ## How to mount eos locally on MAC (to copy over the dumps and files)
 
 1. Go to Finder icon on your dock
