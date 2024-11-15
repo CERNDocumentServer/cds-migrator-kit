@@ -24,12 +24,10 @@ from .overdo import CdsOverdo
 
 
 class CMSSummerStudent(CdsOverdo):
-    """Translation Index for CDS Books."""
+    """Translation Index for CERN Summer Student Project Notes."""
 
-    # putting values like 980__ INTNOTEPHPUBL INTNOTEEPPUBL is an overkill since it maps
-    # different departments
     # __query__ = "980__:INTNOTEEPPUBLL 980__:NOTE 037__:CERN-STUDENTS-Note-\"/(.*?)/\""
-    __query__ = "037__:CERN-STUDENTS-Note-*"
+    __query__ = "037__:CERN-STUDENTS-Note-* - 980__c:DELETED"
 
     __ignore_keys__ = {
         # decided to ignore
