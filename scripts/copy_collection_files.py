@@ -4,13 +4,9 @@ import os
 import shutil
 import sys
 
-reload(sys)
-sys.setdefaultencoding('utf-8')
-
 destination_prefix = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes/files"
 working_dir = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes"
 json_dump_dir = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump"
-
 
 
 def copy_collection_file(dump_files, destination_prefix, working_dir):
@@ -30,22 +26,24 @@ def copy_collection_file(dump_files, destination_prefix, working_dir):
 
                     rel_path = full_path.replace(path_to_replace, "")
                     destination_path = os.path.join(destination_prefix, rel_path)
+                    destination_path = destination_path.encode("utf-8")
                     parent_dest_path = os.path.dirname(destination_path)
                     if not os.path.exists(parent_dest_path):
                         os.makedirs(parent_dest_path)
                     if not os.path.exists(destination_path):
                         shutil.copy(full_path, destination_path)
 
-                    filename = legacy_record_file['full_name'].encode("utf-8")
+                    filename = legacy_record_file["full_name"].encode("utf-8")
                     destination_path = destination_path.encode("utf-8")
                     print(filename)
                     print(destination_path)
                     file_log.write(
-                        u"RECID: %s bibdocid: %s file: %s, destination: %s \n" % (
-                            record['recid'],
-                            legacy_record_file['bibdocid'],
+                        "RECID: %s bibdocid: %s file: %s, destination: %s \n"
+                        % (
+                            record["recid"],
+                            legacy_record_file["bibdocid"],
                             filename,
-                            destination_path
+                            destination_path,
                         )
                     )
     file_log.close()
@@ -57,3 +55,7 @@ def get_dump_files_paths(json_dump_dir):
     for root, dirs, files in os.walk(json_dump_dir, topdown=True):
         dump_files += [os.path.join(root, filename) for filename in files]
     return dump_files
+
+
+dump_files = get_dump_files_paths(json_dump_dir)
+copy_collection_file(dump_files, destination_prefix, working_dir)
