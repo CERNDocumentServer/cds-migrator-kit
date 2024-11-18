@@ -197,7 +197,7 @@ class CDSRecordServiceLoad(Load):
         self._after_publish_mint_recid(published_record, entry, version)
         db.session.commit()
 
-    def _pre_publish(self, identity, entry, version):
+    def _pre_publish(self, identity, entry, version, draft):
         """Create and process draft before publish."""
         versions = entry["versions"]
         files = versions[version]["files"]
@@ -250,9 +250,12 @@ class CDSRecordServiceLoad(Load):
         identity = system_identity
 
         records = []
+        # initial value of draft. If different file versions identified then the first
+        # created draft is used to populate all newer versions
+        draft = None
         for version in versions.keys():
             # Create and prepare draft
-            draft = self._pre_publish(identity, entry, version)
+            draft = self._pre_publish(identity, entry, version, draft)
 
             # Publish draft
             published_record = current_rdm_records_service.publish(
