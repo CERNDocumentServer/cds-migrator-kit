@@ -15,6 +15,7 @@ from invenio_rdm_migrator.load import Load
 from invenio_rdm_migrator.streams.users import UserEntry, UserTransform
 from invenio_rdm_migrator.transform.base import Transform, Entry
 from invenio_userprofiles import UserProfile
+from invenio_cern_sync.sso import cern_remote_app_name
 from sqlalchemy.exc import IntegrityError
 
 from cds_migrator_kit.rdm.migration.extract import LegacyUserExtract
@@ -125,7 +126,7 @@ class CDSMissingUserLoad:
         """Return new user identity entry."""
         return UserIdentity(
             id=person_id,
-            method=current_app.config["OAUTH_REMOTE_APP_NAME"],
+            method=cern_remote_app_name,
             id_user=user_id,
         )
 
