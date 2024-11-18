@@ -15,12 +15,20 @@ from cds_rdm.files import storage_factory
 from cds_rdm.permissions import (
     CDSCommunitiesPermissionPolicy,
     CDSRDMRecordPermissionPolicy,
+    CDSRDMPreservationSyncPermissionPolicy,
 )
 from invenio_app_rdm.config import CELERY_BEAT_SCHEDULE as APP_RDM_CELERY_BEAT_SCHEDULE
 from invenio_app_rdm.config import *
 from invenio_i18n import lazy_gettext as _
 from invenio_records_resources.services.custom_fields import KeywordCF
 from invenio_vocabularies.services.custom_fields import VocabularyCF
+from invenio_cern_sync.users.profile import CERNUserProfileSchema
+from invenio_oauthclient.views.client import auto_redirect_login
+from invenio_cern_sync.sso import cern_remote_app_name, cern_keycloak
+from invenio_preservation_sync.utils import preservation_info_render
+from invenio_vocabularies.config import (
+    VOCABULARIES_NAMES_SCHEMES as DEFAULT_VOCABULARIES_NAMES_SCHEMES,
+)
 
 
 def _(x):  # needed to avoid start time failure with lazy strings
@@ -206,81 +214,36 @@ SECURITY_SEND_PASSWORD_RESET_EMAIL = False
 SECURITY_SEND_PASSWORD_RESET_NOTICE_EMAIL = False
 SECURITY_SEND_REGISTER_EMAIL = False
 
-from urllib.parse import quote
 
-from cds_rdm.oidc import (
-    cern_groups_handler,
-    cern_groups_serializer,
-    cern_info_handler,
-    cern_info_serializer,
-    cern_setup_handler,
-    confirm_registration_form,
-)
-
-# Invenio-OAuthclient
-# ===================
-# See https://github.com/inveniosoftware/invenio-oauthclient/blob/master/invenio_oauthclient/config.py
-from invenio_oauthclient.contrib.keycloak import KeycloakSettingsHelper
-
-CERN_KEYCLOAK_BASE_URL = os.environ.get(
-    "INVENIO_CERN_KEYCLOAK_BASE_URL", "https://keycloak-qa.cern.ch/"
-)
-
-_keycloak_helper = KeycloakSettingsHelper(
-    title="CERN",
-    description="CERN SSO authentication",
-    base_url=CERN_KEYCLOAK_BASE_URL,
-    realm="cern",
-    app_key="CERN_APP_CREDENTIALS",
-    logout_url="{}auth/realms/cern/protocol/openid-connect/logout?redirect_uri={}".format(
-        CERN_KEYCLOAK_BASE_URL,
-        quote(os.environ.get("INVENIO_SITE_UI_URL", SITE_UI_URL)),
-    ),
-)
-OAUTHCLIENT_CERN_REALM_URL = _keycloak_helper.realm_url
-OAUTHCLIENT_CERN_USER_INFO_URL = _keycloak_helper.user_info_url
-OAUTHCLIENT_CERN_VERIFY_EXP = True
-OAUTHCLIENT_CERN_VERIFY_AUD = False
-OAUTHCLIENT_CERN_USER_INFO_FROM_ENDPOINT = True
-
-handlers = _keycloak_helper.get_handlers()
-handlers["signup_handler"] = {
-    **handlers["signup_handler"],
-    "info": cern_info_handler,
-    "info_serializer": cern_info_serializer,
-    "groups_serializer": cern_groups_serializer,
-    "groups": cern_groups_handler,
-    "setup": cern_setup_handler,
-}
-rest_handlers = _keycloak_helper.get_rest_handlers()
-rest_handlers["signup_handler"] = {
-    **rest_handlers["signup_handler"],
-    "info": cern_info_handler,
-    "info_serializer": cern_info_serializer,
-    "groups_serializer": cern_groups_serializer,
-    "groups": cern_groups_handler,
-    "setup": cern_setup_handler,
-}
-
-OAUTHCLIENT_SIGNUP_FORM = confirm_registration_form
-
-OAUTH_REMOTE_APP_NAME = "cern"
-
+# Invenio-CERN-Sync/CERN SSO
+# ==========================
 OAUTHCLIENT_REMOTE_APPS = {
-    OAUTH_REMOTE_APP_NAME: _keycloak_helper.remote_app,
+    cern_remote_app_name: cern_keycloak.remote_app,
 }
 
 CERN_APP_CREDENTIALS = {
     "consumer_key": "CHANGE ME",
     "consumer_secret": "CHANGE ME",
 }
+CERN_SYNC_KEYCLOAK_BASE_URL = "https://auth.cern.ch/"
+CERN_SYNC_AUTHZ_BASE_URL = "https://authorization-service-api.web.cern.ch/"
+INVENIO_CERN_SYNC_KEYCLOAK_BASE_URL = (
+    "https://auth.cern.ch/"  # set env var when testing
+)
 
-from invenio_oauthclient.views.client import auto_redirect_login
+
+OAUTHCLIENT_CERN_REALM_URL = cern_keycloak.realm_url
+OAUTHCLIENT_CERN_USER_INFO_URL = cern_keycloak.user_info_url
+OAUTHCLIENT_CERN_VERIFY_EXP = True
+OAUTHCLIENT_CERN_VERIFY_AUD = False
+OAUTHCLIENT_CERN_USER_INFO_FROM_ENDPOINT = True
 
 ACCOUNTS_LOGIN_VIEW_FUNCTION = (
     auto_redirect_login  # autoredirect to external login if enabled
 )
 OAUTHCLIENT_AUTO_REDIRECT_TO_EXTERNAL_LOGIN = True  # autoredirect to external login
+
+ACCOUNTS_USER_PROFILE_SCHEMA = CERNUserProfileSchema()
 
 # Invenio-UserProfiles
 # ====================
@@ -428,6 +391,41 @@ RDM_RECORDS_PERSONORG_SCHEMES = {
     },
 }
 
+# Invenio-Preservation-Sync
+# =========================
+
+PRESERVATION_SYNC_ENABLED = True
+
+
+def resolve_record_pid(pid):
+    return record_service.record_cls.pid.resolve(pid).id
+
+
+PRESERVATION_SYNC_PID_RESOLVER = resolve_record_pid
+
+PRESERVATION_SYNC_PERMISSION_POLICY = CDSRDMPreservationSyncPermissionPolicy
+
+PRESERVATION_SYNC_GET_LIST_PATH = "/records/<pid_id>/preservations"
+
+PRESERVATION_SYNC_GET_LATEST_PATH = "/records/<pid_id>/preservations/latest"
+
+PRESERVATION_SYNC_UI_TITLE = "CERN Digital Memory"
+
+PRESERVATION_SYNC_UI_INFO_LINK = "/preservation-policy"
+
+PRESERVATION_SYNC_UI_ICON_PATH = "images/dm_logo.png"
+
+APP_RDM_RECORD_LANDING_PAGE_EXTERNAL_LINKS = [
+    {"id": "preservation", "render": preservation_info_render},
+]
+VOCABULARIES_NAMES_SCHEMES = {
+    **DEFAULT_VOCABULARIES_NAMES_SCHEMES,
+    "cern": {"label": _("CERN"), "validator": schemes.is_cern, "datacite": "CERN"},
+}
+"""Names allowed identifier schemes."""
+
+
+### CDS MIGRATOR #################################
 
 CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(
     ####### Search ##############
