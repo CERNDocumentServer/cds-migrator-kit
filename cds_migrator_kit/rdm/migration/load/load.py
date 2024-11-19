@@ -373,7 +373,7 @@ class CDSRecordServiceLoad(Load):
         pid = PersistentIdentifier.query.filter_by(
             pid_type="lrecid",
             pid_value=recid,
-        ).one_or_one()
+        ).one_or_none()
         return pid is not None
 
     def _should_skip_recid(self, recid):
