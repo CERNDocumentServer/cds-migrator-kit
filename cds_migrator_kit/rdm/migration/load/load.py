@@ -370,9 +370,9 @@ class CDSRecordServiceLoad(Load):
 
     def _have_migrated_recid(self, recid):
         """Check if we have minted `lrecid` pid."""
-        pid = PersistentIdentifier.get(
-            "lrecid",
-            recid,
+        pid = PersistentIdentifier.query.filter_by(
+            pid_type="lrecid",
+            pid_value=recid,
         ).one_or_one()
         return pid is not None
 
