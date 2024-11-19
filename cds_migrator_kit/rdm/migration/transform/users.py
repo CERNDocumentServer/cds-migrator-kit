@@ -125,11 +125,22 @@ class CDSMissingUserLoad:
 
     def create_invenio_user_identity(self, user_id, person_id):
         """Return new user identity entry."""
-        return UserIdentity(
-            id=person_id,
-            method=cern_remote_app_name,
-            id_user=user_id,
-        )
+        try:
+            return UserIdentity(
+                id=person_id,
+                method=cern_remote_app_name,
+                id_user=user_id,
+            )
+        except IntegrityError as e:
+            db.session.rollback()
+            user_identity = UserIdentity(
+                id=f"duplicate{person_id}",
+                method=cern_remote_app_name,
+                id_user=user_id,
+            )
+            db.session.add(user_identity)
+            db.session.commit()
+            return user_identity
 
     def create_invenio_user_profile(self, user, name):
         """Return new user profile."""
