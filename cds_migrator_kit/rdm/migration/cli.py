@@ -112,3 +112,49 @@ def run(filepath, dry_run=False):
         dry_run=dry_run,
     )
     runner.run()
+
+
+@migration.group()
+def community():
+    """Create and dump community id in streams.yaml."""
+    pass
+
+
+@community.command()
+@click.option(
+    "--slug",
+    help="Slug of the community to be created. If found then fetch and dump the id.",
+    required=True,
+)
+@click.option("--title", help="Title of the community to be created.")
+@click.option(
+    "--filepath",
+    help="Path to the streams.yaml that the community id should be dumped.",
+    required=True,
+)
+@with_appcontext
+def dump(slug, title, filepath):
+    """Read or create community slug and dump it to streams.yaml"""
+    import yaml
+    from invenio_communities.proxies import current_communities
+    from invenio_access.permissions import system_identity
+    from invenio_pidstore.errors import PIDDoesNotExistError
+
+    try:
+        res = current_communities.service.read(system_identity, slug)
+    except PIDDoesNotExistError as exc:
+        data = {
+            "slug": slug,
+            "metadata": {"title": title},
+            "access": {"visibility": "public"},
+        }
+        res = current_communities.service.create(system_identity, data)
+
+    streams = {}
+    with open(filepath, "r") as fp:
+        streams = yaml.safe_load(fp)
+
+    streams["records"]["transform"]["community_id"] = str(res._record.id)
+
+    with open(filepath, "w") as fp:
+        yaml.safe_dump(streams, fp, default_flow_style=False, sort_keys=False)

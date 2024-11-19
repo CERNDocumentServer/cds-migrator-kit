@@ -5,17 +5,12 @@ log_dir: cds_migrator_kit/rdm/migration/log
 db_uri: postgresql://cds-rdm:cds-rdm@localhost:5432/cds-rdm
 old_secret_key: CHANGE_ME
 new_secret_key: CHANGE_ME
-#users:
-#  extract:
-#    dirpath: cds_migrator_kit/rdm/migration/data/users/dump
-#  load:
-#    filepath: cds_migrator_kit/rdm/migration/data/users/people.csv
 records:
   extract:
     dirpath: cds_migrator_kit/rdm/migration/data/summer_student_reports/dump/
   transform:
     files_dump_dir: cds_migrator_kit/rdm/migration/data/summer_student_reports/files/
     missing_users: cds_migrator_kit/rdm/migration/data/users
-    community_id: e4104cac-9bd2-4675-ad6c-b53b4bb24d7b
+    community_id: 3df9f996-2ced-4e9d-93ce-35a47740d476
   load:
     legacy_pids_to_redirect: cds_migrator_kit/rdm/migration/data/summer_student_reports/duplicated_pids.json

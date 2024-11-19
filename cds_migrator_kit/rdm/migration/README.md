@@ -61,85 +61,7 @@ cds_migrator_kit.migrator.rules =
 
 ```
 
-## Run migration
-
-All the commands should be run from cds-rdm project root, inside cds-rdm virtualenv.
-
-Initialise an empty DB:
-
-```
-invenio-cli services setup --force --no-demo-data
-```
-
-Wait until all the fixtures are propagated and indexed.
-Dump communities ids by running this script in `invenio shell`:
-
-```python
-import yaml
-from pathlib import Path
-from invenio_communities.communities.records.models import CommunityMetadata
-
-community_map = {comm.slug: str(comm.id) for comm in CommunityMetadata.query.all()}
-streams_path = str(Path('site/cds_rdm/migration/streams.yaml').absolute())
-streams = {}
-
-with open(streams_path, 'r') as fp:
-    streams = yaml.safe_load(fp)
-
-streams["records"]["load"]["cache"]["communities"] = community_map
-
-with open(streams_path, 'w') as fp:
-    yaml.safe_dump(streams, fp, default_flow_style=False)
-
-
-```
-
-Load the previously dumped legacy records. The configuration is already defined in streams.yaml - check the documentation of invenio-rdm-migrator for more details
-
-```
-invenio migration run
-```
-
-Once it has finished, run the re-indexing:
-
-```
-invenio rdm-records rebuild-index
-```
-
-Alternatively, you can index each resource separately:
-
-Note that this step will strain your CPU rendering your laptop almost useless. In a `invenio-cli pyshell` run:
-
-```python
-# You might want to first run users, then rebuild index.
-# Then run records and rebuild its index.
-from invenio_access.permissions import system_identity
-from invenio_rdm_records.proxies import current_rdm_records_service
-from invenio_users_resources.proxies import current_users_service
-current_users_service.rebuild_index(identity=system_identity)
-current_rdm_records_service.rebuild_index(identity=system_identity)
-```
-
-- When the workers have no longer any tasks to run, in the _pyshell_ run:
-
-```python
-current_users_service.indexer.refresh()
-current_rdm_records_service.indexer.refresh()
-```
-
-or if memory is an issue then you can generate the index batches with the code below
-
-```
-from invenio_rdm_records.proxies import current_rdm_records_service
-from invenio_db import db
-
-model_cls = current_rdm_records_service.record_cls.model_cls
-records = db.session.query(model_cls.id).filter(
-    model_cls.is_deleted == False,
-).yield_per(1000)
-
-current_rdm_records_service.indexer.bulk_index((rec.id for rec in records))
-```
+## Full migration workflow of one collection
 
 ### To visualise the errors (locally):
 
@@ -147,9 +69,7 @@ current_rdm_records_service.indexer.bulk_index((rec.id for rec in records))
 gunicorn -b :8080 --timeout 120 --graceful-timeout 60 cds_migrator_kit.app:app --reload --log-level debug --capture-output --access-logfile '-' --error-logfile '-'
 ```
 
-### Full migration workflow of one collection
-
-#### Legacy
+### Legacy
 
 This is the recipe on how to dump the metadata and files. For local tests it is not necessary to do it often, especially for files which are static.
 It makes sense to dump metadata if any changes are applied on legacy
@@ -178,7 +98,7 @@ that has restricted files or if not any, then the first one from the list.
 
 In a python shell run the script `scripts/dump_legacy_recids_to_redirect.py`.
 
-## How to mount eos locally on MAC (to copy over the dumps and files)
+#### How to mount eos locally on MAC (to copy over the dumps and files)
 
 1. Go to Finder icon on your dock
 2. right click to get the contextual menu
@@ -187,7 +107,9 @@ In a python shell run the script `scripts/dump_legacy_recids_to_redirect.py`.
 5. click connect
 6. use eos account dev credentials
 
-### Collect and dump affiliation mapping
+### Openshift migration pod
+
+#### Collect and dump affiliation mapping
 
 In order to collect all affiliations from the collection dump folder run the following
 command pointing to the `cds_migrator_kit.rdm.migration.data.summer_student_reports.dump`
@@ -208,16 +130,20 @@ to map the legacy input to a normalized value:
    record for further curation to validate the value.
 4. The legacy affiliation value, and flag the record.
 
-#### Openshift migration pod
+#### Community id dump
+
+Dump the community id to migration `streams.yaml`(if the slug exists then it will read and dump the id only):
+
+```shell
+invenio migration community dump --slug 'sspn' --title 'Summer Student Project Notes' --filepath /path/to/cds_migrator_kit/rdm/migration/streams.yaml
+```
+
+#### Records migration
+
+Run the below command to migrate records in the created community from before:
 
 ```shell
 invenio migration run
-```
-
-Once it has finished, run the re-indexing:
-
-```
-invenio rdm rebuild-all-indices
 ```
 
 ### Migrate the statistics for the successfully migrated records
@@ -305,7 +231,7 @@ reindex_stats(stats_indices)
 
 visit https://migration-cds-rdm-dev.app.cern.ch for report
 
-## Rerun migration from clean state without setup everything again
+## Local rerun migration from clean state without setup everything again
 
 If you want to cleanup a previous migration run without having to re setup everything
 i.e not repopulating all vocabularies which takes a lot of time, then run the following
@@ -348,7 +274,7 @@ POST /cds-rdm-communities/_delete_by_query
 }
 ```
 
-- Recreate the community and copy the `community_id` in your `streams.yaml` file
+- Rerun `invenio migration community dump --slug 'sspn' --title 'Summer Student Project Notes' --filepath /path/to/cds_migrator_kit/rdm/migration/streams.yaml`
 - Rerun `invenio migration run`
 
 ```
