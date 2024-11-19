@@ -95,6 +95,7 @@ class CDSToRDMAffiliationTransform(RDMRecordTransform):
                             "ror_exact_match": match_or_suggestions["organization"][
                                 "id"
                             ],
+                            "ror_match_info": match_or_suggestions,
                         }
                     )
                 else:
@@ -106,6 +107,7 @@ class CDSToRDMAffiliationTransform(RDMRecordTransform):
                                         "ror_not_exact_match": not_exact_match[
                                             "organization"
                                         ]["id"],
+                                        "ror_match_info": not_exact_match,
                                     }
                                 )
                                 break

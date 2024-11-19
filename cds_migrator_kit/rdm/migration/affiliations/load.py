@@ -47,11 +47,13 @@ class CDSAffiliationsLoad(Load):
                     _affiliation_model = CDSMigrationAffiliationMapping(
                         legacy_affiliation_input=_original_input,
                         ror_exact_match=affiliation["ror_exact_match"],
+                        ror_match_info=affiliation["ror_match_info"],
                     )
                 elif affiliation.get("ror_not_exact_match"):
                     _affiliation_model = CDSMigrationAffiliationMapping(
                         legacy_affiliation_input=_original_input,
                         ror_not_exact_match=affiliation["ror_not_exact_match"],
+                        ror_match_info=affiliation["ror_match_info"],
                     )
                 else:
                     _affiliation_model = CDSMigrationAffiliationMapping(
