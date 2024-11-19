@@ -161,11 +161,9 @@ class CDSRecordServiceLoad(Load):
         parent.commit()
 
     def _after_publish_update_dois(self, identity, record, entry):
-        """Update DOIs post publish."""
-        pids = record._record.pids
-        # if doi then register pid beforehand so that a DOI update is issued during
-        # publish
-        for pid_type, identifier in pids.items():
+        """Update migrated DOIs post publish."""
+        migrated_pids = entry["record"]["json"]["pids"]
+        for pid_type, identifier in migrated_pids.items():
             if pid_type == "doi":
                 # If a DOI was already minted from legacy then on publish the datacite
                 # will return a warning that "This DOI has already been taken"
@@ -370,13 +368,29 @@ class CDSRecordServiceLoad(Load):
         db.session.add(_original_dump_model)
         db.session.commit()
 
+    def _have_migrated_recid(self, recid):
+        """Check if we have minted `lrecid` pid."""
+        pid = PersistentIdentifier.get(
+            "lrecid",
+            recid,
+        ).one_or_one()
+        return pid is not None
+
+    def _should_skip_recid(self, recid):
+        """Check if recid should be skipped."""
+        if recid in self.legacy_pids_to_redirect or self._have_migrated_recid(recid):
+            # Do not load the record but save it for post process
+            return True
+        return False
+
     def _load(self, entry):
         """Use the services to load the entries."""
         if entry:
             recid = entry.get("record", {}).get("recid", {})
-            if recid in self.legacy_pids_to_redirect:
-                # Do not load the record but save it for post process
+
+            if self._should_skip_recid(recid):
                 return
+
             migration_logger = RDMJsonLogger()
             try:
                 if self.dry_run:
