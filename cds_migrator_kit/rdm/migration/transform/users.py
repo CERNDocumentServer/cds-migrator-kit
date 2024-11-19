@@ -117,10 +117,11 @@ class CDSMissingUserLoad:
             return user
         except IntegrityError as e:
             db.session.rollback()
-            user = User(email=email, username=f"duplicate{username}", active=False)
-            db.session.add(user)
-            db.session.commit()
-            return user
+            # TODO: why always create???
+            # user = User(email=email, username=f"duplicate{username}", active=False)
+            # db.session.add(user)
+            # db.session.commit()
+            return None
 
     def create_invenio_user_identity(self, user_id, person_id):
         """Return new user identity entry."""
@@ -147,6 +148,10 @@ class CDSMissingUserLoad:
     def create_user(self, email, name, person_id, username, extra_data=None):
         """Create an invenio user."""
         user = self.create_invenio_user(email, username)
+        if user is None:
+            # User exists so just return the user
+            return User.query.filter_by(email=email, username=username).one()
+
         user_id = user.id
 
         if person_id:
