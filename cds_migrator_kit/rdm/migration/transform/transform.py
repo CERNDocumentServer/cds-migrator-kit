@@ -543,6 +543,14 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
 
         def compute_access(file, record_access):
 
+            if file is None:
+                return {
+                    "access_obj": {
+                        "record": record_access,
+                        "files": record_access,
+                    }
+                }
+
             if not file["status"]:
                 return {
                     "access_obj": {
@@ -622,6 +630,18 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         for version in versions.keys():
             versioned_files |= versions.get(version, {}).get("files")
             versions[version]["files"] = versioned_files
+
+        if not versioned_files:
+            # Record has no files. Add metadata-only record as single version
+            versions[1] = {
+                "files": {},
+                "publication_date": arrow.get(
+                    record["json"]["metadata"]["publication_date"]
+                ),
+                "access": compute_access(
+                    None, record_access
+                ),  # public metadata and files
+            }
 
         return versions
 
