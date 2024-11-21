@@ -276,7 +276,3 @@ POST /cds-rdm-communities/_delete_by_query
 
 - Rerun `invenio migration community dump --slug 'sspn' --title 'Summer Student Project Notes' --filepath /path/to/cds_migrator_kit/rdm/migration/streams.yaml`
 - Rerun `invenio migration run`
-
-```
- invenio files location --default eos root://eosmedia.cern.ch//eos/media/cds/cds-rdm/dev/
-```

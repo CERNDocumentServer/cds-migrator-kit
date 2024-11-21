@@ -379,7 +379,6 @@ class CDSRecordServiceLoad(Load):
     def _should_skip_recid(self, recid):
         """Check if recid should be skipped."""
         if recid in self.legacy_pids_to_redirect or self._have_migrated_recid(recid):
-            # Do not load the record but save it for post process
             return True
         return False
 
@@ -432,15 +431,19 @@ class CDSRecordServiceLoad(Load):
 
     def _cleanup(self, *args, **kwargs):
         """Post migration process."""
-        migration_logger = RDMJsonLogger.get_logger()
+        migration_logger = RDMJsonLogger()
         for legacy_src_pid, legacy_dest_pid in self.legacy_pids_to_redirect.items():
+            if self._have_migrated_recid(legacy_src_pid):
+                continue
             try:
                 parent_dest_pid = get_pid_by_legacy_recid(str(legacy_dest_pid))
                 assert str(parent_dest_pid.status) == "R"
                 legacy_recid_minter(legacy_src_pid, parent_dest_pid.object_uuid)
                 db.session.commit()
+                migration_logger.add_success(legacy_src_pid)
             except Exception as exc:
                 db.session.rollback()
-                migration_logger.error(
-                    f"Failed to redirect {legacy_src_pid} to {legacy_dest_pid}: {str(exc)}"
+                migration_logger.add_log(
+                    f"Failed to redirect {legacy_src_pid} to {legacy_dest_pid}: {str(exc)}",
+                    record={"recid": legacy_src_pid},
                 )
