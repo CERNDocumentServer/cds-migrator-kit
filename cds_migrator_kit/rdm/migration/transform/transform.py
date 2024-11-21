@@ -494,7 +494,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 # this part will be simply omitted
                 "id": f'{record["recid"]}-parent',
                 "access": {
-                    "owned_by": {"user": str(record["owned_by"])},
+                    "owned_by": {"user": int(record["owned_by"])},
                 },
                 "communities": self._community_id(entry, record),
             },
