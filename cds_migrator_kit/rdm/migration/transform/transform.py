@@ -205,13 +205,19 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             logger_users.warning(f"User {email} not found.")
         extra_data["migration"]["note"] = "MIGRATED INACTIVE ACCOUNT"
 
-        user = user_api.create_user(
-            email,
-            name=displayname,
-            username=username,
-            person_id=person_id,
-            extra_data=extra_data,
-        )
+        try:
+            user = user_api.create_user(
+                email,
+                name=displayname,
+                username=username,
+                person_id=person_id,
+                extra_data=extra_data,
+            )
+        except Exception as exc:
+            logger_users.error(
+                f"User failed to be migrated: {email}, {displayname}, {username}, {person_id}, {json.dumps(extra_data)}"
+            )
+            return -1
 
         return user.id
 
