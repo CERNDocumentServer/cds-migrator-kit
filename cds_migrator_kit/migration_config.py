@@ -14,7 +14,6 @@ from datetime import datetime, timedelta
 from cds_rdm.files import storage_factory
 from cds_rdm.permissions import (
     CDSCommunitiesPermissionPolicy,
-    CDSRDMRecordPermissionPolicy,
     CDSRDMPreservationSyncPermissionPolicy,
 )
 from invenio_app_rdm.config import CELERY_BEAT_SCHEDULE as APP_RDM_CELERY_BEAT_SCHEDULE
@@ -29,6 +28,8 @@ from invenio_preservation_sync.utils import preservation_info_render
 from invenio_vocabularies.config import (
     VOCABULARIES_NAMES_SCHEMES as DEFAULT_VOCABULARIES_NAMES_SCHEMES,
 )
+
+from .permissions import CDSRDMMigrationRecordPermissionPolicy
 
 
 def _(x):  # needed to avoid start time failure with lazy strings
@@ -315,7 +316,7 @@ CDS_EOS_OFFLOAD_X509_KEY_PATH = ""
 # check nginx config for more details
 CDS_EOS_OFFLOAD_REDIRECT_BASE_PATH = ""
 
-RDM_PERMISSION_POLICY = CDSRDMRecordPermissionPolicy
+RDM_PERMISSION_POLICY = CDSRDMMigrationRecordPermissionPolicy
 
 RDM_NAMESPACES = {
     # CERN
@@ -436,3 +437,5 @@ CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(
     SRC_SEARCH_SCROLL="1h",
 )
 """Config for record statistics migration."""
+
+RDM_ALLOW_METADATA_ONLY_RECORDS = False
