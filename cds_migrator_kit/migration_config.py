@@ -437,5 +437,3 @@ CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(
     SRC_SEARCH_SCROLL="1h",
 )
 """Config for record statistics migration."""
-
-RDM_ALLOW_METADATA_ONLY_RECORDS = False
