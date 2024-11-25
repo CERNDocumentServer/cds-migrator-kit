@@ -320,7 +320,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "additional_descriptions": json_entry.get("additional_descriptions"),
             "identifiers": json_entry.get("identifiers"),
             "languages": json_entry.get("languages"),
-            # "imprint": json_entry.get("imprint"), # TODO
         }
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
