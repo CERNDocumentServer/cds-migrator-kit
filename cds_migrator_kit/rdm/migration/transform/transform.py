@@ -389,6 +389,24 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         stage="vocabulary match",
                     )
 
+        def field_beams(record_json, custom_fields_dict):
+            beams = record_json.get("custom_fields", {}).get("cern:beams", [])
+            for beam in beams:
+                result = search_vocabulary(beam, "beams")
+                if result["hits"]["total"]:
+                    custom_fields_dict["cern:beams"].append(
+                        {"id": result["hits"]["hits"][0]["id"]}
+                    )
+
+                else:
+                    raise UnexpectedValue(
+                        subfield="a",
+                        value=beam,
+                        field="beams",
+                        message=f"Beam {beam} not found.",
+                        stage="vocabulary match",
+                    )
+
         custom_fields = {
             "cern:experiments": [],
             "cern:departments": [],
@@ -407,6 +425,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             )
         field_departments(json_entry, custom_fields)
         field_accelerators(json_entry, custom_fields)
+        field_beams(json_entry, custom_fields)
         custom_fields["cern:projects"] = json_entry.get("custom_fields", {}).get(
             "cern:projects", []
         )
@@ -415,9 +434,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         )
         custom_fields["cern:studies"] = json_entry.get("custom_fields", {}).get(
             "cern:studies", []
-        )
-        custom_fields["cern:beams"] = json_entry.get("custom_fields", {}).get(
-            "cern:beams", []
         )
         return custom_fields
 
