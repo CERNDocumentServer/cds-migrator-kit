@@ -188,7 +188,8 @@ def subjects(self, key, value):
 
     def validate_subject_scheme(value, subfield):
         subject_scheme = value.get(subfield)
-        is_cern_scheme = (
+
+        is_cern_scheme = subject_scheme and (
             subject_scheme.lower() == "szgecern" or subject_scheme.lower() == "cern"
         )
 
