@@ -345,7 +345,12 @@ RDM_CUSTOM_FIELDS = [
     KeywordCF(name="cern:projects", multiple=True),
     KeywordCF(name="cern:facilities", multiple=True),
     KeywordCF(name="cern:studies", multiple=True),
-    KeywordCF(name="cern:beams", multiple=True),
+    VocabularyCF(
+        name="cern:beams",
+        vocabulary_id="beams",
+        dump_options=True,
+        multiple=True,
+    ),
 ]
 
 base_path = os.path.dirname(os.path.realpath(__file__))
