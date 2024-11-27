@@ -25,7 +25,6 @@ from invenio_rdm_migrator.streams.records.transform import (
 from opensearchpy import RequestError
 from sqlalchemy.exc import NoResultFound
 
-from cds_migrator_kit.rdm.migration.affiliations.transform import affiliations_search
 from cds_migrator_kit.rdm.migration.transform.users import CDSMissingUserLoad
 from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
@@ -33,17 +32,14 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     RestrictedFileDetected,
     UnexpectedValue,
     ManualImportRequired,
-    CDSMigrationException,
     MissingRequiredField,
     RecordFlaggedCuration,
 )
 from cds_migrator_kit.records.log import RDMJsonLogger
 from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
 from invenio_access.permissions import system_identity
-from invenio_search.engine import dsl
 from invenio_records_resources.proxies import current_service_registry
 from invenio_accounts.models import User
-from invenio_db import db
 from idutils import normalize_ror
 
 cli_logger = logging.getLogger("migrator")
@@ -173,7 +169,20 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         person_id = None
         displayname = None
         username = None
+        existing_identity = None
         extra_data = {"migration": {}}
+
+        # first check if submitter email is in people collection.
+        # If yes, we take their person_id and check if account already synced
+        # (by UserIdentity PK)
+
+        # if person id cannot be obtained, check if email exists in legacy db
+        # to obtain more info needed to create an account (full name, username)
+
+        # if user email cannot be found anywhere, create a dummy account without
+        # any UserIdentity attached - since we cannot provide identity info -
+        # the consequence is that user will not be able to login to this account
+        # if they come back to CERN
 
         if person:
             # person id might be missing from people collection
@@ -205,6 +214,14 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             logger_users.warning(f"User {email} not found.")
         extra_data["migration"]["note"] = "MIGRATED INACTIVE ACCOUNT"
 
+        if person_id:
+            existing_identity = user_api.check_person_id_exists(person_id)
+            # check if person ID was already registered in the DB by prior sync
+            # and return that user as source of truth ( we assume auth service is most
+            # up to date)
+            if existing_identity:
+                return existing_identity.id_user
+
         try:
             user = user_api.create_user(
                 email,
@@ -218,7 +235,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 f"User failed to be migrated: {email}, {displayname}, {username}, {person_id}, {json.dumps(extra_data)}"
             )
             return -1
-
         return user.id
 
     def _match_affiliation(self, affiliation_name):

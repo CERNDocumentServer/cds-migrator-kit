@@ -36,6 +36,7 @@ class CMSSummerStudent(CdsOverdo):
         "0248_q",  # full text tag 2778897
         "100__m",  # author's email <-- decided not to keep in RDM,
         "260__c",  # Redundant (more detailed value is in 269__c imprint.pub_date)
+        "269__a",  # imprint place
         "270__m",  # document contact email
         "595__a",  # always value CERN EDS, not displayed, TODO: do we keep?
         "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it? what does UNCL mean
@@ -95,7 +96,7 @@ class CMSSummerStudent(CdsOverdo):
         # "916__w",
         # "963__a",
         # "970__a",  # alternative identifier, scheme ALEPH
-        "269__a",
+
     }
     _default_fields = {"resource_type": {"id": "publication-technicalnote"}}
 
