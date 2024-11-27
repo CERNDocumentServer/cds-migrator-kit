@@ -185,7 +185,6 @@ def languages(self, key, value):
 @filter_list_values
 def subjects(self, key, value):
     """Translates subjects fields."""
-
     def validate_subject_scheme(value, subfield):
         subject_scheme = value.get(subfield)
 
@@ -193,7 +192,11 @@ def subjects(self, key, value):
             subject_scheme.lower() == "szgecern" or subject_scheme.lower() == "cern"
         )
 
-        if subject_scheme and not is_cern_scheme:
+        is_author = (
+            subject_scheme.lower() == "author"
+        )
+
+        if subject_scheme and not is_cern_scheme or not is_author:
             raise UnexpectedValue(field=key, subfield=subfield, value=subject_scheme)
 
     _subjects = self.get("subjects", [])
@@ -276,11 +279,13 @@ def record_restriction(self, key, value):
 @for_each_value
 def report_number(self, key, value):
     """Translates report_number fields."""
-    report_number = StringValue(value.get("a")).parse()
+    rn = value.get("a") or value.get("9")
+    if not rn:
+        raise IgnoreKey("report_number")
+    report_number = StringValue(rn).parse()
     if report_number:
         return {"scheme": "cds_ref", "identifier": report_number}
-    else:
-        raise IgnoreKey("report_number")
+    raise IgnoreKey("report_number")
 
 
 @model.over("identifiers", "^970__")

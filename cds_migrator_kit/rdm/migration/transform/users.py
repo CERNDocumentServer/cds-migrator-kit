@@ -16,6 +16,7 @@ from invenio_rdm_migrator.streams.users import UserEntry, UserTransform
 from invenio_rdm_migrator.transform.base import Transform, Entry
 from invenio_userprofiles import UserProfile
 from invenio_cern_sync.sso import cern_remote_app_name
+from psycopg.errors import UniqueViolation
 from sqlalchemy.exc import IntegrityError
 
 from cds_migrator_kit.rdm.migration.extract import LegacyUserExtract
@@ -108,6 +109,9 @@ class CDSMissingUserLoad:
         """Constructor."""
         self.client_id = current_app.config["CERN_APP_CREDENTIALS"]["consumer_key"]
 
+    def check_person_id_exists(self, person_id):
+        return UserIdentity.query.filter_by(id=person_id).one_or_none()
+
     def create_invenio_user(self, email, username):
         """Commit new user in db."""
         try:
@@ -117,7 +121,7 @@ class CDSMissingUserLoad:
             return user
         except IntegrityError as e:
             db.session.rollback()
-            user = User(email=email, username=f"duplicate{username}", active=False)
+            user = User(email=email, username=f"duplicated_{username}", active=False)
             db.session.add(user)
             db.session.commit()
             return user
@@ -130,7 +134,7 @@ class CDSMissingUserLoad:
                 method=cern_remote_app_name,
                 id_user=user_id,
             )
-        except IntegrityError as e:
+        except (IntegrityError, UniqueViolation) as e:
             db.session.rollback()
             user_identity = UserIdentity(
                 id=f"duplicate{person_id}",
