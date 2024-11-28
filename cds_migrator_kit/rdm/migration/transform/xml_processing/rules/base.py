@@ -185,6 +185,7 @@ def languages(self, key, value):
 @filter_list_values
 def subjects(self, key, value):
     """Translates subjects fields."""
+
     def validate_subject_scheme(value, subfield):
         subject_scheme = value.get(subfield)
 
@@ -192,9 +193,7 @@ def subjects(self, key, value):
             subject_scheme.lower() == "szgecern" or subject_scheme.lower() == "cern"
         )
 
-        is_author = (
-            subject_scheme.lower() == "author"
-        )
+        is_author = subject_scheme and subject_scheme.lower() == "author"
 
         if subject_scheme and not is_cern_scheme or not is_author:
             raise UnexpectedValue(field=key, subfield=subfield, value=subject_scheme)
