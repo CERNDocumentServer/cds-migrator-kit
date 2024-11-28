@@ -28,6 +28,10 @@ from invenio_preservation_sync.utils import preservation_info_render
 from invenio_vocabularies.config import (
     VOCABULARIES_NAMES_SCHEMES as DEFAULT_VOCABULARIES_NAMES_SCHEMES,
 )
+from invenio_rdm_records.config import (
+    RDM_PERSISTENT_IDENTIFIERS,
+    RDM_PARENT_PERSISTENT_IDENTIFIERS,
+)
 
 from .permissions import CDSRDMMigrationRecordPermissionPolicy
 
@@ -396,6 +400,13 @@ RDM_RECORDS_PERSONORG_SCHEMES = {
         }
     },
 }
+
+
+### Make DOIs optional
+
+RDM_PERSISTENT_IDENTIFIERS["doi"]["required"] = False
+RDM_PARENT_PERSISTENT_IDENTIFIERS["doi"]["required"] = False
+
 
 # Invenio-Preservation-Sync
 # =========================
