@@ -195,7 +195,7 @@ def subjects(self, key, value):
 
         is_author = subject_scheme and subject_scheme.lower() == "author"
 
-        if subject_scheme and not is_cern_scheme or not is_author:
+        if subject_scheme and not (is_cern_scheme or is_author):
             raise UnexpectedValue(field=key, subfield=subfield, value=subject_scheme)
 
     _subjects = self.get("subjects", [])
