@@ -18,10 +18,12 @@ from pathlib import Path
 
 import arrow
 import requests
+from invenio_db import db
 from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
 )
+from invenio_vocabularies.contrib.names.models import NamesMetadata
 from opensearchpy import RequestError
 from sqlalchemy.exc import NoResultFound
 
@@ -141,6 +143,11 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             return "-1"
 
     def _create_owner(self, email):
+        """Create owner from legacy data.
+
+            Every record needs an owner assigned in parent.access.owned_by
+            therefore we need to create dummy accounts
+        """
         logger_users = logging.getLogger("users")
 
         def get_person(email):
@@ -304,14 +311,44 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             inner_dict = creator.get("person_or_org", {})
             identifiers = inner_dict.get("identifiers", [])
             for identifier in identifiers:
-                # TODO process CDS and CERN Ids when names vocabulary ready
-                if identifier["scheme"] == "inspire":
+                # we check for unknown schemes
+                if identifier["scheme"] in ["inspire", "orcid", "cern", "cds"] :
                     processed_identifiers.append(identifier)
             if processed_identifiers:
-
                 inner_dict["identifiers"] = processed_identifiers
             else:
                 inner_dict.pop("identifiers", None)
+
+        def lookup_person_id(creator):
+            inner_dict = creator.get("person_or_org", {})
+            identifiers = deepcopy(inner_dict.get("identifiers", []))
+            name = None
+
+            # lookup and remove person_id
+            for identifier in reversed(identifiers):
+                if identifier.get("scheme") == "cern":
+                    name = NamesMetadata.query.filter_by(pid=identifier["identifier"]).one_or_none()
+                    # we drop CERN person id identifier
+                    identifiers.remove(identifier)
+
+            creator["person_or_org"]["identifiers"] = identifiers
+            if name:
+                # we update only identifiers of the authors to the latest known
+                ids = deepcopy(creator["person_or_org"]["identifiers"])
+                for identifier in name.json["identifiers"]:
+                    if identifier not in ids and identifier.get("scheme") != "cern":
+                        ids.append(identifier)
+                creator["person_or_org"]["identifiers"] = ids
+                existing_ids = deepcopy(name.json["identifiers"])
+                json_copy = deepcopy(name.json)
+                # update the names vocab to contain other ids found during migration
+                for identifier in ids:
+                    if identifier not in existing_ids:
+                        existing_ids.append(identifier)
+                        json_copy["identifiers"] = existing_ids
+                        name.json = json_copy
+                        db.session.add(name)
+                        db.session.commit()
 
         def creators(json, key="creators"):
             _creators = deepcopy(json.get(key, []))
@@ -319,6 +356,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             for creator in _creators:
                 creator_affiliations(creator)
                 creator_identifiers(creator)
+                lookup_person_id(creator)
             return _creators
 
         def _resource_type(entry):

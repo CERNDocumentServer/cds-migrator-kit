@@ -139,10 +139,15 @@ def creators(self, key, value):
         # and it should be ignored if value == #BEARD#
         raise UnexpectedValue(field=key, subfield="9", value=beard)
     affiliations = get_contributor_affiliations(value)
+    names = value.get("a").strip().split(',')
+    if len(names) == 2:
+        names = {"family_name": names[0], "given_name": names[1]}
+    else:
+        names = {"family_name": names[0]}
     contributor = {
         "person_or_org": {
             "type": "personal",
-            "family_name": value.get("a"),
+            **names,
             "identifiers": extract_json_contributor_ids(value),
         }
     }
@@ -189,13 +194,16 @@ def subjects(self, key, value):
     def validate_subject_scheme(value, subfield):
         subject_scheme = value.get(subfield)
 
-        is_cern_scheme = subject_scheme and (
+        if not subject_scheme:
+            return True
+
+        is_cern_scheme = (
             subject_scheme.lower() == "szgecern" or subject_scheme.lower() == "cern"
         )
 
-        is_author = subject_scheme and subject_scheme.lower() == "author"
+        is_author = subject_scheme.lower() == "author"
 
-        if subject_scheme and not (is_cern_scheme or is_author):
+        if not (is_cern_scheme or is_author):
             raise UnexpectedValue(field=key, subfield=subfield, value=subject_scheme)
 
     _subjects = self.get("subjects", [])

@@ -146,10 +146,10 @@ def extract_json_contributor_ids(info):
     """Extract author IDs from MARC tags."""
     SOURCES = {
         "AUTHOR|(INSPIRE)": "inspire",
-        "AUTHOR|(CDS)": "cds",
+        "AUTHOR|(CDS)": "lcds",
         "AUTHOR|(SzGeCERN)": "cern",
     }
-    regex = re.compile(r"(AUTHOR\|\((INSPIRE|CDS)\))(.*)")
+    regex = re.compile(r"(AUTHOR\|\((INSPIRE|CDS|SzGeCERN)\))(.*)")
     ids = []
     author_ids = force_list(info.get("0", ""))
     for author_id in author_ids:
@@ -158,11 +158,15 @@ def extract_json_contributor_ids(info):
             identifier = match.group(3)
             identifier = identifier.replace("INSPIRE-", "")
             ids.append(
-                {"identifier": identifier, "scheme": SOURCES[match.group(1)]}
+                {"identifier": identifier,
+                 "scheme": SOURCES[match.group(1)]
+                 }
             )
 
     author_orcid = info.get("k")
     if author_orcid:
-        ids.append({"identifier": author_orcid, "scheme": "orcid"})
+        ids.append({"identifier": author_orcid,
+                    "scheme": "orcid"
+                    })
 
     return ids
