@@ -312,7 +312,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             identifiers = inner_dict.get("identifiers", [])
             for identifier in identifiers:
                 # we check for unknown schemes
-                if identifier["scheme"] in ["inspire", "orcid", "cern", "cds"] :
+                if identifier["scheme"] in ["inspire", "orcid", "cern", "cds"]:
                     processed_identifiers.append(identifier)
             if processed_identifiers:
                 inner_dict["identifiers"] = processed_identifiers
@@ -320,35 +320,42 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 inner_dict.pop("identifiers", None)
 
         def lookup_person_id(creator):
-            inner_dict = creator.get("person_or_org", {})
-            identifiers = deepcopy(inner_dict.get("identifiers", []))
-            name = None
+            migrated_identifiers = deepcopy(
+                creator.get("person_or_org", {}).get("identifiers", [])
+            )
+            # lookup person_id
+            person_id = next((identifier for identifier in migrated_identifiers if
+                             identifier["scheme"] == "cern"), {}).get("identifier")
 
-            # lookup and remove person_id
-            for identifier in reversed(identifiers):
-                if identifier.get("scheme") == "cern":
-                    name = NamesMetadata.query.filter_by(pid=identifier["identifier"]).one_or_none()
-                    # we drop CERN person id identifier
-                    identifiers.remove(identifier)
+            name = NamesMetadata.query.filter_by(
+                pid=person_id).one_or_none()
 
-            creator["person_or_org"]["identifiers"] = identifiers
+            # filter out cern person_id
+            creator["person_or_org"]["identifiers"] = [identifier for identifier in
+                                                       migrated_identifiers if
+                                                       identifier["scheme"] != "cern"]
             if name:
-                # we update only identifiers of the authors to the latest known
-                ids = deepcopy(creator["person_or_org"]["identifiers"])
+                # update identifiers of the authors to the latest known
+                ids = creator["person_or_org"]["identifiers"]
+                # check ids supplied by the names vocabulary and add missing
                 for identifier in name.json["identifiers"]:
                     if identifier not in ids and identifier.get("scheme") != "cern":
                         ids.append(identifier)
-                creator["person_or_org"]["identifiers"] = ids
-                existing_ids = deepcopy(name.json["identifiers"])
+
+                # copy names identifiers and json to assign explicitly json object
+                # due to how postgres assignment of json is handled
                 json_copy = deepcopy(name.json)
+                existing_ids = deepcopy(name.json["identifiers"])
                 # update the names vocab to contain other ids found during migration
                 for identifier in ids:
                     if identifier not in existing_ids:
                         existing_ids.append(identifier)
-                        json_copy["identifiers"] = existing_ids
-                        name.json = json_copy
-                        db.session.add(name)
-                        db.session.commit()
+
+                # assign json explicitly
+                json_copy["identifiers"] = existing_ids
+                name.json = json_copy
+                db.session.add(name)
+                db.session.commit()
 
         def creators(json, key="creators"):
             _creators = deepcopy(json.get(key, []))
@@ -662,7 +669,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 {
                     file["full_name"]: {
                         "eos_tmp_path": tmp_eos_root
-                        / full_path.relative_to(legacy_path_root),
+                                        / full_path.relative_to(legacy_path_root),
                         "id_bibdoc": file["bibdocid"],
                         "key": file["full_name"],
                         "metadata": {},
