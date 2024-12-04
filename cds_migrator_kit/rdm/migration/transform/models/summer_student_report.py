@@ -53,6 +53,7 @@ class CMSSummerStudent(CdsOverdo):
         "960__a",  # collection id? usually value 12, to confirm if we ignore
         "980__a",  # collection tag
         "981__a",  # duplicate record id
+        "300__a",  # number of pages - ignored for SSPN - 1 record (2913067) was found
         # IMPLEMENTED
         # "001"
         # "003"
@@ -96,7 +97,6 @@ class CMSSummerStudent(CdsOverdo):
         # "916__w",
         # "963__a",
         # "970__a",  # alternative identifier, scheme ALEPH
-
     }
     _default_fields = {"resource_type": {"id": "publication-technicalnote"}}
 
