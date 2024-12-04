@@ -145,8 +145,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
     def _create_owner(self, email):
         """Create owner from legacy data.
 
-            Every record needs an owner assigned in parent.access.owned_by
-            therefore we need to create dummy accounts
+        Every record needs an owner assigned in parent.access.owned_by
+        therefore we need to create dummy accounts
         """
         logger_users = logging.getLogger("users")
 
@@ -324,16 +324,23 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 creator.get("person_or_org", {}).get("identifiers", [])
             )
             # lookup person_id
-            person_id = next((identifier for identifier in migrated_identifiers if
-                             identifier["scheme"] == "cern"), {}).get("identifier")
+            person_id = next(
+                (
+                    identifier
+                    for identifier in migrated_identifiers
+                    if identifier["scheme"] == "cern"
+                ),
+                {},
+            ).get("identifier")
 
-            name = NamesMetadata.query.filter_by(
-                pid=person_id).one_or_none()
+            name = NamesMetadata.query.filter_by(pid=person_id).one_or_none()
 
             # filter out cern person_id
-            creator["person_or_org"]["identifiers"] = [identifier for identifier in
-                                                       migrated_identifiers if
-                                                       identifier["scheme"] != "cern"]
+            creator["person_or_org"]["identifiers"] = [
+                identifier
+                for identifier in migrated_identifiers
+                if identifier["scheme"] != "cern"
+            ]
             if name:
                 # update identifiers of the authors to the latest known
                 ids = creator["person_or_org"]["identifiers"]
@@ -669,7 +676,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 {
                     file["full_name"]: {
                         "eos_tmp_path": tmp_eos_root
-                                        / full_path.relative_to(legacy_path_root),
+                        / full_path.relative_to(legacy_path_root),
                         "id_bibdoc": file["bibdocid"],
                         "key": file["full_name"],
                         "metadata": {},

@@ -44,6 +44,7 @@ def person_id(self, key, value):
             person_id = i.replace("AUTHOR|(SzGeCERN)", "").strip()
             return person_id
 
+
 @model.over("surname", "^1001_")
 def surname(self, key, value):
     return clean_val("a", value, str)

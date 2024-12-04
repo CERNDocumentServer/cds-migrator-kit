@@ -405,7 +405,7 @@ class CDSRecordServiceLoad(Load):
                 migration_logger.add_success(recid)
             except ManualImportRequired as e:
                 migration_logger.add_log(e, record=entry)
-            except (PIDAlreadyExists) as e:
+            except PIDAlreadyExists as e:
                 # TODO remove when there is a way of cleaning local environment from
                 # previous run of migration
                 exc = ManualImportRequired(

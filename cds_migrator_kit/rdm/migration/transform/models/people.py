@@ -50,6 +50,7 @@ class PeopleAuthority(CdsOverdo):
         "980__a",  # collection
     }
 
+
 model = PeopleAuthority(
     bases=(base_model,), entry_point_group="cds_migrator_kit.migrator.rules.people"
 )

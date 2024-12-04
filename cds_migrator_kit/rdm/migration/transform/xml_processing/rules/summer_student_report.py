@@ -24,6 +24,7 @@ from dojson.utils import force_list
 from ..errors import UnexpectedValue, MissingRequiredField
 from ..quality.decorators import for_each_value
 from ..quality.parsers import StringValue
+
 # ATTENTION when COPYING! important which model you use as decorator
 from ...models.summer_student_report import model
 
@@ -38,7 +39,7 @@ def contact_person(self, key, value):
             "name": StringValue(value.get("p")).parse(),
             "family_name": StringValue(value.get("p")).parse(),
         },
-        "role": {"id": "contactperson"}
+        "role": {"id": "contactperson"},
     }
     return contributor
 
@@ -49,15 +50,14 @@ def supervisor(self, key, value):
     """Translates supervisor."""
     supervisor = StringValue(value.get("p")).parse()
     if not supervisor:
-        raise MissingRequiredField(field=key, subfield="p",
-                                   priority="warning")
+        raise MissingRequiredField(field=key, subfield="p", priority="warning")
     contributor = {
         "person_or_org": {
             "type": "personal",
             "name": StringValue(value.get("p")).parse(),
             "family_name": StringValue(value.get("p")).parse(),
         },
-        "role": {"id": "supervisor"}
+        "role": {"id": "supervisor"},
     }
 
     return contributor
@@ -107,9 +107,9 @@ def department(self, key, value):
 def imprint_info(self, key, value):
     """Translates imprint - WARNING - also publisher and publication_date.
 
-        In case of summer student notes this field contains only date
-        but it needs to be reimplemented for the base set of rules -
-        it will contain also imprint place
+    In case of summer student notes this field contains only date
+    but it needs to be reimplemented for the base set of rules -
+    it will contain also imprint place
     """
     publication_date_str = value.get("c")
     _publisher = value.get("b")
@@ -126,5 +126,3 @@ def imprint_info(self, key, value):
             value=value,
             message=f"Can't parse provided publication date. Value: {publication_date_str}",
         )
-
-

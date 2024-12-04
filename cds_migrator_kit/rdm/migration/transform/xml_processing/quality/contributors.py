@@ -15,10 +15,12 @@ from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     UnexpectedValue,
 )
 
-from cds_migrator_kit.rdm.migration.transform.xml_processing.quality.parsers import \
-    StringValue
-from cds_migrator_kit.rdm.migration.transform.xml_processing.quality.regex import \
-    ALPHANUMERIC_ONLY
+from cds_migrator_kit.rdm.migration.transform.xml_processing.quality.parsers import (
+    StringValue,
+)
+from cds_migrator_kit.rdm.migration.transform.xml_processing.quality.regex import (
+    ALPHANUMERIC_ONLY,
+)
 
 
 # "contributors": {
@@ -136,9 +138,9 @@ def get_contributor_affiliations(info):
         return
     affiliations = force_list(u)
 
-    parsed_affiliations = \
-        [StringValue(aff).parse(filter_regex=ALPHANUMERIC_ONLY) for
-         aff in affiliations]
+    parsed_affiliations = [
+        StringValue(aff).parse(filter_regex=ALPHANUMERIC_ONLY) for aff in affiliations
+    ]
     return parsed_affiliations
 
 
@@ -157,16 +159,10 @@ def extract_json_contributor_ids(info):
         if match:
             identifier = match.group(3)
             identifier = identifier.replace("INSPIRE-", "")
-            ids.append(
-                {"identifier": identifier,
-                 "scheme": SOURCES[match.group(1)]
-                 }
-            )
+            ids.append({"identifier": identifier, "scheme": SOURCES[match.group(1)]})
 
     author_orcid = info.get("k")
     if author_orcid:
-        ids.append({"identifier": author_orcid,
-                    "scheme": "orcid"
-                    })
+        ids.append({"identifier": author_orcid, "scheme": "orcid"})
 
     return ids
