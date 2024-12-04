@@ -63,6 +63,7 @@ def test_migrate_record(datadir, base_app):
                 "cern:facilities": [],
                 "cern:studies": [],
                 "cern:beams": [],
+                "cern:departments": ["EP"],
             },
             "contributors": [
                 None,
@@ -155,6 +156,7 @@ def test_migrate_record_all_fields(datadir, base_app):
                 "cern:facilities": [],
                 "cern:studies": ["Physics Beyond Colliders"],
                 "cern:beams": [],
+                "cern:departments": ["HSE"],
             },
             "contributors": [
                 {
