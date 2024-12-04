@@ -5,7 +5,7 @@ import shutil
 import sys
 
 reload(sys)
-sys.setdefaultencoding('utf-8')
+sys.setdefaultencoding("utf-8")
 
 destination_prefix = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes/files"
 working_dir = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes"

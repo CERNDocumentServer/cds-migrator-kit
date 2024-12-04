@@ -46,7 +46,7 @@ def results(rectype=None):
         warning = 0
         errored = 0
         migrated = 0
-        total =len(record_logs)
+        total = len(record_logs)
         for log in record_logs:
             if log["priority"] == "critical":
                 critical += 1

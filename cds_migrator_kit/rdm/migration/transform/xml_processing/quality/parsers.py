@@ -69,12 +69,20 @@ class MarcValue(ABC):
             self.parsed_value = self._clean()
             return self.parsed_value
         except Exception as e:
-            raise UnexpectedValue(value=self.raw_value, message=str(e), stage="transform", exc=e)
+            raise UnexpectedValue(
+                value=self.raw_value, message=str(e), stage="transform", exc=e
+            )
 
 
 class StringValue(MarcValue):
-    def __init__(self, raw_value, required_type=str, subfield=None, required=False,
-                 default_value=None):
+    def __init__(
+        self,
+        raw_value,
+        required_type=str,
+        subfield=None,
+        required=False,
+        default_value=None,
+    ):
         super().__init__(raw_value, required_type, subfield, required, default_value)
 
     def _clean(self):

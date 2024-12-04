@@ -402,7 +402,7 @@ RDM_RECORDS_PERSONORG_SCHEMES = {
             "label": _("CDS"),
             "validator": schemes.is_cern,
             "datacite": "CDS",
-        }
+        },
     },
 }
 
@@ -442,7 +442,11 @@ APP_RDM_RECORD_LANDING_PAGE_EXTERNAL_LINKS = [
 ]
 VOCABULARIES_NAMES_SCHEMES = {
     **DEFAULT_VOCABULARIES_NAMES_SCHEMES,
-    "inspire": {"label": _("Inspire"), "validator": schemes.is_cern, "datacite": "INSPIRE"},
+    "inspire": {
+        "label": _("Inspire"),
+        "validator": schemes.is_cern,
+        "datacite": "INSPIRE",
+    },
     "lcds": {"label": _("CDS"), "validator": schemes.is_cern, "datacite": "CDS"},
     # we keep cern id in vocabs, but not in the record
     "cern": {"label": _("CERN"), "validator": schemes.is_cern, "datacite": "CERN"},

@@ -66,14 +66,11 @@ class CDSRecordDump:
     def _prepare_revision(self, data):
         timestamp = arrow.get(data["modification_datetime"]).datetime
 
-
         marc_record = create_record(data["marcxml"])
 
         # exception handlers are passed in this way to avoid overriding
         # .do method implementation
-        json_converted_record = self.dojson_model.do(
-            marc_record
-        )
+        json_converted_record = self.dojson_model.do(marc_record)
 
         missing = self.dojson_model.missing(marc_record)
 
