@@ -6,6 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM overdo model."""
+from copy import deepcopy
 
 from cds_dojson.overdo import Overdo
 from dojson._compat import iteritems
@@ -53,7 +54,7 @@ class CdsOverdo(Overdo):
         output = {}
 
         if self._default_fields:
-            output.update(**self._default_fields)
+            output.update(**deepcopy(self._default_fields))
 
         if self.index is None:
             self.build()

@@ -27,7 +27,7 @@ class CMSSummerStudent(CdsOverdo):
     """Translation Index for CERN Summer Student Project Notes."""
 
     # __query__ = "980__:INTNOTEEPPUBLL 980__:NOTE 037__:CERN-STUDENTS-Note-\"/(.*?)/\""
-    __query__ = "037__:CERN-STUDENTS-Note-* - 980__c:DELETED"
+    __query__ = "037__:CERN-STUDENTS-Note-* -980__c:DELETED"
 
     __ignore_keys__ = {
         # decided to ignore
@@ -98,7 +98,10 @@ class CMSSummerStudent(CdsOverdo):
         # "963__a",
         # "970__a",  # alternative identifier, scheme ALEPH
     }
-    _default_fields = {"resource_type": {"id": "publication-technicalnote"}}
+    _default_fields = {
+        "resource_type": {"id": "publication-technicalnote"},
+        "custom_fields": {},
+    }
 
 
 model = CMSSummerStudent(
