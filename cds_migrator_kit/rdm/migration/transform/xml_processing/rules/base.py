@@ -139,11 +139,11 @@ def creators(self, key, value):
         # and it should be ignored if value == #BEARD#
         raise UnexpectedValue(field=key, subfield="9", value=beard)
     affiliations = get_contributor_affiliations(value)
-    names = value.get("a").strip().split(", ")
+    names = value.get("a").strip().split(",")
     if len(names) == 2:
-        names = {"family_name": names[0], "given_name": names[1]}
+        names = {"family_name": names[0].strip(), "given_name": names[1].strip()}
     else:
-        names = {"family_name": names[0]}
+        names = {"family_name": names[0].strip()}
     contributor = {
         "person_or_org": {
             "type": "personal",

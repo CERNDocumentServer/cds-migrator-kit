@@ -27,6 +27,7 @@ from invenio_vocabularies.contrib.names.models import NamesMetadata
 from opensearchpy import RequestError
 from sqlalchemy.exc import NoResultFound
 
+from cds_migrator_kit.migration_config import VOCABULARIES_NAMES_SCHEMES
 from cds_migrator_kit.rdm.migration.transform.users import CDSMissingUserLoad
 from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
@@ -312,7 +313,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             identifiers = inner_dict.get("identifiers", [])
             for identifier in identifiers:
                 # we check for unknown schemes
-                if identifier["scheme"] in ["inspire", "orcid", "cern", "cds"]:
+                if identifier["scheme"] in VOCABULARIES_NAMES_SCHEMES.keys():
                     processed_identifiers.append(identifier)
             if processed_identifiers:
                 inner_dict["identifiers"] = processed_identifiers
@@ -332,9 +333,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 ),
                 {},
             ).get("identifier")
-
             name = NamesMetadata.query.filter_by(pid=person_id).one_or_none()
-
             # filter out cern person_id
             creator["person_or_org"]["identifiers"] = [
                 identifier
@@ -357,7 +356,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 for identifier in ids:
                     if identifier not in existing_ids:
                         existing_ids.append(identifier)
-
                 # assign json explicitly
                 json_copy["identifiers"] = existing_ids
                 name.json = json_copy
