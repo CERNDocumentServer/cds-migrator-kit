@@ -19,7 +19,6 @@ class RecordAffiliationsRunner:
 
     def __init__(self, stream_definition, filepath, log_dir, dry_run):
         """Constructor."""
-
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
 

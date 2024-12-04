@@ -14,16 +14,16 @@ from flask import current_app
 from flask.cli import with_appcontext
 
 from cds_migrator_kit.rdm.migration.affiliations.runner import RecordAffiliationsRunner
+from cds_migrator_kit.rdm.migration.affiliations.streams import (
+    AffiliationsStreamDefinition,
+)
 from cds_migrator_kit.rdm.migration.runner import Runner
 from cds_migrator_kit.rdm.migration.stats.runner import RecordStatsRunner
+from cds_migrator_kit.rdm.migration.stats.streams import RecordStatsStreamDefinition
 from cds_migrator_kit.rdm.migration.streams import (
     RecordStreamDefinition,
     UserStreamDefinition,
 )
-from cds_migrator_kit.rdm.migration.affiliations.streams import (
-    AffiliationsStreamDefinition,
-)
-from cds_migrator_kit.rdm.migration.stats.streams import RecordStatsStreamDefinition
 
 cli_logger = logging.getLogger("migrator")
 
@@ -69,7 +69,7 @@ def stats():
 )
 @with_appcontext
 def run(filepath, dry_run=False):
-    """Migrate the legacy statistics for the records in `filepath`"""
+    """Migrate the legacy statistics for the records in `filepath`."""
     stream_config = current_app.config["CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG"]
     stream_config["DEST_SEARCH_INDEX_PREFIX"] = (
         f"{current_app.config['SEARCH_INDEX_PREFIX']}events-stats"
@@ -103,7 +103,7 @@ def affiliations():
 )
 @with_appcontext
 def run(filepath, dry_run=False):
-    """Migrate the legacy statistics for the records in `filepath`"""
+    """Migrate the legacy statistics for the records in `filepath`."""
     log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "affiliations"
     runner = RecordAffiliationsRunner(
         stream_definition=AffiliationsStreamDefinition,
@@ -134,10 +134,10 @@ def community():
 )
 @with_appcontext
 def dump(slug, title, filepath):
-    """Read or create community slug and dump it to streams.yaml"""
+    """Read or create community slug and dump it to streams.yaml."""
     import yaml
-    from invenio_communities.proxies import current_communities
     from invenio_access.permissions import system_identity
+    from invenio_communities.proxies import current_communities
     from invenio_pidstore.errors import PIDDoesNotExistError
 
     try:

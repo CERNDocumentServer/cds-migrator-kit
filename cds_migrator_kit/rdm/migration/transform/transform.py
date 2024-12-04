@@ -18,11 +18,16 @@ from pathlib import Path
 
 import arrow
 import requests
+from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
+from idutils import normalize_ror
+from invenio_access.permissions import system_identity
+from invenio_accounts.models import User
 from invenio_db import db
 from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
 )
+from invenio_records_resources.proxies import current_service_registry
 from invenio_vocabularies.contrib.names.models import NamesMetadata
 from opensearchpy import RequestError
 from sqlalchemy.exc import NoResultFound
@@ -32,23 +37,19 @@ from cds_migrator_kit.rdm.migration.transform.users import CDSMissingUserLoad
 from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     LossyConversion,
-    RestrictedFileDetected,
-    UnexpectedValue,
     ManualImportRequired,
     MissingRequiredField,
     RecordFlaggedCuration,
+    RestrictedFileDetected,
+    UnexpectedValue,
 )
 from cds_migrator_kit.records.log import RDMJsonLogger
-from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
-from invenio_access.permissions import system_identity
-from invenio_records_resources.proxies import current_service_registry
-from invenio_accounts.models import User
-from idutils import normalize_ror
 
 cli_logger = logging.getLogger("migrator")
 
 
 def search_vocabulary(term, vocab_type):
+    """Search vocabulary utility function."""
     service = current_service_registry.get("vocabularies")
     try:
         vocabulary_result = service.search(
@@ -247,7 +248,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
     def _match_affiliation(self, affiliation_name):
         """Match an affiliation against `CDSMigrationAffiliationMapping` db table."""
-
         # Step 1: search in the affiliation mapping (ROR organizations)
         match = self.affiliations_mapping.query.filter_by(
             legacy_affiliation_input=affiliation_name

@@ -6,28 +6,27 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM migration load module."""
+import json
 import logging
 import os
-import json
 
 from invenio_rdm_migrator.load.base import Load
 
 from cds_migrator_kit.rdm.migration.stats.event_generator import prepare_new_doc
 from cds_migrator_kit.rdm.migration.stats.log import StatsLogger
 from cds_migrator_kit.rdm.migration.stats.search import (
+    bulk_index_documents,
     generate_query,
     os_count,
     os_scroll,
     os_search,
-    bulk_index_documents,
 )
-
 
 logger = StatsLogger.get_logger()
 
 from opensearchpy import OpenSearch
 from opensearchpy.exceptions import OpenSearchException
-from opensearchpy.helpers import bulk, parallel_bulk, BulkIndexError
+from opensearchpy.helpers import BulkIndexError, bulk, parallel_bulk
 
 _QUERY_VIEWS = {
     "query": {

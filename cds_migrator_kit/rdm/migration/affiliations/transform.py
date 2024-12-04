@@ -12,12 +12,12 @@ import json
 import logging
 import os.path
 import re
-import requests
 from collections import OrderedDict
 from copy import deepcopy
 from pathlib import Path
 
 import arrow
+import requests
 from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,

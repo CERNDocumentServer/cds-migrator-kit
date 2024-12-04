@@ -11,25 +11,26 @@ import datetime
 
 import pycountry
 from cds_dojson.marc21.fields.utils import out_strip
-from dojson.errors import IgnoreKey
-from dojson.utils import filter_values, flatten, force_list
 from dateutil.parser import parse
 from dateutil.parser._parser import ParserError
+from dojson.errors import IgnoreKey
+from dojson.utils import filter_values, flatten, force_list
+
 from ...models.base import model
-from ..quality.contributors import (
-    extract_json_contributor_ids,
-    get_contributor_role,
-    get_contributor_affiliations,
-)
 from ..dates import get_week_start
 from ..errors import UnexpectedValue
+from ..quality.contributors import (
+    extract_json_contributor_ids,
+    get_contributor_affiliations,
+    get_contributor_role,
+)
 from ..quality.decorators import (
     filter_list_values,
     for_each_value,
     require,
     strip_output,
 )
-from ..quality.parsers import clean_str, clean_val, StringValue
+from ..quality.parsers import StringValue, clean_str, clean_val
 
 
 @model.over("legacy_recid", "^001")

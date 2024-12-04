@@ -21,12 +21,11 @@ from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
 from dojson.utils import force_list
 
-from ..errors import UnexpectedValue, MissingRequiredField
-from ..quality.decorators import for_each_value
-from ..quality.parsers import StringValue
-
 # ATTENTION when COPYING! important which model you use as decorator
 from ...models.summer_student_report import model
+from ..errors import MissingRequiredField, UnexpectedValue
+from ..quality.decorators import for_each_value
+from ..quality.parsers import StringValue
 
 
 @model.over("contributors", "^270__")
@@ -86,7 +85,7 @@ def corporate_author(self, key, value):
 @model.over("internal_notes", "^562__")
 @for_each_value
 def note(self, key, value):
-    """Translates notes"""
+    """Translates notes."""
     return {"note": StringValue(value.get("c")).parse()}
 
 

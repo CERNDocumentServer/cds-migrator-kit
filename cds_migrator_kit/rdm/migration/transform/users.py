@@ -10,19 +10,18 @@ import csv
 import json
 
 from flask import current_app
+from invenio_accounts.models import User, UserIdentity
+from invenio_cern_sync.sso import cern_remote_app_name
+from invenio_db import db
 from invenio_oauthclient.models import RemoteAccount
 from invenio_rdm_migrator.load import Load
 from invenio_rdm_migrator.streams.users import UserEntry, UserTransform
-from invenio_rdm_migrator.transform.base import Transform, Entry
+from invenio_rdm_migrator.transform.base import Entry, Transform
 from invenio_userprofiles import UserProfile
-from invenio_cern_sync.sso import cern_remote_app_name
 from psycopg.errors import UniqueViolation
 from sqlalchemy.exc import IntegrityError
 
 from cds_migrator_kit.rdm.migration.extract import LegacyUserExtract
-from invenio_accounts.models import User, UserIdentity
-from invenio_db import db
-
 from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
 
 
@@ -110,6 +109,7 @@ class CDSMissingUserLoad:
         self.client_id = current_app.config["CERN_APP_CREDENTIALS"]["consumer_key"]
 
     def check_person_id_exists(self, person_id):
+        """Check if uer identity already exists."""
         return UserIdentity.query.filter_by(id=person_id).one_or_none()
 
     def create_invenio_user(self, email, username):

@@ -12,8 +12,8 @@ from invenio_rdm_migrator.transform import IdentityTransform
 from cds_migrator_kit.rdm.migration.extract import LegacyExtract, LegacyUserExtract
 from cds_migrator_kit.rdm.migration.transform.transform import CDSToRDMRecordTransform
 
-from .load import CDSRecordStatsLoad
 from .extract import LegacyRecordStatsExtract
+from .load import CDSRecordStatsLoad
 
 RecordStatsStreamDefinition = StreamDefinition(
     name="stats",

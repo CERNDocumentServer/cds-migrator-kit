@@ -6,16 +6,15 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM migration load module."""
+import json
 import logging
 import os
-import json
-import psycopg2
 
+import psycopg2
+from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
 from invenio_db import db
 from invenio_rdm_migrator.load.base import Load
 from sqlalchemy.exc import IntegrityError
-
-from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
 
 from .log import AffiliationsLogger
 
@@ -38,7 +37,6 @@ class CDSAffiliationsLoad(Load):
 
     def _save_affiliation(self, affiliations):
         """."""
-
         for affiliation in affiliations:
             _affiliation_model = None
             _original_input = affiliation.pop("original_input")

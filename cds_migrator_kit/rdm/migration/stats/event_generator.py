@@ -7,8 +7,8 @@
 
 """CDS-RDM migration stats events generator module."""
 
-from datetime import datetime
 from copy import deepcopy
+from datetime import datetime
 
 
 def process_download_event(entry, rec_context, logger):

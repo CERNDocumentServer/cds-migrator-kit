@@ -14,14 +14,12 @@ from dojson.utils import force_list
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
     UnexpectedValue,
 )
-
 from cds_migrator_kit.rdm.migration.transform.xml_processing.quality.parsers import (
     StringValue,
 )
 from cds_migrator_kit.rdm.migration.transform.xml_processing.quality.regex import (
     ALPHANUMERIC_ONLY,
 )
-
 
 # "contributors": {
 #   "description": "Contributors in order of importance.",
@@ -133,6 +131,7 @@ def get_contributor_role(subfield, role, raise_unexpected=False):
 
 
 def get_contributor_affiliations(info):
+    """Get affiliations of a contributor/creator."""
     u = info.get("u", "")
     if not u:
         return
