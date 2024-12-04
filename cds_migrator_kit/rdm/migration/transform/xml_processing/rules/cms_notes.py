@@ -9,9 +9,7 @@
 
 
 from ...models.note import model
-from ..quality.decorators import (
-    require,
-)
+from ..quality.decorators import require
 
 
 @model.over("communities", "^980__")

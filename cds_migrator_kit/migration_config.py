@@ -18,20 +18,20 @@ from cds_rdm.permissions import (
 )
 from invenio_app_rdm.config import CELERY_BEAT_SCHEDULE as APP_RDM_CELERY_BEAT_SCHEDULE
 from invenio_app_rdm.config import *
-from invenio_i18n import lazy_gettext as _
-from invenio_records_resources.services.custom_fields import KeywordCF
-from invenio_vocabularies.services.custom_fields import VocabularyCF
+from invenio_cern_sync.sso import cern_keycloak, cern_remote_app_name
 from invenio_cern_sync.users.profile import CERNUserProfileSchema
+from invenio_i18n import lazy_gettext as _
 from invenio_oauthclient.views.client import auto_redirect_login
-from invenio_cern_sync.sso import cern_remote_app_name, cern_keycloak
 from invenio_preservation_sync.utils import preservation_info_render
+from invenio_rdm_records.config import (
+    RDM_PARENT_PERSISTENT_IDENTIFIERS,
+    RDM_PERSISTENT_IDENTIFIERS,
+)
+from invenio_records_resources.services.custom_fields import KeywordCF
 from invenio_vocabularies.config import (
     VOCABULARIES_NAMES_SCHEMES as DEFAULT_VOCABULARIES_NAMES_SCHEMES,
 )
-from invenio_rdm_records.config import (
-    RDM_PERSISTENT_IDENTIFIERS,
-    RDM_PARENT_PERSISTENT_IDENTIFIERS,
-)
+from invenio_vocabularies.services.custom_fields import VocabularyCF
 
 from .permissions import CDSRDMMigrationRecordPermissionPolicy
 
@@ -362,12 +362,12 @@ logs_dir = os.path.join(base_path, "tmp/logs/")
 CDS_MIGRATOR_KIT_LOGS_PATH = logs_dir
 CDS_MIGRATOR_KIT_STREAM_CONFIG = "cds_migrator_kit/rdm/migration/streams.yaml"
 
+from cds_rdm import schemes
 from invenio_rdm_records.config import (
     RDM_RECORDS_IDENTIFIERS_SCHEMES,
-    always_valid,
     RDM_RECORDS_PERSONORG_SCHEMES,
+    always_valid,
 )
-from cds_rdm import schemes
 
 RDM_RECORDS_IDENTIFIERS_SCHEMES = {
     **RDM_RECORDS_IDENTIFIERS_SCHEMES,
@@ -420,6 +420,7 @@ PRESERVATION_SYNC_ENABLED = True
 
 
 def resolve_record_pid(pid):
+    """."""
     return record_service.record_cls.pid.resolve(pid).id
 
 

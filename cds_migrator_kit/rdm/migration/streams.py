@@ -12,7 +12,7 @@ from cds_migrator_kit.rdm.migration.extract import LegacyExtract, LegacyUserExtr
 from cds_migrator_kit.rdm.migration.transform.transform import CDSToRDMRecordTransform
 
 from .load import CDSRecordServiceLoad
-from .transform.users import CDSUserIntermediaryLoad, CDSRDMUserTransform
+from .transform.users import CDSRDMUserTransform, CDSUserIntermediaryLoad
 
 RecordStreamDefinition = StreamDefinition(
     name="records",

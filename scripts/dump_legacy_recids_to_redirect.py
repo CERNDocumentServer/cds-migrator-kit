@@ -1,7 +1,7 @@
 import json
+
 from invenio.dbquery import run_sql
 from invenio.search_engine import search_pattern
-
 
 collection_query = "037__:CERN-STUDENTS-Note-* - 980__c:DELETED"
 json_dump_dir = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes"

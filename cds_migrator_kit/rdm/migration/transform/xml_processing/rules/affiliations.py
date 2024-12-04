@@ -18,13 +18,10 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 """Common RDM fields."""
 
-from ..quality.decorators import for_each_value, require
-
 # ATTENTION when COPYING! important which model you use as decorator
 from ...models.affiliations import model
-from ..quality.contributors import (
-    get_contributor_affiliations,
-)
+from ..quality.contributors import get_contributor_affiliations
+from ..quality.decorators import for_each_value, require
 
 
 @model.over("creators", "^100__")

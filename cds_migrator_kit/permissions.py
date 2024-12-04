@@ -8,6 +8,7 @@
 
 """Permission policy."""
 
+from cds_rdm.permissions import CDSRDMRecordPermissionPolicy
 from invenio_communities.permissions import CommunityPermissionPolicy
 from invenio_preservation_sync.services.permissions import (
     DefaultPreservationInfoPermissionPolicy,
@@ -15,8 +16,6 @@ from invenio_preservation_sync.services.permissions import (
 from invenio_rdm_records.services.generators import IfNewRecord, IfRecordDeleted
 from invenio_rdm_records.services.permissions import RDMRecordPermissionPolicy
 from invenio_records_permissions.generators import IfConfig, SystemProcess
-
-from cds_rdm.permissions import CDSRDMRecordPermissionPolicy
 
 
 class CDSRDMMigrationRecordPermissionPolicy(CDSRDMRecordPermissionPolicy):

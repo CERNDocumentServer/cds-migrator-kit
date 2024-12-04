@@ -6,11 +6,14 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM migration load module."""
+import json
 import logging
 import os
-import json
 
 import arrow
+from cds_rdm.legacy.models import CDSMigrationLegacyRecord
+from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
+from cds_rdm.minters import legacy_recid_minter
 from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_db import db
@@ -23,14 +26,10 @@ from marshmallow import ValidationError
 from psycopg.errors import UniqueViolation
 
 from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
-    ManualImportRequired,
     CDSMigrationException,
+    ManualImportRequired,
 )
-
 from cds_migrator_kit.records.log import RDMJsonLogger
-from cds_rdm.minters import legacy_recid_minter
-from cds_rdm.legacy.models import CDSMigrationLegacyRecord
-from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 
 
 def import_legacy_files(filepath):

@@ -9,6 +9,7 @@
 """CDS Migrator Records logging handler."""
 
 import logging
+
 from cds_migrator_kit.records.log import RDMJsonLogger
 
 cli_logger = logging.getLogger("migrator")

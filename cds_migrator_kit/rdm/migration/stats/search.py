@@ -9,11 +9,11 @@
 
 import json
 import time
-
 from copy import deepcopy
+
 from opensearchpy import OpenSearch
 from opensearchpy.exceptions import OpenSearchException
-from opensearchpy.helpers import parallel_bulk, BulkIndexError
+from opensearchpy.helpers import BulkIndexError, parallel_bulk
 
 
 def generate_query(doc_type, identifier, legacy_to_rdm_events_map):
@@ -34,6 +34,7 @@ def os_search(
     search_scroll,
     legacy_to_rdm_events_map,
 ):
+    """Sear utility."""
     ex = None
     i = 0
     q = generate_query(doc_type, identifier, legacy_to_rdm_events_map)
@@ -53,6 +54,7 @@ def os_search(
 
 
 def os_scroll(src_os_client, scroll_id, scroll_size):
+    """Scroll utility."""
     ex = None
     i = 0
     while i < 10:
@@ -66,6 +68,7 @@ def os_scroll(src_os_client, scroll_id, scroll_size):
 
 
 def os_count(src_os_client, index, q):
+    """Count utility."""
     ex = None
     i = 0
     while i < 10:
@@ -88,8 +91,9 @@ def bulk_index_documents(
     chunk_size=500,
     max_chunk_bytes=50 * 1024 * 1024,
 ):
-    """
-    Index documents into Opensearch using parallel_bulk with improved readability and error handling.
+    """Index documents into Opensearch.
+
+    Uses parallel_bulk with improved readability and error handling.
     """
     try:
         # Execute parallel_bulk with configuration for improved performance

@@ -35,6 +35,7 @@ def email(self, key, value):
 
 @model.over("person_id", "^035__")
 def person_id(self, key, value):
+    """Translate person id."""
     # _person_id = clean_val("a", value, str)
     _ids = force_list(value.get("a"))
     for i in _ids:
@@ -47,9 +48,11 @@ def person_id(self, key, value):
 
 @model.over("surname", "^1001_")
 def surname(self, key, value):
+    """Translate surname."""
     return clean_val("a", value, str)
 
 
 @model.over("given_names", "^1000_")
 def given_names(self, key, value):
+    """Translate given names."""
     return clean_val("a", value, str)

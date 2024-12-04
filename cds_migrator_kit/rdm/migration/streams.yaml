@@ -11,6 +11,6 @@ records:
   transform:
     files_dump_dir: cds_migrator_kit/rdm/migration/data/summer_student_reports/files/
     missing_users: cds_migrator_kit/rdm/migration/data/users
-    community_id: 4f597413-cc15-4cf6-85a6-317b6f9c7d79
+    community_id: a8cd14db-ae2e-40a1-81b6-d846d5b304f1
   load:
     legacy_pids_to_redirect: cds_migrator_kit/rdm/migration/data/summer_student_reports/duplicated_pids.json

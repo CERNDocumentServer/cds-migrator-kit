@@ -9,12 +9,11 @@
 """CDS Migrator Records loggers."""
 
 import csv
+import json
+import logging
 import os
 
 from flask import current_app
-
-import logging
-import json
 
 
 class Singleton(type):

@@ -56,12 +56,15 @@ class MarcValue(ABC):
         return self.is_required
 
     def default(self):
+        """Provide default value."""
         return self.default
 
     def _clean(self):
+        """Clean string."""
         return self.parsed_value
 
     def parse(self):
+        """Parse value."""
         try:
             self.parsed_value = self._clean()
             self.required()
@@ -75,6 +78,8 @@ class MarcValue(ABC):
 
 
 class StringValue(MarcValue):
+    """String value parser class."""
+
     def __init__(
         self,
         raw_value,
@@ -83,23 +88,30 @@ class StringValue(MarcValue):
         required=False,
         default_value=None,
     ):
+        """Constructor."""
         super().__init__(raw_value, required_type, subfield, required, default_value)
 
     def _clean(self):
+        """Clean value."""
         return self.raw_value.strip()
 
     def parse(self, filter_regex=None):
+        """Parse string value."""
         super().parse()
         if filter_regex:
             self.parsed_value = self.filter_regex(filter_regex)
         return self.parsed_value
 
     def filter_regex(self, regex):
+        """Filter value using regex."""
         return re.sub(regex, "", self.parsed_value, flags=re.UNICODE)
 
 
 class ListValue(MarcValue):
+    """List value class."""
+
     def type(self):
+        """Transform to list type."""
         self.casted_value = force_list(self.raw_value)
         return super().type()
 
