@@ -444,7 +444,7 @@ VOCABULARIES_NAMES_SCHEMES = {
     **DEFAULT_VOCABULARIES_NAMES_SCHEMES,
     "inspire": {
         "label": _("Inspire"),
-        "validator": schemes.is_cern,
+        "validator": schemes.is_inspire,
         "datacite": "INSPIRE",
     },
     "lcds": {"label": _("CDS"), "validator": schemes.is_cern, "datacite": "CDS"},
