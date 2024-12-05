@@ -11,6 +11,7 @@ import json
 import os
 from datetime import datetime, timedelta
 
+from cds_rdm import schemes
 from cds_rdm.files import storage_factory
 from cds_rdm.permissions import (
     CDSCommunitiesPermissionPolicy,
@@ -26,6 +27,9 @@ from invenio_preservation_sync.utils import preservation_info_render
 from invenio_rdm_records.config import (
     RDM_PARENT_PERSISTENT_IDENTIFIERS,
     RDM_PERSISTENT_IDENTIFIERS,
+    RDM_RECORDS_IDENTIFIERS_SCHEMES,
+    RDM_RECORDS_PERSONORG_SCHEMES,
+    always_valid,
 )
 from invenio_records_resources.services.custom_fields import KeywordCF
 from invenio_vocabularies.config import (
@@ -362,12 +366,6 @@ logs_dir = os.path.join(base_path, "tmp/logs/")
 CDS_MIGRATOR_KIT_LOGS_PATH = logs_dir
 CDS_MIGRATOR_KIT_STREAM_CONFIG = "cds_migrator_kit/rdm/migration/streams.yaml"
 
-from cds_rdm import schemes
-from invenio_rdm_records.config import (
-    RDM_RECORDS_IDENTIFIERS_SCHEMES,
-    RDM_RECORDS_PERSONORG_SCHEMES,
-    always_valid,
-)
 
 RDM_RECORDS_IDENTIFIERS_SCHEMES = {
     **RDM_RECORDS_IDENTIFIERS_SCHEMES,
