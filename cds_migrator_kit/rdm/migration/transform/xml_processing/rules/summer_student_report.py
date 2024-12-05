@@ -79,7 +79,7 @@ def corporate_author(self, key, value):
     if "5" in value:
         department = StringValue(value.get("5")).parse()
         departments = self.get("custom_fields", {}).get("cern:departments", [])
-        if department not in departments:
+        if department and department not in departments:
             departments.append(department)
         self["custom_fields"]["cern:departments"] = departments
         raise IgnoreKey("contributors")
@@ -100,7 +100,7 @@ def department(self, key, value):
         if "PUBL" in v:
             department = v.replace("PUBL", "").strip()
             departments = self.get("custom_fields", {}).get("cern:departments", [])
-            if department not in departments:
+            if department and department not in departments:
                 departments.append(department)
 
             self["custom_fields"]["cern:departments"] = departments

@@ -222,14 +222,16 @@ class CDSRecordServiceLoad(Load):
             db.session.commit()
         else:
             draft = current_rdm_records_service.new_version(identity, draft["id"])
+            draft_dict = draft.to_dict()
             missing_data = {
+                **draft_dict,
                 "metadata": {
                     # copy over the previous draft metadata
-                    **draft.to_dict()["metadata"],
+                    **draft_dict["metadata"],
                     # add missing publication date based
                     # on the time of creation of the new file version
                     "publication_date": publication_date.date().isoformat(),
-                }
+                },
             }
             draft = current_rdm_records_service.update_draft(
                 identity, draft["id"], data=missing_data

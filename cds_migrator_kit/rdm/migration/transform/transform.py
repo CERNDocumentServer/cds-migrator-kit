@@ -426,13 +426,17 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         {"id": result["hits"]["hits"][0]["id"]}
                     )
                 else:
-                    raise UnexpectedValue(
+                    subj = json_output["metadata"].get("subjects", [])
+                    subj.append({"subject": department})
+                    json_output["metadata"]["subjects"] = subj
+                    raise RecordFlaggedCuration(
                         subfield="a",
                         value=department,
                         field="department",
-                        message=f"Department {department} not found.",
+                        message=f"Department {department} not found. added as subject",
                         stage="vocabulary match",
                     )
+
 
         def field_accelerators(record_json, custom_fields_dict):
             accelerators = record_json.get("custom_fields", {}).get(
@@ -484,12 +488,12 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         }
         try:
             field_experiments(json_entry, custom_fields)
+            field_departments(json_entry, custom_fields)
         except RecordFlaggedCuration as exc:
             RDMJsonLogger().add_success_state(
                 json_entry["recid"],
                 {"message": exc.message, "value": exc.value},
             )
-        field_departments(json_entry, custom_fields)
         field_accelerators(json_entry, custom_fields)
         field_beams(json_entry, custom_fields)
         custom_fields["cern:projects"] = json_entry.get("custom_fields", {}).get(
