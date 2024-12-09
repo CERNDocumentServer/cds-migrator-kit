@@ -437,7 +437,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         stage="vocabulary match",
                     )
 
-
         def field_accelerators(record_json, custom_fields_dict):
             accelerators = record_json.get("custom_fields", {}).get(
                 "cern:accelerators", []

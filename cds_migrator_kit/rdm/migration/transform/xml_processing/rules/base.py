@@ -270,7 +270,7 @@ def record_submitter(self, key, value):
     return value.get("f")
 
 
-@model.over("record_restriction", "(^963__)")
+@model.over("record_restriction", "^963__")
 def record_restriction(self, key, value):
     """Translate record restriction field."""
     restr = value.get("a")
