@@ -53,6 +53,7 @@ recursive-include cds_migrator_kit *.yaml
 recursive-include scripts *.py
 include *.conf
 exclude scripts/migrator.sh
+recursive-include cds_migrator_kit *.json
 recursive-include *.yaml
 recursive-include tests *.yaml
 recursive-include tests *.pdf;2
