@@ -324,6 +324,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             migrated_identifiers = deepcopy(
                 creator.get("person_or_org", {}).get("identifiers", [])
             )
+            name = None
             # lookup person_id
             person_id = next(
                 (
@@ -333,7 +334,10 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 ),
                 {},
             ).get("identifier")
-            name = NamesMetadata.query.filter_by(pid=person_id).one_or_none()
+            if person_id:
+                name = NamesMetadata.query.filter_by(
+                    internal_id=person_id
+                ).one_or_none()
             # filter out cern person_id
             creator["person_or_org"]["identifiers"] = [
                 identifier
