@@ -335,9 +335,12 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 {},
             ).get("identifier")
             if person_id:
-                name = NamesMetadata.query.filter_by(
-                    internal_id=person_id
-                ).one_or_none()
+                # due to possible
+                names = NamesMetadata.query.filter_by(internal_id=person_id).all()
+                name = next(
+                    (name for name in names if "unlisted" not in name.json["tags"]),
+                    None,
+                )
             # filter out cern person_id
             creator["person_or_org"]["identifiers"] = [
                 identifier

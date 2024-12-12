@@ -15,7 +15,7 @@ from cds_rdm.permissions import (
     CDSCommunitiesPermissionPolicy,
     CDSRDMRecordPermissionPolicy,
 )
-from cds_rdm.schemes import is_aleph, is_legacy_cds, is_inspire, is_inspire_author
+from cds_rdm.schemes import is_aleph, is_inspire, is_inspire_author, is_legacy_cds
 from flask_webpackext.manifest import (
     JinjaManifest,
     JinjaManifestEntry,
