@@ -1,15 +1,15 @@
-# 2788738 -> user with orcid
+# 2788738 -> user with orcid # TODO
 # 2684743 -> many fields
 # 2889522 -> multiple file versions
 # 2051872 -> multiple version with custom fields
 # 2207587 -> multiple custom fields
-# 2783103 -> file missing # TODO
-# 2783104 -> file restricted # TODO
-# 2046076 -> irregular experiment field value # TODO
-# 1597985 -> contains ALEPH identifier # TODO
-# 2041388 -> custom affiliation # TODO
-# 2779426 -> clump of keywords # TODO
-# 2294138 -> author with inspire id # TODO
+# 2783103 -> file missing
+# 2783104 -> file restricted
+# 2046076 -> irregular experiment field value
+# 1597985 -> contains ALEPH identifier
+# 2041388 -> custom affiliation
+# 2779426 -> clump of keywords
+# 2294138 -> author with inspire id
 import json
 from pathlib import Path
 
@@ -24,6 +24,7 @@ from cds_migrator_kit.rdm.migration.streams import RecordStreamDefinition
 
 
 def suite_multi_field(record):
+    """2684743."""
     dict_rec = record.to_dict()
     assert dict_rec["created"] == "2019-07-29T00:00:00+00:00"
     assert dict_rec["versions"]["index"] == 1
@@ -122,8 +123,9 @@ def suite_multi_field(record):
 
 
 def orcid_id(record):
-    dict_rec = record.to_dict()
+    """2788738."""
     # TODO pre-create user with orcid
+    dict_rec = record.to_dict()
     assert dict_rec["metadata"]["creators"] == [
         {
             "person_or_org": {
@@ -138,17 +140,139 @@ def orcid_id(record):
 
 
 def multiple_versions(record, record_state):
+    """2889522."""
     dict_rec = record.to_dict()
     assert dict_rec["versions"]["index"] == 2
 
 
 def multiple_versions_with_cs(record):
+    """2051872."""
     dict_rec = record.to_dict()
     assert dict_rec["versions"]["index"] == 2
     assert dict_rec["custom_fields"] == {
         "cern:experiments": [{"id": "CMS", "title": {"en": "CMS"}}],
         "cern:departments": [{"id": "PH", "title": {"en": "PH"}}],
     }
+
+
+def multiple_custom_fields(record):
+    """2207587."""
+    dict_rec = record.to_dict()
+    assert "custom_fields" in dict_rec
+    assert dict_rec["custom_fields"] == {
+        "cern:accelerators": [
+            {"id": "CERN AD", "title": {"en": "CERN AD"}},
+            {"id": "CERN AD", "title": {"en": "CERN AD"}},
+        ],
+    }
+
+
+def file_missing(record):
+    """2783103."""
+    dict_rec = record.to_dict()
+    assert "files" in dict_rec
+    assert dict_rec["files"]["enabled"] == False
+    assert dict_rec["files"]["count"] == 0
+    assert "media_files" in dict_rec
+    assert dict_rec["media_files"]["enabled"] == False
+    assert dict_rec["media_files"]["count"] == 0
+
+
+def file_restricted(record):
+    """2783104."""
+    dict_rec = record.to_dict()
+    assert "access" in dict_rec
+    assert dict_rec["access"]["record"] == "public"
+    assert dict_rec["access"]["files"] == "restricted"
+    assert "files" in dict_rec
+    assert dict_rec["files"]["enabled"] == True
+    assert dict_rec["files"]["count"] == 1
+
+
+def irregular_exp_field(record):
+    """2046076."""
+    dict_rec = record.to_dict()
+    assert "custom_fields" in dict_rec
+    assert dict_rec["custom_fields"] == {
+        "cern:accelerators": [
+            {"id": "CERN AD", "title": {"en": "CERN AD"}},
+        ],
+    }
+    assert "subjects" in dict_rec["metadata"]
+    assert dict_rec["metadata"]["subjects"] == [
+        {
+            "id": "Computing and Computers",
+            "subject": "Computing and Computers",
+            "scheme": "CERN",
+        },
+        {"subject": "COMPASS"},
+        {"subject": "DAQ"},
+        {"subject": "FPGA"},
+        {"subject": "GUI"},
+        {"subject": "COMPASS NA58"},
+    ]
+
+
+def custom_affiliation(record):
+    """2041388."""
+    dict_rec = record.to_dict()
+    for creator in dict_rec["metadata"]["creators"]:
+        assert "affiliations" in creator
+        for affiliation in creator["affiliations"]:
+            assert "ror" != affiliation.get("scheme", None)
+
+
+def contains_aleph(record):
+    """1597985."""
+    dict_rec = record.to_dict()
+    assert "identifiers" in dict_rec["metadata"]
+    assert dict_rec["metadata"]["identifiers"] == [
+        {"identifier": "CERN-STUDENTS-Note-2013-181", "scheme": "cds_ref"},
+        {"identifier": "000733613CER", "scheme": "aleph"},
+    ]
+
+
+def contains_keywords(record):
+    """2779426."""
+    dict_rec = record.to_dict()
+    assert "subjects" in dict_rec["metadata"]
+    assert dict_rec["metadata"]["subjects"] == [
+        {
+            "id": "Detectors and Experimental Techniques",
+            "subject": "Detectors and Experimental Techniques",
+            "scheme": "CERN",
+        },
+        {
+            "subject": "Gaseous detectors, Drift tubes, CSC, MSGC, Microdot chambers, Micromegas, Micropattern, GEM, TPC, RPC, TGC, RICH, electron avalanche, Garfield++, Magboltz"
+        },
+    ]
+
+
+def author_with_inspire(record):
+    """2294138."""
+    dict_rec = record.to_dict()
+    assert "contributors" in dict_rec["metadata"]
+    assert dict_rec["metadata"]["contributors"] == [
+        {
+            "person_or_org": {
+                "type": "personal",
+                "name": "Glatzer, Julian",
+                "given_name": "Julian",
+                "family_name": "Glatzer",
+                "identifiers": [
+                    {"identifier": "INSPIRE-00013837", "scheme": "inspire"},
+                    {"identifier": "2073275", "scheme": "lcds"},
+                ],
+            },
+            "role": {
+                "id": "other",
+                "title": {"en": "Other"},
+            },
+            "affiliations": [
+                {"name": "Universitat Autonoma de Barcelona ES"},
+            ],
+        },
+    ]
 
 
 def test_full_migration_stream(
@@ -211,3 +335,19 @@ def test_full_migration_stream(
             multiple_versions(loaded_rec, record)
         if record["legacy_recid"] == "2051872":
             multiple_versions_with_cs(loaded_rec)
+        if record["legacy_recid"] == "2207587":
+            multiple_custom_fields(loaded_rec)
+        if record["legacy_recid"] == "2783103":
+            file_missing(loaded_rec)
+        if record["legacy_recid"] == "2783104":
+            file_restricted(loaded_rec)
+        if record["legacy_recid"] == "2046076":
+            irregular_exp_field(loaded_rec)
+        if record["legacy_recid"] == "2041388":
+            custom_affiliation(loaded_rec)
+        if record["legacy_recid"] == "1597985":
+            contains_aleph(loaded_rec)
+        if record["legacy_recid"] == "2779426":
+            contains_keywords(loaded_rec)
+        if record["legacy_recid"] == "2294138":
+            author_with_inspire(loaded_rec)
