@@ -157,7 +157,6 @@ def extract_json_contributor_ids(info):
         match = regex.match(author_id)
         if match:
             identifier = match.group(3)
-            identifier = identifier.replace("INSPIRE-", "")
             ids.append({"identifier": identifier, "scheme": SOURCES[match.group(1)]})
 
     author_orcid = info.get("k")
