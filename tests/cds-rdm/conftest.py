@@ -23,6 +23,8 @@ from flask_webpackext.manifest import (
 )
 from invenio_access.models import ActionRoles
 from invenio_access.permissions import superuser_access, system_identity
+
+# from invenio_accounts import testutils
 from invenio_accounts.models import Role
 from invenio_administration.permissions import administration_access_action
 from invenio_app import factory as app_factory
