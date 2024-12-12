@@ -8,6 +8,7 @@
 """CDS-RDM transform user."""
 import csv
 import json
+from copy import deepcopy
 
 from flask import current_app
 from invenio_accounts.models import User, UserIdentity
@@ -163,14 +164,20 @@ class CDSMissingUserLoad:
         """Create an invenio user."""
         user = self.create_invenio_user(email, username)
         user_id = user.id
-
+        profile_data = {}
         if person_id:
             identity = self.create_invenio_user_identity(user_id, person_id)
             db.session.add(identity)
-
+            profile_data = {
+                "person_id": person_id,
+            }
         if name:
-            profile = self.create_invenio_user_profile(user, name)
-            db.session.add(profile)
+            if "department" in extra_data:
+                profile_data.update({"department": extra_data["department"]})
+            profile = deepcopy(user.user_profile)
+            profile.update(profile_data)
+            user.user_profile = profile
+            db.session.add(user)
 
         remote_account = self.create_invenio_remote_account(user_id, extra_data)
         db.session.add(remote_account)

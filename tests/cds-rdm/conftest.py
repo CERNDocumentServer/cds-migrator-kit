@@ -15,7 +15,7 @@ from cds_rdm.permissions import (
     CDSCommunitiesPermissionPolicy,
     CDSRDMRecordPermissionPolicy,
 )
-from cds_rdm.schemes import is_aleph, is_cern, is_inspire
+from cds_rdm.schemes import is_aleph, is_legacy_cds, is_inspire, is_inspire_author
 from flask_webpackext.manifest import (
     JinjaManifest,
     JinjaManifestEntry,
@@ -107,25 +107,24 @@ def app_config(app_config):
     )
     app_config["VOCABULARIES_NAMES_SCHEMES"] = {
         **DEFAULT_VOCABULARIES_NAMES_SCHEMES,
-        "cern": {"label": "CERN", "validator": is_cern, "datacite": "CERN"},
         "inspire": {
             "label": _("Inspire"),
-            "validator": is_inspire,
+            "validator": is_inspire_author,
             "datacite": "INSPIRE",
         },
-        "lcds": {"label": _("CDS"), "validator": is_cern, "datacite": "CDS"},
+        "lcds": {"label": _("CDS"), "validator": is_legacy_cds, "datacite": "CDS"},
     }
     app_config["RDM_RECORDS_PERSONORG_SCHEMES"] = {
         **RDM_RECORDS_PERSONORG_SCHEMES,
         **{
             "inspire": {
                 "label": _("Inspire"),
-                "validator": is_inspire,
+                "validator": is_inspire_author,
                 "datacite": "INSPIRE",
             },
             "lcds": {
                 "label": _("CDS"),
-                "validator": is_cern,
+                "validator": is_legacy_cds,
                 "datacite": "CDS",
             },
         },
