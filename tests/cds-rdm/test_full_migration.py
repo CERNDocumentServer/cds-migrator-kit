@@ -1,4 +1,4 @@
-# 2788738 -> user with orcid # TODO
+# 2788738 -> user with orcid
 # 2684743 -> many fields
 # 2889522 -> multiple file versions
 # 2051872 -> multiple version with custom fields
@@ -17,7 +17,12 @@ import pytest_mock
 from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 from flask import current_app
 from invenio_access.permissions import system_identity
+from invenio_accounts.models import UserIdentity
+from invenio_oauthclient.models import RemoteAccount
 from invenio_rdm_records.proxies import current_rdm_records_service
+from invenio_records_resources.proxies import current_service_registry
+from invenio_vocabularies.contrib.names.api import Name
+from invenio_vocabularies.contrib.names.models import NamesMetadata
 
 from cds_migrator_kit.rdm.migration.runner import Runner
 from cds_migrator_kit.rdm.migration.streams import RecordStreamDefinition
@@ -122,9 +127,8 @@ def suite_multi_field(record):
     ]
 
 
-def orcid_id(record):
+def orcid_id(record, orcid_name_data):
     """2788738."""
-    # TODO pre-create user with orcid
     dict_rec = record.to_dict()
     assert dict_rec["metadata"]["creators"] == [
         {
@@ -133,10 +137,40 @@ def orcid_id(record):
                 "name": "Mendoza, Diego",
                 "given_name": "Diego",
                 "family_name": "Mendoza",
-                "identifiers": [{"identifier": "2773374", "scheme": "lcds"}],
+                "identifiers": [
+                    {"identifier": "2773374", "scheme": "lcds"},
+                    {"identifier": "0009-0007-7638-4652", "scheme": "orcid"},
+                ],
             }
         }
     ]
+
+    name_from_db = NamesMetadata.query.filter_by(pid=orcid_name_data["id"]).one()
+    assert "identifiers" in name_from_db.json
+    orcid_identifier = orcid_name_data["identifiers"][0]
+    assert orcid_identifier in name_from_db.json["identifiers"]
+
+    user_identity = UserIdentity.query.filter_by(
+        id=name_from_db.internal_id, method="cern"
+    ).one()
+    assert user_identity is not None
+
+    remote_account = RemoteAccount.query.filter_by(user_id=user_identity.id_user).one()
+    assert hasattr(remote_account, "extra_data")
+    assert remote_account.extra_data == {
+        "migration": {
+            "source": "PEOPLE COLLECTION, PERSON_ID FOUND",
+            "note": "MIGRATED INACTIVE ACCOUNT",
+        }
+    }
+
+    for identifier in dict_rec["metadata"]["creators"][0]["person_or_org"][
+        "identifiers"
+    ]:
+        identifier_scheme = identifier.get("scheme")
+        assert "cern" != identifier_scheme
+        if identifier_scheme in current_app.config["VOCABULARIES_NAMES_SCHEMES"]:
+            assert identifier in name_from_db.json["identifiers"]
 
 
 def multiple_versions(record, record_state):
@@ -283,9 +317,15 @@ def test_full_migration_stream(
     search,
     search_clear,
     superuser_identity,
+    orcid_name_data,
     community,
     mocker,
 ):
+    # Creates a new name for the orcid_user
+    service = current_service_registry.get("names")
+    service.create(system_identity, orcid_name_data)
+    Name.index.refresh()
+
     mocker.patch(
         "cds_migrator_kit.rdm.migration.runner.Runner._read_config",
         return_value={
@@ -330,7 +370,7 @@ def test_full_migration_stream(
         if record["legacy_recid"] == "2684743":
             suite_multi_field(loaded_rec)
         if record["legacy_recid"] == "2788738":
-            orcid_id(loaded_rec)
+            orcid_id(loaded_rec, orcid_name_data)
         if record["legacy_recid"] == "2889522":
             multiple_versions(loaded_rec, record)
         if record["legacy_recid"] == "2051872":
