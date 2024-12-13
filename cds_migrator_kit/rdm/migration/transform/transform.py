@@ -338,7 +338,11 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 # due to possible
                 names = NamesMetadata.query.filter_by(internal_id=person_id).all()
                 name = next(
-                    (name for name in names if "unlisted" not in name.json["tags"]),
+                    (
+                        name
+                        for name in names
+                        if "unlisted" not in name.json.get("tags", [])
+                    ),
                     None,
                 )
             # filter out cern person_id
@@ -374,8 +378,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             _creators = list(filter(lambda x: x is not None, _creators))
             for creator in _creators:
                 creator_affiliations(creator)
-                creator_identifiers(creator)
                 lookup_person_id(creator)
+                creator_identifiers(creator)
             return _creators
 
         def _resource_type(entry):
