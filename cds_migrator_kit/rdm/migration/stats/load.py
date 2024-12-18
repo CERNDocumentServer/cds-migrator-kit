@@ -35,7 +35,10 @@ _QUERY_VIEWS = {
                 {"match": {"id_bibrec": "<recid>"}},
                 {"match": {"event_type": "<type>"}},
             ],
-            "filter": [{"bool": {"must_not": [{"match": {"bot": True}}]}}],
+            "filter": [
+                {"range": {"timestamp": {"lt": "<date>"}}},
+                {"bool": {"must_not": [{"match": {"bot": True}}]}},
+            ],
         }
     }
 }
@@ -58,10 +61,12 @@ class CDSRecordStatsLoad(Load):
     def __init__(
         self,
         config,
+        less_than_date,
         dry_run=False,
     ):
         """Constructor."""
         self.config = config
+        self.less_than_date = less_than_date
         self.dry_run = dry_run
         self._init_config(config)
 
@@ -101,6 +106,7 @@ class CDSRecordStatsLoad(Load):
             self.config["SRC_SEARCH_SIZE"],
             self.config["SRC_SEARCH_SCROLL"],
             self.LEGACY_TO_RDM_EVENTS_MAP,
+            self.less_than_date,
         )
         # Get the scroll ID
         sid = data["_scroll_id"]
@@ -141,7 +147,9 @@ class CDSRecordStatsLoad(Load):
         legacy_total = os_count(
             self.src_os_client,
             "cds*",
-            q=generate_query(event_type, recid, self.LEGACY_TO_RDM_EVENTS_MAP),
+            q=generate_query(
+                event_type, recid, self.LEGACY_TO_RDM_EVENTS_MAP, self.less_than_date
+            ),
         )
         logger.info(
             f"Total amount of records of type `{event_type}` in legacy: {legacy_total['count']}"
