@@ -34,7 +34,8 @@ _QUERY_VIEWS = {
             "must": [
                 {"match": {"id_bibrec": "<recid>"}},
                 {"match": {"event_type": "<type>"}},
-            ]
+            ],
+            "filter": [{"bool": {"must_not": [{"match": {"bot": True}}]}}],
         }
     }
 }
