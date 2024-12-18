@@ -10,17 +10,23 @@
 import json
 import time
 from copy import deepcopy
+from datetime import datetime
 
 from opensearchpy import OpenSearch
 from opensearchpy.exceptions import OpenSearchException
 from opensearchpy.helpers import BulkIndexError, parallel_bulk
 
 
-def generate_query(doc_type, identifier, legacy_to_rdm_events_map):
+def generate_query(doc_type, identifier, legacy_to_rdm_events_map, less_than_date):
     """Generate legacy query based on event type."""
     q = deepcopy(legacy_to_rdm_events_map[doc_type]["query"])
     q["query"]["bool"]["must"][0]["match"]["id_bibrec"] = identifier
     q["query"]["bool"]["must"][1]["match"]["event_type"] = doc_type
+
+    # Convert to datetime object
+    dt = datetime.strptime(less_than_date, "%Y-%m-%dT%H:%M:%S")
+    timestamp_ms = int(dt.timestamp() * 1000)
+    q["query"]["bool"]["filter"][0]["range"]["timestamp"]["lt"] = timestamp_ms
 
     return q
 
@@ -33,11 +39,12 @@ def os_search(
     search_size,
     search_scroll,
     legacy_to_rdm_events_map,
+    less_than_date,
 ):
     """Sear utility."""
     ex = None
     i = 0
-    q = generate_query(doc_type, identifier, legacy_to_rdm_events_map)
+    q = generate_query(doc_type, identifier, legacy_to_rdm_events_map, less_than_date)
     while i < 10:
         try:
             return src_os_client.search(

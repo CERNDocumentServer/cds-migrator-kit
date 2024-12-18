@@ -20,7 +20,9 @@ from cds_migrator_kit.rdm.migration.stats.log import StatsLogger
 class RecordStatsRunner:
     """ETL streams runner."""
 
-    def __init__(self, stream_definition, filepath, config, log_dir, dry_run):
+    def __init__(
+        self, stream_definition, filepath, config, less_than_date, log_dir, dry_run
+    ):
         """Constructor."""
         self.config = config
 
@@ -33,7 +35,9 @@ class RecordStatsRunner:
             stream_definition.name,
             extract=stream_definition.extract_cls(filepath),
             transform=stream_definition.transform_cls(),
-            load=stream_definition.load_cls(dry_run=dry_run, config=config),
+            load=stream_definition.load_cls(
+                dry_run=dry_run, config=config, less_than_date=less_than_date
+            ),
         )
 
     def run(self):

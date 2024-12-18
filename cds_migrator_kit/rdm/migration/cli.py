@@ -7,6 +7,7 @@
 
 """CDS-RDM command line module."""
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import click
@@ -67,8 +68,13 @@ def stats():
     "--filepath",
     help="Path to the list of records file that the legacy statistics will be migrated.",
 )
+@click.option(
+    "--less-than-date",
+    default=lambda: datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+    help="ISO string e.g 2024-12-13T20:00:00 to migrate events up to this date.",
+)
 @with_appcontext
-def run(filepath, dry_run=False):
+def run(filepath, less_than_date, dry_run=False):
     """Migrate the legacy statistics for the records in `filepath`."""
     stream_config = current_app.config["CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG"]
     stream_config["DEST_SEARCH_INDEX_PREFIX"] = (
@@ -80,6 +86,7 @@ def run(filepath, dry_run=False):
         stream_definition=RecordStatsStreamDefinition,
         filepath=filepath,
         config=stream_config,
+        less_than_date=less_than_date,
         log_dir=log_dir,
         dry_run=dry_run,
     )
