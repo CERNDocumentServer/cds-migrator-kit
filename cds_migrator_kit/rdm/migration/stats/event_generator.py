@@ -11,6 +11,25 @@ from copy import deepcopy
 from datetime import datetime
 
 
+def flag_robots_and_COUNTER(entry):
+    """Return a tuple of booleans.
+
+    First element is the value of is_bot and the second the flag to mark the event as
+    `before_COUNTER` as we don't have information if the registered event was from a bot
+    or not.
+    """
+    is_bot_missing = "bot" in entry
+    if is_bot_missing:
+        # when is_bot is missing, we assume that it was a human
+        # but we mark this uncertainty with before_COUNTER =True
+        is_bot = False
+        before_COUNTER = True
+    else:
+        is_bot = entry["bot"]
+        before_COUNTER = False
+    return is_bot, before_COUNTER
+
+
 def process_download_event(entry, rec_context, logger):
     """Entry from legacy stat events format.
 
@@ -50,6 +69,9 @@ def process_download_event(entry, rec_context, logger):
         ]
     }
     """
+    # filter out robot events
+    is_bot, before_COUNTER = flag_robots_and_COUNTER(entry)
+
     # Convert timestamp to strict_date_hour_minute_second format
     timestamp = entry["timestamp"]
     timestamp = datetime.utcfromtimestamp(timestamp / 1000).strftime(
@@ -96,13 +118,17 @@ def process_download_event(entry, rec_context, logger):
         "recid": _record_version["new_recid"],
         "parent_recid": rec_context["parent_recid"],
         "referrer": None,
+        "is_robot": is_bot,
         "via_api": False,
-        "is_robot": entry.get("bot", False),
         "country": entry.get("country", ""),
         "visitor_id": entry.get("visitor_id", ""),
         "unique_session_id": entry["unique_session_id"],
         # Note: id_bibrec doesn't have the new format pids
         "unique_id": f"ui_{_record_version['new_recid']}",
+        # Mark the event as migrated
+        "is_lcds": True,
+        # Mark if event was COUNTER compliant
+        "before_COUNTER": before_COUNTER,
     }
 
 
@@ -148,6 +174,9 @@ def process_pageview_event(entry, rec_context, logger):
     }
     """
     """We log the legacy page views events **ALWAYS TO THE LATEST VERSION**"""
+    # filter out robot events
+    is_bot, before_COUNTER = flag_robots_and_COUNTER(entry)
+
     # Convert timestamp to strict_date_hour_minute_second format
     timestamp = entry["timestamp"]
     timestamp = datetime.utcfromtimestamp(timestamp / 1000).strftime(
@@ -167,12 +196,16 @@ def process_pageview_event(entry, rec_context, logger):
         "parent_recid": rec_context["parent_recid"],
         "referrer": None,
         "via_api": False,
-        "is_robot": entry.get("bot", False),
+        "is_robot": is_bot,
         "visitor_id": entry.get("visitor_id", ""),
         # Note: id_bibrec doesn't have the new format pids
         "unique_id": f"ui_{rec_context['latest_version']}",
         "unique_session_id": entry["unique_session_id"],
         "country": entry.get("country", ""),
+        # Mark the event as migrated
+        "is_lcds": True,
+        # Mark if event was COUNTER compliant
+        "before_COUNTER": before_COUNTER,
     }
 
 
