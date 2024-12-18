@@ -1,5 +1,5 @@
 email,person_id,surname,given_names
-submitter11@cern.ch,11111,Submitter,Eleven
+submitter11@cern.ch,,Submitter,Eleven
 submitter12@cern.ch,11112,Submitter,Twelve
 submitter14@cern.ch,11114,Submitter,Fourteen
 submitter9@cern.ch,1119,Submitter,Nine

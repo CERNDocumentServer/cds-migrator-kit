@@ -17,7 +17,7 @@ import pytest_mock
 from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 from flask import current_app
 from invenio_access.permissions import system_identity
-from invenio_accounts.models import UserIdentity
+from invenio_accounts.models import User, UserIdentity
 from invenio_oauthclient.models import RemoteAccount
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_records_resources.proxies import current_service_registry
@@ -391,3 +391,57 @@ def test_full_migration_stream(
             contains_keywords(loaded_rec)
         if record["legacy_recid"] == "2294138":
             author_with_inspire(loaded_rec)
+
+    # Check if remote account has the correct metadata
+    remote_account_metadata()
+
+
+def remote_account_metadata():
+    """Checks for remote account extra_data."""
+    user = User.query.filter_by(email="submitter13@cern.ch").one()
+    assert user is not None
+
+    remote_account = RemoteAccount.query.filter_by(user_id=user.id).one()
+    assert hasattr(remote_account, "extra_data")
+    assert remote_account.extra_data == {
+        "migration": {
+            "source": "LEGACY DB, PERSON ID MISSING",
+            "note": "MIGRATED INACTIVE ACCOUNT",
+        }
+    }
+
+    user = User.query.filter_by(email="submitter16@cern.ch").one()
+    assert user is not None
+
+    remote_account = RemoteAccount.query.filter_by(user_id=user.id).one()
+    assert hasattr(remote_account, "extra_data")
+    assert remote_account.extra_data == {
+        "migration": {
+            "source": "RECORD, EMAIL NOT FOUND IN ANY SOURCE",
+            "note": "MIGRATED INACTIVE ACCOUNT",
+        }
+    }
+
+    user = User.query.filter_by(email="submitter11@cern.ch").one()
+    assert user is not None
+
+    remote_account = RemoteAccount.query.filter_by(user_id=user.id).one()
+    assert hasattr(remote_account, "extra_data")
+    assert remote_account.extra_data == {
+        "migration": {
+            "source": "PEOPLE COLLECTION, PERSON_ID NOT FOUND",
+            "note": "MIGRATED INACTIVE ACCOUNT",
+        }
+    }
+
+    user = User.query.filter_by(email="submitter15@cern.ch").one()
+    assert user is not None
+
+    remote_account = RemoteAccount.query.filter_by(user_id=user.id).one()
+    assert hasattr(remote_account, "extra_data")
+    assert remote_account.extra_data == {
+        "migration": {
+            "source": "PEOPLE COLLECTION, PERSON_ID FOUND",
+            "note": "MIGRATED INACTIVE ACCOUNT",
+        }
+    }
