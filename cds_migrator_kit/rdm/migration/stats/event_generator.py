@@ -18,7 +18,7 @@ def flag_robots_and_COUNTER(entry):
     `before_COUNTER` as we don't have information if the registered event was from a bot
     or not.
     """
-    is_bot_missing = "bot" in entry
+    is_bot_missing = "bot" not in entry
     if is_bot_missing:
         # when is_bot is missing, we assume that it was a human
         # but we mark this uncertainty with before_COUNTER =True
