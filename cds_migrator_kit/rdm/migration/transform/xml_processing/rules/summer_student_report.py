@@ -83,6 +83,7 @@ def corporate_author(self, key, value):
             departments.append(department)
         self["custom_fields"]["cern:departments"] = departments
         raise IgnoreKey("contributors")
+    raise IgnoreKey("contributors")
 
 
 @model.over("internal_notes", "^562__")
