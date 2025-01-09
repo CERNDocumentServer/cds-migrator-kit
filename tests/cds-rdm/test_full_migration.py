@@ -80,6 +80,33 @@ def suite_multi_field(record):
     ]
     assert dict_rec["metadata"]["contributors"] == [
         {
+            "affiliations": [
+                {"name": "The Barcelona Institute of Science and Technology " "BIST ES"}
+            ],
+            "person_or_org": {
+                "family_name": "Casolino",
+                "given_name": "Mirkoantonio",
+                "identifiers": [
+                    {"identifier": "INSPIRE-00366594", "scheme": "inspire"},
+                    {"identifier": "2083412", "scheme": "lcds"},
+                ],
+                "name": "Casolino, Mirkoantonio",
+                "type": "personal",
+            },
+            "role": {"id": "other", "title": {"en": "Other"}},
+        },
+        {
+            "affiliations": [{"name": "CERN"}],
+            "person_or_org": {
+                "family_name": "Ahdida",
+                "given_name": "Claudia Christina",
+                "identifiers": [{"identifier": "2087282", "scheme": "lcds"}],
+                "name": "Ahdida, Claudia Christina",
+                "type": "personal",
+            },
+            "role": {"id": "other", "title": {"en": "Other"}},
+        },
+        {
             "person_or_org": {
                 "type": "personal",
                 "name": "Vincke, Helmut",

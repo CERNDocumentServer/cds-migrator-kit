@@ -125,11 +125,8 @@ def additional_descriptions(self, key, value):
     raise IgnoreKey("additional_descriptions")
 
 
-@model.over("creators", "^100__")
-@for_each_value
-@require(["a"])
-def creators(self, key, value):
-    """Translates the creators field."""
+def process_contributors(key, value):
+    """Utility processing contributors XML."""
     role = value.get("e")
     if role:
         role = get_contributor_role("e", role)
@@ -141,6 +138,7 @@ def creators(self, key, value):
         raise UnexpectedValue(field=key, subfield="9", value=beard)
     affiliations = get_contributor_affiliations(value)
     names = value.get("a").strip().split(",")
+
     if len(names) == 2:
         names = {"family_name": names[0].strip(), "given_name": names[1].strip()}
     else:
@@ -164,11 +162,20 @@ def creators(self, key, value):
     return contributor
 
 
+@model.over("creators", "^100__")
+@for_each_value
+@require(["a"])
+def creators(self, key, value):
+    """Translates the creators field."""
+    return process_contributors(key, value)
+
+
 @model.over("contributors", "^700__")
+@for_each_value
 @require(["a"])
 def contributors(self, key, value):
     """Translates contributors."""
-    return creators(self, key, value)
+    return process_contributors(key, value)
 
 
 @model.over("languages", "^041__")

@@ -66,7 +66,6 @@ def test_migrate_record(datadir, base_app):
                 "cern:departments": ["EP"],
             },
             "contributors": [
-                None,
                 {
                     "person_or_org": {
                         "type": "personal",
@@ -159,6 +158,35 @@ def test_migrate_record_all_fields(datadir, base_app):
                 "cern:departments": ["HSE"],
             },
             "contributors": [
+                {
+                    "affiliations": [
+                        "The Barcelona Institute of Science and " "Technology BIST ES"
+                    ],
+                    "person_or_org": {
+                        "family_name": "Casolino",
+                        "given_name": "Mirkoantonio",
+                        "identifiers": [
+                            {"identifier": "INSPIRE-00366594", "scheme": "inspire"},
+                            {"identifier": "1111", "scheme": "cern"},
+                            {"identifier": "2083412", "scheme": "lcds"},
+                        ],
+                        "type": "personal",
+                    },
+                    "role": {"id": "other"},
+                },
+                {
+                    "affiliations": ["CERN"],
+                    "person_or_org": {
+                        "family_name": "A",
+                        "given_name": "CC",
+                        "identifiers": [
+                            {"identifier": "2087282", "scheme": "lcds"},
+                            {"identifier": "1111", "scheme": "cern"},
+                        ],
+                        "type": "personal",
+                    },
+                    "role": {"id": "other"},
+                },
                 {
                     "person_or_org": {
                         "type": "personal",
