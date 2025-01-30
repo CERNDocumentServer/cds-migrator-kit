@@ -29,7 +29,7 @@
           {% if row["priority"] == "warning" %}class="table-warning"{% endif %}
       >
         <th scope="row"><a
-          href="https://cds.cern.ch/record/{{ row["recid"] }}?no_redirect_migrated">{{ row["recid"] }}</a>
+          href="https://cds.cern.ch/record/{{ row["recid"] }}/export/hm?no_redirect_migrated">{{ row["recid"] }}</a>
         </th>
         <td>
           {{ row["stage"] }}

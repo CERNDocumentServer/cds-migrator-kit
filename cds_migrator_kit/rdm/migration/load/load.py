@@ -221,6 +221,17 @@ class CDSRecordServiceLoad(Load):
             self._load_communities(draft, entry)
             db.session.commit()
         else:
+            if draft is None:
+                raise ManualImportRequired(
+                    message="Version 1 not found",
+                    field="validation",
+                    stage="load",
+                    description="Version 1 of files missing",
+                    recid=entry["record"]["recid"],
+                    priority="warning",
+                    value=None,
+                    subfield=None,
+                )
             draft = current_rdm_records_service.new_version(identity, draft["id"])
             draft_dict = draft.to_dict()
             missing_data = {

@@ -99,7 +99,14 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         return 1
 
     def _access(self, entry, record_dump):
-        return entry["record_restriction"]
+        restrictions = entry.get("record_restriction")
+        if not restrictions:
+            raise UnexpectedValue(
+                message="record restriction not found",
+                stage="transform",
+                field="record_restriction",
+            )
+        return restrictions
 
     def _index(self, record_dump):
         """Returns the version index of the record."""
@@ -134,7 +141,10 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         return json_entry.get("communities", [])
 
     def _owner(self, json_entry):
-        email = json_entry["submitter"]
+        email = json_entry.get("submitter")
+        if not email:
+            return "-1"
+
         try:
             user = User.query.filter_by(email=email).one()
             return user.id
@@ -385,12 +395,22 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         def _resource_type(entry):
             return entry["resource_type"]
 
+        def publication_date(entry):
+            pd = json_entry.get("publication_date")
+            if not pd:
+                if not json_entry.get("_created"):
+                    raise MissingRequiredField(
+                        message="missing creation or publication date", field="916"
+                    )
+                return arrow.get(json_entry["_created"]).date().isoformat()
+            return pd
+
         metadata = {
             "creators": creators(json_entry),
-            "title": json_entry["title"],
+            "title": json_entry.get("title"),
             "resource_type": _resource_type(json_entry),
             "description": json_entry.get("description"),
-            "publication_date": json_entry.get("publication_date"),
+            "publication_date": publication_date(json_entry),
             "contributors": creators(json_entry, key="contributors"),
             "subjects": json_entry.get("subjects"),
             "publisher": json_entry.get("publisher"),
@@ -610,6 +630,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         try:
             record = self._record(entry)
             original_dump = record.pop("_original_dump", {})
+
             if record:
                 return {
                     "record": record,
@@ -712,7 +733,6 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         # we start versions from files (because this is the only way from legacy)
         _files = entry["files"]
         record_access = record["access"]
-
         for file in _files:
             if file["version"] not in versions:
                 versions[file["version"]] = {

@@ -1,16 +1,14 @@
-data_dir: cds_migrator_kit/rdm/migration/data/
-tmp_dir: cds_migrator_kit/rdm/migration/tmp
-state_dir: cds_migrator_kit/rdm/migration/cache
-log_dir: cds_migrator_kit/rdm/migration/log
 db_uri: postgresql://cds-rdm:cds-rdm@localhost:5432/cds-rdm
-old_secret_key: CHANGE_ME
-new_secret_key: CHANGE_ME
 records:
-  extract:
-    dirpath: cds_migrator_kit/rdm/migration/data/summer_student_reports/dump/
-  transform:
-    files_dump_dir: cds_migrator_kit/rdm/migration/data/summer_student_reports/files/
-    missing_users: cds_migrator_kit/rdm/migration/data/users
-    community_id: 96bf2d41-1f24-4025-baf7-65fd97c45aed
-  load:
-    legacy_pids_to_redirect: cds_migrator_kit/rdm/migration/data/summer_student_reports/duplicated_pids.json
+  thesis:
+    data_dir: cds_migrator_kit/rdm/migration/data/thesis
+    tmp_dir: cds_migrator_kit/rdm/migration/tmp/thesis
+    log_dir: cds_migrator_kit/rdm/migration/log/thesis
+    extract:
+      dirpath: cds_migrator_kit/rdm/migration/data/thesis/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/migration/data/thesis/files/
+      missing_users: cds_migrator_kit/rdm/migration/data/users
+      community_id: 96bf2d41-1f24-4025-baf7-65fd97c45aed
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/migration/data/thesis/duplicated_pids.json

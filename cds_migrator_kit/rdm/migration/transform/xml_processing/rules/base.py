@@ -56,7 +56,7 @@ def created(self, key, value):
     if "s" in value:
         source = clean_val("s", value, str)
         if source != "n":
-            raise UnexpectedValue(subfield="s", key="key", value=value)
+            raise UnexpectedValue(subfield="s", key=key, value=value)
     date_values = value.get("w")
     if not date_values or not date_values[0]:
         return datetime.date.today().isoformat()
@@ -137,7 +137,12 @@ def process_contributors(key, value):
         # and it should be ignored if value == #BEARD#
         raise UnexpectedValue(field=key, subfield="9", value=beard)
     affiliations = get_contributor_affiliations(value)
-    names = value.get("a").strip().split(",")
+
+    names = value.get("a")
+    if type(names) == tuple or names is None:
+        raise UnexpectedValue(field=key, subfield="a", value=names)
+
+    names = names.strip().split(",")
 
     if len(names) == 2:
         names = {"family_name": names[0].strip(), "given_name": names[1].strip()}
@@ -205,6 +210,8 @@ def subjects(self, key, value):
         if not subject_scheme:
             return True
 
+        if type(subject_scheme) is not str:
+            raise UnexpectedValue(field=key, subfield=subfield, value=subject_scheme)
         is_cern_scheme = (
             subject_scheme.lower() == "szgecern" or subject_scheme.lower() == "cern"
         )
@@ -274,7 +281,14 @@ def custom_fields(self, key, value):
 @model.over("submitter", "(^859__)")
 def record_submitter(self, key, value):
     """Translate record submitter."""
-    return value.get("f")
+    submitter = value.get("f")
+    if type(submitter) is tuple:
+        submitter = submitter[0]
+        raise UnexpectedValue(field=key, subfield="f", value=value.get("f"))
+        # TODO handle all the other submitters
+    if submitter:
+        submitter = submitter.lower()
+    return submitter
 
 
 @model.over("record_restriction", "^963__")
@@ -362,3 +376,27 @@ def _pids(self, key, value):
         doi_identifier["provider"] = "external"
 
     return {"doi": doi_identifier}
+
+
+@model.over("contributors", "^710__")
+@for_each_value
+def corporate_author(self, key, value):
+    """Translates corporate author."""
+    if "g" in value:
+        contributor = {
+            "person_or_org": {
+                "type": "organizational",
+                "name": StringValue(value.get("g")).parse(),
+                "family_name": StringValue(value.get("g")).parse(),
+            },
+            "role": {"id": "hostinginstitution"},
+        }
+        return contributor
+    if "5" in value:
+        department = StringValue(value.get("5")).parse()
+        departments = self.get("custom_fields", {}).get("cern:departments", [])
+        if department and department not in departments:
+            departments.append(department)
+        self["custom_fields"]["cern:departments"] = departments
+        raise IgnoreKey("contributors")
+    raise IgnoreKey("contributors")
