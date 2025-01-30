@@ -40,8 +40,13 @@ def migration():
     "--dry-run",
     is_flag=True,
 )
+@click.option(
+    "--collection",
+    help="Collection name to be migrated",
+    required=True,
+)
 @with_appcontext
-def run(dry_run=False):
+def run(collection, dry_run=False):
     """Run."""
     stream_config = current_app.config["CDS_MIGRATOR_KIT_STREAM_CONFIG"]
     runner = Runner(
@@ -49,6 +54,7 @@ def run(dry_run=False):
         # stream_definitions=[UserStreamDefinition],
         config_filepath=Path(stream_config).absolute(),
         dry_run=dry_run,
+        collection=collection,
     )
     runner.run()
 

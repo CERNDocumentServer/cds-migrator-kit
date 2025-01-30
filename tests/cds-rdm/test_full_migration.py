@@ -356,23 +356,22 @@ def test_full_migration_stream(
     mocker.patch(
         "cds_migrator_kit.rdm.migration.runner.Runner._read_config",
         return_value={
-            "data_dir": "tests/cds-rdm/data/",
-            "tmp_dir": "tests/cds-rdm/data/",
-            "state_dir": "tests/cds-rdm/data/cache",
-            "log_dir": "tests/cds-rdm/data/log",
             "db_uri": "postgresql://cds-rdm-migration:cds-rdm-migration@localhost:5432/cds-rdm-migration",
-            "old_secret_key": "CHANGE_ME",
-            "new_secret_key": "CHANGE_ME",
             "records": {
-                "extract": {"dirpath": "tests/cds-rdm/data/sspn/dumps/"},
-                "transform": {
-                    "files_dump_dir": "tests/cds-rdm/data/sspn/files/",
-                    "missing_users": "tests/cds-rdm/data/users",
-                    "community_id": f"{str(community.id)}",
-                },
-                "load": {
-                    "legacy_pids_to_redirect": "cds_migrator_kit/rdm/migration/data/summer_student_reports/duplicated_pids.json"
-                },
+                "sspn": {
+                    "data_dir": "tests/cds-rdm/data/sspn",
+                    "tmp_dir": "tests/cds-rdm/data/sspn",
+                    "log_dir": "tests/cds-rdm/data/log/sspn",
+                    "extract": {"dirpath": "tests/cds-rdm/data/sspn/dumps/"},
+                    "transform": {
+                        "files_dump_dir": "tests/cds-rdm/data/sspn/files/",
+                        "missing_users": "tests/cds-rdm/data/users",
+                        "community_id": f"{str(community.id)}",
+                    },
+                    "load": {
+                        "legacy_pids_to_redirect": "cds_migrator_kit/rdm/migration/data/summer_student_reports/duplicated_pids.json"
+                    },
+                }
             },
         },
     )
@@ -381,6 +380,7 @@ def test_full_migration_stream(
         stream_definitions=[RecordStreamDefinition],
         config_filepath=Path(stream_config).absolute(),
         dry_run=False,
+        collection="sspn",
     )
     runner.run()
 

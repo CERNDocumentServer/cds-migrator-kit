@@ -62,30 +62,6 @@ def supervisor(self, key, value):
     return contributor
 
 
-@model.over("contributors", "^710__")
-@for_each_value
-def corporate_author(self, key, value):
-    """Translates corporate author."""
-    if "g" in value:
-        contributor = {
-            "person_or_org": {
-                "type": "organizational",
-                "name": StringValue(value.get("g")).parse(),
-                "family_name": StringValue(value.get("g")).parse(),
-            },
-            "role": {"id": "hostinginstitution"},
-        }
-        return contributor
-    if "5" in value:
-        department = StringValue(value.get("5")).parse()
-        departments = self.get("custom_fields", {}).get("cern:departments", [])
-        if department and department not in departments:
-            departments.append(department)
-        self["custom_fields"]["cern:departments"] = departments
-        raise IgnoreKey("contributors")
-    raise IgnoreKey("contributors")
-
-
 @model.over("internal_notes", "^562__")
 @for_each_value
 def note(self, key, value):
