@@ -138,6 +138,10 @@ Dump the community id to migration `streams.yaml`(if the slug exists then it wil
 invenio migration community dump --slug 'sspn' --title 'Summer Student Project Notes' --filepath /path/to/cds_migrator_kit/rdm/migration/streams.yaml
 ```
 
+#### Missing Users files
+
+Make sure to add the user files required to be able to run the migration. The files can be found in `/eos/media/cds/cds-rdm/dev/migration/users/`. They should be stored in path indicated in the streams.yaml, the value that corresponds to the `record.transform.missing_users` key.
+
 #### Records migration
 
 Run the below command to migrate records in the created community from before:
