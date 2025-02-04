@@ -157,6 +157,7 @@ class CDSRecordServiceLoad(Load):
         communities = entry["parent"]["json"]["communities"]["ids"]
         for community in communities:
             parent.communities.add(community)
+        parent.communities.default = entry["parent"]["json"]["communities"]["default"]
         parent.commit()
 
     def _after_publish_update_dois(self, identity, record, entry):
