@@ -1,0 +1,14 @@
+db_uri: postgresql://cds-rdm:cds-rdm@localhost:5432/cds-rdm
+records:
+  thesis:
+    data_dir: cds_migrator_kit/rdm/data/thesis
+    tmp_dir: cds_migrator_kit/rdm/tmp/thesis
+    log_dir: cds_migrator_kit/rdm/log/thesis
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/thesis/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/thesis/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      community_id: 96bf2d41-1f24-4025-baf7-65fd97c45aed
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/thesis/duplicated_pids.json
