@@ -6,6 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM migration load module."""
+import datetime
 import json
 import logging
 import os
@@ -162,12 +163,27 @@ class CDSRecordServiceLoad(Load):
                 _draft = current_rdm_records_service.edit(identity, record["id"])
                 current_rdm_records_service.publish(identity, _draft["id"])
 
-    def _after_publish_update_created(self, record, entry):
-        """Update created timestamp post publish."""
-        # Fix the `created` timestamp forcing the one from the legacy system
-        # Force the created date. This can be done after publish as the service
-        # overrides the `created` date otherwise.
-        record._record.model.created = arrow.get(entry["record"]["created"]).datetime
+    def _after_publish_update_created(self, record, entry, version):
+        """Update created timestamp post publish.
+
+        Ensures that the `created` timestamp is correctly set, preferring:
+        1. The original legacy system value for the version.
+        2. The record's creation date if there are no files.
+        3. Today's date if the original value and file creation date is missing.
+        """
+        creation_date = entry["record"]["created"].datetime
+
+        versions = entry.get("versions", {})
+        version_data = versions.get(version, {})
+        # Use records creation date for the first version, unless it was created today
+        # which means it was missing so we rely on the files creation date
+        creation_date_is_today = creation_date.date() == datetime.date.today()
+        if version_data.get("files") and not version == 1 or creation_date_is_today:
+            # Subsequent versions should use the file creation date, instead of the record creation date,
+            # which is stored as the publication date in the version data
+            creation_date = version_data["publication_date"].datetime
+
+        record._record.model.created = creation_date
         record._record.commit()
 
     def _after_publish_mint_recid(self, record, entry, version):
@@ -178,11 +194,25 @@ class CDSRecordServiceLoad(Load):
             # but then we get a double redirection
             legacy_recid_minter(legacy_recid, record._record.parent.model.id)
 
+    def _after_publish_update_files_created(self, record, entry, version):
+        """Update the created date of the files post publish."""
+        # Fix the `created` timestamp forcing the one from the legacy system
+        # Force the created date. This can be done after publish as the service
+        # overrides the `created` date otherwise.
+        versions = entry.get("versions", {})
+        version_data = versions.get(version, {})
+        files = version_data.get("files", {})
+        for _, file_data in files.items():
+            file = record._record.files.entries[file_data["key"]]
+            file.model.created = arrow.get(file_data["creation_date"]).datetime
+            file.commit()
+
     def _after_publish(self, identity, published_record, entry, version):
         """Run fixes after record publish."""
         self._after_publish_update_dois(identity, published_record, entry)
-        self._after_publish_update_created(published_record, entry)
+        self._after_publish_update_created(published_record, entry, version)
         self._after_publish_mint_recid(published_record, entry, version)
+        self._after_publish_update_files_created(published_record, entry, version)
         db.session.commit()
 
     def _pre_publish(self, identity, entry, version, draft):

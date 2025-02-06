@@ -86,7 +86,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         try:
             return arrow.get(json_entry["_created"])
         except KeyError:
-            return datetime.date.today().isoformat()
+            return arrow.get(datetime.date.today().isoformat())
 
     def _updated(self, record_dump):
         """Returns the creation date of the record."""
@@ -435,6 +435,24 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         )
         return custom_fields
 
+    def _verify_creation_date(self, entry, json_data):
+        """Verify creation date.
+
+        If the record has no files (file creation date will be used as record
+        creation date) and no creation date, raise an exception.
+        """
+        if not entry.get("files") and not json_data.get("_created"):
+            raise ManualImportRequired(
+                message="Record missing creation date",
+                field="validation",
+                stage="transform",
+                description="Record has no files and no creation date",
+                recid=entry["recid"],
+                priority="warning",
+                value=None,
+                subfield=None,
+            )
+
     def transform(self, entry):
         """Transform a record single entry."""
         record_dump = CDSRecordDump(
@@ -442,9 +460,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         )
 
         migration_logger = RDMJsonLogger()
-
         record_dump.prepare_revisions()
         timestamp, json_data = record_dump.latest_revision
+        self._verify_creation_date(entry, json_data)
         migration_logger.add_record(json_data)
         record_json_output = {
             "created": self._created(json_data),
