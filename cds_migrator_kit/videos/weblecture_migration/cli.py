@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2022 CERN.
+# Copyright (C) 2025 CERN.
 #
 # CDS-Videos is free software; you can redistribute it and/or modify it under
 # the terms of the MIT License; see LICENSE file for more details.
@@ -44,5 +44,6 @@ def run(dry_run=False):
         stream_definitions=[RecordStreamDefinition],
         config_filepath=Path(stream_config).absolute(),
         dry_run=dry_run,
+        collection="weblectures",
     )
     runner.run()

@@ -7,6 +7,21 @@
  cds-migrator-kit
 ==================
 
+
+TODO change here:
+
+
+Default Installation (without RDM or Videos)
+pip install .
+
+Install for RDM
+
+pip install .[rdm]
+
+Install for Videos
+
+pip install .[videos]
+
 To run the interface:
 ```
 gunicorn -b :8080 --timeout 120 --graceful-timeout 60 cds_migrator_kit.app:app

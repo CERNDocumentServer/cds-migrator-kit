@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2022 CERN.
+# Copyright (C) 2025 CERN.
 #
 # CDS-Videos is free software; you can redistribute it and/or modify it under
 # the terms of the MIT License; see LICENSE file for more details.
@@ -38,4 +38,21 @@ def get_contributor_role(subfield, role, raise_unexpected=False):
     return translations[clean_role]
 
 
-# TODO contributor affiliation will be implemented
+def get_contributor(key, value):
+    """Create contributor json for tag 518 and 269."""
+    beard = value.get("9")
+    if beard is not None and beard != "#BEARD#":
+        # checking if anything else stored in this field
+        # historically it was some kind of automatic script tagging
+        # and it should be ignored if value == #BEARD#
+        raise UnexpectedValue(field=key, subfield="9", value=beard)
+    name = value.get("a").strip()
+    affiliation = value.get("u", "")
+    role = value.get("e", "")
+    contributor = {"name": name}
+    if role:
+        role = get_contributor_role("e", role)
+        contributor.update({"role": role})
+    if affiliation:
+        contributor.update({"affiliations": [affiliation]})
+    return contributor
