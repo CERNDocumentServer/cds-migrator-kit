@@ -11,6 +11,7 @@
 # 2779426 -> clump of keywords
 # 2294138 -> author with inspire id
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest_mock
@@ -205,7 +206,18 @@ def orcid_id(record, orcid_name_data):
 def multiple_versions(record, record_state):
     """2889522."""
     dict_rec = record.to_dict()
+    for record_version in record_state["versions"]:
+        if record_version["version"] == 1:
+            first_version = current_rdm_records_service.read(
+                system_identity, record_version["new_recid"]
+            )
+            dict_first_version = first_version.to_dict()
+            # It matches record created date instead of the file creation date
+            assert dict_first_version["created"] == "2024-02-19T00:00:00+00:00"
+
     assert dict_rec["versions"]["index"] == 2
+    # Check that the record creation date matches the files creation date
+    assert dict_rec["created"] == "2024-02-19T12:47:01+00:00"
 
 
 def multiple_versions_with_cs(record):
@@ -315,6 +327,9 @@ def author_with_inspire(record):
     """2294138."""
     dict_rec = record.to_dict()
     assert "contributors" in dict_rec["metadata"]
+    # Assert that the creation date matches the file creation date
+    # as the record's one is missing
+    assert dict_rec["created"] == "2017-11-23T16:06:45+00:00"
     assert dict_rec["metadata"]["contributors"] == [
         {
             "person_or_org": {
@@ -336,6 +351,18 @@ def author_with_inspire(record):
             ],
         },
     ]
+
+
+def check_log_for_error(record_id, target_error):
+    """Checks if the log contains the specified error for the specified record ID."""
+    with open("tests/cds-rdm/tmp/logs/sspn/rdm_migration_errors.csv", "r") as file:
+        lines = file.readlines()
+
+        for line in lines:
+            if record_id in line and target_error in line:
+                return True
+
+        return False
 
 
 def test_full_migration_stream(
@@ -398,6 +425,8 @@ def test_full_migration_stream(
 
     with open("tests/cds-rdm/tmp/logs/sspn/rdm_records_state.json") as state_logs:
         records = json.load(state_logs)
+
+    assert check_log_for_error("2783112", "ManualImportRequired")
 
     for record in records:
 
