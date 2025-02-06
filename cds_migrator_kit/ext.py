@@ -9,7 +9,7 @@
 """CDS Migrator app extension."""
 
 from . import config
-from .records.views import blueprint
+from .reports.views import blueprint
 
 
 class CdsMigratorKit(object):

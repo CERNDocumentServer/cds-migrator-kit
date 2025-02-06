@@ -12,7 +12,7 @@ from flask import Flask
 from flask_babel import Babel
 
 from cds_migrator_kit import CdsMigratorKit
-from cds_migrator_kit.records.views import blueprint
+from cds_migrator_kit.reports.views import blueprint
 
 # Create Flask application
 app = Flask(__name__)
