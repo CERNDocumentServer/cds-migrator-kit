@@ -1,12 +1,10 @@
-data_dir: cds_migrator_kit/videos/weblecture_migration/data/
-tmp_dir: cds_migrator_kit/videos/weblecture_migration/tmp
-state_dir: cds_migrator_kit/videos/weblecture_migration/cache
-log_dir: cds_migrator_kit/videos/weblecture_migration/log
-db_uri: postgresql://cds-rdm:cds-rdm@localhost:5432/cds-rdm # TODO CHANGE
-old_secret_key: CHANGE_ME # TODO CHANGE
-new_secret_key: CHANGE_ME # TODO CHANGE
+db_uri: postgresql://cds-videos:cds-videos@localhost:5432/cds-videos
 records:
-  extract:
-    dirpath: cds_migrator_kit/videos/weblecture_migration/data/weblectures/dump/
-  transform:
-    files_dump_dir: cds_migrator_kit/videos/weblecture_migration/data/weblectures/files/
+  weblectures:
+    data_dir: cds_migrator_kit/videos/weblecture_migration/data/
+    tmp_dir: cds_migrator_kit/videos/weblecture_migration/tmp
+    log_dir: cds_migrator_kit/videos/weblecture_migration/log
+    extract:
+      dirpath: cds_migrator_kit/videos/weblecture_migration/data/weblectures/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/videos/weblecture_migration/data/weblectures/files/

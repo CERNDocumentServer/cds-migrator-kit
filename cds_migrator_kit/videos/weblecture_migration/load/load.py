@@ -17,17 +17,10 @@ class CDSVideosLoad(Load):
         db_uri,
         data_dir,
         tmp_dir,
-        existing_data=False,
         entries=None,
         dry_run=False,
     ):
         """Constructor."""
-        self.db_uri = db_uri
-
-        self.data_dir = data_dir
-        self.tmp_dir = tmp_dir
-        self.existing_data = existing_data
-        self.entries = entries
         self.dry_run = dry_run
 
     def _prepare(self, entry):

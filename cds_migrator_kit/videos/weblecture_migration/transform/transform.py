@@ -96,18 +96,52 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
     def _metadata(self, entry):
         """Transform the metadata of a record."""
 
+        def extract_dates(json_data, key, subkey=None):
+            """Extracts date values from a given key in json_data."""
+            items = json_data.get(key, [])
+            if subkey:
+                return {
+                    item[subkey]["date"]
+                    for item in items
+                    if isinstance(item, dict)
+                    and subkey in item
+                    and isinstance(item[subkey], dict)
+                    and "date" in item[subkey]
+                }
+
+            return {
+                item["date"]
+                for item in items
+                if isinstance(item, dict) and "date" in item
+            }
+
         def reformat_date(json_data):
             """Reformat the date for the cds-videos data model."""
-            dates = json_data.get("date", [])
-            dates_set = {date for date in dates if date is not None}
+            # 1. Check primary date field
+            dates_set = {date for date in json_data.get("date", []) if date}
 
-            if len(dates_set) == 1:  # Should be only one value
-                return next(iter(dates_set))  # Get the single date from the set
+            # 2. If no date found, check `indico_links`
+            if not dates_set:
+                dates_set = extract_dates(json_data, "url_files", subkey="indico")
+
+            # 3. If still no date found, check `internal_notes`
+            if not dates_set:
+                dates_set = extract_dates(json_data, "internal_notes")
+
+            # 4. Return the valid date if only one is found
+            if len(dates_set) == 1:
+                return next(iter(dates_set))
+
+            # 5. Multiple dates (Must have different indico event videos?)
             if len(dates_set) > 1:
-                return next(iter(dates_set))  # return the first
+                raise UnexpectedValue(
+                    f"More than one date found in record: {json_data.get('recid')} dates: {dates_set}.",
+                    stage="transform",
+                )
 
-            raise UnexpectedValue(
-                "No valid date found in record: {}.".format(json_data.get("recid"))
+            raise MissingRequiredField(
+                f"No valid date found in record: {json_data.get('recid')}.",
+                stage="transform",
             )
 
         def description(json_data):
@@ -116,11 +150,41 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 return json_data.get("title").get("title")
             return json_data.get("description")
 
+        def format_contributors(json_data):
+            """
+            Same contributors could be both in tag 700 and 906.
+
+            TODO: Should we keep them both? https://cds.cern.ch/record/2233152/export/xm?ln=en
+            Removes duplicate contributors based on name, role, and affiliations.
+            """
+            contributors = json_data.get("contributors")
+            if not contributors:
+                raise MissingRequiredField(
+                    f"No valid contributor found in record: {json_data.get('recid')}.",
+                    stage="transform",
+                )
+
+            unique_contributors = []
+            seen = set()
+
+            for contributor in contributors:
+                # Create a tuple to identify contributors
+                identifier = (
+                    contributor["name"],
+                    contributor.get("role"),
+                    tuple(contributor.get("affiliations", [])),
+                )
+                if identifier not in seen:
+                    seen.add(identifier)
+                    unique_contributors.append(contributor)
+
+            return unique_contributors
+
         metadata = {
             "title": entry["title"],
             "description": description(entry),
-            "contributors": entry.get("contributors"),
-            "languages": entry.get("language"),
+            "contributors": format_contributors(entry),
+            "language": entry.get("language"),
             "date": reformat_date(entry),
         }
         # filter empty keys
