@@ -79,13 +79,13 @@ class JsonLogger(metaclass=Singleton):
         self, stats_filename, records_filename, records_state_filename, collection
     ):
         """Constructor."""
-        self._logs_path = current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]
-        self.STAT_FILEPATH = os.path.join(self._logs_path, collection, stats_filename)
-        self.RECORD_FILEPATH = os.path.join(
-            self._logs_path, collection, records_filename
+        self._logs_path = os.path.join(
+            current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"], collection
         )
+        self.STAT_FILEPATH = os.path.join(self._logs_path, stats_filename)
+        self.RECORD_FILEPATH = os.path.join(self._logs_path, records_filename)
         self.RECORD_STATE_FILEPATH = os.path.join(
-            self._logs_path, collection, records_state_filename
+            self._logs_path, records_state_filename
         )
         self.collection = collection
 
