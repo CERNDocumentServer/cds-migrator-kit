@@ -24,8 +24,8 @@ from invenio_records_resources.proxies import current_service_registry
 from invenio_vocabularies.contrib.names.api import Name
 from invenio_vocabularies.contrib.names.models import NamesMetadata
 
-from cds_migrator_kit.rdm.migration.runner import Runner
-from cds_migrator_kit.rdm.migration.streams import RecordStreamDefinition
+from cds_migrator_kit.rdm.runner import Runner
+from cds_migrator_kit.rdm.records.streams import RecordStreamDefinition
 
 
 def suite_multi_field(record):
