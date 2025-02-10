@@ -9,6 +9,7 @@
 from invenio_rdm_migrator.streams import StreamDefinition
 
 from cds_migrator_kit.extract.extract import LegacyExtract
+
 from .load import CDSSubmitterLoad
 from .transform.transform import CDSToRDMSubmitterTransform
 from .transform.users import CDSRDMUserTransform, CDSUserIntermediaryLoad

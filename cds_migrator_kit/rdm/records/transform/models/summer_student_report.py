@@ -19,8 +19,9 @@
 
 """CDS-RDM Summer student model."""
 
-from .base_record import rdm_base_record_model
 from cds_migrator_kit.transform.overdo import CdsOverdo
+
+from .base_record import rdm_base_record_model
 
 
 class SummerStudentNotes(CdsOverdo):
@@ -105,5 +106,6 @@ class SummerStudentNotes(CdsOverdo):
 
 
 sspn_model = SummerStudentNotes(
-    bases=(rdm_base_record_model,), entry_point_group="cds_migrator_kit.migrator.rules.ssn"
+    bases=(rdm_base_record_model,),
+    entry_point_group="cds_migrator_kit.migrator.rules.ssn",
 )

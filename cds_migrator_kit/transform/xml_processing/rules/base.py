@@ -16,8 +16,9 @@ from dateutil.parser._parser import ParserError
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 
-from ....transform.xml_processing.models.base import model
 from cds_migrator_kit.errors import UnexpectedValue
+
+from ....transform.xml_processing.models.base import model
 from ..quality.contributors import (
     extract_json_contributor_ids,
     get_contributor_affiliations,

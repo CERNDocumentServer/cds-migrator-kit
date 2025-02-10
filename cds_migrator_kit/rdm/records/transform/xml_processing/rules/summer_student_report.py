@@ -21,11 +21,12 @@ from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
 from dojson.utils import force_list
 
-# ATTENTION when COPYING! important which model you use as decorator
-from ...models.summer_student_report import sspn_model as model
 from cds_migrator_kit.errors import MissingRequiredField, UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import for_each_value
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
+
+# ATTENTION when COPYING! important which model you use as decorator
+from ...models.summer_student_report import sspn_model as model
 
 
 @model.over("contributors", "^270__")

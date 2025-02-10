@@ -9,7 +9,6 @@
 from invenio_rdm_migrator.streams import StreamDefinition
 from invenio_rdm_migrator.transform import IdentityTransform
 
-
 from .extract import LegacyRecordStatsExtract
 from .load import CDSRecordStatsLoad
 

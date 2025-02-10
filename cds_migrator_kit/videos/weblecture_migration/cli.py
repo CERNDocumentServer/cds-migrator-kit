@@ -16,7 +16,6 @@ from flask.cli import with_appcontext
 from cds_migrator_kit.rdm.runner import Runner
 from cds_migrator_kit.videos.weblecture_migration.streams import RecordStreamDefinition
 
-
 cli_logger = logging.getLogger("migrator")
 
 

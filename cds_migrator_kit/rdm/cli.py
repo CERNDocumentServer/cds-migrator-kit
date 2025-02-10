@@ -15,21 +15,21 @@ from flask import current_app
 from flask.cli import with_appcontext
 
 from cds_migrator_kit.rdm.affiliations.runner import RecordAffiliationsRunner
-from cds_migrator_kit.rdm.affiliations.streams import (
-    AffiliationsStreamDefinition,
+from cds_migrator_kit.rdm.affiliations.streams import AffiliationsStreamDefinition
+from cds_migrator_kit.rdm.records.streams import (  # UserStreamDefinition,
+    RecordStreamDefinition,
 )
 from cds_migrator_kit.rdm.runner import Runner
 from cds_migrator_kit.rdm.stats.runner import RecordStatsRunner
 from cds_migrator_kit.rdm.stats.streams import RecordStatsStreamDefinition
-from cds_migrator_kit.rdm.records.streams import (
-    RecordStreamDefinition,
-    # UserStreamDefinition,
-)
 from cds_migrator_kit.rdm.users.runner import PeopleAuthorityRunner, SubmitterRunner
-from cds_migrator_kit.rdm.users.streams import UserStreamDefinition, \
-    SubmitterStreamDefinition
-from cds_migrator_kit.rdm.users.transform.xml_processing.models.people import \
-    PeopleAuthority
+from cds_migrator_kit.rdm.users.streams import (
+    SubmitterStreamDefinition,
+    UserStreamDefinition,
+)
+from cds_migrator_kit.rdm.users.transform.xml_processing.models.people import (
+    PeopleAuthority,
+)
 
 cli_logger = logging.getLogger("migrator")
 
@@ -104,7 +104,6 @@ def run(filepath, less_than_date, dry_run=False):
     runner.run()
 
 
-
 @migration.group()
 def users():
     """Migration CLI for users by collection."""
@@ -133,6 +132,7 @@ def people_run(filepath, collection, dry_run=False):
     )
     runner.run()
 
+
 @users.command()
 @click.option(
     "--dry-run",
@@ -160,6 +160,7 @@ def submitters_run(dirpath, dry_run=False):
 def affiliations():
     """Migration CLI for affiliations."""
     pass
+
 
 @affiliations.command()
 @click.option(

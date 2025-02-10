@@ -76,7 +76,7 @@ class CDSRDMUserTransform(Transform):
 class CDSUserIntermediaryLoad(Load):
     """CDS user intermediate load class.
 
-        Writes a csv file containing translated people collection entries.
+    Writes a csv file containing translated people collection entries.
     """
 
     def __init__(self, filepath, **kwargs):
@@ -101,5 +101,3 @@ class CDSUserIntermediaryLoad(Load):
     def _cleanup(self):  # pragma: no cover
         """Cleanup data after loading."""
         pass
-
-

@@ -23,5 +23,3 @@ class LossyConversion(DoJSONException):
         self.type = self.__class__.__name__
         self.priority = "warning"
         super().__init__(*args)
-
-

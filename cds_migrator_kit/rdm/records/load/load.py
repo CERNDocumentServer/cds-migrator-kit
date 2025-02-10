@@ -25,10 +25,7 @@ from invenio_records.systemfields.relations import InvalidRelationValue
 from marshmallow import ValidationError
 from psycopg.errors import UniqueViolation
 
-from cds_migrator_kit.errors import (
-    CDSMigrationException,
-    ManualImportRequired,
-)
+from cds_migrator_kit.errors import CDSMigrationException, ManualImportRequired
 from cds_migrator_kit.reports.log import RDMJsonLogger
 
 

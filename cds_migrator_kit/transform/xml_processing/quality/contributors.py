@@ -11,15 +11,9 @@ import re
 
 from dojson.utils import force_list
 
-from cds_migrator_kit.errors import (
-    UnexpectedValue,
-)
-from cds_migrator_kit.transform.xml_processing.quality.parsers import (
-    StringValue,
-)
-from cds_migrator_kit.transform.xml_processing.quality.regex import (
-    ALPHANUMERIC_ONLY,
-)
+from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
+from cds_migrator_kit.transform.xml_processing.quality.regex import ALPHANUMERIC_ONLY
 
 # RDM:
 # "contributors": {

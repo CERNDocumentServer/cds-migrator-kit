@@ -11,10 +11,7 @@ from abc import ABC, abstractmethod
 
 from dojson.utils import force_list
 
-from cds_migrator_kit.errors import (
-    MissingRequiredField,
-    UnexpectedValue,
-)
+from cds_migrator_kit.errors import MissingRequiredField, UnexpectedValue
 
 
 class MarcValue(ABC):

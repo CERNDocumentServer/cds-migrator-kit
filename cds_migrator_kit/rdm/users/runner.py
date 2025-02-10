@@ -35,10 +35,9 @@ class PeopleAuthorityRunner:
     def run(self):
         """Run Statistics ETL stream."""
         self.stream.run()
-            # AffiliationsLogger.get_logger().exception(
-            #     f"Stream {self.stream.name} failed.", exc_info=1
-            # )
-
+        # AffiliationsLogger.get_logger().exception(
+        #     f"Stream {self.stream.name} failed.", exc_info=1
+        # )
 
 
 class SubmitterRunner:
@@ -57,7 +56,9 @@ class SubmitterRunner:
             stream_definition.name,
             extract=stream_definition.extract_cls(dirpath),
             transform=stream_definition.transform_cls(),
-            load=stream_definition.load_cls(dry_run=dry_run, missing_users_dir=missing_users_dir),
+            load=stream_definition.load_cls(
+                dry_run=dry_run, missing_users_dir=missing_users_dir
+            ),
         )
 
     def run(self):

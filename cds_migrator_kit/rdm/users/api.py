@@ -43,8 +43,12 @@ class CDSMigrationUserAPI:
             return user
         except IntegrityError as e:
             db.session.rollback()
-            email_username = email.split('@')[0]
-            user = User(email=email, username=f"duplicated_{username}_{email_username}", active=False)
+            email_username = email.split("@")[0]
+            user = User(
+                email=email,
+                username=f"duplicated_{username}_{email_username}",
+                active=False,
+            )
             db.session.add(user)
             db.session.commit()
             return user

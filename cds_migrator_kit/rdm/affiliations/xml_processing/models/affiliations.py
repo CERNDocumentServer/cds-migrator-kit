@@ -21,6 +21,7 @@
 
 from cds_migrator_kit.transform.overdo import CdsOverdo
 
+
 class CDSAffiliations(CdsOverdo):
     """Translation Index for CDS Books."""
 

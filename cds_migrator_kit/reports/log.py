@@ -75,11 +75,15 @@ class JsonLogger(metaclass=Singleton):
         """Get migration logger."""
         return logging.getLogger("migrator-rules")
 
-    def __init__(self, stats_filename, records_filename, records_state_filename, collection):
+    def __init__(
+        self, stats_filename, records_filename, records_state_filename, collection
+    ):
         """Constructor."""
         self._logs_path = current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]
         self.STAT_FILEPATH = os.path.join(self._logs_path, collection, stats_filename)
-        self.RECORD_FILEPATH = os.path.join(self._logs_path, collection, records_filename)
+        self.RECORD_FILEPATH = os.path.join(
+            self._logs_path, collection, records_filename
+        )
         self.RECORD_STATE_FILEPATH = os.path.join(
             self._logs_path, collection, records_state_filename
         )
@@ -200,5 +204,5 @@ class RDMJsonLogger(JsonLogger):
             stats_filename="rdm_migration_errors.csv",
             records_filename="rdm_records_dump.json",
             records_state_filename="rdm_records_state.json",
-            collection=collection
+            collection=collection,
         )
