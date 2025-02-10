@@ -26,6 +26,7 @@ class CDSAffiliations(CdsOverdo):
     """Translation Index for CDS Books."""
 
     def __init__(self, bases=None, entry_point_group=None):
+        """Constructor."""
         super().__init__(bases, entry_point_group)
 
     __query__ = ""

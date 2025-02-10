@@ -24,8 +24,8 @@ from invenio_records_resources.proxies import current_service_registry
 from invenio_vocabularies.contrib.names.api import Name
 from invenio_vocabularies.contrib.names.models import NamesMetadata
 
-from cds_migrator_kit.rdm.runner import Runner
 from cds_migrator_kit.rdm.records.streams import RecordStreamDefinition
+from cds_migrator_kit.rdm.runner import Runner
 
 
 def suite_multi_field(record):
@@ -354,7 +354,7 @@ def test_full_migration_stream(
     Name.index.refresh()
 
     mocker.patch(
-        "cds_migrator_kit.rdm.migration.runner.Runner._read_config",
+        "cds_migrator_kit.rdm.runner.Runner._read_config",
         return_value={
             "db_uri": "postgresql://cds-rdm-migration:cds-rdm-migration@localhost:5432/cds-rdm-migration",
             "records": {
@@ -369,7 +369,7 @@ def test_full_migration_stream(
                         "community_id": f"{str(community.id)}",
                     },
                     "load": {
-                        "legacy_pids_to_redirect": "cds_migrator_kit/rdm/migration/data/summer_student_reports/duplicated_pids.json"
+                        "legacy_pids_to_redirect": "cds_migrator_kit/rdm/data/summer_student_reports/duplicated_pids.json"
                     },
                 }
             },

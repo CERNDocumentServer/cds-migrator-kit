@@ -18,6 +18,7 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 """Common Videos fields."""
 from dateutil.parser import ParserError, parse
+
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
     require,

@@ -7,9 +7,8 @@
 
 """CDS-Videos contributors migration module."""
 
-from cds_migrator_kit.errors import (
-    UnexpectedValue,
-)
+from cds_migrator_kit.errors import UnexpectedValue
+
 
 # TODO role will be changed to optional, update the `get_contributor_role` method
 def get_contributor_role(subfield, role, raise_unexpected=False):
