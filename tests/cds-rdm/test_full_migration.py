@@ -26,6 +26,8 @@ from invenio_vocabularies.contrib.names.models import NamesMetadata
 
 from cds_migrator_kit.rdm.records.streams import RecordStreamDefinition
 from cds_migrator_kit.rdm.runner import Runner
+from cds_migrator_kit.rdm.users.runner import SubmitterRunner
+from cds_migrator_kit.rdm.users.streams import SubmitterStreamDefinition
 
 
 def suite_multi_field(record):
@@ -376,6 +378,14 @@ def test_full_migration_stream(
         },
     )
     stream_config = current_app.config["CDS_MIGRATOR_KIT_STREAM_CONFIG"]
+    user_runner = SubmitterRunner(
+        stream_definition=SubmitterStreamDefinition,
+        missing_users_dir="tests/cds-rdm/data/users",
+        dirpath="tests/cds-rdm/data/sspn/dumps/",
+        log_dir="tests/cds-rdm/data/log/users",
+        dry_run=False,
+    )
+    user_runner.run()
     runner = Runner(
         stream_definitions=[RecordStreamDefinition],
         config_filepath=Path(stream_config).absolute(),
@@ -386,7 +396,7 @@ def test_full_migration_stream(
 
     assert CDSMigrationLegacyRecord.query.count() == 12
 
-    with open("tests/cds-rdm/tmp/logs/rdm_records_state.json") as state_logs:
+    with open("tests/cds-rdm/tmp/logs/sspn/rdm_records_state.json") as state_logs:
         records = json.load(state_logs)
 
     for record in records:
