@@ -7,49 +7,23 @@
 
 """CDS-RDM transform step module."""
 import csv
-import datetime
 import json
 import logging
 import os.path
 import re
-from abc import ABC
-from collections import OrderedDict
-from copy import deepcopy
-from pathlib import Path
 
-import arrow
-from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
-from idutils import normalize_ror
-from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
-from invenio_db import db
 from invenio_rdm_migrator.load.base import Load
-from invenio_rdm_migrator.streams.records.transform import (
-    RDMRecordEntry,
-    RDMRecordTransform,
-)
-from invenio_records_resources.proxies import current_service_registry
-from invenio_vocabularies.contrib.names.models import NamesMetadata
-from opensearchpy import RequestError
 from sqlalchemy.exc import NoResultFound
 
-from cds_migrator_kit.errors import (
-    ManualImportRequired,
-    MissingRequiredField,
-    RecordFlaggedCuration,
-    RestrictedFileDetected,
-    UnexpectedValue,
-)
-from cds_migrator_kit.rdm.migration_config import VOCABULARIES_NAMES_SCHEMES
 from cds_migrator_kit.rdm.users.api import CDSMigrationUserAPI
-from cds_migrator_kit.reports.log import RDMJsonLogger
-from cds_migrator_kit.transform.dumper import CDSRecordDump
-from cds_migrator_kit.transform.errors import LossyConversion
 
 cli_logger = logging.getLogger("migrator")
 
 
 class CDSSubmitterLoad(Load):
+    """Submitter load class."""
+
     def __init__(
         self,
         missing_users_dir=None,
@@ -63,6 +37,7 @@ class CDSSubmitterLoad(Load):
         self.dry_run = dry_run
 
     def _load(self, entry):
+        """Load users."""
         self._owner(entry)
 
     def _validate(self, entry):
@@ -72,6 +47,7 @@ class CDSSubmitterLoad(Load):
         return True
 
     def _owner(self, json_entry):
+        """Fetch or create owner."""
         email = json_entry.get("submitter")
         if not email:
             return

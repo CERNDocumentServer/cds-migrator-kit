@@ -8,9 +8,8 @@
 """CDS-Videos migration rules module."""
 
 import pycountry
-from cds_migrator_kit.errors import (
-    UnexpectedValue,
-)
+
+from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
     require,
