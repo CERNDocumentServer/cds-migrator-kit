@@ -9,6 +9,6 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/thesis/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: 96bf2d41-1f24-4025-baf7-65fd97c45aed
+      community_id: acd12387-89e4-4efa-8d45-4fdae2c12e8c
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/thesis/duplicated_pids.json

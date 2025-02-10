@@ -1,29 +1,18 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2022 CERN.
+# Copyright (C) 2022-2025 CERN.
 #
 # CDS-RDM is free software; you can redistribute it and/or modify it under
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM transform step module."""
-import csv
-import datetime
-import json
 import logging
-import os.path
-import re
-from collections import OrderedDict
 from copy import deepcopy
-from pathlib import Path
 
-import arrow
 import requests
 from invenio_rdm_migrator.streams.records.transform import (
-    RDMRecordEntry,
     RDMRecordTransform,
 )
-from opensearchpy import RequestError
-from sqlalchemy.exc import NoResultFound
 
 from . import affiliations_migrator_marc21
 from cds_migrator_kit.transform.dumper import CDSRecordDump

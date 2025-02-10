@@ -74,7 +74,10 @@ class CDSRDMUserTransform(Transform):
 
 
 class CDSUserIntermediaryLoad(Load):
-    """CDS user intermediate load class."""
+    """CDS user intermediate load class.
+
+        Writes a csv file containing translated people collection entries.
+    """
 
     def __init__(self, filepath, **kwargs):
         """Constructor."""
@@ -100,84 +103,3 @@ class CDSUserIntermediaryLoad(Load):
         pass
 
 
-class CDSMissingUserLoad:
-    """CDS missing user load class."""
-
-    def __init__(self, remote_account_client_id=None):
-        """Constructor."""
-        self.client_id = current_app.config["CERN_APP_CREDENTIALS"]["consumer_key"]
-
-    def check_person_id_exists(self, person_id):
-        """Check if uer identity already exists."""
-        return UserIdentity.query.filter_by(id=person_id).one_or_none()
-
-    def create_invenio_user(self, email, username):
-        """Commit new user in db."""
-        try:
-            user = User(email=email, username=username, active=False)
-            db.session.add(user)
-            db.session.commit()
-            return user
-        except IntegrityError as e:
-            db.session.rollback()
-            user = User(email=email, username=f"duplicated_{username}", active=False)
-            db.session.add(user)
-            db.session.commit()
-            return user
-
-    def create_invenio_user_identity(self, user_id, person_id):
-        """Return new user identity entry."""
-        try:
-            return UserIdentity(
-                id=person_id,
-                method=cern_remote_app_name,
-                id_user=user_id,
-            )
-        except (IntegrityError, UniqueViolation) as e:
-            db.session.rollback()
-            user_identity = UserIdentity(
-                id=f"duplicate{person_id}",
-                method=cern_remote_app_name,
-                id_user=user_id,
-            )
-            db.session.add(user_identity)
-            db.session.commit()
-            return user_identity
-
-    def create_invenio_user_profile(self, user, name):
-        """Return new user profile."""
-        user_profile = UserProfile(user=user)
-        user_profile.full_name = name
-        return user_profile
-
-    def create_invenio_remote_account(self, user_id, extra_data=None):
-        """Return new user entry."""
-        if extra_data is None:
-            extra_data = {}
-        return RemoteAccount.create(
-            client_id=self.client_id, user_id=user_id, extra_data=extra_data
-        )
-
-    def create_user(self, email, name, person_id, username, extra_data=None):
-        """Create an invenio user."""
-        user = self.create_invenio_user(email, username)
-        user_id = user.id
-        profile_data = {}
-        if person_id:
-            identity = self.create_invenio_user_identity(user_id, person_id)
-            db.session.add(identity)
-            profile_data = {
-                "person_id": person_id,
-            }
-        if name:
-            if "department" in extra_data:
-                profile_data.update({"department": extra_data["department"]})
-            profile = deepcopy(user.user_profile)
-            profile.update(profile_data)
-            user.user_profile = profile
-            db.session.add(user)
-
-        remote_account = self.create_invenio_remote_account(user_id, extra_data)
-        db.session.add(remote_account)
-
-        return user

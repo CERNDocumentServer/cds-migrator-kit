@@ -46,18 +46,11 @@ class CDSRecordServiceLoad(Load):
         db_uri,
         data_dir,
         tmp_dir,
-        existing_data=False,
         entries=None,
         dry_run=False,
         legacy_pids_to_redirect=None,
     ):
         """Constructor."""
-        self.db_uri = db_uri
-
-        self.data_dir = data_dir
-        self.tmp_dir = tmp_dir
-        self.existing_data = existing_data
-        self.entries = entries
         self.dry_run = dry_run
         self.legacy_pids_to_redirect = {}
 

@@ -27,7 +27,7 @@ class ThesisModel(CdsOverdo):
     """Translation Index for CERN Summer Student Project Notes."""
 
     __query__ = (
-        "(980__:THESIS OR 980__:Thesis OR 980__:thesis) -980__:DUMMY -980__c:HIDDEN"
+        "(980__:THESIS OR 980__:Thesis OR 980__:thesis) -980__:DUMMY -980__.c:HIDDEN"
     )
 
     __ignore_keys__ = {
@@ -72,8 +72,8 @@ class ThesisModel(CdsOverdo):
         # "981__a",  # duplicate record id
         # "999C6",   # to define what is the field
         # IMPLEMENTED
-        # "001"
-        # "003"
+        # "001",
+        # "003",
         # "037__a",  # (Report number) alternative identifiers -> scheme "CDS REFERENCE"
         # "041__a",  # languages
         # "088__a",  # RN (manual introduced?) second report number (so the identifiers schemas are not unique!)

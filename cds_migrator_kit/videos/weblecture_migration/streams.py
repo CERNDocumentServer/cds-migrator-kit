@@ -8,7 +8,7 @@
 """CDS-Videos migration streams module."""
 from invenio_rdm_migrator.streams import StreamDefinition
 
-from cds_migrator_kit.rdm.migration.extract import LegacyExtract
+from cds_migrator_kit.extract.extract import LegacyExtract
 from cds_migrator_kit.videos.weblecture_migration.load.load import CDSVideosLoad
 from cds_migrator_kit.videos.weblecture_migration.transform.transform import (
     CDSToVideosRecordTransform,

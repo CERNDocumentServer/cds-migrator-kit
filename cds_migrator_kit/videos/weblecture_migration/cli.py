@@ -6,20 +6,16 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-Videos command line module."""
-import json
 import logging
-from os.path import join
 from pathlib import Path
 
 import click
 from flask import current_app
 from flask.cli import with_appcontext
 
-from cds_migrator_kit.rdm.migration.runner import Runner
+from cds_migrator_kit.rdm.runner import Runner
 from cds_migrator_kit.videos.weblecture_migration.streams import RecordStreamDefinition
-from cds_migrator_kit.videos.weblecture_migration.transform import (
-    videos_migrator_marc21,
-)
+
 
 cli_logger = logging.getLogger("migrator")
 
