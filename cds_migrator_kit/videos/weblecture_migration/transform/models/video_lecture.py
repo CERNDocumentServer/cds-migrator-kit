@@ -19,7 +19,7 @@
 
 """CDS-Videos Video Lecture model."""
 
-from cds_migrator_kit.rdm.migration.transform.models.overdo import CdsOverdo
+from cds_migrator_kit.transform.overdo import CdsOverdo
 
 from .base import model as base_model
 

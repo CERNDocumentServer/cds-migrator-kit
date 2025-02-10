@@ -18,21 +18,9 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 """Common Videos fields."""
 from dateutil.parser import ParserError, parse
-from dojson.errors import IgnoreKey
-from dojson.utils import force_list
-
-from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
-    MissingRequiredField,
-    UnexpectedValue,
-)
-from cds_migrator_kit.rdm.migration.transform.xml_processing.quality.decorators import (
-    filter_list_values,
+from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
     require,
-    strip_output,
-)
-from cds_migrator_kit.rdm.migration.transform.xml_processing.quality.parsers import (
-    StringValue,
 )
 
 # ATTENTION when COPYING! important which model you use as decorator
