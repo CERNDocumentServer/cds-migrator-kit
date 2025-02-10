@@ -55,8 +55,8 @@ class SummerStudentNotes(CdsOverdo):
         "981__a",  # duplicate record id
         "300__a",  # number of pages - ignored for SSPN - 1 record (2913067) was found
         # IMPLEMENTED
-        # "001"
-        # "003"
+        # "001",
+        # "003",
         # "035__9",  # Inspire schema
         # "035__a",  # Inspire id value
         # "037__a",  # (Report number) alternative identifiers -> scheme "CDS REFERENCE"

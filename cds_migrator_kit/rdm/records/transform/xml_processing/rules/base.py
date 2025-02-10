@@ -165,19 +165,6 @@ def custom_fields(self, key, value):
     return _custom_fields
 
 
-@model.over("submitter", "(^859__)")
-def record_submitter(self, key, value):
-    """Translate record submitter."""
-    submitter = value.get("f")
-    if type(submitter) is tuple:
-        submitter = submitter[0]
-        raise UnexpectedValue(field=key, subfield="f", value=value.get("f"))
-        # TODO handle all the other submitters
-    if submitter:
-        submitter = submitter.lower()
-    return submitter
-
-
 @model.over("record_restriction", "^963__")
 def record_restriction(self, key, value):
     """Translate record restriction field."""

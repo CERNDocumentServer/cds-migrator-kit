@@ -136,3 +136,15 @@ def contributors(self, key, value):
     """Translates contributors."""
     return process_contributors(key, value)
 
+
+@model.over("submitter", "(^859__)")
+def record_submitter(self, key, value):
+    """Translate record submitter."""
+    submitter = value.get("f")
+    if type(submitter) is tuple:
+        submitter = submitter[0]
+        raise UnexpectedValue(field=key, subfield="f", value=value.get("f"))
+        # TODO handle all the other submitters
+    if submitter:
+        submitter = submitter.lower()
+    return submitter

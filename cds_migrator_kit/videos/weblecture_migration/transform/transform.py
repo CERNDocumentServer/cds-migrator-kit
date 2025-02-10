@@ -6,39 +6,27 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-Videos transform step module."""
-import csv
 import datetime
-import json
 import logging
-import os.path
-import re
-from collections import OrderedDict
-from copy import deepcopy
 from pathlib import Path
 
 import arrow
-import requests
-from invenio_db import db
 from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
 )
-from invenio_records_resources.proxies import current_service_registry
-from invenio_vocabularies.contrib.names.models import NamesMetadata
-from opensearchpy import RequestError
-from sqlalchemy.exc import NoResultFound
 
-from cds_migrator_kit.migration_config import VOCABULARIES_NAMES_SCHEMES
-from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
-from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
-    LossyConversion,
+from cds_migrator_kit.transform.dumper import CDSRecordDump
+from cds_migrator_kit.errors import (
     ManualImportRequired,
     MissingRequiredField,
-    RecordFlaggedCuration,
     RestrictedFileDetected,
     UnexpectedValue,
 )
-from cds_migrator_kit.records.log import RDMJsonLogger
+from cds_migrator_kit.transform.errors import (
+    LossyConversion,
+)
+from cds_migrator_kit.reports.log import RDMJsonLogger
 from cds_migrator_kit.videos.weblecture_migration.transform import (
     videos_migrator_marc21,
 )

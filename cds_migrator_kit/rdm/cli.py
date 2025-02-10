@@ -25,8 +25,9 @@ from cds_migrator_kit.rdm.records.streams import (
     RecordStreamDefinition,
     # UserStreamDefinition,
 )
-from cds_migrator_kit.rdm.users.runner import PeopleAuthorityRunner
-from cds_migrator_kit.rdm.users.streams import UserStreamDefinition
+from cds_migrator_kit.rdm.users.runner import PeopleAuthorityRunner, SubmitterRunner
+from cds_migrator_kit.rdm.users.streams import UserStreamDefinition, \
+    SubmitterStreamDefinition
 from cds_migrator_kit.rdm.users.transform.xml_processing.models.people import \
     PeopleAuthority
 
@@ -117,12 +118,12 @@ def users():
 )
 @click.option(
     "--filepath",
-    help="Path to the list of records file that the legacy statistics will be migrated.",
+    help=".",
 )
 @click.option("--collection")
 @with_appcontext
 def people_run(filepath, collection, dry_run=False):
-    """Migrate the legacy statistics for the records in `filepath`."""
+    """Migrate the legacy people collection`."""
     log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "users"
     runner = PeopleAuthorityRunner(
         stream_definition=UserStreamDefinition,
@@ -131,6 +132,29 @@ def people_run(filepath, collection, dry_run=False):
         dry_run=dry_run,
     )
     runner.run()
+
+@users.command()
+@click.option(
+    "--dry-run",
+    is_flag=True,
+)
+@click.option(
+    "--dirpath",
+    help="Path to the record dumps dir to extract submitters from.",
+)
+@with_appcontext
+def submitters_run(dirpath, dry_run=False):
+    """Migrate the legacy statistics for the records in `filepath`."""
+    log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "submitters"
+    runner = SubmitterRunner(
+        stream_definition=SubmitterStreamDefinition,
+        missing_users_dir="cds_migrator_kit/rdm/data/users",
+        dirpath=dirpath,
+        log_dir=log_dir,
+        dry_run=dry_run,
+    )
+    runner.run()
+
 
 @migration.group()
 def affiliations():

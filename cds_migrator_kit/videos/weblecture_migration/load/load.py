@@ -6,18 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-Videos migration load module."""
-import json
-import logging
-import os
-
 from invenio_rdm_migrator.load.base import Load
-
-from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
-    CDSMigrationException,
-    ManualImportRequired,
-)
-from cds_migrator_kit.records.log import RDMJsonLogger
-
 
 class CDSVideosLoad(Load):
     """CDS-Videos Load."""
