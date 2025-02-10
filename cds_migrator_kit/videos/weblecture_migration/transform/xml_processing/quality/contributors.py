@@ -7,20 +7,9 @@
 
 """CDS-Videos contributors migration module."""
 
-import re
-
-from dojson.utils import force_list
-
-from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
+from cds_migrator_kit.errors import (
     UnexpectedValue,
 )
-from cds_migrator_kit.rdm.migration.transform.xml_processing.quality.parsers import (
-    StringValue,
-)
-from cds_migrator_kit.rdm.migration.transform.xml_processing.quality.regex import (
-    ALPHANUMERIC_ONLY,
-)
-
 
 # TODO role will be changed to optional, update the `get_contributor_role` method
 def get_contributor_role(subfield, role, raise_unexpected=False):

@@ -7,29 +7,18 @@
 
 """CDS-Videos migration rules module."""
 
-import datetime
-
 import pycountry
-from cds_dojson.marc21.fields.utils import out_strip
-from dateutil.parser import parse
-from dateutil.parser._parser import ParserError
-from dojson.errors import IgnoreKey
-from dojson.utils import filter_values, flatten, force_list
-
-# from ..dates import get_week_start
-from cds_migrator_kit.rdm.migration.transform.xml_processing.errors import (
+from cds_migrator_kit.errors import (
     UnexpectedValue,
 )
-from cds_migrator_kit.rdm.migration.transform.xml_processing.quality.decorators import (
-    filter_list_values,
+from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
     require,
     strip_output,
 )
-from cds_migrator_kit.rdm.migration.transform.xml_processing.quality.parsers import (
+from cds_migrator_kit.transform.xml_processing.quality.parsers import (
     StringValue,
     clean_str,
-    clean_val,
 )
 
 from ...models.base import model
