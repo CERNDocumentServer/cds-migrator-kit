@@ -8,7 +8,7 @@
 
 """CDS migration to CDSLabs tests."""
 
-from cds_migrator_kit.rdm.migration.transform.xml_processing.dumper import CDSRecordDump
+from cds_migrator_kit.transform.dumper import CDSRecordDump
 from tests.helpers import load_json
 
 
