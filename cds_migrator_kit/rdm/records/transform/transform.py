@@ -503,6 +503,10 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         return {}
 
     def _parent(self, entry, record):
+        try:
+            owner = int(record["owned_by"])
+        except (ValueError, TypeError):
+            owner = "-1"
         parent = {
             "created": record["created"],  # same as the record
             "updated": record["updated"],  # same as the record
@@ -512,7 +516,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 # this part will be simply omitted
                 "id": f'{record["recid"]}-parent',
                 "access": {
-                    "owned_by": {"user": int(record["owned_by"])},
+                    "owned_by": {"user": owner},
                 },
                 "communities": self._community_id(entry, record),
             },
