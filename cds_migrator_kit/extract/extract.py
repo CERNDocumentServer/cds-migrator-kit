@@ -37,4 +37,3 @@ class LegacyExtract(Extract):
                 with click.progressbar(data) as records:
                     for dump_record in records:
                         yield dump_record
-

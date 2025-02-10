@@ -7,6 +7,7 @@
 
 """CDS-RDM migration errors module."""
 
+
 class CDSMigrationException(Exception):
     """CDSDoJSONException class."""
 

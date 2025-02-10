@@ -10,16 +10,14 @@
 import arrow
 from cds_dojson.marc21.utils import create_record
 
-from cds_migrator_kit.reports.handlers import migration_exception_handler
-from cds_migrator_kit.transform import migrator_marc21
-from cds_migrator_kit.transform.errors import (
-    LossyConversion,
-)
 from cds_migrator_kit.errors import (
     MissingRequiredField,
     RecordModelMissing,
     UnexpectedValue,
 )
+from cds_migrator_kit.reports.handlers import migration_exception_handler
+from cds_migrator_kit.transform import migrator_marc21
+from cds_migrator_kit.transform.errors import LossyConversion
 
 
 class CDSRecordDump:

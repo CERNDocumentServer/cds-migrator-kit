@@ -18,10 +18,16 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 """Common RDM fields."""
 
+from cds_migrator_kit.transform.xml_processing.quality.contributors import (
+    get_contributor_affiliations,
+)
+from cds_migrator_kit.transform.xml_processing.quality.decorators import (
+    for_each_value,
+    require,
+)
+
 # ATTENTION when COPYING! important which model you use as decorator
 from ..models.affiliations import affiliation_model as model
-from cds_migrator_kit.transform.xml_processing.quality.contributors import get_contributor_affiliations
-from cds_migrator_kit.transform.xml_processing.quality.decorators import for_each_value, require
 
 
 def process_creatibutors(value):

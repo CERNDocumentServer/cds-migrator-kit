@@ -31,19 +31,17 @@ from invenio_vocabularies.contrib.names.models import NamesMetadata
 from opensearchpy import RequestError
 from sqlalchemy.exc import NoResultFound
 
-from cds_migrator_kit.rdm.migration_config import VOCABULARIES_NAMES_SCHEMES
-from cds_migrator_kit.transform.dumper import CDSRecordDump
-from cds_migrator_kit.transform.errors import (
-    LossyConversion,
-)
 from cds_migrator_kit.errors import (
     ManualImportRequired,
     MissingRequiredField,
     RecordFlaggedCuration,
     RestrictedFileDetected,
-    UnexpectedValue
+    UnexpectedValue,
 )
+from cds_migrator_kit.rdm.migration_config import VOCABULARIES_NAMES_SCHEMES
 from cds_migrator_kit.reports.log import RDMJsonLogger
+from cds_migrator_kit.transform.dumper import CDSRecordDump
+from cds_migrator_kit.transform.errors import LossyConversion
 
 cli_logger = logging.getLogger("migrator")
 
@@ -150,8 +148,11 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         except NoResultFound:
             return UnexpectedValue(
                 message=f"{email} not found - did you run user migration?",
-                stage="transform", recid=json_entry["legacy_recid"], value=email,
-                priority="critical")
+                stage="transform",
+                recid=json_entry["legacy_recid"],
+                value=email,
+                priority="critical",
+            )
 
     def _match_affiliation(self, affiliation_name):
         """Match an affiliation against `CDSMigrationAffiliationMapping` db table."""
@@ -610,7 +611,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 {
                     file["full_name"]: {
                         "eos_tmp_path": tmp_eos_root
-                                        / full_path.relative_to(legacy_path_root),
+                        / full_path.relative_to(legacy_path_root),
                         "id_bibdoc": file["bibdocid"],
                         "key": file["full_name"],
                         "metadata": {},

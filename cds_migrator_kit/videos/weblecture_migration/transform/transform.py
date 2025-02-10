@@ -16,17 +16,15 @@ from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordTransform,
 )
 
-from cds_migrator_kit.transform.dumper import CDSRecordDump
 from cds_migrator_kit.errors import (
     ManualImportRequired,
     MissingRequiredField,
     RestrictedFileDetected,
     UnexpectedValue,
 )
-from cds_migrator_kit.transform.errors import (
-    LossyConversion,
-)
 from cds_migrator_kit.reports.log import RDMJsonLogger
+from cds_migrator_kit.transform.dumper import CDSRecordDump
+from cds_migrator_kit.transform.errors import LossyConversion
 from cds_migrator_kit.videos.weblecture_migration.transform import (
     videos_migrator_marc21,
 )

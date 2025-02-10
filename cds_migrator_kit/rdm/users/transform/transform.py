@@ -10,12 +10,11 @@ import logging
 from copy import deepcopy
 
 import requests
-from invenio_rdm_migrator.streams.records.transform import (
-    RDMRecordTransform,
-)
+from invenio_rdm_migrator.streams.records.transform import RDMRecordTransform
+
+from cds_migrator_kit.transform.dumper import CDSRecordDump
 
 from . import users_migrator_marc21
-from cds_migrator_kit.transform.dumper import CDSRecordDump
 
 cli_logger = logging.getLogger("migrator")
 
@@ -30,7 +29,6 @@ class CDSToRDMSubmitterTransform(RDMRecordTransform):
         """Constructor."""
         self.dry_run = dry_run
         super().__init__()
-
 
     def _transform(self, entry):
         """Transform a single entry."""

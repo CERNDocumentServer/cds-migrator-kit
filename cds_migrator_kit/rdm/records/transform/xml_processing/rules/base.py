@@ -12,17 +12,22 @@ import datetime
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 
-from cds_migrator_kit.rdm.records.transform.models.base_record import rdm_base_record_model as model
-from cds_migrator_kit.transform.xml_processing.quality.dates import get_week_start
 from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.rdm.records.transform.models.base_record import (
+    rdm_base_record_model as model,
+)
+from cds_migrator_kit.transform.xml_processing.quality.dates import get_week_start
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     filter_list_values,
     for_each_value,
     require,
     strip_output,
 )
-from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue, \
-    clean_str, clean_val
+from cds_migrator_kit.transform.xml_processing.quality.parsers import (
+    StringValue,
+    clean_str,
+    clean_val,
+)
 
 
 @model.over("_created", "(^916__)")

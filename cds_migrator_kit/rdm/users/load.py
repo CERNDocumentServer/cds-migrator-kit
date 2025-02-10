@@ -23,6 +23,7 @@ from idutils import normalize_ror
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
 from invenio_db import db
+from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
@@ -32,21 +33,18 @@ from invenio_vocabularies.contrib.names.models import NamesMetadata
 from opensearchpy import RequestError
 from sqlalchemy.exc import NoResultFound
 
-from cds_migrator_kit.rdm.migration_config import VOCABULARIES_NAMES_SCHEMES
-from cds_migrator_kit.rdm.users.api import CDSMigrationUserAPI
-from cds_migrator_kit.transform.dumper import CDSRecordDump
-from cds_migrator_kit.transform.errors import (
-    LossyConversion,
-)
 from cds_migrator_kit.errors import (
     ManualImportRequired,
     MissingRequiredField,
     RecordFlaggedCuration,
     RestrictedFileDetected,
-    UnexpectedValue
+    UnexpectedValue,
 )
+from cds_migrator_kit.rdm.migration_config import VOCABULARIES_NAMES_SCHEMES
+from cds_migrator_kit.rdm.users.api import CDSMigrationUserAPI
 from cds_migrator_kit.reports.log import RDMJsonLogger
-from invenio_rdm_migrator.load.base import Load
+from cds_migrator_kit.transform.dumper import CDSRecordDump
+from cds_migrator_kit.transform.errors import LossyConversion
 
 cli_logger = logging.getLogger("migrator")
 
@@ -186,7 +184,6 @@ class CDSSubmitterLoad(Load):
             )
             return -1
         return user.id
-
 
     def _cleanup(self):  # pragma: no cover
         """Cleanup data after loading."""

@@ -8,6 +8,7 @@
 """CDS-Videos migration load module."""
 from invenio_rdm_migrator.load.base import Load
 
+
 class CDSVideosLoad(Load):
     """CDS-Videos Load."""
 

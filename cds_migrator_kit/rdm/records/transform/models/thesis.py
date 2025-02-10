@@ -19,8 +19,9 @@
 
 """CDS-RDM Summer student model."""
 
-from ..models.base_record import rdm_base_record_model as base_model
 from cds_migrator_kit.transform.overdo import CdsOverdo
+
+from ..models.base_record import rdm_base_record_model as base_model
 
 
 class ThesisModel(CdsOverdo):

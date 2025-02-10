@@ -20,7 +20,6 @@
 
 from dojson.errors import IgnoreKey
 
-from ...models.thesis import thesis_model as model
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     filter_list_values,
@@ -29,6 +28,8 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     strip_output,
 )
 from cds_migrator_kit.transform.xml_processing.rules.base import process_contributors
+
+from ...models.thesis import thesis_model as model
 
 
 @model.over("contributors", "^701__")

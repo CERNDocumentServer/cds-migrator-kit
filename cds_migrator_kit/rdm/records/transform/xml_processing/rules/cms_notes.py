@@ -8,8 +8,9 @@
 """CDS-RDM migration rules module."""
 
 
-from ...models.note import cms_note_model
 from cds_migrator_kit.transform.xml_processing.quality.decorators import require
+
+from ...models.note import cms_note_model
 
 
 @cms_note_model.over("communities", "^980__")

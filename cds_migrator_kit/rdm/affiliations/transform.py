@@ -10,12 +10,11 @@ import logging
 from copy import deepcopy
 
 import requests
-from invenio_rdm_migrator.streams.records.transform import (
-    RDMRecordTransform,
-)
+from invenio_rdm_migrator.streams.records.transform import RDMRecordTransform
+
+from cds_migrator_kit.transform.dumper import CDSRecordDump
 
 from . import affiliations_migrator_marc21
-from cds_migrator_kit.transform.dumper import CDSRecordDump
 
 cli_logger = logging.getLogger("migrator")
 
