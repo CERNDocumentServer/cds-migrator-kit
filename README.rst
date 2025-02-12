@@ -7,22 +7,81 @@
  cds-migrator-kit
 ==================
 
-
-TODO change here:
-
+Installation
+============
 
 Default Installation (without RDM or Videos)
-pip install .
+---------------------------------------------
+To install the package without RDM or videos, run:
 
-Install for RDM
+.. code-block:: bash
 
-pip install .[rdm]
+    pip install .
 
-Install for Videos
+Installation for RDM
+----------------------
+To install the package with RDM, run:
 
-pip install .[videos]
+.. code-block:: bash
+
+    pip install ".[rdm]"
+
+To see available RDM commands, run:
+
+.. code-block:: bash
+
+    invenio migration --help
+
+Installation for Videos
+-----------------------
+To install the package with cds-videos, run:
+
+.. code-block:: bash
+
+    pip install ".[videos]"
+
+To see available videos commands, run:
+
+.. code-block:: bash
+
+    invenio migration videos --help
+
+Running Tests Locally
+=====================
+
+For RDM
+--------
+Install rdm and test dependencies:
+
+.. code-block:: bash
+
+    pip install ".[rdm,tests]"
+
+
+Run the tests with ignoring `cds-videos` tests:
+
+.. code-block:: bash
+
+    ./run-tests.sh rdm
+
+For Videos
+----------
+Install videos and test dependencies:
+
+.. code-block:: bash
+
+    pip install ".[videos,tests]"
+
+Run the video tests:
+
+.. code-block:: bash
+
+    ./run-tests.sh videos
+
 
 To run the interface:
-```
-gunicorn -b :8080 --timeout 120 --graceful-timeout 60 cds_migrator_kit.app:app
-```
+=====================
+.. code-block:: bash
+    
+    gunicorn -b :8080 --timeout 120 --graceful-timeout 60 cds_migrator_kit.app:app
+
