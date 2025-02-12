@@ -39,6 +39,12 @@ for arg in $@; do
 		-K|--keep-services)
 			keep_services=1
 			;;
+		rdm)
+            pytest_args+=( "tests/cds-rdm" "tests/test_cds_migrator_kit.py" )
+            ;;
+        videos)
+            pytest_args+=( "tests/cds-videos" "tests/test_cds_migrator_kit.py" )
+            ;;
 		*)
 			pytest_args+=( ${arg} )
 			;;

@@ -368,9 +368,6 @@ logs_dir = os.path.join(base_path, "tmp/logs/")
 CDS_MIGRATOR_KIT_LOGS_PATH = logs_dir
 
 CDS_MIGRATOR_KIT_STREAM_CONFIG = "cds_migrator_kit/rdm/streams.yaml"
-CDS_MIGRATOR_KIT_VIDEOS_STREAM_CONFIG = (
-    "cds_migrator_kit/videos/weblecture_migration/streams.yaml"
-)
 
 RDM_RECORDS_IDENTIFIERS_SCHEMES = {
     **RDM_RECORDS_IDENTIFIERS_SCHEMES,
