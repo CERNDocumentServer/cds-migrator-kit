@@ -19,7 +19,6 @@ from cds_migrator_kit.rdm.affiliations.streams import AffiliationsStreamDefiniti
 from cds_migrator_kit.rdm.records.streams import (  # UserStreamDefinition,
     RecordStreamDefinition,
 )
-from cds_migrator_kit.rdm.runner import Runner
 from cds_migrator_kit.rdm.stats.runner import RecordStatsRunner
 from cds_migrator_kit.rdm.stats.streams import RecordStatsStreamDefinition
 from cds_migrator_kit.rdm.users.runner import PeopleAuthorityRunner, SubmitterRunner
@@ -30,6 +29,7 @@ from cds_migrator_kit.rdm.users.streams import (
 from cds_migrator_kit.rdm.users.transform.xml_processing.models.people import (
     PeopleAuthority,
 )
+from cds_migrator_kit.runner.runner import Runner
 
 cli_logger = logging.getLogger("migrator")
 
