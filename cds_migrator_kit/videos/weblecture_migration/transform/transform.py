@@ -96,43 +96,56 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
     def _metadata(self, entry):
         """Transform the metadata of a record."""
 
-        def extract_dates(json_data, key, subkey=None):
-            """Extracts date values from a given key in json_data."""
+        def guess_dates(json_data, key, subkey=None):
+            """Try to get `date` from other fields.
+            
+            ### Examples:
+            1. **8564 tag may include digitized file information, indico information (link, date) or any url file
+                json_data = {"url_files": [{"indico": {"url": "http://agenda.cern.ch/..", "date": "2002-03-18"}}], ...}
+                Calling the method with `key="url_files", subkey="indico"`
+                Returns all the possible:
+                json_data["url_files"]["indico"]["date]
+                
+            2. **500__ tag: internal notes that may contain date information
+                json_data = {"internal_notes": [{"note": "note, 1 Jun 2025", "date": "2025-06-01"}], ...}
+                Calling the method with `key="internal_notes"
+                Returns all the possible:
+                json_data["internal_notes"]["date"]
+            
+            ### Returns:
+            - `set[str]`: A set of date strings.
+            """
             items = json_data.get(key, [])
             if subkey:
                 return {
                     item[subkey]["date"]
                     for item in items
-                    if isinstance(item, dict)
-                    and subkey in item
-                    and isinstance(item[subkey], dict)
+                    if subkey in item
                     and "date" in item[subkey]
                 }
 
             return {
                 item["date"]
                 for item in items
-                if isinstance(item, dict) and "date" in item
+                if "date" in item
             }
 
         def reformat_date(json_data):
             """Reformat the date for the cds-videos data model."""
-            # 1. Check primary date field
+            # Check primary date field
             dates_set = {date for date in json_data.get("date", []) if date}
 
-            # 2. If no date found, check `indico_links`
+            # If no date found, check `indico_links` and `internal_notes`
             if not dates_set:
-                dates_set = extract_dates(json_data, "url_files", subkey="indico")
+                indico_dates = guess_dates(json_data, "url_files", subkey="indico")
+                note_dates = guess_dates(json_data, "internal_notes")
+                dates_set.update(indico_dates, note_dates)
 
-            # 3. If still no date found, check `internal_notes`
-            if not dates_set:
-                dates_set = extract_dates(json_data, "internal_notes")
-
-            # 4. Return the valid date if only one is found
+            # Return the valid date if only one is found
             if len(dates_set) == 1:
                 return next(iter(dates_set))
 
-            # 5. Multiple dates (Must have different indico event videos?)
+            # Multiple dates (Must have different indico event videos?)
             if len(dates_set) > 1:
                 raise UnexpectedValue(
                     f"More than one date found in record: {json_data.get('recid')} dates: {dates_set}.",
