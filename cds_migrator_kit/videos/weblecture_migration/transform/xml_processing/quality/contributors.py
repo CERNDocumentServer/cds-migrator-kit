@@ -38,7 +38,7 @@ def get_contributor_role(subfield, role, raise_unexpected=False):
     return translations[clean_role]
 
 
-def get_contributor(key, value):
+def get_contributor(key, value, contributor_role="", name=""):
     """Create contributor json for tag 518 and 269."""
     beard = value.get("9")
     if beard is not None and beard != "#BEARD#":
@@ -46,13 +46,15 @@ def get_contributor(key, value):
         # historically it was some kind of automatic script tagging
         # and it should be ignored if value == #BEARD#
         raise UnexpectedValue(field=key, subfield="9", value=beard)
-    name = value.get("a").strip()
+    if not name:
+        name = value.get("a").strip()
     affiliation = value.get("u", "")
-    role = value.get("e", "")
     contributor = {"name": name}
-    if role:
-        role = get_contributor_role("e", role)
-        contributor.update({"role": role})
     if affiliation:
         contributor.update({"affiliations": [affiliation]})
+    if contributor_role:
+        contributor.update({"role": contributor_role})
+    elif value.get("e", ""):
+        role = get_contributor_role("e", value.get("e", ""))
+        contributor.update({"role": role})
     return contributor

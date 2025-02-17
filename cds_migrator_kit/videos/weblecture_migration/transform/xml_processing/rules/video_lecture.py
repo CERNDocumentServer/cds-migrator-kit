@@ -26,6 +26,9 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
     require,
 )
+from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.contributors import (
+    get_contributor,
+)
 
 # ATTENTION when COPYING! important which model you use as decorator
 from ...models.video_lecture import model
@@ -92,14 +95,12 @@ def imprint(self, key, value):
 @for_each_value
 @require(["a"])
 def performer(self, key, value):
-    """Translates performer."""
-    name = value.get("a").strip()
+    """Translates performer/Participant."""
     role = value.get("e")
-    contributor = {"name": name, "role": "Performer"}  # TODO or "Participant"
-    affiliation = value.get("u", "")
-    if affiliation:
-        contributor.update({"affiliations": [affiliation]})
-    return contributor
+    if role and role.strip().lower() != "speaker":
+        # checking if anything else stored in this field
+        raise UnexpectedValue("Different role found", field=key, subfield="e", value=role)
+    return get_contributor(key, value, contributor_role="Performer")
 
 
 @model.over("contributors", "^906__")
@@ -107,12 +108,7 @@ def performer(self, key, value):
 @require(["p"])
 def event_speakers(self, key, value):
     """Translates event_speakers."""
-    name = value.get("p").strip()
-    contributor = {"name": name, "role": "Speaker"}
-    affiliation = value.get("u", "")
-    if affiliation:
-        contributor.update({"affiliations": [affiliation]})
-    return contributor
+    return get_contributor(key, value, contributor_role="Speaker", name=value.get("p").strip())
 
 
 @model.over("url_files", "^8564_")
