@@ -25,9 +25,9 @@ from invenio_vocabularies.contrib.names.api import Name
 from invenio_vocabularies.contrib.names.models import NamesMetadata
 
 from cds_migrator_kit.rdm.records.streams import RecordStreamDefinition
-from cds_migrator_kit.rdm.runner import Runner
 from cds_migrator_kit.rdm.users.runner import SubmitterRunner
 from cds_migrator_kit.rdm.users.streams import SubmitterStreamDefinition
+from cds_migrator_kit.runner.runner import Runner
 
 
 def suite_multi_field(record):
@@ -356,7 +356,7 @@ def test_full_migration_stream(
     Name.index.refresh()
 
     mocker.patch(
-        "cds_migrator_kit.rdm.runner.Runner._read_config",
+        "cds_migrator_kit.runner.runner.Runner._read_config",
         return_value={
             "db_uri": "postgresql://cds-rdm-migration:cds-rdm-migration@localhost:5432/cds-rdm-migration",
             "records": {
