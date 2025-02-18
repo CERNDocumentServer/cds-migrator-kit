@@ -120,15 +120,10 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 return {
                     item[subkey]["date"]
                     for item in items
-                    if subkey in item
-                    and "date" in item[subkey]
+                    if subkey in item and "date" in item[subkey]
                 }
 
-            return {
-                item["date"]
-                for item in items
-                if "date" in item
-            }
+            return {item["date"] for item in items if "date" in item}
 
         def reformat_date(json_data):
             """Reformat the date for the cds-videos data model."""
@@ -210,7 +205,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
     def transform(self, entry):
         """Transform a record single entry."""
         record_dump = CDSRecordDump(data=entry, dojson_model=videos_migrator_marc21)
-        migration_logger = RDMJsonLogger()
+        migration_logger = RDMJsonLogger(collection="weblectures")
 
         record_dump.prepare_revisions()
         timestamp, json_data = record_dump.latest_revision
@@ -261,7 +256,7 @@ class CDSToVideosRecordTransform(RDMRecordTransform):
     def _transform(self, entry):
         """Transform a single entry."""
         # creates the output structure for load step
-        migration_logger = RDMJsonLogger()
+        migration_logger = RDMJsonLogger(collection="weblectures")
 
         try:
             record = self._record(entry)
