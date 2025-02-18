@@ -58,7 +58,7 @@ Install rdm and test dependencies:
     pip install ".[rdm,tests]"
 
 
-Run the tests with ignoring `cds-videos` tests:
+Run the rdm tests:
 
 .. code-block:: bash
 
