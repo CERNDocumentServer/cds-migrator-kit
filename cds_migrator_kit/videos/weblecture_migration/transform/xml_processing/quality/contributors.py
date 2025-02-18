@@ -24,7 +24,7 @@ def get_contributor_role(subfield, role, raise_unexpected=False):
     }
     clean_role = None
     if role is None:
-        return "Speaker"  # TODO ?
+        return "Speaker"  # TODO default?
     if isinstance(role, str):
         clean_role = role.lower()
     elif isinstance(role, list) and role and role[0]:
@@ -54,7 +54,8 @@ def get_contributor(key, value, contributor_role="", name=""):
         contributor.update({"affiliations": [affiliation]})
     if contributor_role:
         contributor.update({"role": contributor_role})
-    elif value.get("e", ""):
+    else:
+        # Role is mandatory from UI but not for the datamodel?
         role = get_contributor_role("e", value.get("e", ""))
         contributor.update({"role": role})
     return contributor

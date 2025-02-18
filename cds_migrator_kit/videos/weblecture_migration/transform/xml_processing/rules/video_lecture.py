@@ -18,8 +18,7 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 """Common Videos fields."""
 import re
-
-from dateutil.parser import ParserError, parse
+from datetime import datetime
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
@@ -35,33 +34,34 @@ from ...models.video_lecture import model
 
 
 def parse_date(date_str):
-    """Parses a date string into 'YYYY-MM-DD' format.
-
-    Returns None if the string is missing, too short, too long,
-    or if it contains incomplete or ambiguous date information.
-
-    Examples:
-    - Some values only contain year (e.g., "1998")
-    - Some values has date range (e.g., "23 - 27 Nov 1998")
-    """
-    if not date_str:
-        return None
-    if len(date_str) < 10 or len(date_str) > 13:
-        # Too short/long to have the full date info
-        return None
-    try:
-        parsed_date = parse(date_str)
-        return parsed_date.strftime("%Y-%m-%d")
-    except ParserError:
+    """Parses a date string into 'YYYY-MM-DD' format."""
+    if not date_str or not isinstance(date_str, str):
         return
+
+    valid_formats = [
+        "%Y-%m-%dT%H:%M:%SZ",  # 2008-03-11T11:00:00Z
+        "%Y-%m-%dT%H:%M:%S",  # 2008-03-11T11:00:00
+        "%Y-%m-%d",  # 1993-08-09
+        "%d %b %Y",  # 27 Nov 1998
+        "%d %B %Y",  # 27 November 1998
+    ]
+
+    for format in valid_formats:
+        try:
+            parsed_date = datetime.strptime(date_str, format)
+            return parsed_date.strftime("%Y-%m-%d")
+        except ValueError:
+            continue  # Try the next format
+
+    return
 
 
 @model.over("date", "^518__")
 @for_each_value
 def date(self, key, value):
     """Translates date from tag 518."""
-    # 518 'd' subfield, take the first 10 char, it might have another character (e.g., 2008-03-11T14:00:00Z)
-    parsed_date = parse_date((value.get("d") or "")[:10])
+    # 518 'd' subfield
+    parsed_date = parse_date(value.get("d", "").strip())
     if parsed_date:
         return parsed_date
     # 518 'a' subfield (e.g., 'CERN, Geneva, 23 - 27 Nov 1998')
@@ -103,7 +103,7 @@ def performer(self, key, value):
     return get_contributor(key, value, contributor_role="Performer")
 
 
-@model.over("contributors", "^906__")
+@model.over("event_speakers", "^906__")
 @for_each_value
 @require(["p"])
 def event_speakers(self, key, value):
@@ -143,9 +143,9 @@ def url_files(self, key, value):
         text = value.get("y")
         if text:
             indico_link["text"] = text
-        match_date = re.search(r"(?:Talk\s*)?(\d{1,2}\s\w{3}\s\d{4})", text)
+        match_date = re.sub(r"^Talk\s*", "", text)
         if match_date:
-            parsed_date = parse_date(match_date.group(1))
+            parsed_date = parse_date(match_date)
             if parsed_date:
                 indico_link["date"] = parsed_date
 

@@ -9,12 +9,17 @@
 import datetime
 import logging
 from pathlib import Path
+import os
 
 import arrow
 from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
 )
+from invenio_accounts.models import User
+from sqlalchemy.exc import NoResultFound
+from flask import current_app
+
 
 from cds_migrator_kit.errors import (
     ManualImportRequired,
@@ -28,6 +33,7 @@ from cds_migrator_kit.transform.errors import LossyConversion
 from cds_migrator_kit.videos.weblecture_migration.transform import (
     videos_migrator_marc21,
 )
+from cds_migrator_kit.videos.weblecture_migration.transform.transform_files import TransformFiles
 
 cli_logger = logging.getLogger("migrator")
 
@@ -49,13 +55,15 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         return
 
     def _created(self, json_entry):
+        """Returns the creation date of the record."""
+        # TODO it'll always return `today` because we dont have `_created`
         try:
             return arrow.get(json_entry["_created"])
         except KeyError:
             return datetime.date.today().isoformat()
 
     def _updated(self, record_dump):
-        """Returns the creation date of the record."""
+        """Returns the modification date of the record."""
         return record_dump.data["record"][0]["modification_datetime"]
 
     def _access(self, entry, record_dump):
@@ -89,9 +97,39 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
     def _files(self, record_dump):
         """Transform the files of a record."""
         raise NotImplementedError("_files are not implemented for this class.")
+    
+    def _owner(self, json_entry):
+        """Get the submitter id of the record."""
+        return
 
     def _media_files(self, entry):
-        return
+        """Transform the media files (lecturemedia files) of a record."""
+        # Check if record has one master folder, or more
+        master_paths = [
+            item["master_path"] for item in entry.get("files") if "master_path" in item
+        ]
+        if len(master_paths) == 1:
+            transform_files = TransformFiles(recid=entry["legacy_recid"], entry_files=entry.get("files"))
+            file_info_json = transform_files.transform()
+            return file_info_json   
+        elif len(master_paths) > 1:
+            # TODO group them to have different file transform to create multiple records
+            return UnexpectedValue(
+                message="Multiple master folders! Multiple records should be created.",
+                stage="transform",
+                recid=self.recid,
+                value="master_path",
+                priority="critical",
+            )
+        else:
+            return UnexpectedValue(
+                message="Master folder does not exists!",
+                stage="transform",
+                recid=self.recid,
+                value="master_path",
+                priority="critical",
+            )
+            
 
     def _metadata(self, entry):
         """Transform the metadata of a record."""
@@ -120,15 +158,10 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 return {
                     item[subkey]["date"]
                     for item in items
-                    if subkey in item
-                    and "date" in item[subkey]
+                    if subkey in item and "date" in item[subkey]
                 }
 
-            return {
-                item["date"]
-                for item in items
-                if "date" in item
-            }
+            return {item["date"] for item in items if "date" in item}
 
         def reformat_date(json_data):
             """Reformat the date for the cds-videos data model."""
@@ -165,33 +198,27 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
         def format_contributors(json_data):
             """
-            Same contributors could be both in tag 700 and 906.
+            Format the contributors.
 
-            TODO: Should we keep them both? https://cds.cern.ch/record/2233152/export/xm?ln=en
-            Removes duplicate contributors based on name, role, and affiliations.
+            - If there are contributors, don't use 906 (event speakers).
+            - If there are no contributors, use 906 (event speakers).
+            - If no valid contributors are found, use "Unknown, Unknown" and log it.
             """
-            contributors = json_data.get("contributors")
+
+            contributors = (
+                json_data.get("contributors")
+                or json_data.get("event_speakers")
+                or None
+            )
+
             if not contributors:
-                raise MissingRequiredField(
-                    f"No valid contributor found in record: {json_data.get('recid')}.",
-                    stage="transform",
-                )
+                # TODO do we need another logger?
+                logger_migrator = logging.getLogger("users")
+                logger_migrator.warning(f"Missing contributors in record:{json_data['recid']}! Using:`Unknown`")
 
-            unique_contributors = []
-            seen = set()
+                contributors = [{"name": "Unknown, Unknown"}]
 
-            for contributor in contributors:
-                # Create a tuple to identify contributors
-                identifier = (
-                    contributor["name"],
-                    contributor.get("role"),
-                    tuple(contributor.get("affiliations", [])),
-                )
-                if identifier not in seen:
-                    seen.add(identifier)
-                    unique_contributors.append(contributor)
-
-            return unique_contributors
+            return contributors
 
         metadata = {
             "title": entry["title"],
@@ -210,16 +237,17 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
     def transform(self, entry):
         """Transform a record single entry."""
         record_dump = CDSRecordDump(data=entry, dojson_model=videos_migrator_marc21)
-        migration_logger = RDMJsonLogger()
+        migration_logger = RDMJsonLogger(collection="weblectures")
 
         record_dump.prepare_revisions()
         timestamp, json_data = record_dump.latest_revision
 
         migration_logger.add_record(json_data)
         record_json_output = {
+            "metadata": self._metadata(json_data),
             "created": self._created(json_data),
             "updated": self._updated(record_dump),
-            "metadata": self._metadata(json_data),
+            "media_files": self._media_files(json_data)
         }
 
         return {
@@ -261,7 +289,7 @@ class CDSToVideosRecordTransform(RDMRecordTransform):
     def _transform(self, entry):
         """Transform a single entry."""
         # creates the output structure for load step
-        migration_logger = RDMJsonLogger()
+        migration_logger = RDMJsonLogger(collection="weblectures")
 
         try:
             record = self._record(entry)
