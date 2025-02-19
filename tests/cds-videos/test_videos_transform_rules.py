@@ -26,6 +26,14 @@ from cds_migrator_kit.videos.weblecture_migration.transform.transform import (
 from tests.helpers import add_tag_to_marcxml, load_json, remove_tag_from_marcxml
 
 
+def get_dump_revision(entry_data, migrator_model=videos_migrator_marc21):
+    """Helper function to dump and apply rules"""
+    dump = CDSRecordDump(data=entry_data, dojson_model=migrator_model)
+    dump.prepare_revisions()
+    _, res = dump.latest_revision
+    return res
+
+
 @pytest.fixture()
 def datadir():
     """Get data directory."""
@@ -36,9 +44,7 @@ def test_transform_rules_reqired_metadata(datadir, base_app):
     """Test migration rules."""
     with base_app.app_context():
         data = load_json(datadir, "lecture.json")
-        dump = CDSRecordDump(data=data[0], dojson_model=videos_migrator_marc21)
-        dump.prepare_revisions()
-        created_date, res = dump.latest_revision
+        res = get_dump_revision(data[0])
 
         assert res["legacy_recid"] == 2233152
         assert res["recid"] == "2233152"
@@ -72,9 +78,7 @@ def test_transform_required_metadata(datadir, base_app):
     """Test migration transform."""
     with base_app.app_context():
         data = load_json(datadir, "lecture.json")
-        dump = CDSRecordDump(data=data[0], dojson_model=videos_migrator_marc21)
-        dump.prepare_revisions()
-        created_date, res = dump.latest_revision
+        res = get_dump_revision(data[0])
 
         # Transform record
         record_entry = CDSToVideosRecordEntry()
@@ -107,13 +111,12 @@ def test_transform_description(datadir, base_app):
 
         # Remove the 520 tag (description) from MARCXML
         modified_data = data[0]
+        record_marcxml = modified_data["record"][-1]["marcxml"]
         modified_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
-            modified_data["record"][-1]["marcxml"], "520"
+            record_marcxml, "520"
         )
 
-        dump = CDSRecordDump(data=modified_data, dojson_model=videos_migrator_marc21)
-        dump.prepare_revisions()
-        _, res = dump.latest_revision
+        res = get_dump_revision(modified_data)
 
         # Ensure json_converted_record don't have the description
         assert "description" not in res
@@ -134,12 +137,11 @@ def test_transform_date(datadir, base_app):
 
         # Test case: Fail due to multiple dates
         modified_data = data[0]
+        record_marcxml = modified_data["record"][-1]["marcxml"]
         modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
-            modified_data["record"][-1]["marcxml"], "518", {"d": "2025-02-06"}
+            record_marcxml, "518", {"d": "2025-02-06"}
         )
-        dump = CDSRecordDump(data=modified_data, dojson_model=videos_migrator_marc21)
-        dump.prepare_revisions()
-        _, res = dump.latest_revision
+        res = get_dump_revision(modified_data)
 
         # Transform record
         record_entry = CDSToVideosRecordEntry()
@@ -147,16 +149,13 @@ def test_transform_date(datadir, base_app):
             record_entry._metadata(res)
 
         # Test case: Fail due to missing dates
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        record_marcxml = remove_tag_from_marcxml(record_marcxml, "518")
         modified_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
-            modified_data["record"][-1]["marcxml"], "518"
-        )
-        modified_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
-            modified_data["record"][-1]["marcxml"], "269"
+            record_marcxml, "269"
         )
 
-        dump = CDSRecordDump(data=modified_data, dojson_model=videos_migrator_marc21)
-        dump.prepare_revisions()
-        _, res = dump.latest_revision
+        res = get_dump_revision(modified_data)
 
         # Transform record
         with pytest.raises(MissingRequiredField):
@@ -171,16 +170,13 @@ def test_transform_contributor(datadir, base_app):
 
         # Test case: Fail due to missing contributor
         modified_data = data[0]
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        record_marcxml = remove_tag_from_marcxml(record_marcxml, "700")
         modified_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
-            modified_data["record"][-1]["marcxml"], "700"
-        )
-        modified_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
-            modified_data["record"][-1]["marcxml"], "906"
+            record_marcxml, "906"
         )
 
-        dump = CDSRecordDump(data=modified_data, dojson_model=videos_migrator_marc21)
-        dump.prepare_revisions()
-        _, res = dump.latest_revision
+        res = get_dump_revision(modified_data)
 
         # Transform record it should fail (no contributor)
         record_entry = CDSToVideosRecordEntry()
@@ -196,9 +192,7 @@ def test_transform_digitized(datadir, base_app):
 
         # Get digitized record and apply rules
         entry_data = data[1]
-        dump = CDSRecordDump(data=entry_data, dojson_model=videos_migrator_marc21)
-        dump.prepare_revisions()
-        _, res = dump.latest_revision
+        res = get_dump_revision(entry_data)
 
         digitized = [
             item["digitized"] for item in res["url_files"] if "digitized" in item
@@ -227,9 +221,7 @@ def test_transform_files(datadir, base_app):
 
         # Get record and apply rules
         entry_data = data[1]
-        dump = CDSRecordDump(data=entry_data, dojson_model=videos_migrator_marc21)
-        dump.prepare_revisions()
-        _, res = dump.latest_revision
+        res = get_dump_revision(entry_data)
 
         # Test master paths
         master_paths = [
@@ -274,9 +266,7 @@ def test_transform_internal_note(datadir, base_app):
 
         # Get record and apply rules
         entry_data = data[1]
-        dump = CDSRecordDump(data=entry_data, dojson_model=videos_migrator_marc21)
-        dump.prepare_revisions()
-        _, res = dump.latest_revision
+        res = get_dump_revision(entry_data)
 
         # Record has one internal note
         assert "internal_notes" in res
@@ -292,16 +282,13 @@ def test_transform_internal_note(datadir, base_app):
         # Test case: Add internal note which has a valid date to record
         modified_data = data[1]
         # Remove the current internal note
-        modified_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
-            modified_data["record"][-1]["marcxml"], "500"
-        )
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        record_marcxml = remove_tag_from_marcxml(record_marcxml, "500")
         # Add new internal note with a valid date
         modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
-            modified_data["record"][-1]["marcxml"], "500", {"a": "Note, 16 Feb 2001"}
+            record_marcxml, "500", {"a": "Note, 16 Feb 2001"}
         )
-        dump = CDSRecordDump(data=modified_data, dojson_model=videos_migrator_marc21)
-        dump.prepare_revisions()
-        _, res = dump.latest_revision
+        res = get_dump_revision(modified_data)
 
         # Record has one internal note
         assert "internal_notes" in res
