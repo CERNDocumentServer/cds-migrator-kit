@@ -86,7 +86,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         try:
             return arrow.get(json_entry["_created"])
         except KeyError:
-            return datetime.date.today().isoformat()
+            return arrow.get(datetime.date.today().isoformat())
 
     def _updated(self, record_dump):
         """Returns the creation date of the record."""
