@@ -43,6 +43,8 @@ def created(self, key, value):
         return datetime.date.today().isoformat()
     if isinstance(date_values, list):
         date = min(date_values)
+    if isinstance(date_values, tuple):
+        date = int(date_values[0])
     else:
         date = int(date_values)
     try:
@@ -211,7 +213,7 @@ def aleph_number(self, key, value):
 
 @model.over("identifiers", "^035__")
 @for_each_value
-def inspire_number(self, key, value):
+def identifiers(self, key, value):
     """Translates identifiers.
 
     Attention: might contain aleph number
@@ -220,41 +222,23 @@ def inspire_number(self, key, value):
     id_value = StringValue(value.get("a")).parse()
     scheme = StringValue(value.get("9")).parse()
 
-    if scheme.upper() != "INSPIRE":
-        raise UnexpectedValue(
-            field=key,
-            subfield="9",
-            message="INSPIRE ID SCHEME MISSING",
-            priority="warning",
-        )
-
     if id_value:
-        return {"scheme": "inspire", "identifier": id_value}
+        return {"scheme": scheme.lower(), "identifier": id_value}
 
 
 @model.over("_pids", "^0247_")
 def _pids(self, key, value):
     """Translates external_system_identifiers fields."""
-    pid_dict = self.get("_pids")
-    scheme = StringValue(value.get("2")).parse()
+    pid_dict = self.get("_pids", {})
+
+    scheme = StringValue(value.get("2")).parse().lower()
     identifier = StringValue(value.get("a")).parse()
-    if scheme.upper() != "DOI":
-        raise UnexpectedValue(
-            field=key,
-            subfield="2",
-            message="Unexpected scheme. (should be DOI)",
-            priority="warning",
-        )
-    from flask import current_app
-
-    DATACITE_PREFIX = current_app.config["DATACITE_PREFIX"]
-    doi_identifier = {"identifier": identifier}
-    if identifier.startswith(DATACITE_PREFIX):
-        doi_identifier["provider"] = "datacite"
+    if scheme.upper() == "ARXIV":
+        self["identifiers"].append({"scheme": "arxiv", "identifier": identifier})
+        raise IgnoreKey("_pids")
     else:
-        doi_identifier["provider"] = "external"
-
-    return {"doi": doi_identifier}
+        pid_dict[scheme] = {"identifier": identifier}
+        return pid_dict
 
 
 @model.over("contributors", "^710__")

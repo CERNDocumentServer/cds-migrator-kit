@@ -20,9 +20,11 @@ def cli():
 # Check for `rdm` dependencies
 if import_module("cds_rdm.__init__"):
     from cds_migrator_kit.rdm.cli import migration
+
     cli = migration
 
 # Check for `videos` dependencies
 if import_module("cds.version"):
     from cds_migrator_kit.videos.weblecture_migration.cli import videos
+
     cli.add_command(videos, "videos")

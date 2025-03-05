@@ -30,8 +30,9 @@ class LegacyExtract(Extract):
             for f in listdir(self.dirpath)
             if isfile(join(self.dirpath, f)) and not f.startswith(".")
         ]
-
-        for file in files:
+        total = len(files)
+        for i, file in enumerate(files):
+            click.secho(f"processing file {file} ({i}/{total})", fg="green", bold=True)
             with open(join(self.dirpath, file), "r") as dump_file:
                 data = json.load(dump_file)
                 with click.progressbar(data) as records:

@@ -136,20 +136,20 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
         def guess_dates(json_data, key, subkey=None):
             """Try to get `date` from other fields.
-            
+
             ### Examples:
             1. **8564 tag may include digitized file information, indico information (link, date) or any url file
                 json_data = {"url_files": [{"indico": {"url": "http://agenda.cern.ch/..", "date": "2002-03-18"}}], ...}
                 Calling the method with `key="url_files", subkey="indico"`
                 Returns all the possible:
                 json_data["url_files"]["indico"]["date]
-                
+
             2. **500__ tag: internal notes that may contain date information
                 json_data = {"internal_notes": [{"note": "note, 1 Jun 2025", "date": "2025-06-01"}], ...}
                 Calling the method with `key="internal_notes"
                 Returns all the possible:
                 json_data["internal_notes"]["date"]
-            
+
             ### Returns:
             - `set[str]`: A set of date strings.
             """
