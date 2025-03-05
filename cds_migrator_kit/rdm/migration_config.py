@@ -12,6 +12,7 @@ import os
 from datetime import datetime, timedelta
 
 from cds_rdm import schemes
+from cds_rdm.custom_fields import CUSTOM_FIELDS
 from cds_rdm.files import storage_factory
 from cds_rdm.permissions import (
     CDSCommunitiesPermissionPolicy,
@@ -31,11 +32,9 @@ from invenio_rdm_records.config import (
     RDM_RECORDS_PERSONORG_SCHEMES,
     always_valid,
 )
-from invenio_records_resources.services.custom_fields import KeywordCF
 from invenio_vocabularies.config import (
     VOCABULARIES_NAMES_SCHEMES as DEFAULT_VOCABULARIES_NAMES_SCHEMES,
 )
-from invenio_vocabularies.services.custom_fields import VocabularyCF
 
 from .permissions import CDSRDMMigrationRecordPermissionPolicy
 
@@ -331,35 +330,7 @@ RDM_NAMESPACES = {
     "cern": "https://greybook.cern.ch/",
 }
 
-RDM_CUSTOM_FIELDS = [
-    VocabularyCF(
-        name="cern:experiments",
-        vocabulary_id="experiments",
-        dump_options=True,
-        multiple=True,
-    ),
-    VocabularyCF(
-        name="cern:departments",
-        vocabulary_id="departments",
-        dump_options=True,
-        multiple=True,
-    ),
-    VocabularyCF(
-        name="cern:accelerators",
-        vocabulary_id="accelerators",
-        dump_options=True,
-        multiple=True,
-    ),
-    KeywordCF(name="cern:projects", multiple=True),
-    KeywordCF(name="cern:facilities", multiple=True),
-    KeywordCF(name="cern:studies", multiple=True),
-    VocabularyCF(
-        name="cern:beams",
-        vocabulary_id="beams",
-        dump_options=True,
-        multiple=True,
-    ),
-]
+RDM_CUSTOM_FIELDS = CUSTOM_FIELDS
 
 import cds_migrator_kit
 

@@ -141,7 +141,7 @@ def get_contributor_affiliations(info):
 def extract_json_contributor_ids(info):
     """Extract author IDs from MARC tags."""
     SOURCES = {
-        "AUTHOR|(INSPIRE)": "inspire",
+        "AUTHOR|(INSPIRE)": "inspire_author",
         "AUTHOR|(CDS)": "lcds",
         "AUTHOR|(SzGeCERN)": "cern",
     }
@@ -157,5 +157,9 @@ def extract_json_contributor_ids(info):
     author_orcid = info.get("k")
     if author_orcid:
         ids.append({"identifier": author_orcid, "scheme": "orcid"})
+
+    inspire = info.get("i", "")
+    if inspire and inspire.startswith("INSPIRE-"):
+        ids.append({"identifier": inspire, "scheme": "inspire_author"})
 
     return ids

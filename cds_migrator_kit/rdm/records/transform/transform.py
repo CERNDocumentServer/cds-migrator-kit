@@ -6,12 +6,8 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM transform step module."""
-import csv
 import datetime
-import json
 import logging
-import os.path
-import re
 from collections import OrderedDict
 from copy import deepcopy
 from pathlib import Path
@@ -38,7 +34,10 @@ from cds_migrator_kit.errors import (
     RestrictedFileDetected,
     UnexpectedValue,
 )
-from cds_migrator_kit.rdm.migration_config import VOCABULARIES_NAMES_SCHEMES
+from cds_migrator_kit.rdm.migration_config import (
+    RDM_RECORDS_IDENTIFIERS_SCHEMES,
+    VOCABULARIES_NAMES_SCHEMES,
+)
 from cds_migrator_kit.reports.log import RDMJsonLogger
 from cds_migrator_kit.transform.dumper import CDSRecordDump
 from cds_migrator_kit.transform.errors import LossyConversion
@@ -127,7 +126,36 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         return {}
 
     def _pids(self, json_entry):
-        return json_entry.get("_pids", {})
+        from flask import current_app
+
+        DATACITE_PREFIX = current_app.config["DATACITE_PREFIX"]
+
+        pids = json_entry.get("_pids", {})
+        output_pids = deepcopy(pids)
+        for key, identifier in pids.items():
+            # ignoring some pids
+            if key.upper() in ["HAL", "HDL"]:
+                del output_pids[key]
+
+            elif key.upper() not in ["DOI"]:
+                raise UnexpectedValue(
+                    field=key,
+                    subfield="2",
+                    message="Unexpected PID scheme (should be DOI)",
+                    priority="warning",
+                    stage="transform",
+                )
+            if key.upper() == "DOI":
+                doi_identifier = deepcopy(identifier)
+                if identifier["identifier"].startswith(DATACITE_PREFIX):
+                    doi_identifier["provider"] = "datacite"
+                else:
+                    doi_identifier["provider"] = "external"
+                output_pids["doi"] = doi_identifier
+        if output_pids:
+            return output_pids
+        else:
+            return {}
 
     def _files(self, record_dump):
         """Transform the files of a record."""
@@ -293,7 +321,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         def _resource_type(entry):
             return entry["resource_type"]
 
-        def publication_date(entry):
+        def _publication_date(entry):
             pd = json_entry.get("publication_date")
             if not pd:
                 if not json_entry.get("_created"):
@@ -303,18 +331,34 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 return arrow.get(json_entry["_created"]).date().isoformat()
             return pd
 
+        def _identifiers(json_entry):
+            identifiers = json_entry.get("identifiers", [])
+            for item in reversed(identifiers):
+                # drop unwanted schemes
+                if item["scheme"] in ["spires"]:
+                    identifiers.remove(item)
+                if item["scheme"] not in RDM_RECORDS_IDENTIFIERS_SCHEMES.keys():
+                    raise UnexpectedValue(
+                        field="identifiers",
+                        subfield="9",
+                        message="IDENTIFIER SCHEME INVALID",
+                        priority="warning",
+                        stage="transform",
+                    )
+
         metadata = {
             "creators": creators(json_entry),
             "title": json_entry.get("title"),
             "resource_type": _resource_type(json_entry),
             "description": json_entry.get("description"),
-            "publication_date": publication_date(json_entry),
+            "publication_date": _publication_date(json_entry),
             "contributors": creators(json_entry, key="contributors"),
             "subjects": json_entry.get("subjects"),
             "publisher": json_entry.get("publisher"),
             "additional_descriptions": json_entry.get("additional_descriptions"),
-            "identifiers": json_entry.get("identifiers"),
+            "identifiers": _identifiers(json_entry),
             "languages": json_entry.get("languages"),
+            "dates": json_entry.get("dates"),
         }
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
@@ -409,10 +453,23 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "cern:experiments": [],
             "cern:departments": [],
             "cern:accelerators": [],
-            "cern:projects": [],
-            "cern:facilities": [],
-            "cern:studies": [],
+            "cern:projects": json_entry.get("custom_fields", {}).get(
+                "cern:projects", []
+            ),
+            "cern:facilities": json_entry.get("custom_fields", {}).get(
+                "cern:facilities", []
+            ),
+            "cern:studies": json_entry.get("custom_fields", {}).get("cern:studies", []),
             "cern:beams": [],
+            "thesis:thesis": json_entry.get("custom_fields", {}).get(
+                "thesis:thesis", {}
+            ),
+            "journal:journal": json_entry.get("custom_fields", {}).get(
+                "journal:journal", {}
+            ),
+            "imprint:imprint": json_entry.get("custom_fields", {}).get(
+                "imprint:imprint", {}
+            ),
         }
         try:
             field_experiments(json_entry, custom_fields)
@@ -424,15 +481,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             )
         field_accelerators(json_entry, custom_fields)
         field_beams(json_entry, custom_fields)
-        custom_fields["cern:projects"] = json_entry.get("custom_fields", {}).get(
-            "cern:projects", []
-        )
-        custom_fields["cern:facilities"] = json_entry.get("custom_fields", {}).get(
-            "cern:facilities", []
-        )
-        custom_fields["cern:studies"] = json_entry.get("custom_fields", {}).get(
-            "cern:studies", []
-        )
         return custom_fields
 
     def _verify_creation_date(self, entry, json_data):
@@ -468,8 +516,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "created": self._created(json_data),
             "updated": self._updated(record_dump),
             "files": self._files(record_dump),
-            "metadata": self._metadata(json_data),
             "pids": self._pids(json_data),
+            "metadata": self._metadata(json_data),
         }
         custom_fields = self._custom_fields(json_data, record_json_output)
         internal_notes = json_data.get("internal_notes")
