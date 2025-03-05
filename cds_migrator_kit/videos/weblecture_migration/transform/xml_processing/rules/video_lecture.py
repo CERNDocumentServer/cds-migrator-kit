@@ -99,7 +99,9 @@ def performer(self, key, value):
     role = value.get("e")
     if role and role.strip().lower() != "speaker":
         # checking if anything else stored in this field
-        raise UnexpectedValue("Different role found", field=key, subfield="e", value=role)
+        raise UnexpectedValue(
+            "Different role found", field=key, subfield="e", value=role
+        )
     return get_contributor(key, value, contributor_role="Performer")
 
 
@@ -108,7 +110,9 @@ def performer(self, key, value):
 @require(["p"])
 def event_speakers(self, key, value):
     """Translates event_speakers."""
-    return get_contributor(key, value, contributor_role="Speaker", name=value.get("p").strip())
+    return get_contributor(
+        key, value, contributor_role="Speaker", name=value.get("p").strip()
+    )
 
 
 @model.over("url_files", "^8564_")

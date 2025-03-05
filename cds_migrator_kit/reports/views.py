@@ -63,6 +63,7 @@ def results(collection=None):
             warning=warning,
             migrated=migrated,
             errored=errored,
+            collection=collection,
         )
     except FileNotFoundError as e:
         template = "cds_migrator_kit_records/rectype_missing.html"
@@ -71,10 +72,10 @@ def results(collection=None):
         )
 
 
-@blueprint.route("/record/<recid>")
-def send_json(recid):
+@blueprint.route("/record/<collection>/<recid>")
+def send_json(collection, recid):
     """Serves static json preview output files."""
-    logger = RDMJsonLogger()
+    logger = RDMJsonLogger(collection=collection)
     records = logger.load_record_dumps()
     if recid not in records:
         abort(404)
