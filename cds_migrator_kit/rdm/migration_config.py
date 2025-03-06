@@ -12,7 +12,7 @@ import os
 from datetime import datetime, timedelta
 
 from cds_rdm import schemes
-from cds_rdm.custom_fields import CUSTOM_FIELDS
+from cds_rdm.custom_fields import CUSTOM_FIELDS, NAMESPACES
 from cds_rdm.files import storage_factory
 from cds_rdm.permissions import (
     CDSCommunitiesPermissionPolicy,
@@ -326,10 +326,8 @@ CDS_EOS_OFFLOAD_REDIRECT_BASE_PATH = ""
 RDM_PERMISSION_POLICY = CDSRDMMigrationRecordPermissionPolicy
 
 RDM_NAMESPACES = {
-    # CERN
-    "cern": "https://greybook.cern.ch/",
+    **NAMESPACES
 }
-
 RDM_CUSTOM_FIELDS = CUSTOM_FIELDS
 
 import cds_migrator_kit

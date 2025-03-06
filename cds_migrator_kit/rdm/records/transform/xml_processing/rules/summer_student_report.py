@@ -22,7 +22,8 @@ from dojson.errors import IgnoreKey
 from dojson.utils import force_list
 
 from cds_migrator_kit.errors import MissingRequiredField, UnexpectedValue
-from cds_migrator_kit.transform.xml_processing.quality.decorators import for_each_value
+from cds_migrator_kit.transform.xml_processing.quality.decorators import for_each_value, \
+    require
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
 
 # ATTENTION when COPYING! important which model you use as decorator
@@ -108,3 +109,34 @@ def imprint_info(self, key, value):
             value=value,
             message=f"Can't parse provided publication date. Value: {publication_date_str}",
         )
+
+
+@model.over("additional_descriptions", "(^500__)|(^246__)")
+@for_each_value
+@require(["a"])
+def additional_descriptions(self, key, value):
+    """Translates additional description."""
+    description_text = value.get("a")
+    _additional_description = {}
+    if key == "500__":
+        _additional_description = {
+            "description": description_text,
+            "type": {
+                "id": "other",  # what's with the lang
+            },
+        }
+    elif key == "246__":
+        _abbreviations = []
+        is_abbreviation = value.get("i") == "Abbreviation"
+        _abbreviations.append(description_text)
+
+        if is_abbreviation:
+            _additional_description = {
+                "description": "Abbreviations: " + "; ".join(_abbreviations),
+                "type": {
+                    "id": "other",  # what's with the lang
+                },
+            }
+    if _additional_description:
+        return _additional_description
+    raise IgnoreKey("additional_descriptions")
