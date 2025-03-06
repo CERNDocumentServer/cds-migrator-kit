@@ -38,6 +38,8 @@ from cds_migrator_kit.rdm.migration_config import (
     RDM_RECORDS_IDENTIFIERS_SCHEMES,
     VOCABULARIES_NAMES_SCHEMES,
 )
+from cds_migrator_kit.rdm.records.transform.config import PIDS_SCHEMES_TO_DROP, \
+    PIDS_SCHEMES_ALLOWED, IDENTIFIERS_SCHEMES_TO_DROP
 from cds_migrator_kit.reports.log import RDMJsonLogger
 from cds_migrator_kit.transform.dumper import CDSRecordDump
 from cds_migrator_kit.transform.errors import LossyConversion
@@ -97,9 +99,10 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
     def _access(self, entry, record_dump):
         restrictions = entry.get("record_restriction")
+
         if not restrictions:
-            raise UnexpectedValue(
-                message="record restriction not found",
+            raise RecordFlaggedCuration(
+                message="record restriction not found make sure the record should be public",
                 stage="transform",
                 field="record_restriction",
             )
@@ -134,16 +137,17 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         output_pids = deepcopy(pids)
         for key, identifier in pids.items():
             # ignoring some pids
-            if key.upper() in ["HAL", "HDL"]:
+            if key.upper() in PIDS_SCHEMES_TO_DROP:
                 del output_pids[key]
 
-            elif key.upper() not in ["DOI"]:
+            elif key.upper() not in PIDS_SCHEMES_ALLOWED:
                 raise UnexpectedValue(
                     field=key,
                     subfield="2",
                     message="Unexpected PID scheme (should be DOI)",
                     priority="warning",
                     stage="transform",
+                    value=identifier
                 )
             if key.upper() == "DOI":
                 doi_identifier = deepcopy(identifier)
@@ -224,7 +228,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 stage="vocabulary match",
             )
 
-    def _metadata(self, json_entry):
+    def _metadata(self, json_entry, record_dump):
 
         def creator_affiliations(creator):
             affiliations = creator.get("affiliations", [])
@@ -321,22 +325,37 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         def _resource_type(entry):
             return entry["resource_type"]
 
-        def _publication_date(entry):
-            pd = json_entry.get("publication_date")
-            if not pd:
-                if not json_entry.get("_created"):
-                    raise MissingRequiredField(
-                        message="missing creation or publication date", field="916"
-                    )
-                return arrow.get(json_entry["_created"]).date().isoformat()
-            return pd
+        def _publication_date(entry, dump_record):
+            pub_date = entry.get("publication_date")
+            created =  entry.get("_created")
+            files = dump_record["files"]
+            if not (pub_date or created or files):
+                raise MissingRequiredField(
+                    message="missing creation or publication date", field="916"
+                )
+            if not pub_date:
+                if created:
+                    pub_date = entry["_created"]
+                elif files:
+                    pub_date = files[0]["creation_date"]
+            return arrow.get(pub_date).date().isoformat()
 
         def _identifiers(json_entry):
             identifiers = json_entry.get("identifiers", [])
             for item in reversed(identifiers):
                 # drop unwanted schemes
-                if item["scheme"] in ["spires"]:
+                if item is None or "scheme" not in item:
+                    raise UnexpectedValue(
+                        field="identifiers",
+                        value=item,
+                        subfield="9",
+                        message="IDENTIFIER SCHEME INVALID",
+                        priority="warning",
+                        stage="transform",
+                    )
+                if item["scheme"].upper() in IDENTIFIERS_SCHEMES_TO_DROP:
                     identifiers.remove(item)
+                    continue
                 if item["scheme"] not in RDM_RECORDS_IDENTIFIERS_SCHEMES.keys():
                     raise UnexpectedValue(
                         field="identifiers",
@@ -344,14 +363,16 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         message="IDENTIFIER SCHEME INVALID",
                         priority="warning",
                         stage="transform",
+                        value=item
                     )
+            return identifiers
 
         metadata = {
             "creators": creators(json_entry),
             "title": json_entry.get("title"),
             "resource_type": _resource_type(json_entry),
             "description": json_entry.get("description"),
-            "publication_date": _publication_date(json_entry),
+            "publication_date": _publication_date(json_entry, record_dump),
             "contributors": creators(json_entry, key="contributors"),
             "subjects": json_entry.get("subjects"),
             "publisher": json_entry.get("publisher"),
@@ -489,7 +510,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         If the record has no files (file creation date will be used as record
         creation date) and no creation date, raise an exception.
         """
-        if not entry.get("files") and not json_data.get("_created"):
+        if not entry.get("files") and not (json_data.get("_created") or json_data.get("publication_date")):
             raise ManualImportRequired(
                 message="Record missing creation date",
                 field="validation",
@@ -517,7 +538,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "updated": self._updated(record_dump),
             "files": self._files(record_dump),
             "pids": self._pids(json_data),
-            "metadata": self._metadata(json_data),
+            "metadata": self._metadata(json_data, entry),
         }
         custom_fields = self._custom_fields(json_data, record_json_output)
         internal_notes = json_data.get("internal_notes")
@@ -527,6 +548,14 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             record_json_output.update(
                 {"internal_notes": json_data.get("internal_notes")}
             )
+        access = None
+        try:
+            access = self._access(json_data, record_dump)
+        except RecordFlaggedCuration as exc:
+            RDMJsonLogger().add_success_state(
+                entry["recid"],
+                {"message": exc.message, "value": exc.value},
+            )
         return {
             "created": self._created(json_data),
             "updated": self._updated(record_dump),
@@ -535,7 +564,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "recid": self._recid(record_dump),
             "communities": self._communities(json_data),
             "json": record_json_output,
-            "access": self._access(json_data, record_dump),
+            "access": access,
             "owned_by": self._owner(json_data),
             # keep the original extracted entry for storing it
             "_original_dump": entry,

@@ -13,6 +13,8 @@ from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 
 from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.rdm.records.transform.config import CONTROLLED_SUBJECTS_SCHEMES, \
+    RECOGNISED_KEYWORD_SCHEMES, PID_SCHEMES_TO_STORE_IN_IDENTIFIERS
 from cds_migrator_kit.rdm.records.transform.models.base_record import (
     rdm_base_record_model as model,
 )
@@ -36,7 +38,9 @@ def created(self, key, value):
     """Translates created information to fields."""
     if "s" in value:
         source = clean_val("s", value, str)
-        if source != "n":
+        # h = human catalogued
+        # n = script catalogued or via submission
+        if source not in ["n", "h"]:
             raise UnexpectedValue(subfield="s", key=key, value=value)
     date_values = value.get("w")
     if not date_values or not date_values[0]:
@@ -61,37 +65,6 @@ def created(self, key, value):
         return datetime.date.today().isoformat()
 
 
-@model.over("additional_descriptions", "(^500__)|(^246__)")
-@for_each_value
-@require(["a"])
-def additional_descriptions(self, key, value):
-    """Translates additional description."""
-    description_text = value.get("a")
-    _additional_description = {}
-    if key == "500__":
-        _additional_description = {
-            "description": description_text,
-            "type": {
-                "id": "other",  # what's with the lang
-            },
-        }
-    elif key == "246__":
-        _abbreviations = []
-        is_abbreviation = value.get("i") == "Abbreviation"
-        _abbreviations.append(description_text)
-
-        if is_abbreviation:
-            _additional_description = {
-                "description": "Abbreviations: " + "; ".join(_abbreviations),
-                "type": {
-                    "id": "other",  # what's with the lang
-                },
-            }
-    if _additional_description:
-        return _additional_description
-    raise IgnoreKey("additional_descriptions")
-
-
 @model.over("subjects", "(^6931_)|(^650[1_][7_])|(^653[1_]_)")
 @require(["a"])
 @filter_list_values
@@ -106,17 +79,19 @@ def subjects(self, key, value):
 
         if type(subject_scheme) is not str:
             raise UnexpectedValue(field=key, subfield=subfield, value=subject_scheme)
+
         is_cern_scheme = (
-            subject_scheme.lower() == "szgecern" or subject_scheme.lower() == "cern"
+            subject_scheme.lower() in CONTROLLED_SUBJECTS_SCHEMES
         )
 
-        is_author = subject_scheme.lower() == "author"
+        is_recognised = subject_scheme.lower() in RECOGNISED_KEYWORD_SCHEMES
 
-        if not (is_cern_scheme or is_author):
+        if not (is_cern_scheme or is_recognised):
             raise UnexpectedValue(field=key, subfield=subfield, value=subject_scheme)
 
     _subjects = self.get("subjects", [])
-    subject_value = StringValue(value.get("a")).parse()
+    subject_value = StringValue(value.get("a", "")).parse()
+
     validate_subject_scheme(value, "2")
     validate_subject_scheme(value, "9")
 
@@ -175,7 +150,7 @@ def custom_fields(self, key, value):
 @model.over("record_restriction", "^963__")
 def record_restriction(self, key, value):
     """Translate record restriction field."""
-    restr = value.get("a")
+    restr = value.get("a", "")
     parsed = StringValue(restr).parse()
     if parsed == "PUBLIC":
         return "public"
@@ -219,8 +194,12 @@ def identifiers(self, key, value):
     Attention: might contain aleph number
     https://github.com/CERNDocumentServer/cds-migrator-kit/issues/21
     """
-    id_value = StringValue(value.get("a")).parse()
-    scheme = StringValue(value.get("9")).parse()
+    id_value = StringValue(value.get("a", "")).parse()
+    scheme = StringValue(value.get("9", "")).parse()
+
+    # drop oai harvest info
+    if id_value.startswith("oai:inspirehep.net"):
+        raise IgnoreKey("identifiers")
 
     if id_value:
         return {"scheme": scheme.lower(), "identifier": id_value}
@@ -230,14 +209,20 @@ def identifiers(self, key, value):
 def _pids(self, key, value):
     """Translates external_system_identifiers fields."""
     pid_dict = self.get("_pids", {})
-
-    scheme = StringValue(value.get("2")).parse().lower()
+    scheme = StringValue(value.get("2", "")).parse().lower()
     identifier = StringValue(value.get("a")).parse()
-    if scheme.upper() == "ARXIV":
-        self["identifiers"].append({"scheme": "arxiv", "identifier": identifier})
+    if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
+        if scheme == "hdl":
+            scheme = "handle"
+        ids = self.get("identifiers", [])
+        ids.append({"scheme": scheme, "identifier": identifier})
+        self["identifiers"] = ids
         raise IgnoreKey("_pids")
     else:
-        pid_dict[scheme] = {"identifier": identifier}
+        if scheme:
+            pid_dict[scheme] = {"identifier": identifier}
+        else:
+            pid_dict["other"] = {"identifier": identifier}
         return pid_dict
 
 
@@ -263,3 +248,85 @@ def corporate_author(self, key, value):
         self["custom_fields"]["cern:departments"] = departments
         raise IgnoreKey("contributors")
     raise IgnoreKey("contributors")
+
+
+@model.over("alternative_titles", "(^242__)|(^210__)")
+@filter_list_values
+def alternative_titles(self, key, value):
+    """Translates title translations."""
+    _alternative_titles = self.get("alternative_titles", [])
+    if key == "210__":
+        abbreviation = clean_val("a", value, str, req=True)
+        _alternative_titles.append(
+            {
+                "title": abbreviation,
+                "type": {"id:": "other"},
+            }
+        )
+    elif "a" in value:
+        _alternative_titles.append(
+            {
+                "title": clean_val("a", value, str, req=True),
+                "type": {"id:": "translated-title"},
+                "lang": {"id": "eng"},
+            }
+        )
+    if "b" in value:
+        _alternative_titles.append(
+            {
+                "title": clean_val("b", value, str, req=True),
+                # should be translated subtitle, but we don't have it
+                "type": {"id": "subtitle"},
+                "lang": {"id": "eng"},
+            }
+        )
+    return _alternative_titles
+
+
+@model.over("title", "^245__", override=True)
+def title(self, key, value):
+    """Translates title."""
+    title = StringValue(value.get("a"))
+    subtitle = StringValue(value.get("b", "")).parse()
+    title.required()
+    if subtitle:
+        alt_titles = self.get("alternative_titles", [])
+        alt_titles.append({"title": subtitle,
+                           "type": {"id": "subtitle"},
+                           })
+        self["alternative_titles"] = alt_titles
+    return title.parse()
+
+
+@model.over("licenses", "^540__")
+@for_each_value
+@filter_values
+def licenses(self, key, value):
+    """Translates license fields."""
+    ARXIV_LICENSE = "arxiv.org/licenses/nonexclusive-distrib/1.0/"
+    _license = dict()
+    license_url = clean_val("u", value, str)
+    license_id = clean_val("a", value, str)
+
+    if not license_id:
+        raise UnexpectedValue("License title missing",
+                              field=key,
+                              subfield="a",
+                              value=value)
+    license_id.lower()
+    is_standard_license = True
+    is_arxiv = "arxiv" in license_id
+    if not license_id.startswith("CC"):
+        is_standard_license = False
+
+    if is_standard_license:
+        license_id = license_id.replace(" ", "-")
+        _license = {"id": license_id}
+    else:
+        if is_arxiv:
+            license_url = ARXIV_LICENSE
+        description = clean_val("g", value, str)
+        _license = {"title": license_id,
+                    "link": license_url,
+                    "description": description}
+    return _license
