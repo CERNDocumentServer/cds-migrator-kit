@@ -51,7 +51,7 @@
         </td>
         <td>
           {% if row["recid"] %}
-            <a href="/record/{{ row["recid"] }}">View JSON</a> |
+            <a href="/record/{{ collection }}/{{ row["recid"] }}">View JSON</a> |
             <a
               href="{{ config.CDS_MIGRATOR_KIT_SITE_UI_URL }}/legacy/record/{{ row["recid"] }}">View
               record</a>

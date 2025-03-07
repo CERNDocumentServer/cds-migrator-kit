@@ -112,6 +112,8 @@ def process_contributors(key, value):
     }
     if role:
         contributor.update({"role": {"id": role}})
+    elif key == "701__":
+        contributor.update({"role": {"id": "supervisor"}})
     elif not role and key == "700__":
         # creator does not require role, so if the key == 100 role can be skipped
         contributor.update({"role": {"id": "other"}})
