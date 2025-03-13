@@ -127,11 +127,11 @@ def get_contributor_role(subfield, role, raise_unexpected=False):
 
 def get_contributor_affiliations(info):
     """Get affiliations of a contributor/creator."""
-    u = info.get("u", "")
+    u = info.get("u")
     if not u:
         return
-    affiliations = force_list(u)
 
+    affiliations = force_list(u)
     parsed_affiliations = [
         StringValue(aff).parse(filter_regex=ALPHANUMERIC_ONLY) for aff in affiliations
     ]
@@ -141,7 +141,7 @@ def get_contributor_affiliations(info):
 def extract_json_contributor_ids(info):
     """Extract author IDs from MARC tags."""
     SOURCES = {
-        "AUTHOR|(INSPIRE)": "inspire",
+        "AUTHOR|(INSPIRE)": "inspire_author",
         "AUTHOR|(CDS)": "lcds",
         "AUTHOR|(SzGeCERN)": "cern",
     }
@@ -156,6 +156,11 @@ def extract_json_contributor_ids(info):
 
     author_orcid = info.get("k")
     if author_orcid:
+        author_orcid = author_orcid.replace("ORCID:", "")
         ids.append({"identifier": author_orcid, "scheme": "orcid"})
+
+    inspire = info.get("i", "")
+    if inspire and inspire.startswith("INSPIRE-"):
+        ids.append({"identifier": inspire, "scheme": "inspire_author"})
 
     return ids
