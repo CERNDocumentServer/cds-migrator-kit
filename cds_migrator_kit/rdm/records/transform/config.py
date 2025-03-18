@@ -13,7 +13,7 @@ PIDS_SCHEMES_TO_DROP = ["HAL"]
 PIDS_SCHEMES_ALLOWED = ["DOI"]
 
 # stores the identifiers found in PIDs field in the alternative identifiers instead
-PID_SCHEMES_TO_STORE_IN_IDENTIFIERS = ["ARXIV", "HDL", "HANDLE"]
+PID_SCHEMES_TO_STORE_IN_IDENTIFIERS = ["ARXIV", "HDL", "HANDLE", "URN"]
 
 IDENTIFIERS_SCHEMES_TO_DROP = ["SPIRES", "HAL", "OSTI"]
 

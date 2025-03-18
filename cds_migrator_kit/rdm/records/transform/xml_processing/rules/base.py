@@ -164,13 +164,21 @@ def record_restriction(self, key, value):
 @for_each_value
 def report_number(self, key, value):
     """Translates report_number fields."""
-    rn = value.get("a") or value.get("9")
-    if not rn:
-        raise IgnoreKey("report_number")
-    report_number = StringValue(rn).parse()
-    if report_number:
-        return {"scheme": "cds_ref", "identifier": report_number}
-    raise IgnoreKey("report_number")
+    identifier = value.get("a", "")
+    identifier = StringValue(identifier).parse()
+    scheme = value.get("9")
+    if key == "037__" and scheme:
+        if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
+            scheme = scheme.lower()
+        else:
+            raise UnexpectedValue("Unknown ID scheme", field=key, subfield="9",
+                                  value=value)
+    if (key == "037__" and not scheme) or key == "088__":
+        # if there is no scheme, it means report number
+        scheme = "cds_ref"
+    if not identifier:
+        raise UnexpectedValue("Missing ID value", field=key, value=value)
+    return {"scheme": scheme, "identifier": identifier}
 
 
 @model.over("identifiers", "^970__")
@@ -205,11 +213,17 @@ def identifiers(self, key, value):
         return {"scheme": scheme.lower(), "identifier": id_value}
 
 
-@model.over("_pids", "^0247_")
+@model.over("_pids", "^0247_", override=True)
 def _pids(self, key, value):
     """Translates external_system_identifiers fields."""
     pid_dict = self.get("_pids", {})
     scheme = StringValue(value.get("2", "")).parse().lower()
+    if not scheme:
+        scheme = StringValue(value.get("9", "")).parse().lower()
+    if not scheme:
+        raise UnexpectedValue("Missing identifier scheme", field=key,
+                              subfield="2",
+                              stage="transform")
     identifier = StringValue(value.get("a")).parse()
     if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
         if scheme == "hdl":
@@ -330,3 +344,23 @@ def licenses(self, key, value):
                     "link": license_url,
                     "description": description}
     return _license
+
+
+@model.over("identifiers", "^8564_")
+@for_each_value
+def urls(self, key, value):
+    """Translates urls field."""
+    # Contains description and restriction of the url
+    # sub_y = clean_val("y", value, str, default="")
+    # Value of the url
+    sub_u = clean_val("u", value, str, req=True)
+    if not sub_u:
+        raise UnexpectedValue("Unrecognised string format or link missing.", field=key,
+                              subfield="u", value=value)
+    is_cds_file = False
+    if all(x in sub_u for x in ["cds", ".cern.ch/record/", "/files"]):
+        is_cds_file = True
+    if is_cds_file:
+        raise IgnoreKey("identifiers")
+    else:
+        return {"identifier": sub_u, "scheme": "url"}

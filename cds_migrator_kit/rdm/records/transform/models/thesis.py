@@ -45,6 +45,7 @@ class ThesisModel(CdsOverdo):
         "100__m",  # author's email <-- decided not to keep in RDM,
         "100__q",  # alternative spelling of the name
         "100__j",  # alternative spelling of the name
+        # "100_v",
         "242__9",  # source of TRANSLATED title, INSPIRE data model
         "245__9",  # source of title, INSPIRE data model
         "269__c",  # Redundant (more detailed value is in 260__c imprint.pub_date)
@@ -66,7 +67,7 @@ class ThesisModel(CdsOverdo):
         "8564_8",  # Files system field
         "8564_s",  # Files system field
         "8564_x",  # Files system field
-        "8564_y",  # Files
+        "8564_y",  # Files / URLS label
         "916__d",  # spreadsheet
         "960__a",  # collection id? usually value 14, to confirm if we ignore
         "961__x",  # CDS modification tag # TODO
@@ -118,7 +119,7 @@ class ThesisModel(CdsOverdo):
         # "701__",   # contributors (implemented, to confirm this is the right field)
         # "710__5",  # department / organisation author
         # "710__a",  # organisation author
-        "8564_u",  # exclude files but include links (filter by domain)
+
         "916__y",  # year
         # "937__c",  # modification date
         # "937__s",  # modification person
@@ -163,6 +164,8 @@ class ThesisModel(CdsOverdo):
         # "700__u",  # Contributors (affiliation)
         # "710__g",  # Collaboration, OK to migrate as corporate contributor (not creator)?
         # "859__f",  # creator's email, to be used to determine the owner
+        # "8564_u",  # exclude files but include links (filter by domain)
+        # "8564_y",  # exclude files but include links (filter by domain)
         # "906__p",  # names, is it supervisor?
         # "916__n",
         # "916__s",
