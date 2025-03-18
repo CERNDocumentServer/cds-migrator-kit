@@ -147,8 +147,19 @@ def thesis(self, key, value):
 def journal(self, key, value):
     _custom_fields = self.get("custom_fields", {})
     journal_fields = _custom_fields.get("journal:journal", {})
+    year = StringValue(value.get("y", "")).parse()
+    meeting_fields = ["p", "n", "v", "c"]
+    is_journal_year = False
+    for field in meeting_fields:
+        if field in value:
+            is_journal_year = True
+            break
 
-    # year = StringValue(value.get("y")).parse()
+    pub_date = self.get("publication_date")
+    # if we only have 773 in the record and no other journal fields,
+    # it is not journal date
+    if not is_journal_year and "y" in value and not pub_date:
+        self["publication_date"] = year
 
     journal_fields["title"] = StringValue(value.get("p", "")).parse()
     journal_fields["issue"] = StringValue(value.get("n", "")).parse()

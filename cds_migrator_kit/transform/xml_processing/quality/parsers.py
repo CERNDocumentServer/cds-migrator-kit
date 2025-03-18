@@ -90,7 +90,10 @@ class StringValue(MarcValue):
 
     def _clean(self):
         """Clean value."""
-        return self.raw_value.strip()
+        if self.raw_value:
+            return self.raw_value.strip()
+        else:
+            return ""
 
     def parse(self, filter_regex=None):
         """Parse string value."""
