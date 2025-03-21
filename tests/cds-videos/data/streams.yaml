@@ -1,0 +1,10 @@
+db_uri: postgresql+psycopg2://invenio:invenio@localhost/invenio
+records:
+  weblectures:
+    data_dir: tests/cds-videos/data/
+    tmp_dir: tests/cds-videos/tmp
+    log_dir: tests/cds-videos/log
+    extract:
+      dirpath: tests/cds-videos/dump/
+    transform:
+      files_dump_dir: tests/cds-videos/files/
