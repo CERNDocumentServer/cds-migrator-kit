@@ -1,0 +1,64 @@
+{
+  "streams": [
+    {
+      "sources": {
+        "mp4": [
+          {
+            "src": "/2025/1/presenter-360p.mp4",
+            "res": {
+              "h": "360"
+            }
+          },
+          {
+            "src": "/2025/1/presenter-720p.mp4",
+            "res": {
+              "h": "720"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "frameList": [
+    {
+      "time": 1,
+      "url": "/2025/1/frame-1.jpg"
+    },
+    {
+      "time": 2,
+      "url": "/2025/1/frame-2.jpg"
+    },
+    {
+      "time": 3,
+      "url": "/2025/1/frame-3.jpg"
+    },
+    {
+      "time": 4,
+      "url": "/2025/1/frame-4.jpg"
+    },
+    {
+      "time": 5,
+      "url": "/2025/1/frame-5.jpg"
+    },
+    {
+      "time": 6,
+      "url": "/2025/1/frame-6.jpg"
+    },
+    {
+      "time": 7,
+      "url": "/2025/1/frame-7.jpg"
+    },
+    {
+      "time": 8,
+      "url": "/2025/1/frame-8.jpg"
+    },
+    {
+      "time": 9,
+      "url": "/2025/1/frame-9.jpg"
+    },
+    {
+      "time": 10,
+      "url": "/2025/1/frame-10.jpg"
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "streams": [
+    {
+      "sources": {
+        "mp4": [
+          {
+            "src": "/2025/2/presenter-720p.mp4",
+            "res": {
+              "h": "720"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "sources": {
+        "mp4": [
+          {
+            "src": "/2025/2/presentation-720p.mp4",
+            "res": {
+              "h": "720"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "frameList": [
+    {
+      "time": 1,
+      "url": "/2025/2/frame-1.jpg"
+    }
+  ]
+}

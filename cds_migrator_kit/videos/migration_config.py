@@ -49,5 +49,4 @@ CDS_MIGRATOR_KIT_VIDEOS_STREAM_CONFIG = (
 ### CDS MIGRATOR #################################
 
 # TODO CHANGE THEM
-MOUNTED_MASTER_CEPH_PATH = "/cephfs/master_data"
 MOUNTED_MEDIA_CEPH_PATH = "/cephfs/media_data"
