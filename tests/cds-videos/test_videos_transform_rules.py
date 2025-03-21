@@ -35,15 +35,15 @@ def load_and_dump_revision(entry_data, migrator_model=videos_migrator_marc21):
 
 
 @pytest.fixture()
-def datadir():
+def dumpdir():
     """Get data directory."""
-    return join(dirname(__file__), "data")
+    return join(dirname(__file__), "data/dump")
 
 
-def test_transform_rules_reqired_metadata(datadir, base_app):
+def test_transform_rules_reqired_metadata(dumpdir, base_app):
     """Test migration rules."""
     with base_app.app_context():
-        data = load_json(datadir, "lecture.json")
+        data = load_json(dumpdir, "lecture.json")
         res = load_and_dump_revision(data[0])
 
         assert res["legacy_recid"] == 2233152
@@ -67,10 +67,10 @@ def test_transform_rules_reqired_metadata(datadir, base_app):
         )
 
 
-def test_transform_required_metadata(datadir, base_app):
+def test_transform_required_metadata(dumpdir, base_app):
     """Test migration transform."""
     with base_app.app_context():
-        data = load_json(datadir, "lecture.json")
+        data = load_json(dumpdir, "lecture.json")
         res = load_and_dump_revision(data[0])
 
         # Transform record
@@ -96,11 +96,11 @@ def test_transform_required_metadata(datadir, base_app):
         assert metadata["language"] == "en"
 
 
-def test_transform_description(datadir, base_app):
+def test_transform_description(dumpdir, base_app):
     """Test that the description field `520` is correctly transformed."""
     with base_app.app_context():
         # Load test data
-        data = load_json(datadir, "lecture.json")
+        data = load_json(dumpdir, "lecture.json")
 
         # Remove the 520 tag (description) from MARCXML
         modified_data = data[0]
@@ -122,11 +122,11 @@ def test_transform_description(datadir, base_app):
         assert metadata["description"] == metadata["title"]["title"]
 
 
-def test_transform_date(datadir, base_app):
+def test_transform_date(dumpdir, base_app):
     """Test that the date field is correctly transformed."""
     with base_app.app_context():
         # Load test data
-        data = load_json(datadir, "lecture.json")
+        data = load_json(dumpdir, "lecture.json")
 
         # Test case: Fail due to multiple dates
         modified_data = data[0]
@@ -155,11 +155,11 @@ def test_transform_date(datadir, base_app):
             record_entry._metadata(res)
 
 
-def test_transform_contributor(datadir, base_app):
+def test_transform_contributor(dumpdir, base_app):
     """Test that the date field is correctly transformed."""
     with base_app.app_context():
         # Load test data
-        data = load_json(datadir, "lecture.json")
+        data = load_json(dumpdir, "lecture.json")
 
         # Test case: Return event contributor due to missing contributor
         modified_data = data[0]
@@ -191,11 +191,11 @@ def test_transform_contributor(datadir, base_app):
         assert metadata["contributors"] == [{"name": "Unknown, Unknown"}]
 
 
-def test_transform_digitized(datadir, base_app):
+def test_transform_digitized(dumpdir, base_app):
     """Test digitized field is correctly transformed."""
     with base_app.app_context():
         # Load test data
-        data = load_json(datadir, "lecture.json")
+        data = load_json(dumpdir, "lecture.json")
 
         # Get digitized record and apply rules
         entry_data = data[1]
@@ -220,11 +220,11 @@ def test_transform_digitized(datadir, base_app):
             record_entry._metadata(res)
 
 
-def test_transform_files(datadir, base_app):
+def test_transform_files(dumpdir, base_app):
     """Test files field is correctly transformed."""
     with base_app.app_context():
         # Load test data
-        data = load_json(datadir, "lecture.json")
+        data = load_json(dumpdir, "lecture.json")
 
         # Get record and apply rules
         entry_data = data[1]
@@ -265,11 +265,11 @@ def test_transform_files(datadir, base_app):
             ), f"URL {url_file['url']} does not contain 'lecturemedia'"
 
 
-def test_transform_internal_note(datadir, base_app):
+def test_transform_internal_note(dumpdir, base_app):
     """Test digitized field is correctly transformed."""
     with base_app.app_context():
         # Load test data
-        data = load_json(datadir, "lecture.json")
+        data = load_json(dumpdir, "lecture.json")
 
         # Get record and apply rules
         entry_data = data[1]

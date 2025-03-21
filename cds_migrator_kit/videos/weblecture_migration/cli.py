@@ -15,6 +15,7 @@ from flask.cli import with_appcontext
 
 from cds_migrator_kit.runner.runner import Runner
 from cds_migrator_kit.videos.weblecture_migration.streams import RecordStreamDefinition
+from cds_migrator_kit.videos.weblecture_migration.logger import VideosJsonLogger
 
 cli_logger = logging.getLogger("migrator")
 
@@ -39,6 +40,8 @@ def weblectures():
 @with_appcontext
 def run(dry_run=False):
     """Run."""
+    # TODO temporary, it'll change
+    VideosJsonLogger.initialize(Path("cds_migrator_kit/videos/weblecture_migration/log"))
     stream_config = current_app.config["CDS_MIGRATOR_KIT_VIDEOS_STREAM_CONFIG"]
     runner = Runner(
         stream_definitions=[RecordStreamDefinition],

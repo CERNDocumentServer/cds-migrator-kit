@@ -24,9 +24,9 @@ from .helpers import (
     create_flow,
     extract_metadata,
     copy_frames,
-    copy_subformats,
     copy_additional_files,
     publish_video_record,
+    transcode_task
 )
 
 
@@ -54,42 +54,45 @@ class CDSVideosLoad(Load):
         metadata = entry.get("record", {}).get("json", {}).get("metadata")
         # Get transformed media files
         media_files = entry.get("record", {}).get("json", {}).get("media_files")
-        
-        # Create project
         # TODO `type` will be changed
         project_metadata = {"category": "CERN", "type": "VIDEO"}
-        project_deposit = create_project(project_metadata)
-        
-        # Create video
-        video_deposit, master_object = create_video(project_deposit, metadata, media_files["master_video"])
+        try:
+            # Create project
+            project_deposit = create_project(project_metadata)
+            
+            # Create video
+            video_deposit, master_object = create_video(project_deposit, metadata, media_files["master_video"])
 
-        # Get the deposit_id and bucket_id
-        video_deposit_id = video_deposit["_deposit"]["id"]
-        bucket_id = video_deposit["_buckets"]["deposit"]
+            # Get the deposit_id and bucket_id
+            video_deposit_id = video_deposit["_deposit"]["id"]
+            bucket_id = video_deposit["_buckets"]["deposit"]
+            
+            # Create flow and payload
+            flow, payload = create_flow(master_object, video_deposit_id, user_id=2)
         
-        # Create flow and payload
-        flow, payload = create_flow(master_object, video_deposit_id, submitter_id)
+            # Create tags for the master video file
+            init_object_version(flow.flow_metadata, has_remote_file_to_download=None)
+            
+            # Extract metadata
+            extract_metadata(payload)
         
-        # Create tags for the master video file
-        init_object_version(flow, has_remote_file_to_download=None)
-        
-        # Extract metadata
-        extract_metadata(payload)
-        
-        # Copy frames
+        except ManualImportRequired:
+            db.session.rollback()
+            # TODO if `copy_file_to_bucket` method failes it's deleting the file
+            # but if anything else fails, should we try to delete all the files?
+            raise
+
+        # Just log if something goes wrong: Frames, Subformats, Additional Files
         frame_paths = media_files["frames"]
         copy_frames(payload=payload, frame_paths=frame_paths)
-        
-        # Copy subformats
-        subformat_paths = media_files["subformats"]
-        copy_subformats(payload=payload, subformat_paths=subformat_paths)
 
-        # Load additional files
+        subformat_paths = media_files["subformats"]
+        transcode_task(payload=payload, subformats=subformat_paths)
+
         additional_files = media_files["additional_files"]
         copy_additional_files(str(bucket_id), additional_files)
-        
-        # Flow and Tasks modifications need to be persisted
-        db.session.commit()
+
+        # Index deposit
         index_deposit_project(video_deposit_id)
 
         # TODO Create legacy PID

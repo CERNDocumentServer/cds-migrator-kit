@@ -402,7 +402,8 @@ class TransformFiles:
             
             # ~~~~Additional Files~~~~
             # Record marcxml usually have the paths of the subformats, but it's already added.
-            additional_files = [file for file in files_paths if file not in subformats_list]
+            subformats_paths = [item["path"] for item in subformats_list]
+            additional_files = [file for file in files_paths if file not in subformats_paths]
             self._add_files_to_file_json(
                 json_key="additional_files",
                 folder=self.media_folder,
