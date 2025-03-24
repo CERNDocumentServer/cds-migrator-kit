@@ -8,7 +8,10 @@
 
 {%- block page_body %}
 
-  <h2>Records: {{ total }} | Migrated: {{ migrated }} | <a id="filter-error" href="#">Errored: {{ errored  }} </a> <span id="filter-on" class="hidden">(displays only errors)</span>| Warning: {{ warning }} | Critical: {{ critical }} | Success rate: {{ "%.2f" | format((migrated/total)*100) }}%</h2>
+  <h2>Records: {{ total }} | Migrated: {{ migrated }} | <a id="filter-error" href="#">Errored: {{ errored }} </a>
+    <span id="filter-on" class="hidden">(displays only errors)</span>|
+    Warning: {{ warning }} | Critical: {{ critical }} | Success
+    rate: {{ "%.2f" | format((migrated/total)*100) }}%</h2>
   <table class="table table-bordered">
     <thead class="thead-dark">
     <tr>
@@ -23,41 +26,62 @@
     </tr>
     </thead>
     <tbody class="table-hover">
-    {% for row in record_logs %}
-      <tr {% if row["clean"] == "True" %}class="table-success"{% endif %}
-          {% if row["priority"] == "critical" %}class="table-danger"{% endif %}
-          {% if row["priority"] == "warning" %}class="table-warning"{% endif %}
-      >
-        <th scope="row"><a
-          href="https://cds.cern.ch/record/{{ row["recid"] }}/export/hm?no_redirect_migrated">{{ row["recid"] }}</a>
-        </th>
-        <td>
-          {{ row["stage"] }}
-        </td>
-        <td>
-          {{ row["type"] }}
-        </td>
-        <td>
-          {{ row["error"] }}
-        </td>
-        <td>
-          {{ row["field"] }}
-        </td>
-        <td>
-          {{ row["value"] }}
-        </td>
-        <td>
-          {{ row["message"] }}
-        </td>
-        <td>
-          {% if row["recid"] %}
-            <a href="/record/{{ collection }}/{{ row["recid"] }}">View JSON</a> |
+    {% if pagination %}
+      <div style="display: flex; align-items: center">
+        {% if prev_page %}
+          <div style="display:inline-block; width: 33%">
             <a
-              href="{{ config.CDS_MIGRATOR_KIT_SITE_UI_URL }}/legacy/record/{{ row["recid"] }}">View
-              record</a>
-          {% endif %}
-        </td>
-      </tr>
+              href="{{ url_for(request.endpoint, **request.view_args) }}?errors={{ errors }}&reload={{ reload }}&page={{ prev_page }}&pagination={{ pagination }}"><
+              Prev page</a>
+          </div>
+          <div style="display:inline-block; width: 33%"><h3>Page {{ page }}</h3>
+          </div>
+        {% endif %}
+        {% if next_page %}
+          <div style="display: inline-block; float: right"><a
+            href="{{ url_for(request.endpoint, **request.view_args) }}?errors={{ errors }}&reload={{ reload }}&page={{ next_page }}&pagination={{ pagination }}">Next
+            page ></a></div>
+        {% endif %}
+      </div>
+    {% endif %}
+    {% for row in paginated_record_logs %}
+      {% if row["clean"] == "True" and display_errors_only %}
+      {% else %}
+        <tr {% if row["clean"] == "True" %}class="table-success"{% endif %}
+            {% if row["priority"] == "critical" %}class="table-danger"{% endif %}
+            {% if row["priority"] == "warning" %}class="table-warning"{% endif %}
+        >
+          <th scope="row"><a
+            href="https://cds.cern.ch/record/{{ row["recid"] }}/export/hm?no_redirect_migrated">{{ row["recid"] }}</a>
+          </th>
+          <td>
+            {{ row["stage"] }}
+          </td>
+          <td>
+            {{ row["type"] }}
+          </td>
+          <td>
+            {{ row["error"] }}
+          </td>
+          <td>
+            {{ row["field"] }}
+          </td>
+          <td style="white-space: pre-line">
+            {{ row["value"] }}
+          </td>
+          <td style="white-space: pre-line">
+            {{ row["message"]  }}
+          </td>
+          <td>
+            {% if row["recid"] %}
+              <a href="/record/{{ collection }}/{{ row["recid"] }}">View JSON</a> |
+              <a
+                href="{{ config.CDS_MIGRATOR_KIT_SITE_UI_URL }}/legacy/record/{{ row["recid"] }}">View
+                record</a>
+            {% endif %}
+          </td>
+        </tr>
+      {% endif %}
     {% endfor %}
     </tbody>
   </table>

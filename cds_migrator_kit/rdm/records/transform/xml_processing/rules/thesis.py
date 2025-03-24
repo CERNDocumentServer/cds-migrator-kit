@@ -17,8 +17,12 @@
 # along with Invenio; if not, write to the Free Software Foundation, Inc.,
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 """CDS-RDM migration rules module."""
+import re
+
 from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
+from idutils.normalizers import normalize_isbn
+from isbnlib import NotValidISBNError
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
@@ -29,7 +33,8 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
 from cds_migrator_kit.transform.xml_processing.rules.base import process_contributors
-from ...config import ALLOWED_THESIS_COLLECTIONS, IGNORED_THESIS_COLLECTIONS
+from ...config import ALLOWED_THESIS_COLLECTIONS, IGNORED_THESIS_COLLECTIONS, \
+    udc_pattern
 
 from ...models.thesis import thesis_model as model
 
@@ -79,15 +84,16 @@ def imprint_info(self, key, value):
         if place:
             imprint["place"] = place
         self["custom_fields"]["imprint:imprint"] = imprint
-        try:
-            date_obj = parse(publication_date_str)
-            return date_obj.strftime("%Y-%m-%d")
-        except (ParserError, TypeError) as e:
-            raise UnexpectedValue(
-                field=key,
-                value=value,
-                message=f"Can't parse provided publication date. Value: {publication_date_str}",
-            )
+        if publication_date_str:
+            try:
+                date_obj = parse(publication_date_str)
+                return date_obj.strftime("%Y-%m-%d")
+            except (ParserError, TypeError) as e:
+                raise UnexpectedValue(
+                    field=key,
+                    value=value,
+                    message=f"Can't parse provided publication date. Value: {publication_date_str}",
+                )
 
 
 @model.over("custom_fields", "(^020__)")
@@ -95,14 +101,62 @@ def isbn(self, key, value):
     _custom_fields = self.get("custom_fields", {})
     _isbn = StringValue(value.get("a", "")).parse()
     if _isbn:
+        try:
+            _isbn = normalize_isbn(_isbn)
+        except NotValidISBNError as e:
+            raise UnexpectedValue("Not a valid ISBN.", field=key, value=value)
         thesis_fields = _custom_fields.get("imprint:imprint", {})
         thesis_fields["isbn"] = _isbn
         _custom_fields["imprint:imprint"] = thesis_fields
 
         ids = self.get("identifiers", [])
-        ids.append({"identifier": _isbn, "scheme": "isbn"})
+
+        new_id = {"identifier": _isbn, "scheme": "isbn"}
+        if new_id not in ids:
+            ids.append(new_id)
         self["identifiers"] = ids
     return _custom_fields
+
+
+@model.over("subjects", "(^080__)")
+def udc(self, key, value):
+    """Check 080 field. Drop UDC."""
+    val_a = value.get("a")
+    if val_a and re.findall(udc_pattern, val_a):
+        raise IgnoreKey("identifiers")
+    raise UnexpectedValue("UDC format check failed.", field=key, subfield="a",
+                          value=value)
+
+
+@model.over("custom_fields", "(^536__)")
+def funding(self, key, value):
+    _custom_fields = self.get("custom_fields", {})
+    programme = value.get("a")
+    # https://cerneu.web.cern.ch/fp7-projects
+    is_fp7_programme = programme and programme.strip().lower() == "fp7"
+    if not is_fp7_programme:
+        # if not fp7, then it is cern programme
+        programmes = _custom_fields.get("cern:programmes", [])
+        programmes.append(programme)
+        _custom_fields["cern:programmes"] = programmes
+        return _custom_fields
+    else:
+        awards = self.get("awards", [])
+        # this one is reliable, I checked the DB
+        try:
+            _funding = value.get("f", "").strip().lower()
+            _grant_number = value.get("c", "").strip().lower()
+        except AttributeError as e:
+            raise UnexpectedValue("Multiple grant numbers must be in separate tag",
+                                  field=key, value=value)
+
+        # TODO decide about this field
+        _access_info = value.get("r", "").strip().lower()
+        award = {"id": f"00k4n6c32::{_grant_number}"}
+        if award not in awards:
+            awards.append(award)
+        self["awards"] = awards
+    raise IgnoreKey("custom_fields")
 
 
 @model.over("custom_fields", "(^502__)")
@@ -113,7 +167,7 @@ def thesis(self, key, value):
     dates = self.get("dates", [])
 
     th_type = StringValue(value.get("a", "")).parse()
-    val_b  = value.get("b", "")
+    val_b = value.get("b", "")
     if type(val_b) is tuple:
         val_b = ",".join(val_b)
     uni = StringValue(val_b).parse()
@@ -174,7 +228,7 @@ def journal(self, key, value):
 @for_each_value
 @require(["a"])
 def additional_titles(self, key, value):
-    """Translates additional description."""
+    """Translates additional titles."""
     description_text = value.get("a")
     source = value.get("9")
 
@@ -198,11 +252,18 @@ def additional_titles(self, key, value):
 
 
 @model.over("dates", "(^500__)")
+@for_each_value
 def dates(self, key, value):
     output_dates = self.get("dates", [])
     text = value.get("a", "")
+    source = value.get("9", "")
+    # redundant information from arxiv
+    if source.lower() == "arxiv":
+        raise IgnoreKey("dates")
+
     cleaned_text = None
-    ignored_words = ["presented on", "Presented on", 'Presented', 'presented']
+    ignored_words = ["presented on", "Presented on", 'Presented', 'presented',
+                     'presented in', 'Presented in']
     for ignored in ignored_words:
         text = text.replace(ignored, "")
 
@@ -219,10 +280,25 @@ def dates(self, key, value):
         pass  # string does not contain a date
 
     if cleaned_text:
-        internal_notes = self.get("internal_notes", [])
-        internal_notes.append({"note": cleaned_text})
-        if internal_notes:
-            self["internal_notes"] = internal_notes
+        cleaned = re.sub(r'\W+', ' ', text)
+        cleaned = cleaned.strip()
+        if cleaned:
+            internal_notes = self.get("internal_notes", [])
+            internal_notes.append({"note": cleaned_text})
+            if internal_notes:
+                self["internal_notes"] = internal_notes
 
     # warning, values are assigned implicitly to self
     raise IgnoreKey("dates")
+
+
+@model.over("internal_notes", "^595__")
+@for_each_value
+def note(self, key, value):
+    """Translates notes."""
+    _note = value.get("a", "").strip()
+    if _note:
+        if _note.lower() in ["cern invenio webubmit", "cern eds", "cds", "lanl eds",
+                             "clas1"]:
+            raise IgnoreKey("internal_notes")
+        return {"note": note}
