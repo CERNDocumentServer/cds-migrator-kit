@@ -8,13 +8,16 @@
 """CDS-RDM migration rules module."""
 
 import datetime
+import re
+from urllib.parse import urlparse, ParseResult
 
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.config import CONTROLLED_SUBJECTS_SCHEMES, \
-    RECOGNISED_KEYWORD_SCHEMES, PID_SCHEMES_TO_STORE_IN_IDENTIFIERS
+    RECOGNISED_KEYWORD_SCHEMES, PID_SCHEMES_TO_STORE_IN_IDENTIFIERS, udc_pattern, \
+    KEYWORD_SCHEMES_TO_DROP
 from cds_migrator_kit.rdm.records.transform.models.base_record import (
     rdm_base_record_model as model,
 )
@@ -30,6 +33,18 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import (
     clean_str,
     clean_val,
 )
+
+
+@model.over("legacy_recid", "^001", override=True)
+def recid(self, key, value):
+    """Record Identifier."""
+    identifiers = self.get("identifiers", [])
+    new_id = {"identifier": value, "scheme": "lcds"}
+    if new_id not in identifiers:
+        identifiers.append(new_id)
+        self["identifiers"] = identifiers
+    self["recid"] = value
+    return int(value)
 
 
 @model.over("_created", "(^916__)")
@@ -65,20 +80,15 @@ def created(self, key, value):
         return datetime.date.today().isoformat()
 
 
-@model.over("subjects", "(^6931_)|(^650[1_][7_])|(^653[1_]_)")
+@model.over("subjects", "(^6931_)|(^650[12_][7_])|(^653[12_]_)|(^695__)|(^694__)")
 @require(["a"])
-@filter_list_values
+@for_each_value
 def subjects(self, key, value):
     """Translates subjects fields."""
 
-    def validate_subject_scheme(value, subfield):
-        subject_scheme = value.get(subfield)
-
+    def validate_subject_scheme(subject_scheme, subfield):
         if not subject_scheme:
             return True
-
-        if type(subject_scheme) is not str:
-            raise UnexpectedValue(field=key, subfield=subfield, value=subject_scheme)
 
         is_cern_scheme = (
             subject_scheme.lower() in CONTROLLED_SUBJECTS_SCHEMES
@@ -86,30 +96,67 @@ def subjects(self, key, value):
 
         is_recognised = subject_scheme.lower() in RECOGNISED_KEYWORD_SCHEMES
 
+        is_euproject_info = subject_scheme.lower() in ["aida", "eucard"]
+
+        if is_euproject_info:
+            return "eu"
         if not (is_cern_scheme or is_recognised):
             raise UnexpectedValue(field=key, subfield=subfield, value=subject_scheme)
 
-    _subjects = self.get("subjects", [])
     subject_value = StringValue(value.get("a", "")).parse()
+    subfield = "2" if "2" in value else "9"
+    scheme = value.get("2", "")
+    if not scheme:
+        scheme = value.get("9", "")
+    if not scheme and key == "65017":
+        raise UnexpectedValue(field=key, subfield=subfield, value=scheme)
 
-    validate_subject_scheme(value, "2")
-    validate_subject_scheme(value, "9")
+    if type(scheme) is not str:
+        raise UnexpectedValue(field=key, subfield=subfield, value=value)
 
-    if key == "65017":
+    scheme = scheme.lower()
+    if scheme in KEYWORD_SCHEMES_TO_DROP:
+        raise IgnoreKey("subjects")
+
+    # invalid schema = euproject info    scheme = sche
+    if validate_subject_scheme(scheme, subfield) == "eu":
+        descriptions = self.get("additional_descriptions", [])
+        b_sub = value.get("b")
+        desc = {"description": f"{subject_value} ({b_sub})",
+                "type": {"id": "technical-info"}}
+        if desc not in descriptions:
+            descriptions.append(desc)
+            self["additional_descriptions"] = descriptions
+        raise IgnoreKey("subjects")
+
+    is_keyword_field = any(
+        [key.startswith(x) for x in ["653", "693", "695", "694", "65027"]])
+    is_keyword = is_keyword_field or (
+        key == "65017" and scheme in RECOGNISED_KEYWORD_SCHEMES)
+
+    is_controlled_subject = key == "65017" and (scheme in CONTROLLED_SUBJECTS_SCHEMES)
+
+    if is_controlled_subject:
         if subject_value:
             subject = {
                 "id": subject_value,
                 "subject": subject_value,
                 # "scheme": "CERN", # scheme not accepted when ID is supplied
             }
-            _subjects.append(subject)
-    if key.startswith("653"):
+            return subject
+        raise IgnoreKey("subjects")
+
+    elif is_keyword:
         if subject_value:
             subject = {
                 "subject": subject_value,
             }
-            _subjects.append(subject)
-    return _subjects
+            return subject
+
+    else:
+        raise UnexpectedValue("unrecognised Subject value and scheme.",
+                              field=key,
+                              value=value)
 
 
 @model.over("custom_fields", "(^693__)")
@@ -166,19 +213,31 @@ def report_number(self, key, value):
     """Translates report_number fields."""
     identifier = value.get("a", "")
     identifier = StringValue(identifier).parse()
+    existing_ids = self.get("identifiers", [])
     scheme = value.get("9")
+    if not scheme:
+        scheme = value.get("2")
     if key == "037__" and scheme:
         if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
             scheme = scheme.lower()
         else:
-            raise UnexpectedValue("Unknown ID scheme", field=key, subfield="9",
+            raise UnexpectedValue("Unknown ID scheme", field=key, subfield="9 or 2",
                                   value=value)
-    if (key == "037__" and not scheme) or key == "088__":
+    if (key == "037__" and not scheme) or (identifier and key == "088__"):
         # if there is no scheme, it means report number
         scheme = "cds_ref"
     if not identifier:
-        raise UnexpectedValue("Missing ID value", field=key, value=value)
-    return {"scheme": scheme, "identifier": identifier}
+        if re.findall(udc_pattern, scheme):
+            raise IgnoreKey("identifiers")
+        elif scheme.startswith("CM-"):
+            # barcode, to drop
+            raise IgnoreKey("identifiers")
+        else:
+            raise UnexpectedValue("Missing ID value", field=key, value=value)
+    new_id = {"scheme": scheme, "identifier": identifier}
+    if new_id in existing_ids:
+        raise IgnoreKey("identifiers")
+    return new_id
 
 
 @model.over("identifiers", "^970__")
@@ -207,6 +266,21 @@ def identifiers(self, key, value):
 
     # drop oai harvest info
     if id_value.startswith("oai:inspirehep.net"):
+        raise IgnoreKey("identifiers")
+    if scheme.lower() == "cern annual report":
+        additional_descriptions = self.get("additional_descriptions", [])
+        new_desc = {"description": f"{scheme} {id_value}",
+                    "type": {"id": "series-information"}
+                    }
+        additional_descriptions.append(new_desc)
+        self["additional_descriptions"] = additional_descriptions
+        related_works = self.get("related_identifiers", [])
+        new_id = {"identifier": f"CERN annual report:{id_value}", "scheme": "other",
+                  "relation_type": {"id": "ispartof"},
+                  "resource_type": {"id": "publication-report"}
+                  }
+        related_works.append(new_id)
+        self["related_identifiers"] = related_works
         raise IgnoreKey("identifiers")
 
     if id_value:
@@ -264,29 +338,29 @@ def corporate_author(self, key, value):
     raise IgnoreKey("contributors")
 
 
-@model.over("alternative_titles", "(^242__)|(^210__)")
-@filter_list_values
-def alternative_titles(self, key, value):
+@model.over("additional_titles", "(^242__)|(^210__)")
+@for_each_value
+def additional_titles(self, key, value):
     """Translates title translations."""
-    _alternative_titles = self.get("alternative_titles", [])
+    _additional_titles = self.get("additional_titles", [])
     if key == "210__":
         abbreviation = clean_val("a", value, str, req=True)
-        _alternative_titles.append(
+        _additional_titles.append(
             {
                 "title": abbreviation,
-                "type": {"id:": "other"},
+                "type": {"id": "other"},
             }
         )
     elif "a" in value:
-        _alternative_titles.append(
+        _additional_titles.append(
             {
                 "title": clean_val("a", value, str, req=True),
-                "type": {"id:": "translated-title"},
+                "type": {"id": "translated-title"},
                 "lang": {"id": "eng"},
             }
         )
     if "b" in value:
-        _alternative_titles.append(
+        _additional_titles.append(
             {
                 "title": clean_val("b", value, str, req=True),
                 # should be translated subtitle, but we don't have it
@@ -294,7 +368,9 @@ def alternative_titles(self, key, value):
                 "lang": {"id": "eng"},
             }
         )
-    return _alternative_titles
+    if _additional_titles:
+        self["additional_titles"] = _additional_titles
+    raise IgnoreKey("additional_titles")
 
 
 @model.over("title", "^245__", override=True)
@@ -304,15 +380,15 @@ def title(self, key, value):
     subtitle = StringValue(value.get("b", "")).parse()
     title.required()
     if subtitle:
-        alt_titles = self.get("alternative_titles", [])
+        alt_titles = self.get("additional_titles", [])
         alt_titles.append({"title": subtitle,
                            "type": {"id": "subtitle"},
                            })
-        self["alternative_titles"] = alt_titles
+        self["additional_titles"] = alt_titles
     return title.parse()
 
 
-@model.over("licenses", "^540__")
+@model.over("rights", "^540__")
 @for_each_value
 @filter_values
 def licenses(self, key, value):
@@ -334,13 +410,13 @@ def licenses(self, key, value):
         is_standard_license = False
 
     if is_standard_license:
-        license_id = license_id.replace(" ", "-")
+        license_id = license_id.replace(" ", "-").lower()
         _license = {"id": license_id}
     else:
         if is_arxiv:
             license_url = ARXIV_LICENSE
         description = clean_val("g", value, str)
-        _license = {"title": license_id,
+        _license = {"title": {"en": license_id},
                     "link": license_url,
                     "description": description}
     return _license
@@ -363,4 +439,71 @@ def urls(self, key, value):
     if is_cds_file:
         raise IgnoreKey("identifiers")
     else:
-        return {"identifier": sub_u, "scheme": "url"}
+        p = urlparse(sub_u, 'http')
+        netloc = p.netloc or p.path
+        path = p.path if p.netloc else ''
+        if not netloc.startswith('www.'):
+            netloc = 'www.' + netloc
+
+        p = ParseResult('http', netloc, path, *p[3:])
+        return {"identifier": p.geturl(), "scheme": "url"}
+
+
+@model.over("additional_descriptions", "^490__")
+@for_each_value
+def series_information(self, key, value):
+    """Translate series information."""
+    sub_a = value.get("a", "").strip()
+    sub_v = value.get("v", "").strip()
+
+    series = f"{sub_a}"
+    if sub_v:
+        series = f"{series} ({sub_v})"
+    related_works = self.get("related_identifiers", [])
+    ids = []
+    if sub_a.lower() == "springer theses":
+        new_id = {"identifier": "2190-5053", "scheme": "issn",
+                  "relation_type": {"id": "ispartof"},
+                  "resource_type": {"id": "publication-other"}}
+        new_e_id = {"identifier": "2190-5053", "scheme": "issn",
+                    "relation_type": {"id": "ispartof"},
+                    "resource_type": {"id": "publication-other"}
+                    }
+        ids.append(new_id)
+        ids.append(new_e_id)
+
+    if sub_a.lower() == "Springer tracts in modern physics":
+        new_id = {"identifier": "0081-3869", "scheme": "issn",
+                  "relation_type": {"id": "ispartof"},
+                  "resource_type": {"id": "publication-other"}}
+        new_e_id = {"identifier": "1615-0430", "scheme": "issn",
+                    "relation_type": {"id": "ispartof"},
+                    "resource_type": {"id": "publication-other"}
+                    }
+        ids.append(new_id)
+        ids.append(new_e_id)
+
+    for rel_id in ids:
+        if rel_id not in related_works:
+            related_works.append(rel_id)
+
+    self["related_identifiers"] = related_works
+    return {"description": series, "type": {"id": "series-information"}}
+
+
+@model.over("related_identifiers", "^084__")
+@for_each_value
+def yellow_reports(self, key, value):
+    """Translate related records - yellow reports."""
+    scheme = value.get("2", "").strip()
+    identifier = value.get("a", "").strip()
+
+    if scheme and scheme.lower() == "cern yellow report":
+        new_id = {"identifier": identifier, "scheme": "cds_ref",
+                  "relation_type": {"id": "ispublishedin"},
+                  "resource_type": "publication-report"}
+        return new_id
+    if scheme.lower() == "pacs":
+        raise IgnoreKey("related_identifiers")
+
+    raise UnexpectedValue("Unknown value found.", field=key, value=value)

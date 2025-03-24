@@ -12,6 +12,7 @@ import csv
 import json
 import logging
 import os
+from copy import deepcopy
 
 from flask import current_app
 
@@ -150,7 +151,7 @@ class JsonLogger(metaclass=Singleton):
     def add_record(self, record, **kwargs):
         """Add record to list of collected records."""
         recid = record["legacy_recid"]
-        self.record_dump_file.write(f'"{recid}": {json.dumps(record)},\n')
+        self.record_dump_file.write(f'"{recid}": {record},\n')
 
     def add_record_state(self, record_state, **kwargs):
         """Add record state."""
@@ -167,12 +168,12 @@ class JsonLogger(metaclass=Singleton):
         else:
             recid = getattr(exc, "recid", None)
 
-        subfield = exc.subfield if getattr(exc, "subfield", None) else ""
+        subfield = f"subfield: {exc.subfield}" if getattr(exc, "subfield", None) else ""
         error_format = {
             "recid": recid,
             "type": getattr(exc, "type", None),
             "error": getattr(exc, "description", None),
-            "field": f"{getattr(exc, 'field', key)} subfield:{subfield}",
+            "field": f"{getattr(exc, 'field', key)} {subfield}",
             "value": getattr(exc, "value", value),
             "stage": getattr(exc, "stage", None),
             "message": getattr(exc, "message", str(exc)),
@@ -187,6 +188,11 @@ class JsonLogger(metaclass=Singleton):
 
         For example, we store affiliation warnings when we don't match.
         """
+        if recid in self._success_state_cache:
+            new_state = deepcopy(self._success_state_cache[recid])
+            new_state["message"] = f"{new_state['message']}\n{state['message']}"
+            new_state["value"] = f"{new_state['value']}\n{state['value']}"
+            state = new_state
         self._success_state_cache[recid] = state
 
     def add_success(self, recid):

@@ -52,6 +52,7 @@ def _(x):  # needed to avoid start time failure with lazy strings
 # See flask documentation for more information:
 # https://flask.palletsprojects.com/en/2.1.x/config/#SEND_FILE_MAX_AGE_DEFAULT
 SEND_FILE_MAX_AGE_DEFAULT = 300
+RDM_RECORDS_MAX_FILES_COUNT = 2000 # temporarily, until we decide what we do with figures
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # Do not commit it to a source code repository.
@@ -222,7 +223,6 @@ SECURITY_SEND_PASSWORD_RESET_EMAIL = False
 SECURITY_SEND_PASSWORD_RESET_NOTICE_EMAIL = False
 SECURITY_SEND_REGISTER_EMAIL = False
 
-
 # Invenio-CERN-Sync/CERN SSO
 # ==========================
 OAUTHCLIENT_REMOTE_APPS = {
@@ -238,7 +238,6 @@ CERN_SYNC_AUTHZ_BASE_URL = "https://authorization-service-api.web.cern.ch/"
 INVENIO_CERN_SYNC_KEYCLOAK_BASE_URL = (
     "https://auth.cern.ch/"  # set env var when testing
 )
-
 
 OAUTHCLIENT_CERN_REALM_URL = cern_keycloak.realm_url
 OAUTHCLIENT_CERN_USER_INFO_URL = cern_keycloak.user_info_url
@@ -356,6 +355,14 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {
             "validator": schemes.is_inspire,
             "datacite": "INSPIRE",
         },
+        "inis": {"label": _("INIS"),
+                 "validator": schemes.is_inspire,
+                 "datacite": "INIS"
+                 },
+        "lcds": {"label": _("CDS"),
+                 "validator": schemes.is_legacy_cds,
+                 "datacite": "CDS"
+                 }
     },
 }
 
@@ -375,12 +382,10 @@ RDM_RECORDS_PERSONORG_SCHEMES = {
     },
 }
 
-
 ### Make DOIs optional
 
 RDM_PERSISTENT_IDENTIFIERS["doi"]["required"] = False
 RDM_PARENT_PERSISTENT_IDENTIFIERS["doi"]["required"] = False
-
 
 # Invenio-Preservation-Sync
 # =========================
@@ -420,7 +425,6 @@ VOCABULARIES_NAMES_SCHEMES = {
     "lcds": {"label": _("CDS"), "validator": schemes.is_legacy_cds, "datacite": "CDS"},
 }
 """Names allowed identifier schemes."""
-
 
 ### CDS MIGRATOR #################################
 

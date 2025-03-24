@@ -128,10 +128,13 @@ def get_contributor_role(subfield, role, raise_unexpected=False):
 def get_contributor_affiliations(info):
     """Get affiliations of a contributor/creator."""
     u = info.get("u")
-    if not u:
+    v = info.get("v")
+    if not u and not v:
         return
-
-    affiliations = force_list(u)
+    if not v:
+        affiliations = force_list(u)
+    else:
+        affiliations = force_list(v)
     parsed_affiliations = [
         StringValue(aff).parse(filter_regex=ALPHANUMERIC_ONLY) for aff in affiliations
     ]

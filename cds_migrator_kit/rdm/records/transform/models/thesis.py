@@ -35,33 +35,38 @@ class ThesisModel(CdsOverdo):
         # decided to ignore
         # spreadsheet https://docs.google.com/spreadsheets/d/1S5x0pP1WnSIWPDZ_7WyFx87aHZ_Ni6y8v1nSC2TBNfg/edit?usp=sharing (ignored tab)
         # spreadsheet to be moved to cernbox when ready
+        "020__b",  # material of ISBN, to ignore in a repository
+        "020__u",  # material of ISBN, to ignore in a repository
         "0247_9",  # source of pid, INSPIRE data model
         "0248_a",  # oai identifier, not needed to migrate, TBD
         "0248_p",  # oai identifier, not needed to migrate, TBD
         "0248_q",  # full text tag 2778897
-        "084__2",  # SORT ID, spreadsheet
-        "084__a",  # SORT ID, spreadsheet
+        "035__d",  # oai harvest tag
+        "035__h",  # oai harvest tag # todo confirm
+        "035__m",  # oai harvest tag
+        "035__t",  # oai harvest tag
+        "035__u",  # oai harvest tag
+        "037__c",  # arxiv subject
+        # "084__2",  # SORT ID, spreadsheet, also PACS and missing report numbers, requested curation
+        # "084__a",  # SORT ID, spreadsheet
         "088__9",  # source of report number
+        "100__j",  # alternative spelling of the name
         "100__m",  # author's email <-- decided not to keep in RDM,
         "100__q",  # alternative spelling of the name
-        "100__j",  # alternative spelling of the name
-        # "100_v",
         "242__9",  # source of TRANSLATED title, INSPIRE data model
         "245__9",  # source of title, INSPIRE data model
         "269__c",  # Redundant (more detailed value is in 260__c imprint.pub_date)
         "270__m",  # document contact email
-        "035__h",  # oai harvest tag # todo confirm
-        "035__m",  # oai harvest tag
-        "035__d",  # oai harvest tag
-        "035__t",  # oai harvest tag
-        "035__u",  # oai harvest tag
+        "340__a",  # ignore, spreadsheet
         "500__9",  # provenance of note # TODO
         "520__9",  # abstract provenance
+        "540__b",  # material of license
         "595__a",  # always value CERN EDS, not displayed
+        "650272",  # scheme of subjects, other than CERN
+        "6532_9",  # scheme of subjects, other than CERN
         "700__m",  # author's email <-- decided not to keep in RDM,
-        "701__m",  # supervisors's email <-- decided not to keep in RDM,
         "701__j",
-        # "701__v",  # raw affiliation string from INSPIRE
+        "701__m",  # supervisors's email <-- decided not to keep in RDM,
         "720__a",  # author's duplicate
         "773__o",  # spreadsheet
         "8564_8",  # Files system field
@@ -69,11 +74,12 @@ class ThesisModel(CdsOverdo):
         "8564_x",  # Files system field
         "8564_y",  # Files / URLS label
         "916__d",  # spreadsheet
+        "916__e",  # spreadsheet
         "960__a",  # collection id? usually value 14, to confirm if we ignore
-        "961__x",  # CDS modification tag # TODO
         "961__c",  # CDS modification tag # TODO
         "961__h",  # CDS modification tag # TODO
         "961__l",  # CDS modification tag # TODO
+        "961__x",  # CDS modification tag # TODO
         "964__a",  # spreadsheet
         "970__b",  # spreadsheet
         "980__a",  # collection tag
@@ -101,7 +107,18 @@ class ThesisModel(CdsOverdo):
         "999C6a",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
         "999C6t",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
         "999C6v",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
+        # "100_v",
+        # "701__v",  # raw affiliation string from INSPIRE
+        "852__c",
+        "852__h",
 
+        "599__a",
+        # "595__z", # hidden rn
+        # "595__b",
+        # "595__c",
+        "100__v",
+        "700__v",
+        "701__v",
         # Fields which should not appear
 
         # "502__u",  # miscataloguing university, TODO check occurences

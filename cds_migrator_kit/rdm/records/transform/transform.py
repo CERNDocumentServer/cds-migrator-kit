@@ -39,7 +39,8 @@ from cds_migrator_kit.rdm.migration_config import (
     VOCABULARIES_NAMES_SCHEMES,
 )
 from cds_migrator_kit.rdm.records.transform.config import PIDS_SCHEMES_TO_DROP, \
-    PIDS_SCHEMES_ALLOWED, IDENTIFIERS_SCHEMES_TO_DROP
+    PIDS_SCHEMES_ALLOWED, IDENTIFIERS_SCHEMES_TO_DROP, IDENTIFIERS_VALUES_TO_DROP, \
+    FILE_SUBFORMATS_TO_DROP
 from cds_migrator_kit.reports.log import RDMJsonLogger
 from cds_migrator_kit.transform.dumper import CDSRecordDump
 from cds_migrator_kit.transform.errors import LossyConversion
@@ -327,7 +328,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
         def _publication_date(entry, dump_record):
             pub_date = entry.get("publication_date")
-            created =  entry.get("_created")
+            created = entry.get("_created")
             files = dump_record["files"]
             if not (pub_date or created or files):
                 raise MissingRequiredField(
@@ -353,7 +354,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         priority="warning",
                         stage="transform",
                     )
-                if item["scheme"].upper() in IDENTIFIERS_SCHEMES_TO_DROP:
+                if item["scheme"].upper() in IDENTIFIERS_SCHEMES_TO_DROP \
+                    or IDENTIFIERS_VALUES_TO_DROP in item["identifier"]:
                     identifiers.remove(item)
                     continue
                 if item["scheme"] not in RDM_RECORDS_IDENTIFIERS_SCHEMES.keys():
@@ -377,10 +379,30 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "subjects": json_entry.get("subjects"),
             "publisher": json_entry.get("publisher"),
             "additional_descriptions": json_entry.get("additional_descriptions"),
+            "additional_titles": json_entry.get("additional_titles"),
             "identifiers": _identifiers(json_entry),
             "languages": json_entry.get("languages"),
             "dates": json_entry.get("dates"),
+            "awards": json_entry.get("awards"),
+            "related_identifiers": json_entry.get("related_identifiers"),
+            "rights": json_entry.get("rights"),
         }
+
+        keys = deepcopy(list(json_entry.keys()))
+
+        helper_keys = ['recid', 'legacy_recid', 'agency_code', 'submitter', '_created',
+                       'record_restriction', "custom_fields", "_pids", "internal_notes"]
+        for item in helper_keys:
+            if item in keys:
+                keys.remove(item)
+
+        forgotten_keys = [
+            key for key in keys if
+            key not in list(metadata.keys())
+        ]
+        if forgotten_keys:
+            raise ManualImportRequired("Unassigned metadata key",
+                                       value=forgotten_keys)
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
 
@@ -406,6 +428,25 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         value=experiment,
                         field="author",
                         message=f"Experiment {experiment} not found, added as a subject",
+                        stage="vocabulary match",
+                    )
+
+        def field_programmes(record_json, custom_fields_dict):
+            programmes = record_json.get("custom_fields", {}).get(
+                "cern:programmes", []
+            )
+            for prog in programmes:
+                result = search_vocabulary(prog, "programmes")
+
+                if result["hits"]["total"]:
+                    custom_fields_dict["cern:programmes"].append(
+                        {"id": result["hits"]["hits"][0]["id"]}
+                    )
+                else:
+                    raise UnexpectedValue(
+                        value=prog,
+                        field="programme",
+                        message=f"programme {prog} not found",
                         stage="vocabulary match",
                     )
 
@@ -482,6 +523,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             ),
             "cern:studies": json_entry.get("custom_fields", {}).get("cern:studies", []),
             "cern:beams": [],
+            "cern:programmes": [],
             "thesis:thesis": json_entry.get("custom_fields", {}).get(
                 "thesis:thesis", {}
             ),
@@ -495,6 +537,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         try:
             field_experiments(json_entry, custom_fields)
             field_departments(json_entry, custom_fields)
+            field_programmes(json_entry, custom_fields)
         except RecordFlaggedCuration as exc:
             RDMJsonLogger().add_success_state(
                 json_entry["recid"],
@@ -502,6 +545,11 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             )
         field_accelerators(json_entry, custom_fields)
         field_beams(json_entry, custom_fields)
+        forgotten_keys = [key for key in json_entry["custom_fields"].keys() if
+                          key not in custom_fields.keys()]
+        if forgotten_keys:
+            raise ManualImportRequired("Unassigned custom field key",
+                                       value=forgotten_keys)
         return custom_fields
 
     def _verify_creation_date(self, entry, json_data):
@@ -510,7 +558,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         If the record has no files (file creation date will be used as record
         creation date) and no creation date, raise an exception.
         """
-        if not entry.get("files") and not (json_data.get("_created") or json_data.get("publication_date")):
+        if not entry.get("files") and not (
+            json_data.get("_created") or json_data.get("publication_date")):
             raise ManualImportRequired(
                 message="Record missing creation date",
                 field="validation",
@@ -691,6 +740,15 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             legacy_path_root = Path("/opt/cdsweb/var/data/files/")
             tmp_eos_root = Path(self.files_dump_dir)
             full_path = Path(file["full_path"])
+
+            if file["subformat"] in FILE_SUBFORMATS_TO_DROP:
+                RDMJsonLogger().add_success_state(
+                    str(file["recid"]),
+                    {"message": f"File subformat {file['subformat']} dropped.",
+                     "value": file["full_name"]},
+                )
+                return
+
             if file["hidden"]:
                 raise RestrictedFileDetected(
                     field=file["full_name"],
@@ -699,6 +757,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                     message="File marked as hidden",
                 )
             if file["status"] and file["status"] != "SSO":
+                # check if any other restrictions
                 raise RestrictedFileDetected(
                     field=file["full_name"], value=file["status"], priority="critical"
                 )
@@ -706,7 +765,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 {
                     file["full_name"]: {
                         "eos_tmp_path": tmp_eos_root
-                        / full_path.relative_to(legacy_path_root),
+                                        / full_path.relative_to(legacy_path_root),
                         "id_bibdoc": file["bibdocid"],
                         "key": file["full_name"],
                         "metadata": {},
