@@ -56,7 +56,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
     def _created(self, json_entry):
         """Returns the creation date of the record."""
-        # TODO it'll always return `today` because we dont have `_created`
+        # TODO it's getting the creation date from 961 tag, what should we do if missing?
         try:
             return arrow.get(json_entry["_created"])
         except KeyError:
@@ -99,8 +99,20 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         raise NotImplementedError("_files are not implemented for this class.")
     
     def _owner(self, json_entry):
-        """Get the submitter id of the record."""
-        return
+        email = json_entry.get("submitter")
+        if not email:
+            return "system"
+        try:
+            user = User.query.filter_by(email=email).one()
+            return {"id": user.id, "email": email}
+        except NoResultFound:
+            raise UnexpectedValue(
+                message=f"{email} not found - did you run user migration?",
+                stage="transform",
+                recid=json_entry["legacy_recid"],
+                value=email,
+                priority="critical",
+            )
 
     def _media_files(self, entry):
         """Transform the media files (lecturemedia files) of a record."""
@@ -220,12 +232,14 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
             return contributors
 
+        date = reformat_date(entry)
         metadata = {
             "title": entry["title"],
             "description": description(entry),
             "contributors": format_contributors(entry),
             "language": entry.get("language"),
-            "date": reformat_date(entry),
+            "date": date,
+            "publication_date": date,
         }
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
@@ -255,6 +269,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "updated": self._updated(record_dump),
             "recid": self._recid(record_dump),
             "json": record_json_output,
+            "owned_by": self._owner(json_data),
             # keep the original extracted entry for storing it
             "_original_dump": entry,
         }
