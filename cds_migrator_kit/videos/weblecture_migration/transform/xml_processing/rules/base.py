@@ -8,6 +8,7 @@
 """CDS-Videos migration rules module."""
 
 import pycountry
+import datetime
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
@@ -15,11 +16,13 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     require,
     strip_output,
 )
+from cds_migrator_kit.transform.xml_processing.quality.dates import get_week_start
 from cds_migrator_kit.transform.xml_processing.quality.parsers import (
     StringValue,
     clean_str,
+    clean_val,
 )
-
+from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import created as base_created
 from ...models.base import model
 from ..quality.contributors import get_contributor
 
@@ -77,3 +80,23 @@ def creators(self, key, value):
 def contributors(self, key, value):
     """Translates contributors."""
     return get_contributor(key, value)
+
+
+@model.over("submitter", "(^859__)|(^856__)")
+@require(["f"])
+def record_submitter(self, key, value):
+    """Translate record submitter."""
+    submitter = value.get("f")
+    if type(submitter) is tuple:
+        submitter = submitter[0]
+        raise UnexpectedValue(field=key, subfield="f", value=value.get("f"))
+    if submitter:
+        submitter = submitter.lower()
+    return submitter
+
+
+@model.over("_created", "(^916__)")
+@require(["w"])
+def created(self, key, value):
+    """Translates created information to fields."""
+    return base_created(self, key, value)

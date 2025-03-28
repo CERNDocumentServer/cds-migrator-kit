@@ -56,11 +56,11 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
     def _created(self, json_entry):
         """Returns the creation date of the record."""
-        # TODO it'll always return `today` because we dont have `_created`
-        try:
-            return arrow.get(json_entry["_created"])
-        except KeyError:
-            return datetime.date.today().isoformat()
+        # Try to get '_created' tag: 916, if not found then 'lecture_created' tag: 961
+        created_date = json_entry.get("_created") or json_entry.get("lecture_created")
+        if created_date:
+            return arrow.get(created_date)
+        return datetime.date.today().isoformat()
 
     def _updated(self, record_dump):
         """Returns the modification date of the record."""
@@ -99,8 +99,22 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         raise NotImplementedError("_files are not implemented for this class.")
     
     def _owner(self, json_entry):
-        """Get the submitter id of the record."""
-        return
+        email = json_entry.get("submitter")
+        error_message = f"{email} not found - did you run user migration?"
+        if not email:
+            email = current_app.config["WEBLECTURES_MIGRATION_SYSTEM_USER"] 
+            error_message = f"{email} not found - did you created system user?"     
+        try:
+            user = User.query.filter_by(email=email).one()
+            return {"id": user.id, "email": email}
+        except NoResultFound:
+            raise UnexpectedValue(
+                message=error_message,
+                stage="transform",
+                recid=json_entry["legacy_recid"],
+                value=email,
+                priority="critical",
+            )
 
     def _media_files(self, entry):
         """Transform the media files (lecturemedia files) of a record."""
@@ -129,11 +143,14 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 value="master_path",
                 priority="critical",
             )
-            
 
     def _metadata(self, entry):
         """Transform the metadata of a record."""
 
+        def get_values_in_json(json_data, field):
+            """Get the not none values in json as a set"""
+            return {d for d in json_data.get(field, []) if d}
+        
         def guess_dates(json_data, key, subkey=None):
             """Try to get `date` from other fields.
 
@@ -165,14 +182,14 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
         def reformat_date(json_data):
             """Reformat the date for the cds-videos data model."""
-            # Check primary date field
-            dates_set = {date for date in json_data.get("date", []) if date}
 
-            # If no date found, check `indico_links` and `internal_notes`
-            if not dates_set:
-                indico_dates = guess_dates(json_data, "url_files", subkey="indico")
-                note_dates = guess_dates(json_data, "internal_notes")
-                dates_set.update(indico_dates, note_dates)
+            # Priority: date > publication_date > guessed (indico, notes)
+            dates_set = (
+                get_values_in_json(json_data, "date") or
+                get_values_in_json(json_data, "publication_date") or
+                guess_dates(json_data, "url_files", subkey="indico") | 
+                guess_dates(json_data, "internal_notes")
+            )
 
             # Return the valid date if only one is found
             if len(dates_set) == 1:
@@ -220,12 +237,20 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
             return contributors
 
+        def publication_date(json_data):
+            """Get the publication date"""
+            dates = get_values_in_json(json_data, "publication_date")
+            if len(dates) == 1:
+                return next(iter(dates))
+            
+        record_date = reformat_date(entry)
         metadata = {
             "title": entry["title"],
             "description": description(entry),
             "contributors": format_contributors(entry),
             "language": entry.get("language"),
-            "date": reformat_date(entry),
+            "date": record_date,
+            "publication_date": publication_date(entry) or record_date,
         }
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
@@ -255,6 +280,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "updated": self._updated(record_dump),
             "recid": self._recid(record_dump),
             "json": record_json_output,
+            "owned_by": self._owner(json_data),
             # keep the original extracted entry for storing it
             "_original_dump": entry,
         }

@@ -1,33 +1,25 @@
 # -*- coding: utf-8 -*-
 #
-# This file is part of CERN Document Server.
 # Copyright (C) 2025 CERN.
 #
-# Invenio is free software; you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as
-# published by the Free Software Foundation; either version 2 of the
-# License, or (at your option) any later version.
-#
-# Invenio is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-# General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with Invenio; if not, write to the Free Software Foundation, Inc.,
-# 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+# cds-migrator-kit is free software; you can redistribute it and/or modify it under
+# the terms of the MIT License; see LICENSE file for more details.
 
-"""CDS-Videos Video Lecture model."""
+"""cds-migrator-kit videos submitter model."""
 
 from cds_migrator_kit.transform.overdo import CdsOverdo
+from cds_migrator_kit.videos.weblecture_migration.transform.models.base import (
+    model as base_model,
+)
 
-from .base import model as base_model
 
+class VideosSubmitterModel(CdsOverdo):
+    """Translation Model for submitters."""
 
-class VideoLecture(CdsOverdo):
-    """Translation Index for CERN Video Lectures."""
-
-    __query__ = '8567_.x:"Absolute master path" 8567_.d:/mnt/master_share* -980__.C:MIGRATED -980__.c:DELETED -5831_.a:digitized'
+    __query__ = (
+        # meant to match any record
+        ""
+    )
 
     __ignore_keys__ = {
         "003",
@@ -38,31 +30,30 @@ class VideoLecture(CdsOverdo):
         "340__k",  # Physical medium/ -> curation field
         "340__j",  # Physical medium/ -> curation field
         "340__8",  # Physical medium/id? -> curation field https://cds.cern.ch/record/2234827
-        # check with JY
-        "961__h",  # Hour? TODO? check with JY
-        "961__l",  # Library? TODO? check with JY
-        "961__a",  # ? TODO? check with JY
-        "961__b",  # ? TODO? check with JY
-        "964__a",  # Item owner TODO? check with JY
-        "916__d",  # Status week? TODO? check with JY
-        "901__u",  # Affiliation at Conversion? TODO? check with JY
-        "583__a",  # Action note / curation TODO? check with JY
-        "583__c",  # Action note / curation TODO? check with JY
-        "583__z",  # Action note / curation TODO? check with JY
-        "916__n",  # Status week TODO? check with JY
-        "916__s",  # Status week TODO? check with JY
-        "916__w",  # Status week TODO? check with JY
-        "916__y",  # Status week TODO? check with JY
-        "916__a",  # Status week TODO? check with JY
-        "306__a",  # ? TODO? check with JY
-        "336__a",  # ? TODO? check with JY
-        "981__a",  # duplicate record id TODO? check with JY
-        "916__a",  # Status week TODO? check with JY
-        "916__d",  # Status week TODO? check with JY
-        "916__e",  # Status week TODO? check with JY
-        "916__s",  # Status week TODO? check with JY
-        "916__w",  # Status week TODO? check with JY
-        "916__y",  # Status week TODO? check with JY
+        "961__h",  # Hour?
+        "961__l",  # Library?
+        "961__a",  # ?
+        "961__b",  # ?
+        "964__a",  # Item owner
+        "916__d",  # Status week?
+        "901__u",  # Affiliation at Conversion?
+        "583__a",  # Action note / curation
+        "583__c",  # Action note / curation
+        "583__z",  # Action note / curation
+        "916__n",  # Status week
+        "916__s",  # Status week
+        "916__w",  # Status week
+        "916__y",  # Status week
+        "916__a",  # Status week
+        "306__a",  # ?
+        "336__a",  # ?
+        "981__a",  # duplicate record id
+        "916__a",  # Status week
+        "916__d",  # Status week
+        "916__e",  # Status week
+        "916__s",  # Status week
+        "916__w",  # Status week
+        "916__y",  # Status week
         "960__a",  # Base?
         # Category, Collection, Series, Keywords
         "980__a",  # collection tag
@@ -149,7 +140,6 @@ class VideoLecture(CdsOverdo):
         "0248_a",  # oai identifier
         "0248_p",  # oai identifier
         "0248_q",
-        # IGNORE
         "518__h",  # Lectures: Starting time
         "300__2",  # Imprint
         "300__b",  # Imprint
@@ -164,42 +154,46 @@ class VideoLecture(CdsOverdo):
         "963__a",  # values: PUBLIC/RESTRICTED
         "8564_8",  # File: bibdoc id
         "8564_s",  # File: file size
-        # IMPLEMENTED
-        # "520__a",  # Note (-> description.type = abstract
-        # "001",
-        # "041__a",  # languages
-        # "906__p",  # event speakers
-        # "100__9",  # #BEARD# tag
-        # "100__a",
-        # "100__u",  # Author affiliation
-        # "700__e",  # Contributor/Speaker role
-        # "700__0",  # Contributors (cds author id)
-        # "700__9",  # #BEARD# tag
-        # "700__a",  # Contributors (full name)
-        # "700__u",  # Contributors (affiliation)
-        # "518__d",  # Full date/time
-        # "269__c",  # Date (full date/year)
-        # "269__b",  # CERN (checked for other values)
-        # "269__a",  # Geneva (checked for other values)
-        # "518__a",  # Date
-        # "906__u", # Contributor Affiliation
-        # "511__u",  # Contributor Affiliation
-        # "8567_u",  # File url
-        # "8567_y",  # File description
-        # "8567_2",  # File system? 'MediaArchive'
-        # "8564_q",  # File type (digitized)
-        # "8564_8",  # Files system field
-        # "8564_s",  # Files system field
-        # "8564_u",  # Files
-        # "8564_x",  # Files system field
-        # "8564_y",  # Files
-        # "961__x",  # Creation Date TODO? check with JY
-        # "961__c",  # modification Date TODO? check with JY
-        # "859__f",  # submitter email
-        # "8560_f",  # submitter email
+        "520__a",  # Note (-> description.type = abstract
+        "001",
+        "041__a",  # languages
+        "906__p",  # event speakers
+        "100__9",  # #BEARD# tag
+        "100__a",
+        "100__u",  # Author affiliation
+        "700__e",  # Contributor/Speaker role
+        "700__0",  # Contributors (cds author id)
+        "700__9",  # #BEARD# tag
+        "700__a",  # Contributors (full name)
+        "700__u",  # Contributors (affiliation)
+        "518__d",  # Full date/time
+        "269__c",  # Date (full date/year)
+        "269__b",  # CERN (checked for other values)
+        "269__a",  # Geneva (checked for other values)
+        "518__a",  # Date
+        "906__u",  # Contributor Affiliation
+        "511__u",  # Contributor Affiliation
+        "8567_u",  # File url
+        "8567_y",  # File description
+        "8567_2",  # File system? 'MediaArchive'
+        "8564_q",  # File type (digitized)
+        "8564_8",  # Files system field
+        "8564_s",  # Files system field
+        "8564_u",  # Files
+        "8564_x",  # Files system field
+        "8564_y",  # Files
+        "961__x",  # Creation Date
+        "961__c",  # modification Date
+        "8567_x",
+        "8567_d",
+        # Submitter
+        # "859__f",  # email
+        # "8560_f",  # email
     }
 
 
-model = VideoLecture(
-    bases=(base_model,), entry_point_group="cds_migrator_kit.videos.rules.video_lecture"
+videos_submitter_model = VideosSubmitterModel(
+    # use base rules - we don't need any other rule than 859 and 8560
+    bases=(base_model,),
+    entry_point_group="cds_migrator_kit.videos.rules.base",
 )
