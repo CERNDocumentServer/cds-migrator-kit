@@ -8,3 +8,9 @@ records:
       dirpath: cds_migrator_kit/videos/weblecture_migration/data/weblectures/dump/
     transform:
       files_dump_dir: cds_migrator_kit/videos/weblecture_migration/data/weblectures/files/
+submitters:
+    data_dir: cds_migrator_kit/videos/weblecture_migration/data/users
+    tmp_dir: cds_migrator_kit/videos/weblecture_migration/tmp/users
+    log_dir: cds_migrator_kit/videos/weblecture_migration/log/users
+    extract:
+      dirpath: cds_migrator_kit/videos/weblecture_migration/data/weblectures/dump/
