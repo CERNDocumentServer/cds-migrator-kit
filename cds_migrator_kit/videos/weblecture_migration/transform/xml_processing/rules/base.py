@@ -77,3 +77,16 @@ def creators(self, key, value):
 def contributors(self, key, value):
     """Translates contributors."""
     return get_contributor(key, value)
+
+
+@model.over("submitter", "(^859__)|(^859__)")
+@require(["f"])
+def record_submitter(self, key, value):
+    """Translate record submitter."""
+    submitter = value.get("f")
+    if type(submitter) is tuple:
+        submitter = submitter[0]
+        raise UnexpectedValue(field=key, subfield="f", value=value.get("f"))
+    if submitter:
+        submitter = submitter.lower()
+    return submitter
