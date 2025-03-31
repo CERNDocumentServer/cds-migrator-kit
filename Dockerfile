@@ -46,7 +46,7 @@ WORKDIR ${WORKING_DIR}/src
 
 # install all dependencies
 RUN echo "Install app dependencies"
-RUN pip install ."[all]"
+RUN pip install ."[all,rdm]"
 # XRootD
 RUN pip install "invenio-xrootd==2.0.0a2"
 # /XRootD
