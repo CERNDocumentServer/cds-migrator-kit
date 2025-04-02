@@ -228,10 +228,9 @@ class CDSRecordServiceLoad(Load):
             )
             if draft.errors:
                 raise ManualImportRequired(
-                    message=str(draft.errors),
+                    message=f"{str(draft.errors)}: {str(entry['record']['json'])}",
                     field="validation",
                     stage="load",
-                    description="Draft has errors",
                     recid=entry["record"]["recid"],
                     priority="warning",
                     value=draft._record.pid.pid_value,

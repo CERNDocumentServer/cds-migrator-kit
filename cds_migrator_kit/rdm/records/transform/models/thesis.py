@@ -46,6 +46,7 @@ class ThesisModel(CdsOverdo):
         "035__m",  # oai harvest tag
         "035__t",  # oai harvest tag
         "035__u",  # oai harvest tag
+        "035__z",  # oai harvest tag
         "037__c",  # arxiv subject
         # "084__2",  # SORT ID, spreadsheet, also PACS and missing report numbers, requested curation
         # "084__a",  # SORT ID, spreadsheet
@@ -69,6 +70,7 @@ class ThesisModel(CdsOverdo):
         "701__m",  # supervisors's email <-- decided not to keep in RDM,
         "720__a",  # author's duplicate
         "773__o",  # spreadsheet
+        "773__x",  # spreadsheet
         "8564_8",  # Files system field
         "8564_s",  # Files system field
         "8564_x",  # Files system field
@@ -82,7 +84,7 @@ class ThesisModel(CdsOverdo):
         "961__x",  # CDS modification tag # TODO
         "964__a",  # spreadsheet
         "970__b",  # spreadsheet
-        "980__a",  # collection tag
+        # "980__a",  # collection tag
         "981__a",  # duplicated record marker # TODO -> decide how to handle these
         "999C50",  # https://cds.cern.ch/record/2284609/export/hm?ln=en CMS contributions
         "999C52",  # https://cds.cern.ch/record/2640188/export/hm?ln=en

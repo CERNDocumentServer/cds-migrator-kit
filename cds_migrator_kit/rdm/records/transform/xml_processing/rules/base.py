@@ -8,9 +8,10 @@
 """CDS-RDM migration rules module."""
 
 import datetime
+import logging
 import re
 from urllib.parse import urlparse, ParseResult
-
+from idutils.validators import is_doi, is_handle
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 
@@ -33,6 +34,8 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import (
     clean_str,
     clean_val,
 )
+
+cli_logger = logging.getLogger("migrator")
 
 
 @model.over("legacy_recid", "^001", override=True)
@@ -86,7 +89,7 @@ def created(self, key, value):
 def subjects(self, key, value):
     """Translates subjects fields."""
 
-    def validate_subject_scheme(subject_scheme, subfield):
+    def validate_subject_scheme(subject_scheme, subfield, key):
         if not subject_scheme:
             return True
 
@@ -95,38 +98,33 @@ def subjects(self, key, value):
         )
 
         is_recognised = subject_scheme.lower() in RECOGNISED_KEYWORD_SCHEMES
-
-        is_euproject_info = subject_scheme.lower() in ["aida", "eucard"]
+        is_freetext = key.startswith("653")
+        is_euproject_info = subject_scheme.lower() in ["aida", "eucard", "eucard2"]
 
         if is_euproject_info:
             return "eu"
+        if is_freetext:
+            return True
         if not (is_cern_scheme or is_recognised):
             raise UnexpectedValue(field=key, subfield=subfield, value=subject_scheme)
 
-    subject_value = StringValue(value.get("a", "")).parse()
+    val_a = value.get("a", "")
+
     subfield = "2" if "2" in value else "9"
     scheme = value.get("2", "")
     if not scheme:
         scheme = value.get("9", "")
-    if not scheme and key == "65017":
-        raise UnexpectedValue(field=key, subfield=subfield, value=scheme)
 
     if type(scheme) is not str:
         raise UnexpectedValue(field=key, subfield=subfield, value=value)
 
+    if not scheme and key == "65017":
+        # assume scheme
+        scheme = "szgecern"
+        # raise UnexpectedValue(field=key, subfield=subfield, value=scheme)
+
     scheme = scheme.lower()
     if scheme in KEYWORD_SCHEMES_TO_DROP:
-        raise IgnoreKey("subjects")
-
-    # invalid schema = euproject info    scheme = sche
-    if validate_subject_scheme(scheme, subfield) == "eu":
-        descriptions = self.get("additional_descriptions", [])
-        b_sub = value.get("b")
-        desc = {"description": f"{subject_value} ({b_sub})",
-                "type": {"id": "technical-info"}}
-        if desc not in descriptions:
-            descriptions.append(desc)
-            self["additional_descriptions"] = descriptions
         raise IgnoreKey("subjects")
 
     is_keyword_field = any(
@@ -136,27 +134,54 @@ def subjects(self, key, value):
 
     is_controlled_subject = key == "65017" and (scheme in CONTROLLED_SUBJECTS_SCHEMES)
 
-    if is_controlled_subject:
-        if subject_value:
-            subject = {
-                "id": subject_value,
-                "subject": subject_value,
-                # "scheme": "CERN", # scheme not accepted when ID is supplied
-            }
-            return subject
+    if type(val_a) is tuple:
+        # sometimes keywords are stick in one tag, so they come out as tuple
+        s_values = val_a
+        _subjects = []
+        for _value in s_values:
+            try:
+                subj = subjects(self, key, {"a": _value, subfield: scheme})
+                _subjects += subj
+            except IgnoreKey as e:
+                # ignore the exceptions to pass to next keyword
+                pass
+        all_subj = self.get("subjects", []) + _subjects
+        self["subjects"] = all_subj
         raise IgnoreKey("subjects")
-
-    elif is_keyword:
-        if subject_value:
-            subject = {
-                "subject": subject_value,
-            }
-            return subject
-
     else:
-        raise UnexpectedValue("unrecognised Subject value and scheme.",
-                              field=key,
-                              value=value)
+        subject_value = val_a.strip()
+        # invalid schema = euproject info    scheme = scheme
+        if validate_subject_scheme(scheme, subfield, key) == "eu":
+            descriptions = self.get("additional_descriptions", [])
+            b_sub = value.get("b")
+            desc = {"description": f"{subject_value} ({b_sub})",
+                    "type": {"id": "technical-info"}}
+            if desc not in descriptions:
+                descriptions.append(desc)
+                self["additional_descriptions"] = descriptions
+            raise IgnoreKey("subjects")
+
+        if is_controlled_subject:
+            if subject_value:
+                subject = {
+                    "id": subject_value,
+                    "subject": subject_value,
+                    # "scheme": "CERN", # scheme not accepted when ID is supplied
+                }
+                return subject
+            raise IgnoreKey("subjects")
+
+        elif is_keyword:
+            if subject_value:
+                subject = {
+                    "subject": subject_value,
+                }
+                return subject
+
+        else:
+            raise UnexpectedValue("unrecognised Subject value and scheme.",
+                                  field=key,
+                                  value=value)
 
 
 @model.over("custom_fields", "(^693__)")
@@ -214,23 +239,33 @@ def report_number(self, key, value):
     identifier = value.get("a", "")
     identifier = StringValue(identifier).parse()
     existing_ids = self.get("identifiers", [])
-    scheme = value.get("9")
+    scheme = value.get("2")
     if not scheme:
-        scheme = value.get("2")
+        scheme = value.get("9", "")
+        is_hidden_report_number = scheme.upper().startswith("CERN-")
+        if is_hidden_report_number:
+            scheme = None
+            identifier = value.get("9")
     if key == "037__" and scheme:
+        if scheme == "hdl":
+            scheme = "handle"
         if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
             scheme = scheme.lower()
-        else:
-            raise UnexpectedValue("Unknown ID scheme", field=key, subfield="9 or 2",
-                                  value=value)
     if (key == "037__" and not scheme) or (identifier and key == "088__"):
         # if there is no scheme, it means report number
         scheme = "cds_ref"
+
+    # if there is no identifier it means something else was stored in __9
     if not identifier:
         if re.findall(udc_pattern, scheme):
             raise IgnoreKey("identifiers")
         elif scheme.startswith("CM-"):
             # barcode, to drop
+            raise IgnoreKey("identifiers")
+        elif scheme.upper().startswith("P00"):
+            # barcode, to drop
+            raise IgnoreKey("identifiers")
+        elif scheme.upper() == "CERN LIBRARY":
             raise IgnoreKey("identifiers")
         else:
             raise UnexpectedValue("Missing ID value", field=key, value=value)
@@ -249,8 +284,12 @@ def aleph_number(self, key, value):
     https://github.com/CERNDocumentServer/cds-migrator-kit/issues/21
     """
     aleph = StringValue(value.get("a")).parse()
-    if aleph:
+    identifiers = self.get("identifiers")
+    new_id = {"scheme": "aleph", "identifier": aleph}
+    if aleph and new_id not in identifiers:
         return {"scheme": "aleph", "identifier": aleph}
+    else:
+        raise IgnoreKey("identifiers")
 
 
 @model.over("identifiers", "^035__")
@@ -275,14 +314,16 @@ def identifiers(self, key, value):
         additional_descriptions.append(new_desc)
         self["additional_descriptions"] = additional_descriptions
         related_works = self.get("related_identifiers", [])
-        new_id = {"identifier": f"CERN annual report:{id_value}", "scheme": "other",
+        new_id = {"identifier": f"cern-annual-report:{id_value}", "scheme": "other",
                   "relation_type": {"id": "ispartof"},
                   "resource_type": {"id": "publication-report"}
                   }
         related_works.append(new_id)
         self["related_identifiers"] = related_works
         raise IgnoreKey("identifiers")
-
+    is_aleph_number = scheme.lower() == "cercer" or not scheme and "CERCER" in id_value
+    if is_aleph_number:
+        scheme = "aleph"
     if id_value:
         return {"scheme": scheme.lower(), "identifier": id_value}
 
@@ -299,6 +340,11 @@ def _pids(self, key, value):
                               subfield="2",
                               stage="transform")
     identifier = StringValue(value.get("a")).parse()
+    is_doi_id = is_doi(identifier)
+    is_handle_id = not is_doi_id and is_handle(identifier)
+    if not is_doi_id and is_handle_id and (
+        scheme == "doi" or scheme == "urn/hdl"):
+        scheme = "handle"
     if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
         if scheme == "hdl":
             scheme = "handle"
@@ -309,8 +355,12 @@ def _pids(self, key, value):
     else:
         if scheme:
             pid_dict[scheme] = {"identifier": identifier}
+        elif is_doi_id and not scheme:
+            pid_dict["doi"] = {"identifier": identifier}
         else:
-            pid_dict["other"] = {"identifier": identifier}
+            raise UnexpectedValue("Missing identifier scheme", field=key,
+                                  subfield="2",
+                                  stage="transform")
         return pid_dict
 
 
@@ -318,12 +368,16 @@ def _pids(self, key, value):
 @for_each_value
 def corporate_author(self, key, value):
     """Translates corporate author."""
-    if "g" in value:
+    if "g" in value or "a" in value:
+        name = value.get("g") if "g" in value else value.get("a")
+
+        if name.strip() == "CERN. Geneva":
+            name = "CERN"
         contributor = {
             "person_or_org": {
                 "type": "organizational",
-                "name": StringValue(value.get("g")).parse(),
-                "family_name": StringValue(value.get("g")).parse(),
+                "name": StringValue(name).parse(),
+                "family_name": StringValue(name).parse(),
             },
             "role": {"id": "hostinginstitution"},
         }
@@ -496,7 +550,13 @@ def series_information(self, key, value):
 def yellow_reports(self, key, value):
     """Translate related records - yellow reports."""
     scheme = value.get("2", "").strip()
+    provenance = value.get("9", "").strip()
     identifier = value.get("a", "").strip()
+
+    if scheme.upper() == "CERN LIBRARY":
+        raise IgnoreKey("related_identifiers")
+    if provenance.lower() == "pacs":
+        raise IgnoreKey("related_identifiers")
 
     if scheme and scheme.lower() == "cern yellow report":
         new_id = {"identifier": identifier, "scheme": "cds_ref",

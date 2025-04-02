@@ -18,10 +18,11 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 """CDS-RDM migration rules module."""
 import re
-
+import arrow
 from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
-from idutils.normalizers import normalize_isbn
+from dojson.utils import force_list
+from idutils.normalizers import normalize_isbn, normalize_issn
 from isbnlib import NotValidISBNError
 
 from cds_migrator_kit.errors import UnexpectedValue
@@ -59,7 +60,7 @@ def collection(self, key, value):
     raise IgnoreKey("collection")
 
 
-@model.over("publication_date", "(^260__)|(^250__)")
+@model.over("publication_date", "(^260__)|(^250__)|(^269__)")
 def imprint_info(self, key, value):
     """Translates imprint - WARNING - also publisher and publication_date.
 
@@ -94,6 +95,19 @@ def imprint_info(self, key, value):
                     value=value,
                     message=f"Can't parse provided publication date. Value: {publication_date_str}",
                 )
+    if key == "269":
+        publication_date_str = value.get("a")
+        if publication_date_str:
+            try:
+                date_obj = parse(publication_date_str)
+                return arrow.get(date_obj).date().isoformat()
+            except (ParserError, TypeError) as e:
+                raise UnexpectedValue(
+                    field=key,
+                    value=value,
+                    message=f"Can't parse provided publication date. Value: {publication_date_str}",
+                )
+    raise IgnoreKey("publication_date")
 
 
 @model.over("custom_fields", "(^020__)")
@@ -116,6 +130,24 @@ def isbn(self, key, value):
             ids.append(new_id)
         self["identifiers"] = ids
     return _custom_fields
+
+
+@model.over("identifiers", "(^022__)")
+@for_each_value
+def issn(self, key, value):
+    _issn = StringValue(value.get("a", "")).parse()
+    if _issn:
+        try:
+            _issn = normalize_issn(_issn)
+        except NotValidISBNError as e:
+            raise UnexpectedValue("Not a valid ISSN.", field=key, value=value)
+
+        ids = self.get("identifiers", [])
+
+        new_id = {"identifier": _issn, "scheme": "issn"}
+        if new_id not in ids:
+            return new_id
+    raise IgnoreKey("identifiers")
 
 
 @model.over("subjects", "(^080__)")
@@ -296,9 +328,59 @@ def dates(self, key, value):
 @for_each_value
 def note(self, key, value):
     """Translates notes."""
-    _note = value.get("a", "").strip()
-    if _note:
-        if _note.lower() in ["cern invenio webubmit", "cern eds", "cds", "lanl eds",
-                             "clas1"]:
-            raise IgnoreKey("internal_notes")
-        return {"note": note}
+
+    def process(_note):
+        if _note:
+            if _note.strip().lower() in ["cern invenio websubmit", "cern eds", "cds",
+                                         "lanl eds",
+                                         "clas1"]:
+                return
+            return {"note": _note}
+
+    _note = force_list(value.get("a", ""))
+    _note_z = force_list(value.get("z", ""))
+    notes_list = _note_z + _note
+    _note_b = value.get("b", "")
+    _note_c = value.get("c", "")
+
+    is_gensbm_tag = ("".join(_note).strip() == "CERN Invenio WebSubmit"
+                     and _note_b.strip() in ("GENSBM", "GENEU") or _note_c.strip() == "1")
+    if is_gensbm_tag:
+        raise IgnoreKey("internal_notes")
+    elif (_note_b.strip() not in ("GENSBM", "GENEU")
+          and "".join(_note).strip() == "CERN Invenio WebSubmit"):
+        raise UnexpectedValue("invalid internal notes", field=key, value=value)
+
+    notes = self.get("internal_notes", [])
+    for item in notes_list:
+        res = process(item)
+        if res:
+            notes.append(res)
+
+    self["internal_notes"] = notes
+    raise IgnoreKey("internal_notes")
+
+
+@model.over("affiliations", "^901__")
+@for_each_value
+def collection(self, key, value):
+    affiliation = value.get("u", "")
+    uni = self.get("custom_fields", {}).get("thesis:thesis", {}).get("university")
+    if uni != affiliation:
+        raise UnexpectedValue(
+            f"Record affiliation (901: {affiliation}) not equal with thesis university 502:{uni}")
+    raise IgnoreKey("affiliations")
+
+
+@model.over("collection", "^980__")
+@for_each_value
+def collection(self, key, value):
+    col = value.get("a", "")
+    colb = value.get("b", "")
+    if type(col) != str or type(colb) != str:
+        raise UnexpectedValue("Unexpected collection found", field=key, value=value)
+    if col.lower() not in ALLOWED_THESIS_COLLECTIONS:
+        raise UnexpectedValue("Unexpected collection found", field=key, value=value)
+    if colb and colb.lower() not in ALLOWED_THESIS_COLLECTIONS:
+        raise UnexpectedValue("Unexpected collection found", field=key, value=value)
+    raise IgnoreKey("collection")

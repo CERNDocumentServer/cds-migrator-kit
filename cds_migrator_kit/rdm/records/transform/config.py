@@ -13,17 +13,17 @@ PIDS_SCHEMES_TO_DROP = ["HAL"]
 PIDS_SCHEMES_ALLOWED = ["DOI"]
 
 # stores the identifiers found in PIDs field in the alternative identifiers instead
-PID_SCHEMES_TO_STORE_IN_IDENTIFIERS = ["ARXIV", "HDL", "HANDLE", "URN", "INIS"]
+PID_SCHEMES_TO_STORE_IN_IDENTIFIERS = ["ARXIV", "HDL", "HANDLE", "URN", "INIS", "CERCER"]
 
-IDENTIFIERS_SCHEMES_TO_DROP = ["SPIRES", "HAL", "OSTI", "SLAC", ]
+IDENTIFIERS_SCHEMES_TO_DROP = ["SPIRES", "HAL", "OSTI", "SLAC", "PROQUEST"]
 IDENTIFIERS_VALUES_TO_DROP = "oai:arXiv.org"
 
 CONTROLLED_SUBJECTS_SCHEMES = ["szgecern", "cern", "cds"]
 
-RECOGNISED_KEYWORD_SCHEMES = ["author", "cms", "arxiv", "inspire", "spr", "inis", "lanl eds", "in2p3"]
-KEYWORD_SCHEMES_TO_DROP = ["proquest"]
+RECOGNISED_KEYWORD_SCHEMES = ["author", "cms", "arxiv", "inspire", "spr", "inis", "lanl eds", "in2p3", "eucard", "inspec"]
+KEYWORD_SCHEMES_TO_DROP = ["proquest", "disxa"]
 
-ALLOWED_THESIS_COLLECTIONS = ["thesis", "publcms", "book"]
+ALLOWED_THESIS_COLLECTIONS = ["thesis", "publcms", "book", "aida", "eucard", "eucard2", "cern"]
 IGNORED_THESIS_COLLECTIONS = ["cern"]
 
 

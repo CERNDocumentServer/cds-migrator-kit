@@ -15,6 +15,7 @@ from pathlib import Path
 import arrow
 from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
 from idutils import normalize_ror
+from idutils.validators import is_doi
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
 from invenio_db import db
@@ -51,6 +52,9 @@ cli_logger = logging.getLogger("migrator")
 def search_vocabulary(term, vocab_type):
     """Search vocabulary utility function."""
     service = current_service_registry.get("vocabularies")
+    if "/" in term:
+        # escape the slashes
+        term = term.replace("/", "\\/")
     try:
         vocabulary_result = service.search(
             system_identity, type=vocab_type, q=f"{term}"
@@ -141,7 +145,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             if key.upper() in PIDS_SCHEMES_TO_DROP:
                 del output_pids[key]
 
-            elif key.upper() not in PIDS_SCHEMES_ALLOWED:
+            elif key and key.upper() not in PIDS_SCHEMES_ALLOWED:
                 raise UnexpectedValue(
                     field=key,
                     subfield="2",
@@ -150,9 +154,14 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     stage="transform",
                     value=identifier
                 )
+            elif not key and is_doi(identifier):
+                # assume it is DOI
+                key = "DOI"
             if key.upper() == "DOI":
                 doi_identifier = deepcopy(identifier)
                 if identifier["identifier"].startswith(DATACITE_PREFIX):
+                    if not json_entry.get("publisher"):
+                        json_entry["publisher"] = "CERN"
                     doi_identifier["provider"] = "datacite"
                 else:
                     doi_identifier["provider"] = "external"
