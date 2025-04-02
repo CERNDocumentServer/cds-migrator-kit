@@ -115,7 +115,18 @@ class CDSRecordServiceLoad(Load):
                 )
                 legacy_checksum = f"md5:{file_data['checksum']}"
                 new_checksum = result.to_dict()["checksum"]
-                assert legacy_checksum == new_checksum
+                try:
+                    assert legacy_checksum == new_checksum
+                except AssertionError:
+                    raise ManualImportRequired(
+                        message=f"Files checksum failed legacy:{legacy_checksum} calculated new: {new_checksum}",
+                        field="checksum",
+                        stage="load",
+                        recid=recid,
+                        priority="critical",
+                        value=file_data["key"],
+                        subfield=None,
+                    )
 
             except Exception as e:
                 exc = ManualImportRequired(
@@ -270,6 +281,7 @@ class CDSRecordServiceLoad(Load):
 
         self._load_record_access(draft, access)
         self._load_files(draft, entry, files)
+
         return draft
 
     def _load_versions(self, entry, logger):
