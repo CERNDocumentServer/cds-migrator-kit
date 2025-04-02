@@ -95,7 +95,7 @@ def imprint_info(self, key, value):
                     value=value,
                     message=f"Can't parse provided publication date. Value: {publication_date_str}",
                 )
-    if key == "269":
+    if key == "269__":
         publication_date_str = value.get("a")
         if publication_date_str:
             try:
