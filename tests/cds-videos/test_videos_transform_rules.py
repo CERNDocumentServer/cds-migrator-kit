@@ -199,6 +199,15 @@ def test_transform_digitized(dumpdir, base_app):
 
         # Get digitized record and apply rules
         entry_data = data[1]
+        # Fail: unexpected creation date
+        with pytest.raises(UnexpectedValue):
+            res = load_and_dump_revision(entry_data)
+
+        # Remove unexpected 961 tag: creation date
+        record_marcxml = entry_data["record"][-1]["marcxml"]
+        entry_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
+            record_marcxml, "961"
+        )
         res = load_and_dump_revision(entry_data)
 
         digitized = [
@@ -228,6 +237,12 @@ def test_transform_files(dumpdir, base_app):
 
         # Get record and apply rules
         entry_data = data[1]
+
+        # Remove unexpected 961 tag: creation date
+        record_marcxml = entry_data["record"][-1]["marcxml"]
+        entry_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
+            record_marcxml, "961"
+        )
         res = load_and_dump_revision(entry_data)
 
         # Test master paths
@@ -273,6 +288,12 @@ def test_transform_internal_note(dumpdir, base_app):
 
         # Get record and apply rules
         entry_data = data[1]
+
+        # Remove unexpected 961 tag: creation date
+        record_marcxml = entry_data["record"][-1]["marcxml"]
+        entry_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
+            record_marcxml, "961"
+        )
         res = load_and_dump_revision(entry_data)
 
         # Record has one internal note

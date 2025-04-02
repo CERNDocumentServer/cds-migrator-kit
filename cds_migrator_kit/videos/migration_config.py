@@ -50,3 +50,8 @@ CDS_MIGRATOR_KIT_VIDEOS_STREAM_CONFIG = (
 
 # TODO CHANGE THEM
 MOUNTED_MEDIA_CEPH_PATH = "/cephfs/media_data"
+
+CERN_APP_CREDENTIALS = {
+    "consumer_key": "CHANGE ME",
+    "consumer_secret": "CHANGE ME",
+}

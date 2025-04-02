@@ -13,8 +13,12 @@ import json
 import logging
 import os
 
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - " "%(message)s - \n " "[in %(pathname)s:%(lineno)d]"
+)
 
-class VideosJsonLogger():
+
+class VideosJsonLogger:
     """Log videos record migration."""
 
     @classmethod
@@ -22,14 +26,23 @@ class VideosJsonLogger():
         """Initialize the videos logger"""
         logger_files = logging.getLogger("files")
         fh = logging.FileHandler(log_dir / "files.log")
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - "
-            "%(message)s - \n "
-            "[in %(pathname)s:%(lineno)d]"
-        )
         fh.setFormatter(formatter)
         logger_files.addHandler(fh)
+
         logger_flows = logging.getLogger("flows")
         fh = logging.FileHandler(log_dir / "flows.log")
         fh.setFormatter(formatter)
         logger_flows.addHandler(fh)
+
+
+class SubmitterLogger:
+    """Log submitters migration."""
+
+    @classmethod
+    def initialize(cls, log_dir):
+        """Initialize the submitter logger"""
+        logger_submitters = logging.getLogger("submitters")
+        logger_submitters.setLevel(logging.DEBUG) 
+        fh = logging.FileHandler(log_dir / "submitters.log")
+        fh.setFormatter(formatter)
+        logger_submitters.addHandler(fh)
