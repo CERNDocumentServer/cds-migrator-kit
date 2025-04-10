@@ -18,42 +18,19 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 """Common Videos fields."""
 import re
-from datetime import datetime
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
     require,
 )
-from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.contributors import (
-    get_contributor,
-)
 
 # ATTENTION when COPYING! important which model you use as decorator
 from ...models.video_lecture import model
-
-
-def parse_date(date_str):
-    """Parses a date string into 'YYYY-MM-DD' format."""
-    if not date_str or not isinstance(date_str, str):
-        return
-
-    valid_formats = [
-        "%Y-%m-%dT%H:%M:%SZ",  # 2008-03-11T11:00:00Z
-        "%Y-%m-%dT%H:%M:%S",  # 2008-03-11T11:00:00
-        "%Y-%m-%d",  # 1993-08-09
-        "%d %b %Y",  # 27 Nov 1998
-        "%d %B %Y",  # 27 November 1998
-    ]
-
-    for format in valid_formats:
-        try:
-            parsed_date = datetime.strptime(date_str, format)
-            return parsed_date.strftime("%Y-%m-%d")
-        except ValueError:
-            continue  # Try the next format
-
-    return
+from ..quality.contributors import (
+    get_contributor,
+)
+from ..quality.dates import parse_date
 
 
 @model.over("date", "^518__")
@@ -70,7 +47,7 @@ def date(self, key, value):
         return parsed_date
 
 
-@model.over("date", "^269__")
+@model.over("publication_date", "^269__")
 @for_each_value
 def imprint(self, key, value):
     """Translates date from tag 269."""
@@ -230,3 +207,31 @@ def files(self, key, value):
             file["description"] = description.strip()
 
     return file
+
+
+@model.over("lecture_created", "^961__")
+def creation_date(self, key, value):
+    """Translate record creation date.
+
+    - tag 961, subfield code x for creation date
+    - tag 961, subfield code c for modification_date
+    
+    It can also store:
+    - library 'l' subfield
+    - hour 'h' subfield
+    - cataloguer 'a' subfield (name of the curator)
+    - cataloguer level 'b' subfield (curator?)
+    """
+    # 961 'x' subfield
+    creation_date = value.get("x", "").strip()
+    parsed_creation_date = parse_date(creation_date)
+    if not parsed_creation_date:
+        # Check if anything else stored
+        raise UnexpectedValue(field=key, subfield="x", value=creation_date)
+    # 961 'c' subfield
+    modification_date = value.get("c", "").strip()
+    parsed_modification_date = parse_date(modification_date)
+    if not parsed_modification_date:
+        # Check if anything else stored
+        raise UnexpectedValue(field=key, subfield="c", value=creation_date)
+    return parsed_creation_date

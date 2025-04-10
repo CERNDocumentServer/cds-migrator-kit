@@ -8,27 +8,27 @@
 """CDS-Videos migration load module helper."""
 
 
+import logging
 import os
 import shutil
 import tempfile
 from pathlib import Path
-import logging
 
 from cds.modules.deposit.api import Project, Video, deposit_video_resolver
 from cds.modules.deposit.ext import _create_tags
 from cds.modules.flows.api import AVCFlowCeleryTasks, FlowService
-from cds.modules.flows.models import FlowTaskMetadata, FlowTaskStatus, FlowMetadata
+from cds.modules.flows.models import FlowMetadata, FlowTaskStatus
 from cds.modules.flows.tasks import (
-    ExtractMetadataTask,
     ExtractFramesTask,
+    ExtractMetadataTask,
     TranscodeVideoTask,
 )
+from cds.modules.invenio_deposit.signals import post_action
 from cds.modules.opencast.tasks import _get_opencast_subformat_info
 from cds.modules.records.api import CDSVideosFilesIterator
 from celery import chain as celery_chain
 from flask import current_app
 from invenio_db import db
-from sqlalchemy.orm.attributes import flag_modified as db_flag_modified
 from invenio_files_rest.models import (
     Bucket,
     FileInstance,
@@ -37,6 +37,7 @@ from invenio_files_rest.models import (
     as_object_version,
 )
 from invenio_files_rest.storage import pyfs_storage_factory
+from sqlalchemy.orm.attributes import flag_modified as db_flag_modified
 
 from cds_migrator_kit.errors import ManualImportRequired
 
@@ -109,16 +110,25 @@ def copy_file_to_bucket(bucket_id, file_path, is_master=False):
         _cleanup_on_failure(error_msg)
 
 
-def create_project(project_metadata):
+def create_project(project_metadata, submitter):
     """Create a project with metadata."""
     try:
+        # Add submitter
+        project_metadata["_access"] = {"update": [submitter.get("email")]}
         project_deposit = Project.create(project_metadata)
+        submitter_id = submitter.get("id")
+
+        # Update deposit owners
+        project_deposit["_deposit"]["owners"].append(submitter_id)
+        project_deposit["_deposit"]["created_by"] = submitter_id
+        project_deposit.commit()
+
         return project_deposit
     except Exception as e:
         raise ManualImportRequired(f"Project creation failed! {e}", stage="load")
 
 
-def create_video(project_deposit, video_metadata, video_file_path):
+def create_video(project_deposit, video_metadata, video_file_path, submitter):
     """Create a video in project with metadata and master video file.
     
     Returns video_deposit and master_object"""
@@ -126,7 +136,12 @@ def create_video(project_deposit, video_metadata, video_file_path):
         # Create video_deposit
         video_metadata["_project_id"] = project_deposit["_deposit"]["id"]
         video_deposit = Video.create(video_metadata)
-        
+
+        # Update deposit owners
+        video_deposit["_deposit"]["owners"] = project_deposit["_deposit"]["owners"]
+        video_deposit["_cds"]["modified_by"] = submitter.get("id")
+        video_deposit.commit()
+
         # Copy the master video to bucket
         bucket_id = video_deposit["_buckets"]["deposit"]
     except Exception as e:
@@ -169,8 +184,18 @@ def publish_video_record(deposit_id):
         # Fetch record
         video_deposit = deposit_video_resolver(str(deposit_id))
         # Publish record
-        video_deposit.publish().commit()
+        video_published = video_deposit.publish()
+        video_published.commit()
+
+        # Send signal to trigger after_publish actions
+        post_action.send(
+            current_app._get_current_object(),
+            action="publish",
+            deposit=video_published,
+        )
+
         db.session.commit()
+        return video_published
     except Exception as e:
         raise ManualImportRequired(f"Deposit:{deposit_id} Publish failed: {e}", stage="load")
     
@@ -371,3 +396,5 @@ def copy_additional_files(bucket_id, additional_files):
         # Add tags to the additional file
         ObjectVersionTag.create_or_update(obj, "context_type", "additional_file")
         _create_tags(obj)
+
+
