@@ -16,9 +16,13 @@ from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 
 from cds_migrator_kit.errors import UnexpectedValue
-from cds_migrator_kit.rdm.records.transform.config import CONTROLLED_SUBJECTS_SCHEMES, \
-    RECOGNISED_KEYWORD_SCHEMES, PID_SCHEMES_TO_STORE_IN_IDENTIFIERS, udc_pattern, \
-    KEYWORD_SCHEMES_TO_DROP
+from cds_migrator_kit.rdm.records.transform.config import (
+    CONTROLLED_SUBJECTS_SCHEMES,
+    RECOGNISED_KEYWORD_SCHEMES,
+    PID_SCHEMES_TO_STORE_IN_IDENTIFIERS,
+    udc_pattern,
+    KEYWORD_SCHEMES_TO_DROP,
+)
 from cds_migrator_kit.rdm.records.transform.models.base_record import (
     rdm_base_record_model as model,
 )
@@ -93,13 +97,16 @@ def subjects(self, key, value):
         if not subject_scheme:
             return True
 
-        is_cern_scheme = (
-            subject_scheme.lower() in CONTROLLED_SUBJECTS_SCHEMES
-        )
+        is_cern_scheme = subject_scheme.lower() in CONTROLLED_SUBJECTS_SCHEMES
 
         is_recognised = subject_scheme.lower() in RECOGNISED_KEYWORD_SCHEMES
         is_freetext = key.startswith("653")
-        is_euproject_info = subject_scheme.lower() in ["aida", "eucard", "eucard2"]
+        is_euproject_info = subject_scheme.lower() in [
+            "aida",
+            "eucard",
+            "eucard2",
+            "aida-2020",
+        ]
 
         if is_euproject_info:
             return "eu"
@@ -128,9 +135,11 @@ def subjects(self, key, value):
         raise IgnoreKey("subjects")
 
     is_keyword_field = any(
-        [key.startswith(x) for x in ["653", "693", "695", "694", "65027"]])
+        [key.startswith(x) for x in ["653", "693", "695", "694", "65027"]]
+    )
     is_keyword = is_keyword_field or (
-        key == "65017" and scheme in RECOGNISED_KEYWORD_SCHEMES)
+        key == "65017" and scheme in RECOGNISED_KEYWORD_SCHEMES
+    )
 
     is_controlled_subject = key == "65017" and (scheme in CONTROLLED_SUBJECTS_SCHEMES)
 
@@ -154,8 +163,10 @@ def subjects(self, key, value):
         if validate_subject_scheme(scheme, subfield, key) == "eu":
             descriptions = self.get("additional_descriptions", [])
             b_sub = value.get("b")
-            desc = {"description": f"{subject_value} ({b_sub})",
-                    "type": {"id": "technical-info"}}
+            desc = {
+                "description": f"{subject_value} ({b_sub})",
+                "type": {"id": "technical-info"},
+            }
             if desc not in descriptions:
                 descriptions.append(desc)
                 self["additional_descriptions"] = descriptions
@@ -179,9 +190,9 @@ def subjects(self, key, value):
                 return subject
 
         else:
-            raise UnexpectedValue("unrecognised Subject value and scheme.",
-                                  field=key,
-                                  value=value)
+            raise UnexpectedValue(
+                "unrecognised Subject value and scheme.", field=key, value=value
+            )
 
 
 @model.over("custom_fields", "(^693__)")
@@ -308,16 +319,19 @@ def identifiers(self, key, value):
         raise IgnoreKey("identifiers")
     if scheme.lower() == "cern annual report":
         additional_descriptions = self.get("additional_descriptions", [])
-        new_desc = {"description": f"{scheme} {id_value}",
-                    "type": {"id": "series-information"}
-                    }
+        new_desc = {
+            "description": f"{scheme} {id_value}",
+            "type": {"id": "series-information"},
+        }
         additional_descriptions.append(new_desc)
         self["additional_descriptions"] = additional_descriptions
         related_works = self.get("related_identifiers", [])
-        new_id = {"identifier": f"cern-annual-report:{id_value}", "scheme": "other",
-                  "relation_type": {"id": "ispartof"},
-                  "resource_type": {"id": "publication-report"}
-                  }
+        new_id = {
+            "identifier": f"cern-annual-report:{id_value}",
+            "scheme": "other",
+            "relation_type": {"id": "ispartof"},
+            "resource_type": {"id": "publication-report"},
+        }
         related_works.append(new_id)
         self["related_identifiers"] = related_works
         raise IgnoreKey("identifiers")
@@ -332,19 +346,38 @@ def identifiers(self, key, value):
 def _pids(self, key, value):
     """Translates external_system_identifiers fields."""
     pid_dict = self.get("_pids", {})
-    scheme = StringValue(value.get("2", "")).parse().lower()
+    scheme = value.get("2", "").lower()
+    qualifier = value.get("q", "").lower().strip()
+    identifier = value.get("a")
+
     if not scheme:
-        scheme = StringValue(value.get("9", "")).parse().lower()
+        scheme = value.get("9", "").lower()
     if not scheme:
-        raise UnexpectedValue("Missing identifier scheme", field=key,
-                              subfield="2",
-                              stage="transform")
-    identifier = StringValue(value.get("a")).parse()
+        raise UnexpectedValue(
+            "Missing identifier scheme", field=key, subfield="2", stage="transform"
+        )
+
     is_doi_id = is_doi(identifier)
     is_handle_id = not is_doi_id and is_handle(identifier)
-    if not is_doi_id and is_handle_id and (
-        scheme == "doi" or scheme == "urn/hdl"):
+    if not is_doi_id and is_handle_id and (scheme == "doi" or scheme == "urn/hdl"):
         scheme = "handle"
+
+    if qualifier == "publication" or qualifier == "thesis":
+        # if we have a qualifier for one of these two, we know it references
+        # an external resource (checked in DB and individually on records)
+        # if qualifier == ebook, it references itself, so qualifier is not needed
+        related_works = self.get("related_identifiers", [])
+        new_id = {
+            "identifier": identifier,
+            "scheme": scheme,
+            "relation_type": {"id": "isversionof"},
+            "resource_type": {"id": qualifier},
+        }
+        if new_id not in related_works:
+            related_works.append(new_id)
+        self["related_identifiers"] = related_works
+        raise IgnoreKey("_pids")
+
     if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
         if scheme == "hdl":
             scheme = "handle"
@@ -358,9 +391,9 @@ def _pids(self, key, value):
         elif is_doi_id and not scheme:
             pid_dict["doi"] = {"identifier": identifier}
         else:
-            raise UnexpectedValue("Missing identifier scheme", field=key,
-                                  subfield="2",
-                                  stage="transform")
+            raise UnexpectedValue(
+                "Missing identifier scheme", field=key, subfield="2", stage="transform"
+            )
         return pid_dict
 
 
@@ -435,9 +468,12 @@ def title(self, key, value):
     title.required()
     if subtitle:
         alt_titles = self.get("additional_titles", [])
-        alt_titles.append({"title": subtitle,
-                           "type": {"id": "subtitle"},
-                           })
+        alt_titles.append(
+            {
+                "title": subtitle,
+                "type": {"id": "subtitle"},
+            }
+        )
         self["additional_titles"] = alt_titles
     return title.parse()
 
@@ -453,10 +489,9 @@ def licenses(self, key, value):
     license_id = clean_val("a", value, str)
 
     if not license_id:
-        raise UnexpectedValue("License title missing",
-                              field=key,
-                              subfield="a",
-                              value=value)
+        raise UnexpectedValue(
+            "License title missing", field=key, subfield="a", value=value
+        )
     license_id.lower()
     is_standard_license = True
     is_arxiv = "arxiv" in license_id
@@ -470,10 +505,22 @@ def licenses(self, key, value):
         if is_arxiv:
             license_url = ARXIV_LICENSE
         description = clean_val("g", value, str)
-        _license = {"title": {"en": license_id},
-                    "link": license_url,
-                    "description": description}
+        _license = {
+            "title": {"en": license_id},
+            "link": license_url,
+            "description": description,
+        }
     return _license
+
+
+@model.over("copyrights", "^542__")
+def copyrights(self, key, value):
+    """Translate copyright."""
+    holder = value.get("d", "")
+    statement = value.get("f", "")
+    year = value.get("g", "")
+
+    return f"{year} © {holder}. {statement}"
 
 
 @model.over("identifiers", "^8564_")
@@ -485,21 +532,25 @@ def urls(self, key, value):
     # Value of the url
     sub_u = clean_val("u", value, str, req=True)
     if not sub_u:
-        raise UnexpectedValue("Unrecognised string format or link missing.", field=key,
-                              subfield="u", value=value)
+        raise UnexpectedValue(
+            "Unrecognised string format or link missing.",
+            field=key,
+            subfield="u",
+            value=value,
+        )
     is_cds_file = False
     if all(x in sub_u for x in ["cds", ".cern.ch/record/", "/files"]):
         is_cds_file = True
     if is_cds_file:
         raise IgnoreKey("identifiers")
     else:
-        p = urlparse(sub_u, 'http')
+        p = urlparse(sub_u, "http")
         netloc = p.netloc or p.path
-        path = p.path if p.netloc else ''
-        if not netloc.startswith('www.'):
-            netloc = 'www.' + netloc
+        path = p.path if p.netloc else ""
+        if not netloc.startswith("www."):
+            netloc = "www." + netloc
 
-        p = ParseResult('http', netloc, path, *p[3:])
+        p = ParseResult("http", netloc, path, *p[3:])
         return {"identifier": p.geturl(), "scheme": "url"}
 
 
@@ -516,24 +567,34 @@ def series_information(self, key, value):
     related_works = self.get("related_identifiers", [])
     ids = []
     if sub_a.lower() == "springer theses":
-        new_id = {"identifier": "2190-5053", "scheme": "issn",
-                  "relation_type": {"id": "ispartof"},
-                  "resource_type": {"id": "publication-other"}}
-        new_e_id = {"identifier": "2190-5053", "scheme": "issn",
-                    "relation_type": {"id": "ispartof"},
-                    "resource_type": {"id": "publication-other"}
-                    }
+        new_id = {
+            "identifier": "2190-5053",
+            "scheme": "issn",
+            "relation_type": {"id": "ispartof"},
+            "resource_type": {"id": "publication-other"},
+        }
+        new_e_id = {
+            "identifier": "2190-5053",
+            "scheme": "issn",
+            "relation_type": {"id": "ispartof"},
+            "resource_type": {"id": "publication-other"},
+        }
         ids.append(new_id)
         ids.append(new_e_id)
 
     if sub_a.lower() == "Springer tracts in modern physics":
-        new_id = {"identifier": "0081-3869", "scheme": "issn",
-                  "relation_type": {"id": "ispartof"},
-                  "resource_type": {"id": "publication-other"}}
-        new_e_id = {"identifier": "1615-0430", "scheme": "issn",
-                    "relation_type": {"id": "ispartof"},
-                    "resource_type": {"id": "publication-other"}
-                    }
+        new_id = {
+            "identifier": "0081-3869",
+            "scheme": "issn",
+            "relation_type": {"id": "ispartof"},
+            "resource_type": {"id": "publication-other"},
+        }
+        new_e_id = {
+            "identifier": "1615-0430",
+            "scheme": "issn",
+            "relation_type": {"id": "ispartof"},
+            "resource_type": {"id": "publication-other"},
+        }
         ids.append(new_id)
         ids.append(new_e_id)
 
@@ -559,11 +620,49 @@ def yellow_reports(self, key, value):
         raise IgnoreKey("related_identifiers")
 
     if scheme and scheme.lower() == "cern yellow report":
-        new_id = {"identifier": identifier, "scheme": "cds_ref",
-                  "relation_type": {"id": "ispublishedin"},
-                  "resource_type": "publication-report"}
+        new_id = {
+            "identifier": identifier,
+            "scheme": "cds_ref",
+            "relation_type": {"id": "ispublishedin"},
+            "resource_type": {"id": "publication-report"},
+        }
         return new_id
     if scheme.lower() == "pacs":
         raise IgnoreKey("related_identifiers")
 
     raise UnexpectedValue("Unknown value found.", field=key, value=value)
+
+
+@model.over("related_identifiers", "^7870_")
+@for_each_value
+def related_identifiers(self, key, value):
+    """Translates related identifiers."""
+    description = value.get("i")
+    recid = value.get("w")
+    rel_ids = self.get("related_identifiers", [])
+    new_id = {
+        "identifier": f"https://cds.cern.ch/record/{recid}",
+        "scheme": "url",
+        "relation_type": {"id": "references"},
+    }
+    if new_id not in rel_ids:
+        return new_id
+    raise IgnoreKey("related_identifiers")
+
+
+@model.over("related_identifiers", "^775_")
+@for_each_value
+def related_identifiers(self, key, value):
+    """Translates related identifiers."""
+    description = value.get("b")
+    year = value.get("c")
+    recid = value.get("w")
+    rel_ids = self.get("related_identifiers", [])
+    new_id = {
+        "identifier": f"https://cds.cern.ch/record/{recid}",
+        "scheme": "url",
+        "relation_type": {"id": "references"},
+    }
+    if new_id not in rel_ids:
+        return new_id
+    raise IgnoreKey("related_identifiers")
