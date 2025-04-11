@@ -52,7 +52,9 @@ def _(x):  # needed to avoid start time failure with lazy strings
 # See flask documentation for more information:
 # https://flask.palletsprojects.com/en/2.1.x/config/#SEND_FILE_MAX_AGE_DEFAULT
 SEND_FILE_MAX_AGE_DEFAULT = 300
-RDM_RECORDS_MAX_FILES_COUNT = 2000 # temporarily, until we decide what we do with figures
+RDM_RECORDS_MAX_FILES_COUNT = (
+    2000  # temporarily, until we decide what we do with figures
+)
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # Do not commit it to a source code repository.
@@ -324,9 +326,7 @@ CDS_EOS_OFFLOAD_REDIRECT_BASE_PATH = ""
 
 RDM_PERMISSION_POLICY = CDSRDMMigrationRecordPermissionPolicy
 
-RDM_NAMESPACES = {
-    **NAMESPACES
-}
+RDM_NAMESPACES = {**NAMESPACES}
 RDM_CUSTOM_FIELDS = CUSTOM_FIELDS
 
 import cds_migrator_kit
@@ -358,14 +358,16 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {
             "validator": schemes.is_inspire,
             "datacite": "INSPIRE",
         },
-        "inis": {"label": _("INIS"),
-                 "validator": schemes.is_inspire,
-                 "datacite": "INIS"
-                 },
-        "lcds": {"label": _("CDS"),
-                 "validator": schemes.is_legacy_cds,
-                 "datacite": "CDS"
-                 }
+        "inis": {
+            "label": _("INIS"),
+            "validator": schemes.is_inspire,
+            "datacite": "INIS",
+        },
+        "lcds": {
+            "label": _("CDS"),
+            "validator": schemes.is_legacy_cds,
+            "datacite": "CDS",
+        },
     },
 }
 
