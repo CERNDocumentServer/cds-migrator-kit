@@ -19,6 +19,7 @@
 """CDS-RDM migration rules module."""
 import re
 import arrow
+from edtf import parse_edtf, EDTFParseException
 from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
 from dojson.utils import force_list
@@ -34,8 +35,12 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
 from cds_migrator_kit.transform.xml_processing.rules.base import process_contributors
-from ...config import ALLOWED_THESIS_COLLECTIONS, IGNORED_THESIS_COLLECTIONS, \
-    udc_pattern
+from ...config import (
+    ALLOWED_THESIS_COLLECTIONS,
+    IGNORED_THESIS_COLLECTIONS,
+    udc_pattern,
+    ALLOWED_DOCUMENT_TAGS,
+)
 
 from ...models.thesis import thesis_model as model
 
@@ -76,7 +81,7 @@ def imprint_info(self, key, value):
         imprint["edition"] = edition
         raise IgnoreKey("publication_date")
 
-    if key.startswith("260"):
+    if key.startswith("260") or key.startswith("269"):
         publication_date_str = value.get("c")
         _publisher = value.get("b")
         place = value.get("a")
@@ -89,18 +94,6 @@ def imprint_info(self, key, value):
             try:
                 date_obj = parse(publication_date_str)
                 return date_obj.strftime("%Y-%m-%d")
-            except (ParserError, TypeError) as e:
-                raise UnexpectedValue(
-                    field=key,
-                    value=value,
-                    message=f"Can't parse provided publication date. Value: {publication_date_str}",
-                )
-    if key == "269__":
-        publication_date_str = value.get("a")
-        if publication_date_str:
-            try:
-                date_obj = parse(publication_date_str)
-                return arrow.get(date_obj).date().isoformat()
             except (ParserError, TypeError) as e:
                 raise UnexpectedValue(
                     field=key,
@@ -156,8 +149,9 @@ def udc(self, key, value):
     val_a = value.get("a")
     if val_a and re.findall(udc_pattern, val_a):
         raise IgnoreKey("identifiers")
-    raise UnexpectedValue("UDC format check failed.", field=key, subfield="a",
-                          value=value)
+    raise UnexpectedValue(
+        "UDC format check failed.", field=key, subfield="a", value=value
+    )
 
 
 @model.over("custom_fields", "(^536__)")
@@ -173,21 +167,28 @@ def funding(self, key, value):
         _custom_fields["cern:programmes"] = programmes
         return _custom_fields
     else:
-        awards = self.get("awards", [])
+        awards = self.get("funding", [])
         # this one is reliable, I checked the DB
         try:
             _funding = value.get("f", "").strip().lower()
             _grant_number = value.get("c", "").strip().lower()
         except AttributeError as e:
-            raise UnexpectedValue("Multiple grant numbers must be in separate tag",
-                                  field=key, value=value)
-
-        # TODO decide about this field
-        _access_info = value.get("r", "").strip().lower()
-        award = {"id": f"00k4n6c32::{_grant_number}"}
+            raise UnexpectedValue(
+                "Multiple grant numbers must be in separate tag", field=key, value=value
+            )
+        award = {
+            "award": {"id": f"00k4n6c32::{_grant_number}"},
+            "funder": {"id": "00k4n6c32"},
+        }
         if award not in awards:
             awards.append(award)
-        self["awards"] = awards
+        self["funding"] = awards
+    # TODO decide about this field
+    _access_info = value.get("r", "").strip().lower()
+    if _access_info not in ["openaccess", "open access"]:
+        raise UnexpectedValue(
+            "Access information has unexpected value", field=key, value=value
+        )
     raise IgnoreKey("custom_fields")
 
 
@@ -210,15 +211,35 @@ def thesis(self, key, value):
     _custom_fields["thesis:thesis"] = thesis_fields
 
     submission_date = value.get("c")
+    is_estimate = False
     if submission_date:
+        is_guessed_by_curator = "[" in submission_date or "]" in submission_date
+        if is_guessed_by_curator:
+            submission_date = submission_date.replace("[", "").replace("]", "")
+        # make it edtf compliant
+        submission_date.replace("-?", "~/")
         try:
-            submission_date = parse(submission_date)
-            dates.append({
-                "date": submission_date.date().isoformat(),
-                "type": {
-                    "id": "submitted"}
-            })
-        except (ParserError, TypeError) as e:
+            submission_date = parse_edtf(submission_date)
+            if not (
+                submission_date.is_uncertain or submission_date.is_approximate
+            ) and not (
+                submission_date.precision == "month"
+                or submission_date.precision == "year"
+            ):
+                submission_date = submission_date.isoformat()
+
+            submission_date = str(submission_date)
+            if "?" in submission_date or "~/" in submission_date:
+                is_estimate = True
+                submission_date = submission_date.replace("~/", "").replace("?", "")
+
+            date = {"date": submission_date, "type": {"id": "submitted"}}
+            if is_guessed_by_curator:
+                date.update({"description": "date estimated by curator"})
+            if is_estimate:
+                date.update({"description": "the exact date is not certain"})
+            dates.append(date)
+        except (ParserError, TypeError, EDTFParseException) as e:
             raise UnexpectedValue(
                 field=key,
                 value=value,
@@ -294,17 +315,27 @@ def dates(self, key, value):
         raise IgnoreKey("dates")
 
     cleaned_text = None
-    ignored_words = ["presented on", "Presented on", 'Presented', 'presented',
-                     'presented in', 'Presented in']
+    ignored_words = [
+        "presented on",
+        "Presented on",
+        "Presented",
+        "presented",
+        "presented in",
+        "Presented in",
+    ]
     for ignored in ignored_words:
         text = text.replace(ignored, "")
 
     try:
         parsed_date, remaining_text = parse(text, fuzzy_with_tokens=True)
 
-        output_dates.append({"date": parsed_date.date().isoformat(),
-                             "type": {"id": "accepted"},
-                             "description": "defense date"})
+        output_dates.append(
+            {
+                "date": parsed_date.date().isoformat(),
+                "type": {"id": "accepted"},
+                "description": "defense date",
+            }
+        )
 
         self["dates"] = output_dates
         cleaned_text = " ".join(remaining_text).strip()
@@ -312,7 +343,7 @@ def dates(self, key, value):
         pass  # string does not contain a date
 
     if cleaned_text:
-        cleaned = re.sub(r'\W+', ' ', text)
+        cleaned = re.sub(r"\W+", " ", text)
         cleaned = cleaned.strip()
         if cleaned:
             internal_notes = self.get("internal_notes", [])
@@ -331,9 +362,13 @@ def note(self, key, value):
 
     def process(_note):
         if _note:
-            if _note.strip().lower() in ["cern invenio websubmit", "cern eds", "cds",
-                                         "lanl eds",
-                                         "clas1"]:
+            if _note.strip().lower() in [
+                "cern invenio websubmit",
+                "cern eds",
+                "cds",
+                "lanl eds",
+                "clas1",
+            ]:
                 return
             return {"note": _note}
 
@@ -343,12 +378,17 @@ def note(self, key, value):
     _note_b = value.get("b", "")
     _note_c = value.get("c", "")
 
-    is_gensbm_tag = ("".join(_note).strip() == "CERN Invenio WebSubmit"
-                     and _note_b.strip() in ("GENSBM", "GENEU") or _note_c.strip() == "1")
+    is_gensbm_tag = (
+        "".join(_note).strip() == "CERN Invenio WebSubmit"
+        and _note_b.strip() in ("GENSBM", "GENEU")
+        or _note_c.strip() == "1"
+    )
     if is_gensbm_tag:
         raise IgnoreKey("internal_notes")
-    elif (_note_b.strip() not in ("GENSBM", "GENEU")
-          and "".join(_note).strip() == "CERN Invenio WebSubmit"):
+    elif (
+        _note_b.strip() not in ("GENSBM", "GENEU")
+        and "".join(_note).strip() == "CERN Invenio WebSubmit"
+    ):
         raise UnexpectedValue("invalid internal notes", field=key, value=value)
 
     notes = self.get("internal_notes", [])
@@ -368,8 +408,37 @@ def collection(self, key, value):
     uni = self.get("custom_fields", {}).get("thesis:thesis", {}).get("university")
     if uni != affiliation:
         raise UnexpectedValue(
-            f"Record affiliation (901: {affiliation}) not equal with thesis university 502:{uni}")
+            f"Record affiliation (901: {affiliation}) not equal with thesis university 502:{uni}"
+        )
     raise IgnoreKey("affiliations")
+
+
+@model.over("related_identifiers", "^962_")
+@for_each_value
+def related_identifiers(self, key, value):
+    """Translates related identifiers."""
+    recid = value.get("b")
+    material = value.get("n", "").lower().strip()
+    rel_ids = self.get("related_identifiers", [])
+    res_type = None
+    if material and material == "book":
+        # if book we know that is published in a book,
+        res_type = "publication-book"
+    elif material:
+        #  otherwise it will be a conference reference
+        res_type = "event"
+    new_id = {
+        "identifier": f"https://cds.cern.ch/records/{recid}",
+        "scheme": "url",
+        "relation_type": {"id": "references"},
+    }
+
+    if res_type:
+        new_id.update({"resource_type": {"id": res_type}})
+
+    if new_id not in rel_ids:
+        return new_id
+    raise IgnoreKey("related_identifiers")
 
 
 @model.over("collection", "^980__")
@@ -379,8 +448,8 @@ def collection(self, key, value):
     colb = value.get("b", "")
     if type(col) != str or type(colb) != str:
         raise UnexpectedValue("Unexpected collection found", field=key, value=value)
-    if col.lower() not in ALLOWED_THESIS_COLLECTIONS:
+    if col and col.lower() not in ALLOWED_DOCUMENT_TAGS:
         raise UnexpectedValue("Unexpected collection found", field=key, value=value)
-    if colb and colb.lower() not in ALLOWED_THESIS_COLLECTIONS:
+    if colb and colb.lower() not in ALLOWED_DOCUMENT_TAGS:
         raise UnexpectedValue("Unexpected collection found", field=key, value=value)
     raise IgnoreKey("collection")

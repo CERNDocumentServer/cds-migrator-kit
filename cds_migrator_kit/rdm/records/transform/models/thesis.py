@@ -62,6 +62,8 @@ class ThesisModel(CdsOverdo):
         "500__9",  # provenance of note # TODO
         "520__9",  # abstract provenance
         "540__b",  # material of license
+        "540__3",  # all the copyrights seem not to need this qualifier
+        "542__3",  # ignored, all the values were equal thesis
         "595__a",  # always value CERN EDS, not displayed
         "650272",  # scheme of subjects, other than CERN
         "6532_9",  # scheme of subjects, other than CERN
@@ -82,6 +84,7 @@ class ThesisModel(CdsOverdo):
         "961__h",  # CDS modification tag # TODO
         "961__l",  # CDS modification tag # TODO
         "961__x",  # CDS modification tag # TODO
+        "962__k",  # description of the related works
         "964__a",  # spreadsheet
         "970__b",  # spreadsheet
         # "980__a",  # collection tag
@@ -113,7 +116,6 @@ class ThesisModel(CdsOverdo):
         # "701__v",  # raw affiliation string from INSPIRE
         "852__c",
         "852__h",
-
         "599__a",
         # "595__z", # hidden rn
         # "595__b",
@@ -122,10 +124,7 @@ class ThesisModel(CdsOverdo):
         "700__v",
         "701__v",
         # Fields which should not appear
-
         # "502__u",  # miscataloguing university, TODO check occurences
-
-
         # TO IMPLEMENT /decide
         # "035__9",  # Inspire schema
         # "035__a",  # Inspire id value, contains unknown identifiers, TBD what to do
@@ -138,7 +137,6 @@ class ThesisModel(CdsOverdo):
         # "701__",   # contributors (implemented, to confirm this is the right field)
         # "710__5",  # department / organisation author
         # "710__a",  # organisation author
-
         "916__y",  # year
         # "937__c",  # modification date
         # "937__s",  # modification person

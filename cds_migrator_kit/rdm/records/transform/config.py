@@ -13,22 +13,96 @@ PIDS_SCHEMES_TO_DROP = ["HAL"]
 PIDS_SCHEMES_ALLOWED = ["DOI"]
 
 # stores the identifiers found in PIDs field in the alternative identifiers instead
-PID_SCHEMES_TO_STORE_IN_IDENTIFIERS = ["ARXIV", "HDL", "HANDLE", "URN", "INIS", "CERCER"]
+PID_SCHEMES_TO_STORE_IN_IDENTIFIERS = [
+    "ARXIV",
+    "HDL",
+    "HANDLE",
+    "URN",
+    "INIS",
+    "CERCER",
+]
 
-IDENTIFIERS_SCHEMES_TO_DROP = ["SPIRES", "HAL", "OSTI", "SLAC", "PROQUEST"]
+IDENTIFIERS_SCHEMES_TO_DROP = [
+    "SPIRES",
+    "HAL",
+    "OSTI",
+    "SLAC",
+    "PROQUEST",
+    "INSPEC",
+    "NNT",
+    "DESY",
+]
 IDENTIFIERS_VALUES_TO_DROP = "oai:arXiv.org"
 
 CONTROLLED_SUBJECTS_SCHEMES = ["szgecern", "cern", "cds"]
 
-RECOGNISED_KEYWORD_SCHEMES = ["author", "cms", "arxiv", "inspire", "spr", "inis", "lanl eds", "in2p3", "eucard", "inspec"]
+RECOGNISED_KEYWORD_SCHEMES = [
+    "author",
+    "cms",
+    "arxiv",
+    "inspire",
+    "spr",
+    "inis",
+    "lanl eds",
+    "in2p3",
+    "eucard",
+    "inspec",
+]
 KEYWORD_SCHEMES_TO_DROP = ["proquest", "disxa"]
 
-ALLOWED_THESIS_COLLECTIONS = ["thesis", "publcms", "book", "aida", "eucard", "eucard2", "cern"]
+ALLOWED_THESIS_COLLECTIONS = [
+    "thesis",
+    "publcms",
+    "book",
+    "aida",
+    "eucard",
+    "eucard2",
+    "article",
+    "preprint",
+    "core",
+    "clinot",
+    "clicnote",
+    "intnote",
+    "aidathesis",
+    "bookchapter",
+    "eucardboo",
+    "eucarddis",
+    "eucard2thesis",
+    "eucardacad",
+    "eucard2mon",
+    "cern internal note",
+    "publsl",
+    "yellow report",
+    "report",
+    "publats",
+    "fermilab",
+    "publit",
+    "publab",
+    "intnotelhcbpubl",
+    "intnoteatlaspubl",
+    "publlhcproj",
+    "lhcprojnote",
+    "aida-2020",
+    "publatlas",
+]
+
+ALLOWED_DOCUMENT_TAGS = [
+    "thesis",
+    "aida",
+    "eucard2",
+    "clinot",
+    "book",
+    "eucardacad",
+    "cern",
+    "clicnote",
+    "note",
+    "bookchapter",
+]
+
 IGNORED_THESIS_COLLECTIONS = ["cern"]
 
 
-
-udc_pattern = r'\b\d+(?:\.\d+)*-?\d*(?:\.\d+)*\b'
+udc_pattern = r"\b\d+(?:\.\d+)*-?\d*(?:\.\d+)*\b"
 
 
 FILE_SUBFORMATS_TO_DROP = ["pdfa", "unstamped"]

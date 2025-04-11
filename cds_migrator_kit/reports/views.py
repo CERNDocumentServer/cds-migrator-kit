@@ -54,9 +54,9 @@ def results(collection=None):
         total = len(record_logs)
         if pagination:
             page = int(page)
-            paginated_record_logs = record_logs[page*1000:page*1000+999]
-            prev_page = page-1 if page-1 > 0 else None
-            next_page = page+1 if page*1000+1 < total else None
+            paginated_record_logs = record_logs[page * 1000 : page * 1000 + 999]
+            prev_page = page - 1 if page - 1 > 0 else None
+            next_page = page + 1 if page * 1000 + 1 < total else None
         else:
             paginated_record_logs = record_logs
         for log in record_logs:
