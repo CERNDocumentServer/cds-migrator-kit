@@ -162,14 +162,20 @@ class CDSVideosLoad(Load):
         # Run after publish fixes
         self._after_publish(published_video, entry)
 
-    def _save_original_dumped_record(self, entry, recid_state, logger):
+    def _save_original_dumped_record(self, record_uuid, entry):
         """Save the original dumped record.
 
         This is the originally extracted record before any transformation.
         """
-        # TODO implement
         _original_dump = entry["_original_dump"]
-        pass
+
+        _original_dump_model = CDSMigrationLegacyRecord(
+            json=_original_dump,
+            migrated_record_object_uuid=record_uuid,
+            legacy_recid=entry["record"]["recid"],
+        )
+        db.session.add(_original_dump_model)
+        db.session.commit()
 
     def _have_migrated_recid(self, recid):
         """Check if we have minted `lrecid` pid."""
