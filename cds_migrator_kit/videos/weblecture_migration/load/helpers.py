@@ -26,6 +26,7 @@ from cds.modules.flows.tasks import (
 from cds.modules.invenio_deposit.signals import post_action
 from cds.modules.opencast.tasks import _get_opencast_subformat_info
 from cds.modules.records.api import CDSVideosFilesIterator
+from cds.modules.xrootd.utils import file_opener_xrootd
 from celery import chain as celery_chain
 from flask import current_app
 from invenio_db import db
@@ -272,18 +273,28 @@ def copy_frames(payload, frame_paths):
     # Needed for creating gif file
     output_folder = None
     try:
-        # Create ObjectVersions with frames using ExtractFramesTask._create_frames
-        frames = frames_task._create_frames(
-            frame_paths,
-            object_version,
-            options.get("start_time"),
-            options.get("time_step"),
-        )
+        # Create ObjectVersions like ExtractFramesTask._create_frames
+        # Since frame files already sorted during transform we can rename:frame-1.jpg
+        # Renaming is needed because cds-videos getting the first frame file by it's name(frame-1.jpg) for the poster
+        start_time = options.get("start_time")
+        time_step = options.get("time_step")
+        [frames_task._create_object(
+                bucket=object_version.bucket,
+                key=f"frame-{i+1}.jpg",
+                stream=file_opener_xrootd(filename, "rb"),
+                size=os.path.getsize(filename),
+                media_type="image",
+                context_type="frame",
+                master_id=object_version.version_id,
+                timestamp=start_time + (i + 1) * time_step,
+            )
+            for i, filename in enumerate(frame_paths)]
+        
         # Temp folder to create gif file
         output_folder = tempfile.mkdtemp()
         frames_task._create_gif(
             bucket=str(object_version.bucket.id),
-            frames=frames,
+            frames=frame_paths,
             output_dir=output_folder,
             master_id=version_id,
         )

@@ -39,7 +39,7 @@ def entry_files_single():
 
 
 def test_transform_files_composite(entry_files_composite, base_app):
-    """Test migration tramsform files."""
+    """Test migration transform files."""
     with base_app.app_context():
         # Load test data
         entry = {}
@@ -63,7 +63,7 @@ def test_transform_files_composite(entry_files_composite, base_app):
 
 
 def test_transform_files_single(entry_files_single, base_app):
-    """Test migration tramsform files."""
+    """Test migration transform files."""
     with base_app.app_context():
         # Load test data
         entry = {}
