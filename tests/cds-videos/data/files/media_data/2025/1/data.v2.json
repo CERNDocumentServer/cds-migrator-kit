@@ -60,5 +60,13 @@
       "time": 10,
       "url": "/2025/1/frame-10.jpg"
     }
+  ],
+  "captions": [
+    {
+      "format": "vtt",
+      "lang": "en",
+      "text": "English",
+      "url": "/2025/1/1_en.vtt"
+    }
   ]
 }

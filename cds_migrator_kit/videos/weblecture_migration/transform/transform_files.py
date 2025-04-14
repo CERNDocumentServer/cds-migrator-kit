@@ -322,10 +322,20 @@ class TransformFiles:
                     folder=self.media_folder,
                     files_list=[frame["url"].strip("/") for frame in frames_list] # Get the paths
                 )
+        
+        # ~~~~SUBTITLES~~~~            
+        # Get subtitles from data.v2.json
+        subtitles = [item["url"].strip("/") for item in data.get("captions", [])]
+        self._add_files_to_file_json(
+            json_key="additional_files",
+            folder=self.media_folder,
+            files_list=subtitles
+        )
                 
         # Exclude already added files from additional files
         subformat_paths = [item["path"] for item in subformats]
-        additional_files = [file for file in files_paths if file not in subformat_paths+highest_presenter_presentation]
+        already_added_files = set(subformat_paths + highest_presenter_presentation + subtitles)
+        additional_files = [file for file in files_paths if file not in already_added_files]
         
         # Add additional files
         self._add_files_to_file_json(
