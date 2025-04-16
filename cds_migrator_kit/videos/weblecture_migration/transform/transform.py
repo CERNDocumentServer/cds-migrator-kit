@@ -33,7 +33,9 @@ from cds_migrator_kit.transform.errors import LossyConversion
 from cds_migrator_kit.videos.weblecture_migration.transform import (
     videos_migrator_marc21,
 )
-from cds_migrator_kit.videos.weblecture_migration.transform.transform_files import TransformFiles
+from cds_migrator_kit.videos.weblecture_migration.transform.transform_files import (
+    TransformFiles,
+)
 
 cli_logger = logging.getLogger("migrator")
 
@@ -97,7 +99,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
     def _files(self, record_dump):
         """Transform the files of a record."""
         raise NotImplementedError("_files are not implemented for this class.")
-    
+
     def _owner(self, json_entry):
         email = json_entry.get("submitter")
         error_message = f"{email} not found - did you run user migration?"
@@ -123,9 +125,11 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             item["master_path"] for item in entry.get("files") if "master_path" in item
         ]
         if len(master_paths) == 1:
-            transform_files = TransformFiles(recid=entry["legacy_recid"], entry_files=entry.get("files"))
+            transform_files = TransformFiles(
+                recid=entry["legacy_recid"], entry_files=entry.get("files")
+            )
             file_info_json = transform_files.transform()
-            return file_info_json   
+            return file_info_json
         elif len(master_paths) > 1:
             # TODO group them to have different file transform to create multiple records
             return UnexpectedValue(
@@ -223,15 +227,15 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             """
 
             contributors = (
-                json_data.get("contributors")
-                or json_data.get("event_speakers")
-                or None
+                json_data.get("contributors") or json_data.get("event_speakers") or None
             )
 
             if not contributors:
                 # TODO do we need another logger?
                 logger_migrator = logging.getLogger("users")
-                logger_migrator.warning(f"Missing contributors in record:{json_data['recid']}! Using:`Unknown`")
+                logger_migrator.warning(
+                    f"Missing contributors in record:{json_data['recid']}! Using:`Unknown`"
+                )
 
                 contributors = [{"name": "Unknown, Unknown"}]
 
@@ -286,7 +290,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "metadata": self._metadata(json_data),
             "created": self._created(json_data),
             "updated": self._updated(record_dump),
-            "media_files": self._media_files(json_data)
+            "media_files": self._media_files(json_data),
         }
 
         return {
