@@ -14,27 +14,27 @@ from invenio_rdm_migrator.streams.records.transform import RDMRecordTransform
 
 from cds_migrator_kit.transform.dumper import CDSRecordDump
 
-from . import users_migrator_marc21
-
 cli_logger = logging.getLogger("migrator")
 
 
-class CDSToRDMSubmitterTransform(RDMRecordTransform):
+class SubmitterTransform(RDMRecordTransform):
     """CDSToRDMAffiliationTransform."""
 
     def __init__(
         self,
         dry_run=False,
+        dojson_model=None
     ):
         """Constructor."""
         self.dry_run = dry_run
+        self.dojson_model = dojson_model
         super().__init__()
 
     def _transform(self, entry):
         """Transform a single entry."""
         # creates the output structure for load step
         try:
-            record_dump = CDSRecordDump(entry, dojson_model=users_migrator_marc21)
+            record_dump = CDSRecordDump(entry, dojson_model=self.dojson_model)
             record_dump.prepare_revisions()
 
             timestamp, json_data = record_dump.latest_revision
