@@ -16,7 +16,6 @@ from invenio_accounts.models import User
 from invenio_rdm_migrator.load.base import Load
 from sqlalchemy.exc import NoResultFound
 
-from cds_migrator_kit.rdm.users.api import CDSMigrationUserAPI
 
 cli_logger = logging.getLogger("migrator")
 
@@ -29,12 +28,16 @@ class CDSSubmitterLoad(Load):
         missing_users_dir=None,
         missing_users_filename="people.csv",
         dry_run=False,
+        logger = logging.getLogger("users"),
+        user_api_cls = None
     ):
         """Constructor."""
         self.dry_run = dry_run
         self.missing_users_dir = missing_users_dir
         self.missing_users_filename = missing_users_filename
         self.dry_run = dry_run
+        self.logger = logger
+        self.user_api_cls = user_api_cls
 
     def _load(self, entry):
         """Load users."""
@@ -65,7 +68,7 @@ class CDSSubmitterLoad(Load):
         Every record needs an owner assigned in parent.access.owned_by
         therefore we need to create dummy accounts
         """
-        logger_users = logging.getLogger("users")
+        logger_users = self.logger
 
         def get_person(email):
             missing_users_dump = os.path.join(
@@ -73,7 +76,7 @@ class CDSSubmitterLoad(Load):
             )
             with open(missing_users_dump) as csv_file:
                 for row in csv.reader(csv_file):
-                    if email == row[0]:
+                    if email == row[0].lower():
                         return row
 
         def get_person_old_db(email):
@@ -86,7 +89,7 @@ class CDSSubmitterLoad(Load):
 
             return person
 
-        user_api = CDSMigrationUserAPI()
+        user_api = self.user_api_cls()
         person = get_person(email_addr)
         person_old_db = get_person_old_db(email_addr)
 
