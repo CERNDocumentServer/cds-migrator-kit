@@ -13,6 +13,8 @@ import yaml
 from invenio_rdm_migrator.streams import Stream
 
 from cds_migrator_kit.rdm.affiliations.log import AffiliationsLogger
+from cds_migrator_kit.rdm.users.api import CDSMigrationUserAPI
+from .transform import users_migrator_marc21
 
 
 class PeopleAuthorityRunner:
@@ -55,9 +57,9 @@ class SubmitterRunner:
         self.stream = Stream(
             stream_definition.name,
             extract=stream_definition.extract_cls(dirpath),
-            transform=stream_definition.transform_cls(),
+            transform=stream_definition.transform_cls(dojson_model=users_migrator_marc21),
             load=stream_definition.load_cls(
-                dry_run=dry_run, missing_users_dir=missing_users_dir
+                dry_run=dry_run, missing_users_dir=missing_users_dir, user_api_cls=CDSMigrationUserAPI
             ),
         )
 

@@ -10,8 +10,8 @@ from invenio_rdm_migrator.streams import StreamDefinition
 
 from cds_migrator_kit.extract.extract import LegacyExtract
 
-from .load import CDSSubmitterLoad
-from .transform.transform import CDSToRDMSubmitterTransform
+from cds_migrator_kit.users.load import CDSSubmitterLoad
+from cds_migrator_kit.users.transform import SubmitterTransform
 from .transform.users import CDSRDMUserTransform, CDSUserIntermediaryLoad
 
 UserStreamDefinition = StreamDefinition(
@@ -25,7 +25,7 @@ UserStreamDefinition = StreamDefinition(
 SubmitterStreamDefinition = StreamDefinition(
     name="submitters",
     extract_cls=LegacyExtract,
-    transform_cls=CDSToRDMSubmitterTransform,
+    transform_cls=SubmitterTransform,
     load_cls=CDSSubmitterLoad,
 )
 """ETL stream for CDS to import users."""

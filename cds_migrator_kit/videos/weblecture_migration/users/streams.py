@@ -11,13 +11,13 @@ from invenio_rdm_migrator.streams import StreamDefinition
 
 from cds_migrator_kit.extract.extract import LegacyExtract
 
-from .load import VideosSubmitterLoad
-from .transform.transform import CDSToVideosSubmitterTransform
+from cds_migrator_kit.users.load import CDSSubmitterLoad
+from cds_migrator_kit.users.transform import SubmitterTransform
 
 SubmitterStreamDefinition = StreamDefinition(
     name="submitters",
     extract_cls=LegacyExtract,
-    transform_cls=CDSToVideosSubmitterTransform,
-    load_cls=VideosSubmitterLoad,
+    transform_cls=SubmitterTransform,
+    load_cls=CDSSubmitterLoad,
 )
 """ETL stream for Videos to import users."""
