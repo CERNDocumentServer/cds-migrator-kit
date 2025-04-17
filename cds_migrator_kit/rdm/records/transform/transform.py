@@ -15,7 +15,7 @@ from pathlib import Path
 import arrow
 from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
 from idutils import normalize_ror
-from idutils.validators import is_doi
+from idutils.validators import is_doi, is_ror
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
 from invenio_db import db
@@ -39,9 +39,13 @@ from cds_migrator_kit.rdm.migration_config import (
     RDM_RECORDS_IDENTIFIERS_SCHEMES,
     VOCABULARIES_NAMES_SCHEMES,
 )
-from cds_migrator_kit.rdm.records.transform.config import PIDS_SCHEMES_TO_DROP, \
-    PIDS_SCHEMES_ALLOWED, IDENTIFIERS_SCHEMES_TO_DROP, IDENTIFIERS_VALUES_TO_DROP, \
-    FILE_SUBFORMATS_TO_DROP
+from cds_migrator_kit.rdm.records.transform.config import (
+    PIDS_SCHEMES_TO_DROP,
+    PIDS_SCHEMES_ALLOWED,
+    IDENTIFIERS_SCHEMES_TO_DROP,
+    IDENTIFIERS_VALUES_TO_DROP,
+    FILE_SUBFORMATS_TO_DROP,
+)
 from cds_migrator_kit.reports.log import RDMJsonLogger
 from cds_migrator_kit.transform.dumper import CDSRecordDump
 from cds_migrator_kit.transform.errors import LossyConversion
@@ -54,7 +58,7 @@ def search_vocabulary(term, vocab_type):
     service = current_service_registry.get("vocabularies")
     if "/" in term:
         # escape the slashes
-        term = term.replace("/", "\\/")
+        term = f'"{term}"'
     try:
         vocabulary_result = service.search(
             system_identity, type=vocab_type, q=f"{term}"
@@ -152,7 +156,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     message="Unexpected PID scheme (should be DOI)",
                     priority="warning",
                     stage="transform",
-                    value=identifier
+                    value=identifier,
                 )
             elif not key and is_doi(identifier):
                 # assume it is DOI
@@ -198,6 +202,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
     def _match_affiliation(self, affiliation_name):
         """Match an affiliation against `CDSMigrationAffiliationMapping` db table."""
+        if is_ror(affiliation_name):
+            return {"id": normalize_ror(affiliation_name)}
         # Step 1: search in the affiliation mapping (ROR organizations)
         match = self.affiliations_mapping.query.filter_by(
             legacy_affiliation_input=affiliation_name
@@ -363,8 +369,10 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         priority="warning",
                         stage="transform",
                     )
-                if item["scheme"].upper() in IDENTIFIERS_SCHEMES_TO_DROP \
-                    or IDENTIFIERS_VALUES_TO_DROP in item["identifier"]:
+                if (
+                    item["scheme"].upper() in IDENTIFIERS_SCHEMES_TO_DROP
+                    or IDENTIFIERS_VALUES_TO_DROP in item["identifier"]
+                ):
                     identifiers.remove(item)
                     continue
                 if item["scheme"] not in RDM_RECORDS_IDENTIFIERS_SCHEMES.keys():
@@ -374,7 +382,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         message="IDENTIFIER SCHEME INVALID",
                         priority="warning",
                         stage="transform",
-                        value=item
+                        value=item,
                     )
             return identifiers
 
@@ -392,26 +400,32 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "identifiers": _identifiers(json_entry),
             "languages": json_entry.get("languages"),
             "dates": json_entry.get("dates"),
-            "awards": json_entry.get("awards"),
+            "funding": json_entry.get("funding"),
             "related_identifiers": json_entry.get("related_identifiers"),
             "rights": json_entry.get("rights"),
+            "copyright": json_entry.get("copyright"),
         }
 
         keys = deepcopy(list(json_entry.keys()))
 
-        helper_keys = ['recid', 'legacy_recid', 'agency_code', 'submitter', '_created',
-                       'record_restriction', "custom_fields", "_pids", "internal_notes"]
+        helper_keys = [
+            "recid",
+            "legacy_recid",
+            "agency_code",
+            "submitter",
+            "_created",
+            "record_restriction",
+            "custom_fields",
+            "_pids",
+            "internal_notes",
+        ]
         for item in helper_keys:
             if item in keys:
                 keys.remove(item)
 
-        forgotten_keys = [
-            key for key in keys if
-            key not in list(metadata.keys())
-        ]
+        forgotten_keys = [key for key in keys if key not in list(metadata.keys())]
         if forgotten_keys:
-            raise ManualImportRequired("Unassigned metadata key",
-                                       value=forgotten_keys)
+            raise ManualImportRequired("Unassigned metadata key", value=forgotten_keys)
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
 
@@ -422,6 +436,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "cern:experiments", []
             )
             for experiment in experiments:
+                if experiment.lower().strip() == "not applicable":
+                    continue
                 result = search_vocabulary(experiment, "experiments")
 
                 if result["hits"]["total"]:
@@ -441,9 +457,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     )
 
         def field_programmes(record_json, custom_fields_dict):
-            programmes = record_json.get("custom_fields", {}).get(
-                "cern:programmes", []
-            )
+            programmes = record_json.get("custom_fields", {}).get("cern:programmes", [])
             for prog in programmes:
                 result = search_vocabulary(prog, "programmes")
 
@@ -486,6 +500,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "cern:accelerators", []
             )
             for accelerator in accelerators:
+                if accelerator.lower().strip() == "not applicable":
+                    continue
                 result = search_vocabulary(accelerator, "accelerators")
                 if result["hits"]["total"]:
 
@@ -505,6 +521,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         def field_beams(record_json, custom_fields_dict):
             beams = record_json.get("custom_fields", {}).get("cern:beams", [])
             for beam in beams:
+                if beam.lower().strip() == "not applicable":
+                    continue
                 result = search_vocabulary(beam, "beams")
                 if result["hits"]["total"]:
                     custom_fields_dict["cern:beams"].append(
@@ -554,11 +572,15 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             )
         field_accelerators(json_entry, custom_fields)
         field_beams(json_entry, custom_fields)
-        forgotten_keys = [key for key in json_entry["custom_fields"].keys() if
-                          key not in custom_fields.keys()]
+        forgotten_keys = [
+            key
+            for key in json_entry["custom_fields"].keys()
+            if key not in custom_fields.keys()
+        ]
         if forgotten_keys:
-            raise ManualImportRequired("Unassigned custom field key",
-                                       value=forgotten_keys)
+            raise ManualImportRequired(
+                "Unassigned custom field key", value=forgotten_keys
+            )
         return custom_fields
 
     def _verify_creation_date(self, entry, json_data):
@@ -568,7 +590,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         creation date) and no creation date, raise an exception.
         """
         if not entry.get("files") and not (
-            json_data.get("_created") or json_data.get("publication_date")):
+            json_data.get("_created") or json_data.get("publication_date")
+        ):
             raise ManualImportRequired(
                 message="Record missing creation date",
                 field="validation",
@@ -753,20 +776,34 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             if file["subformat"] in FILE_SUBFORMATS_TO_DROP:
                 RDMJsonLogger().add_success_state(
                     str(file["recid"]),
-                    {"message": f"File subformat {file['subformat']} dropped.",
-                     "value": file["full_name"]},
+                    {
+                        "message": f"File subformat {file['subformat']} dropped.",
+                        "value": file["full_name"],
+                    },
                 )
                 return
 
-            if file["hidden"]:
-                raise RestrictedFileDetected(
-                    field=file["full_name"],
-                    value=file["status"],
-                    priority="critical",
-                    message="File marked as hidden",
+            if file["type"] == "Plot":
+                # skip figures
+                RDMJsonLogger().add_success_state(
+                    str(file["recid"]),
+                    {
+                        "message": f"Plot file dropped.",
+                        "value": file["full_name"],
+                    },
                 )
-            if file["status"] and file["status"] != "SSO":
-                # check if any other restrictions
+                return
+            if file["hidden"]:
+                # skip hidden files
+                RDMJsonLogger().add_success_state(
+                    str(file["recid"]),
+                    {
+                        "message": f"Hidden file dropped.",
+                        "value": file["full_name"],
+                    },
+                )
+            if file["status"] and file["status"] not in  ["SSO", "lhcb-general [CERN]"]:
+                # check if any other restrictions, recid 2267334
                 raise RestrictedFileDetected(
                     field=file["full_name"], value=file["status"], priority="critical"
                 )
@@ -774,7 +811,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 {
                     file["full_name"]: {
                         "eos_tmp_path": tmp_eos_root
-                                        / full_path.relative_to(legacy_path_root),
+                        / full_path.relative_to(legacy_path_root),
                         "id_bibdoc": file["bibdocid"],
                         "key": file["full_name"],
                         "metadata": {},
@@ -795,7 +832,8 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         # {"1": {"access": {...}, "files": [], "publication_date": None}
         # {"2": {"access": {...}, "files": [], "publication_date: "2021-04-21"}
         versions = OrderedDict()
-        # we start versions from files (because this is the only way from legacy)
+        # we start versions from files (because this is the only way of
+        # mapping version of files to version of records from legacy)
         _files = entry["files"]
         record_access = record["access"]
         for file in _files:

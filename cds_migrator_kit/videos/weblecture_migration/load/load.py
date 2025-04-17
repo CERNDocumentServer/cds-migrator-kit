@@ -78,7 +78,7 @@ class CDSVideosLoad(Load):
         self._after_publish_update_created(record_uuid, entry)
         # Mint legacy recid
         self._after_publish_mint_legacy_recid(record_uuid, entry)
-        # Save the original marcxml 
+        # Save the original marcxml
         self._save_original_dumped_record(record_uuid, entry)
 
     def _get_submitter(self, entry):
@@ -93,8 +93,8 @@ class CDSVideosLoad(Load):
         if self.dry_run:
             # Use dummy files for loading; existence is already checked in the transform stage.
             return {
-                "master_video": "tests/cds-videos/data/files/media_data/2025/1/presenter-720p.mp4", 
-                "frames": [str(f) for f in Path("tests/cds-videos/data/files/media_data/2025/1/frames").iterdir() if f.is_file() and not f.name.startswith('.')],                
+                "master_video": "tests/cds-videos/data/files/media_data/2025/1/presenter-720p.mp4",
+                "frames": [str(f) for f in Path("tests/cds-videos/data/files/media_data/2025/1/frames").iterdir() if f.is_file() and not f.name.startswith('.')],
                 "subformats":[
                     {"path":"tests/cds-videos/data/files/media_data/2025/1/presenter-360p.mp4",
                     "quality": "360p"}
@@ -102,7 +102,7 @@ class CDSVideosLoad(Load):
                 "additional_files": ["tests/cds-videos/data/files/media_data/2025/1/1_en.vtt"]
             }
         return entry.get("record", {}).get("json", {}).get("media_files")
-    
+
     def create_publish_single_video_record(self, entry):
         """Create and publish project and video for single video record."""
         # Get transformed metadata
@@ -127,16 +127,16 @@ class CDSVideosLoad(Load):
             # Get the deposit_id and bucket_id
             video_deposit_id = video_deposit["_deposit"]["id"]
             bucket_id = video_deposit["_buckets"]["deposit"]
-            
+
             # Create flow and payload
             flow, payload = create_flow(master_object, video_deposit_id, user_id=2)
-        
+
             # Create tags for the master video file
             init_object_version(flow.flow_metadata, has_remote_file_to_download=None)
-            
+
             # Extract metadata
             extract_metadata(payload)
-        
+
         except ManualImportRequired:
             db.session.rollback()
             # TODO if `copy_file_to_bucket` method failes it's deleting the file

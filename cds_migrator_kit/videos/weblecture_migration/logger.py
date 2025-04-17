@@ -42,7 +42,7 @@ class SubmitterLogger:
     def initialize(cls, log_dir):
         """Initialize the submitter logger"""
         logger_submitters = logging.getLogger("submitters")
-        logger_submitters.setLevel(logging.DEBUG) 
+        logger_submitters.setLevel(logging.DEBUG)
         fh = logging.FileHandler(log_dir / "submitters.log")
         fh.setFormatter(formatter)
         logger_submitters.addHandler(fh)

@@ -82,18 +82,18 @@ def run(dry_run=False):
         dry_run=dry_run,
     )
     runner.run()
-    
+
 
 @submitters.command()
 @with_appcontext
 def create_system_user():
     """Create the sytem user if missing."""
-    email = current_app.config["WEBLECTURES_MIGRATION_SYSTEM_USER"] 
-    
+    email = current_app.config["WEBLECTURES_MIGRATION_SYSTEM_USER"]
+
     if not email:
         cli_logger.error("System user email is not configured.")
         return
-    
+
     try:
         user = User.query.filter_by(email=email).one()
         cli_logger.info(f"User {email} exists.")
@@ -103,7 +103,7 @@ def create_system_user():
         username = re.sub(r"\W+", "", username).lower()
         extra_data = {"migration": {"note": "System user for migration"}}
         user_api = CDSVideosMigrationUserAPI()
-        
+
         try:
             user = user_api.create_user(
                 email,

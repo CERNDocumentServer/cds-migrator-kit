@@ -15,6 +15,7 @@ from dateutil.parser import parse
 from dateutil.parser._parser import ParserError
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
+from idutils.normalizers import normalize_ror
 
 from cds_migrator_kit.errors import UnexpectedValue
 
@@ -91,7 +92,19 @@ def process_contributors(key, value):
         # historically it was some kind of automatic script tagging
         # and it should be ignored if value == #BEARD#
         raise UnexpectedValue(field=key, subfield="9", value=beard)
-    affiliations = get_contributor_affiliations(value)
+
+    if "t" in value:
+        # we have the orcid directly
+        _affiliations = force_list(value.get("t", ""))
+        affiliations = []
+        # just to avoid the missing rule exception
+        text = value.get("u")
+        for aff in _affiliations:
+            if aff:
+                aff_entry = aff.replace("ROR:", "")
+                affiliations.append(normalize_ror(aff_entry))
+    else:
+        affiliations = get_contributor_affiliations(value)
 
     names = value.get("a")
     if type(names) == tuple or names is None:
