@@ -20,6 +20,7 @@ PID_SCHEMES_TO_STORE_IN_IDENTIFIERS = [
     "URN",
     "INIS",
     "CERCER",
+    "CDS_REF",
 ]
 
 IDENTIFIERS_SCHEMES_TO_DROP = [
@@ -31,6 +32,9 @@ IDENTIFIERS_SCHEMES_TO_DROP = [
     "INSPEC",
     "NNT",
     "DESY",
+    "WAI01",
+    "KEK",
+    "ATLATL",
 ]
 IDENTIFIERS_VALUES_TO_DROP = "oai:arXiv.org"
 
@@ -84,6 +88,9 @@ ALLOWED_THESIS_COLLECTIONS = [
     "lhcprojnote",
     "aida-2020",
     "publatlas",
+    "publlhcb",
+    "aida-2020thesis",
+
 ]
 
 ALLOWED_DOCUMENT_TAGS = [
@@ -97,6 +104,16 @@ ALLOWED_DOCUMENT_TAGS = [
     "clicnote",
     "note",
     "bookchapter",
+    "legserlib",
+    "e-learning",
+    "indico",
+    "intnotelhcbpubl",
+    "report", # these are all yellow reports in thesis
+    "preprint",
+    "slintnote", # only 733805
+    "aida-2020",
+    "article",
+    "intnoteitpubl",
 ]
 
 IGNORED_THESIS_COLLECTIONS = ["cern"]
