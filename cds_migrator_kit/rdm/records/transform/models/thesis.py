@@ -48,25 +48,31 @@ class ThesisModel(CdsOverdo):
         "035__u",  # oai harvest tag
         "035__z",  # oai harvest tag
         "037__c",  # arxiv subject
-        # "084__2",  # SORT ID, spreadsheet, also PACS and missing report numbers, requested curation
-        # "084__a",  # SORT ID, spreadsheet
+        "084__q",  # other ids qualifiers
         "088__9",  # source of report number
         "100__j",  # alternative spelling of the name
         "100__m",  # author's email <-- decided not to keep in RDM,
         "100__q",  # alternative spelling of the name
         "242__9",  # source of TRANSLATED title, INSPIRE data model
         "245__9",  # source of title, INSPIRE data model
+        "246__p",  # to be migrated manually
+        "246__n",  # to be migrated manually 968697, 2927034
         "269__c",  # Redundant (more detailed value is in 260__c imprint.pub_date)
         "270__m",  # document contact email
         "340__a",  # ignore, spreadsheet
         "500__9",  # provenance of note # TODO
         "520__9",  # abstract provenance
         "540__b",  # material of license
+        "540__f",  # funder of OA, to be manually migrated, 2845118
         "540__3",  # all the copyrights seem not to need this qualifier
         "542__3",  # ignored, all the values were equal thesis
         "595__a",  # always value CERN EDS, not displayed
+        "594__a",  # PUB 466504, 455788
         "650272",  # scheme of subjects, other than CERN
         "6532_9",  # scheme of subjects, other than CERN
+        "6531_n",  # looks like relevance or order of subjects (bibclassify, 1198695)
+        "6531_9",  # looks like relevance or order of subjects (bibclassify, 1198695)
+        "690C_e",  # 878811  fermilab
         "700__m",  # author's email <-- decided not to keep in RDM,
         "701__j",
         "701__m",  # supervisors's email <-- decided not to keep in RDM,
