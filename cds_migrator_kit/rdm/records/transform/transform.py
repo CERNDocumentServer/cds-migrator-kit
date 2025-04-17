@@ -15,7 +15,7 @@ from pathlib import Path
 import arrow
 from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
 from idutils import normalize_ror
-from idutils.validators import is_doi
+from idutils.validators import is_doi, is_ror
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
 from invenio_db import db
@@ -202,6 +202,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
     def _match_affiliation(self, affiliation_name):
         """Match an affiliation against `CDSMigrationAffiliationMapping` db table."""
+        if is_ror(affiliation_name):
+            return {"id": normalize_ror(affiliation_name)}
         # Step 1: search in the affiliation mapping (ROR organizations)
         match = self.affiliations_mapping.query.filter_by(
             legacy_affiliation_input=affiliation_name
@@ -781,15 +783,27 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 )
                 return
 
-            if file["hidden"]:
-                raise RestrictedFileDetected(
-                    field=file["full_name"],
-                    value=file["status"],
-                    priority="critical",
-                    message="File marked as hidden",
+            if file["type"] == "Plot":
+                # skip figures
+                RDMJsonLogger().add_success_state(
+                    str(file["recid"]),
+                    {
+                        "message": f"Plot file dropped.",
+                        "value": file["full_name"],
+                    },
                 )
-            if file["status"] and file["status"] != "SSO":
-                # check if any other restrictions
+                return
+            if file["hidden"]:
+                # skip hidden files
+                RDMJsonLogger().add_success_state(
+                    str(file["recid"]),
+                    {
+                        "message": f"Hidden file dropped.",
+                        "value": file["full_name"],
+                    },
+                )
+            if file["status"] and file["status"] not in  ["SSO", "lhcb-general [CERN]"]:
+                # check if any other restrictions, recid 2267334
                 raise RestrictedFileDetected(
                     field=file["full_name"], value=file["status"], priority="critical"
                 )
