@@ -524,7 +524,7 @@ def licenses(self, key, value):
     return _license
 
 
-@model.over("copyrights", "^542__")
+@model.over("copyright", "^542__")
 def copyrights(self, key, value):
     """Translate copyright."""
     holder = value.get("d", "")

@@ -403,7 +403,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "funding": json_entry.get("funding"),
             "related_identifiers": json_entry.get("related_identifiers"),
             "rights": json_entry.get("rights"),
-            "copyrights": json_entry.get("copyrights"),
+            "copyright": json_entry.get("copyright"),
         }
 
         keys = deepcopy(list(json_entry.keys()))
