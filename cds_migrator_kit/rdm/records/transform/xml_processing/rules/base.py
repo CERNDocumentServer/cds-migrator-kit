@@ -62,7 +62,7 @@ def created(self, key, value):
         source = clean_val("s", value, str)
         # h = human catalogued
         # n = script catalogued or via submission
-        if source not in ["n", "h"]:
+        if source not in ["n", "h", "m"]:
             raise UnexpectedValue(subfield="s", key=key, value=value)
     date_values = value.get("w")
     if not date_values or not date_values[0]:
@@ -260,8 +260,15 @@ def report_number(self, key, value):
     if key == "037__" and scheme:
         if scheme == "hdl":
             scheme = "handle"
+        if scheme == "arXiv:reportnumber":
+            scheme = "cds_ref"
         if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
             scheme = scheme.lower()
+    if key == "037__" and "n" in value:
+        # this means we have URN/HAL schema (only one record in thesis)
+        if value.get("n","") != "URN/HAL":
+            raise UnexpectedValue(field=key, value=value, subfield="n")
+        scheme ="handle"
     if (key == "037__" and not scheme) or (identifier and key == "088__"):
         # if there is no scheme, it means report number
         scheme = "cds_ref"
@@ -343,6 +350,7 @@ def identifiers(self, key, value):
 
 
 @model.over("_pids", "^0247_", override=True)
+@for_each_value
 def _pids(self, key, value):
     """Translates external_system_identifiers fields."""
     pid_dict = self.get("_pids", {})
@@ -366,6 +374,8 @@ def _pids(self, key, value):
         # if we have a qualifier for one of these two, we know it references
         # an external resource (checked in DB and individually on records)
         # if qualifier == ebook, it references itself, so qualifier is not needed
+        if qualifier == "thesis":
+            qualifier = "publication-thesis"
         related_works = self.get("related_identifiers", [])
         new_id = {
             "identifier": identifier,
@@ -394,7 +404,8 @@ def _pids(self, key, value):
             raise UnexpectedValue(
                 "Missing identifier scheme", field=key, subfield="2", stage="transform"
             )
-        return pid_dict
+        self["_pids"] = pid_dict
+        raise IgnoreKey("_pids")
 
 
 @model.over("contributors", "^710__")
