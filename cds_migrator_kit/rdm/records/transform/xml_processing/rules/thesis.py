@@ -19,7 +19,7 @@
 """CDS-RDM migration rules module."""
 import re
 import arrow
-from edtf import parse_edtf, EDTFParseException
+from edtf import parse_edtf, EDTFParseException, text_to_edtf
 from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
 from dojson.utils import force_list
@@ -60,12 +60,18 @@ def collection(self, key, value):
     collection = value.get("a").strip().lower()
     if collection in IGNORED_THESIS_COLLECTIONS:
         raise IgnoreKey("collection")
-    if value.get("a").strip().lower() not in ALLOWED_THESIS_COLLECTIONS:
+    if collection not in ALLOWED_THESIS_COLLECTIONS:
         raise UnexpectedValue(subfield="a", key=key, value=value, field="690C_")
+    if collection == "yellow report":
+        subjects = self.get("subjects", [])
+        subjects.append({
+            "subject": collection.upper(),
+        })
+        self["subjects"] = subjects
     raise IgnoreKey("collection")
 
 
-@model.over("publication_date", "(^260__)|(^250__)|(^269__)")
+@model.over("publication_date", "(^260__)|(^250__)")
 def imprint_info(self, key, value):
     """Translates imprint - WARNING - also publisher and publication_date.
 
@@ -81,7 +87,7 @@ def imprint_info(self, key, value):
         imprint["edition"] = edition
         raise IgnoreKey("publication_date")
 
-    if key.startswith("260") or key.startswith("269"):
+    if key == "260__":
         publication_date_str = value.get("c")
         _publisher = value.get("b")
         place = value.get("a")
@@ -158,15 +164,21 @@ def udc(self, key, value):
 def funding(self, key, value):
     _custom_fields = self.get("custom_fields", {})
     programme = value.get("a")
+    _access_info = value.get("r", "").strip().lower()
+    if _access_info and _access_info not in ["openaccess", "open access"]:
+        raise UnexpectedValue(
+            "Access information has unexpected value", field=key, value=value
+        )
     # https://cerneu.web.cern.ch/fp7-projects
     is_fp7_programme = programme and programme.strip().lower() == "fp7"
-    if not is_fp7_programme:
+
+    if programme and not is_fp7_programme:
         # if not fp7, then it is cern programme
         programmes = _custom_fields.get("cern:programmes", [])
         programmes.append(programme)
         _custom_fields["cern:programmes"] = programmes
         return _custom_fields
-    else:
+    elif "f" in value or "c" in value:
         awards = self.get("funding", [])
         # this one is reliable, I checked the DB
         try:
@@ -183,12 +195,27 @@ def funding(self, key, value):
         if award not in awards:
             awards.append(award)
         self["funding"] = awards
-    # TODO decide about this field
-    _access_info = value.get("r", "").strip().lower()
-    if _access_info not in ["openaccess", "open access"]:
-        raise UnexpectedValue(
-            "Access information has unexpected value", field=key, value=value
-        )
+    raise IgnoreKey("custom_fields")
+
+
+@model.over("custom_fields", "(^269__)")
+@for_each_value
+def defense_date(self, key, value):
+    """Translates defence date."""
+    _custom_fields = self.get("custom_fields", {})
+    thesis_fields = _custom_fields.get("thesis:thesis", {})
+    defense_date = value.get("c", "")
+    try:
+        defense_date = str(parse_edtf(defense_date))
+    except EDTFParseException:
+        defense_date = str(text_to_edtf(defense_date))
+    if not defense_date:
+        raise UnexpectedValue("Not possible to extract defense date.",
+                              field=key,
+                              value=value)
+    thesis_fields["date_defended"] = defense_date
+    _custom_fields["thesis:thesis"] = thesis_fields
+    self["custom_fields"] = _custom_fields
     raise IgnoreKey("custom_fields")
 
 
@@ -197,56 +224,44 @@ def thesis(self, key, value):
     """Translates custom thesis fields."""
     _custom_fields = self.get("custom_fields", {})
     thesis_fields = _custom_fields.get("thesis:thesis", {})
-    dates = self.get("dates", [])
-
     th_type = StringValue(value.get("a", "")).parse()
     val_b = value.get("b", "")
     if type(val_b) is tuple:
         val_b = ",".join(val_b)
     uni = StringValue(val_b).parse()
+    uni = uni.replace("U.", "University")
 
     thesis_fields["type"] = th_type
     thesis_fields["university"] = uni
 
-    _custom_fields["thesis:thesis"] = thesis_fields
-
     submission_date = value.get("c")
-    is_estimate = False
     if submission_date:
-        is_guessed_by_curator = "[" in submission_date or "]" in submission_date
-        if is_guessed_by_curator:
-            submission_date = submission_date.replace("[", "").replace("]", "")
         # make it edtf compliant
-        submission_date.replace("-?", "~/")
-        try:
-            submission_date = parse_edtf(submission_date)
-            if not (
-                submission_date.is_uncertain or submission_date.is_approximate
-            ) and not (
-                submission_date.precision == "month"
-                or submission_date.precision == "year"
-            ):
-                submission_date = submission_date.isoformat()
-
-            submission_date = str(submission_date)
-            if "?" in submission_date or "~/" in submission_date:
-                is_estimate = True
-                submission_date = submission_date.replace("~/", "").replace("?", "")
-
-            date = {"date": submission_date, "type": {"id": "submitted"}}
-            if is_guessed_by_curator:
-                date.update({"description": "date estimated by curator"})
-            if is_estimate:
-                date.update({"description": "the exact date is not certain"})
+        is_curator_info = "[" in submission_date
+        submission_date = submission_date.replace("-?", "~/").replace("[", "").replace(
+            "]", "")
+        if is_curator_info:
+            dates = self.get("dates", [])
+            submission_date = submission_date.replace("?", "")
+            date = {
+                "description": "Date provided by curator, not found on the resource",
+                "date": submission_date, "type": {
+                    "id": "submitted"}}
             dates.append(date)
-        except (ParserError, TypeError, EDTFParseException) as e:
-            raise UnexpectedValue(
-                field=key,
-                value=value,
-                message=f"Can't parse provided submission date. Value: {submission_date}",
-            )
+            self["dates"] = dates
+        else:
+            try:
+                submission_date = parse_edtf(submission_date)
+                submission_date = str(submission_date)
+                thesis_fields["date_submitted"] = submission_date
+            except (ParserError, TypeError, EDTFParseException) as e:
+                raise UnexpectedValue(
+                    field=key,
+                    value=value,
+                    message=f"Can't parse provided submission date. Value: {submission_date}, {str(e)}",
+                )
 
-    self["dates"] = dates
+    _custom_fields["thesis:thesis"] = thesis_fields
     return _custom_fields
 
 
@@ -283,6 +298,7 @@ def journal(self, key, value):
 def additional_titles(self, key, value):
     """Translates additional titles."""
     description_text = value.get("a")
+    translated_subtitle = value.get("b")
     source = value.get("9")
 
     if source:
@@ -301,13 +317,21 @@ def additional_titles(self, key, value):
         }
     if _additional_title:
         return _additional_title
+    if translated_subtitle:
+        _additional_title = {
+            "title": translated_subtitle,
+            "type": {
+                "id": "translated-title",
+            },
+            "lang": {"id": "eng"}
+        }
+        return _additional_title
     raise IgnoreKey("additional_titles")
 
 
 @model.over("dates", "(^500__)")
 @for_each_value
 def dates(self, key, value):
-    output_dates = self.get("dates", [])
     text = value.get("a", "")
     source = value.get("9", "")
     # redundant information from arxiv
@@ -328,16 +352,13 @@ def dates(self, key, value):
 
     try:
         parsed_date, remaining_text = parse(text, fuzzy_with_tokens=True)
-
-        output_dates.append(
-            {
-                "date": parsed_date.date().isoformat(),
-                "type": {"id": "accepted"},
-                "description": "defense date",
-            }
-        )
-
-        self["dates"] = output_dates
+        defense_date = parsed_date.date().isoformat()
+        thesis_field = self.get("custom_fields", {}).get("thesis:thesis", {})
+        if "date_defended" not in thesis_field:
+            # normally it would come from 269 field so we can skip
+            thesis_field["date_defended"] = defense_date
+            thesis_field["date_defended"] = defense_date
+            self["custom_fields"]["thesis:thesis"] = thesis_field
         cleaned_text = " ".join(remaining_text).strip()
     except ParserError as e:
         pass  # string does not contain a date
@@ -401,10 +422,19 @@ def note(self, key, value):
     raise IgnoreKey("internal_notes")
 
 
+@model.over("affiliations", "^562__")
+@for_each_value
+def internal_notes(self, key, value):
+    """Translate internal notes"""
+    note = value.get('c', "")
+    return {"note": note}
+
+
 @model.over("affiliations", "^901__")
 @for_each_value
 def collection(self, key, value):
     affiliation = value.get("u", "")
+    affiliation = affiliation.replace("U.", "University")
     uni = self.get("custom_fields", {}).get("thesis:thesis", {}).get("university")
     if uni != affiliation:
         raise UnexpectedValue(
