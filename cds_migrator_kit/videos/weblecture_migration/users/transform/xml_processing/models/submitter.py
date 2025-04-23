@@ -45,15 +45,10 @@ class VideosSubmitterModel(CdsOverdo):
         "916__w",  # Status week
         "916__y",  # Status week
         "916__a",  # Status week
+        "916__e",  # Status week
         "306__a",  # ?
         "336__a",  # ?
         "981__a",  # duplicate record id
-        "916__a",  # Status week
-        "916__d",  # Status week
-        "916__e",  # Status week
-        "916__s",  # Status week
-        "916__w",  # Status week
-        "916__y",  # Status week
         "960__a",  # Base?
         # Category, Collection, Series, Keywords
         "980__a",  # collection tag
@@ -146,7 +141,6 @@ class VideosSubmitterModel(CdsOverdo):
         "300__8",  # Imprint
         "300__a",  # Number of pages / duration
         "250__a",  # Edition
-        "700__0",  # Author id (eg: AUTHOR|(CDS)2067852)
         "518__l",  # Lectures: length of speech
         "100__0",  # Author id (eg: AUTHOR|(CDS)2067852)
         "240__a",  # Decided to drop, (Streaming Video)
@@ -173,6 +167,8 @@ class VideosSubmitterModel(CdsOverdo):
         "518__a",  # Date
         "906__u",  # Contributor Affiliation
         "511__u",  # Contributor Affiliation
+        "511__a",  # Contributor
+        "511__e",  # Contributor role
         "8567_u",  # File url
         "8567_y",  # File description
         "8567_2",  # File system? 'MediaArchive'
@@ -182,6 +178,9 @@ class VideosSubmitterModel(CdsOverdo):
         "8564_u",  # Files
         "8564_x",  # Files system field
         "8564_y",  # Files
+        "8564_w",
+        "8564_2",
+        "8564_z",
         "961__x",  # Creation Date
         "961__c",  # modification Date
         "8567_x",
