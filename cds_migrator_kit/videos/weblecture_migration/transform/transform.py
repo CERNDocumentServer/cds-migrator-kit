@@ -243,6 +243,18 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             if len(dates) == 1:
                 return next(iter(dates))
             
+        def accelerator_experiment(json_data):
+            """Get the accelerator_experiment."""
+            entries = json_data.get("accelerator_experiment", [])
+            if len(entries) == 1:
+                return entries[0]
+            if not entries:
+                return None
+            raise UnexpectedValue(
+                f"More than one accelerator_experiment field found in record: {json_data.get('recid')} values: {entries}.",
+                stage="transform",
+            )
+
         record_date = reformat_date(entry)
         metadata = {
             "title": entry["title"],
@@ -251,6 +263,8 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "language": entry.get("language"),
             "date": record_date,
             "publication_date": publication_date(entry) or record_date,
+            "keywords": entry.get("keywords"),
+            "accelerator_experiment": accelerator_experiment(entry)
         }
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}

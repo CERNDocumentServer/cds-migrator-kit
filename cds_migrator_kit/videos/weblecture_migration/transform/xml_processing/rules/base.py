@@ -100,3 +100,40 @@ def record_submitter(self, key, value):
 def created(self, key, value):
     """Translates created information to fields."""
     return base_created(self, key, value)
+
+
+@model.over("keywords", "^653[12_]_")
+@require(["a"])
+@for_each_value
+def keywords(self, key, value):
+    """Translates keywords from tag 6531."""
+    keyword = value.get("a", "").strip()
+    provenance = value.get("9", "").strip()
+    if provenance and provenance not in ["CERN", "review"]:
+        # checking if anything else stored in this field
+        raise UnexpectedValue(field=key, subfield="9", value=provenance)
+
+    if keyword:  
+        return {"name": keyword}
+
+
+@model.over("accelerator_experiment", "^693__")
+@for_each_value
+def accelerator_experiment(self, key, value):
+    """Translates accelerator_experiment from tag 693."""
+    accelerator = value.get("a", "").strip()
+    experiment = value.get("e", "").strip()
+    project = value.get("p", "").strip()
+    study = value.get("s", "").strip()
+    facility = value.get("f", "").strip()
+
+    return {
+        k: v for k, v in {
+            "accelerator": accelerator,
+            "experiment": experiment,
+            "project": project,
+            "study": study,
+            "facility": facility
+        }.items() if v
+    }
+    

@@ -266,7 +266,7 @@ def test_transform_files(dumpdir, base_app):
 
 
 def test_transform_internal_note(dumpdir, base_app):
-    """Test digitized field is correctly transformed."""
+    """Test notes are correctly transformed."""
     with base_app.app_context():
         # Load test data
         data = load_json(dumpdir, "lecture.json")
@@ -308,3 +308,107 @@ def test_transform_internal_note(dumpdir, base_app):
         metadata = record_entry._metadata(res)
         assert "date" in metadata
         assert "2001-02-16" == metadata["date"]
+
+
+def test_transform_keywords(dumpdir, base_app):
+    """Test keywords are correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+
+        # Add keyword tag
+        modified_data = data[0]
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "653", {"a": "keyword_test"}, ind1="1"
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+
+        # Transform record
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "keywords" in metadata
+        assert len(metadata["keywords"]) == 1
+        assert metadata["keywords"][0]["name"] == "keyword_test"
+
+
+def test_transform_accelerator_experiment(dumpdir, base_app):
+    """Test accelerator_experiment field is correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+        modified_data = data[0]
+
+        # Test case: No accelerator_experiment
+        res = load_and_dump_revision(modified_data)
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "accelerator_experiment" not in metadata
+
+        # Test case: Add accelerator_experiment tag
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml,
+            "693",
+            {
+                "a": "accelerator_test",
+                "p": "project_test",
+                "e": "experiment_test",
+                "s": "study_test",
+                "f": "facility_test",
+            },
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+
+        # Transform record
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "accelerator_experiment" in metadata
+        accelerator_experiment = metadata["accelerator_experiment"]
+        assert len(accelerator_experiment) == 5
+        assert accelerator_experiment["study"] == "study_test"
+        assert accelerator_experiment["accelerator"] == "accelerator_test"
+        assert accelerator_experiment["project"] == "project_test"
+        assert accelerator_experiment["experiment"] == "experiment_test"
+        assert accelerator_experiment["facility"] == "facility_test"
+
+        # Test case: Fail due to multiple 693(accelerator_experiment) tags
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "693", {"a": "accelerator"}
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        # Transform record
+        record_entry = CDSToVideosRecordEntry()
+        with pytest.raises(UnexpectedValue):
+            record_entry._metadata(res)
+
+        # Test case: remove the 693 tags and add another
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        record_marcxml = remove_tag_from_marcxml(record_marcxml, "693")
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml,
+            "693",
+            {
+                "p": "project_test",
+                "e": "experiment_test",
+            },
+        )
+        # Extract and transform record
+        res = load_and_dump_revision(modified_data)
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "accelerator_experiment" in metadata
+        accelerator_experiment = metadata["accelerator_experiment"]
+        assert len(accelerator_experiment) == 2
+        assert "study" not in accelerator_experiment
+        assert "accelerator" not in accelerator_experiment
+        assert "facility" not in accelerator_experiment
+        assert accelerator_experiment["project"] == "project_test"
+        assert accelerator_experiment["experiment"] == "experiment_test"

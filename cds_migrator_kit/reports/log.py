@@ -151,7 +151,7 @@ class JsonLogger(metaclass=Singleton):
     def add_record(self, record, **kwargs):
         """Add record to list of collected records."""
         recid = record["legacy_recid"]
-        self.record_dump_file.write(f'"{recid}": {record},\n')
+        self.record_dump_file.write(f'"{recid}": {json.dumps(record)},\n')
 
     def add_record_state(self, record_state, **kwargs):
         """Add record state."""
