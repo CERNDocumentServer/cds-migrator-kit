@@ -72,8 +72,6 @@ class VideoLecture(CdsOverdo):
         "490__v",  # Series: volume
         "650172",  # subject provenance
         "65017a",  # subject value
-        "6531_9",  # keyword provenance
-        "6531_a",  # keyword
         "690C_a",  # collection name
         # Conference Information/Indico
         "111__a",  # Title (indico)
@@ -140,11 +138,6 @@ class VideoLecture(CdsOverdo):
         "710__5",  # department / organisation author
         "710__a",  # organisation author
         "710__g",  # organisation author
-        # Accelerator/Facility, Experiment, Project, Study
-        "693__a",  # accelerator, create a custom field?
-        "693__e",  # experiments
-        "693__p",  # project
-        "693__s",  # study
         # OAI
         "0248_a",  # oai identifier
         "0248_p",  # oai identifier
@@ -182,8 +175,10 @@ class VideoLecture(CdsOverdo):
         # "269__b",  # CERN (checked for other values)
         # "269__a",  # Geneva (checked for other values)
         # "518__a",  # Date
-        # "906__u", # Contributor Affiliation
+        # "906__u",  # Contributor Affiliation
         # "511__u",  # Contributor Affiliation
+        # "511__a",  # Contributor
+        # "511__e",  # Contributor role
         # "8567_u",  # File url
         # "8567_y",  # File description
         # "8567_2",  # File system? 'MediaArchive'
@@ -193,10 +188,20 @@ class VideoLecture(CdsOverdo):
         # "8564_u",  # Files
         # "8564_x",  # Files system field
         # "8564_y",  # Files
+        # "8564_w",  # digitized
+        # "8564_2",  # digitized
+        # "8564_z",  # digitized
         # "961__x",  # Creation Date TODO? check with JY
         # "961__c",  # modification Date TODO? check with JY
         # "859__f",  # submitter email
         # "8560_f",  # submitter email
+        # "6531_9",  # keyword provenance
+        # "6531_a",  # keyword
+        # "693__a",  # accelerator
+        # "693__e",  # experiment
+        # "693__p",  # project
+        # "693__s",  # study
+        # "693__f",  # facility
     }
 
 

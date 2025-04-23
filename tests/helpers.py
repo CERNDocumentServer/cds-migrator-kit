@@ -39,7 +39,7 @@ def remove_tag_from_marcxml(marcxml, tag):
     return ET.tostring(root, encoding="unicode")
 
 
-def add_tag_to_marcxml(marcxml, tag, subfields):
+def add_tag_to_marcxml(marcxml, tag, subfields, ind1=" "):
     """
     Adds a MARCXML datafield tag to manipulate the record.
 
@@ -51,7 +51,7 @@ def add_tag_to_marcxml(marcxml, tag, subfields):
     root = ET.fromstring(marcxml)
 
     # Create new datafield element
-    new_datafield = ET.Element("datafield", tag=tag, ind1=" ", ind2=" ")
+    new_datafield = ET.Element("datafield", tag=tag, ind1=ind1, ind2=" ")
 
     # Add subfields
     for code, value in subfields.items():
