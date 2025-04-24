@@ -143,24 +143,24 @@ def url_files(self, key, value):
     return url_file
 
 
-@model.over("internal_notes", "^500__")
+@model.over("notes", "^500__")
 @for_each_value
 @require(["a"])
-def internal_notes(self, key, value):
-    """Detects internal notes."""
-    note = value.get("a").strip()
+def notes(self, key, value):
+    """Detects notes."""
+    note_str = value.get("a").strip()
     if value.get("9"):
-        note = value.get("9").strip() + " : " + value.get("a").strip()
-    internal_note = {"note": note}
+        note_str = value.get("9").strip() + " : " + value.get("a").strip()
+    note = {"note": note_str}
 
-    parts = note.split(",")
+    parts = note_str.split(",")
     match_date = parts[-1].strip() if len(parts) > 1 else ""
     if match_date:
         parsed_date = parse_date(match_date)
         if parsed_date:
-            internal_note.update({"date": parsed_date})
+            note.update({"date": parsed_date})
 
-    return internal_note
+    return note
 
 
 @model.over("files", "^8567_")
@@ -231,7 +231,7 @@ def creation_date(self, key, value):
     # 961 'c' subfield
     modification_date = value.get("c", "").strip()
     parsed_modification_date = parse_date(modification_date)
-    if not parsed_modification_date:
+    if modification_date and not parsed_modification_date:
         # Check if anything else stored
-        raise UnexpectedValue(field=key, subfield="c", value=creation_date)
+        raise UnexpectedValue(field=key, subfield="c", value=modification_date)
     return parsed_creation_date

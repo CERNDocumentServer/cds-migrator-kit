@@ -106,9 +106,6 @@ class VideoLecture(CdsOverdo):
         "246__b",  # Additional title remaining
         "246__n",  # Volume
         "246__p",  # Volume
-        "500__a",  # Note (-> internal note)
-        "500__b",  # Note (-> internal note)
-        "500__9",  # Note/type (-> internal note) https://cds.cern.ch/record/1561636
         # Restricted
         "5061_f",
         "5061_d",
@@ -202,6 +199,8 @@ class VideoLecture(CdsOverdo):
         # "693__p",  # project
         # "693__s",  # study
         # "693__f",  # facility
+        # "500__a",  # Note (-> internal note)
+        # "500__9",  # Note/type (-> internal note) https://cds.cern.ch/record/1561636
     }
 
 

@@ -165,11 +165,11 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 Returns all the possible:
                 json_data["url_files"]["indico"]["date]
 
-            2. **500__ tag: internal notes that may contain date information
-                json_data = {"internal_notes": [{"note": "note, 1 Jun 2025", "date": "2025-06-01"}], ...}
-                Calling the method with `key="internal_notes"
+            2. **500__ tag: notes that may contain date information
+                json_data = {"notes": [{"note": "note, 1 Jun 2025", "date": "2025-06-01"}], ...}
+                Calling the method with `key="notes"
                 Returns all the possible:
-                json_data["internal_notes"]["date"]
+                json_data["notes"]["date"]
 
             ### Returns:
             - `set[str]`: A set of date strings.
@@ -192,7 +192,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 get_values_in_json(json_data, "date")
                 or get_values_in_json(json_data, "publication_date")
                 or guess_dates(json_data, "url_files", subkey="indico")
-                | guess_dates(json_data, "internal_notes")
+                | guess_dates(json_data, "notes")
             )
 
             # Return the valid date if only one is found
@@ -246,7 +246,15 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             dates = get_values_in_json(json_data, "publication_date")
             if len(dates) == 1:
                 return next(iter(dates))
-
+            
+        def notes(json_data):
+            """Get the notes."""
+            notes = entry.get("notes")
+            if notes:
+                note_strings = [note.get("note") for note in notes]
+                return "\n".join(note_strings)
+            return None
+        
         def accelerator_experiment(json_data):
             """Get the accelerator_experiment."""
             entries = json_data.get("accelerator_experiment", [])
@@ -269,6 +277,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "publication_date": publication_date(entry) or record_date,
             "keywords": entry.get("keywords"),
             "accelerator_experiment": accelerator_experiment(entry),
+            "note": notes(entry),
         }
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
