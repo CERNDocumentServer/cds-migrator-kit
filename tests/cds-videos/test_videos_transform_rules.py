@@ -265,7 +265,7 @@ def test_transform_files(dumpdir, base_app):
             ), f"URL {url_file['url']} does not contain 'lecturemedia'"
 
 
-def test_transform_internal_note(dumpdir, base_app):
+def test_transform_note(dumpdir, base_app):
     """Test notes are correctly transformed."""
     with base_app.app_context():
         # Load test data
@@ -276,8 +276,8 @@ def test_transform_internal_note(dumpdir, base_app):
         res = load_and_dump_revision(entry_data)
 
         # Record has one internal note
-        assert "internal_notes" in res
-        notes = [item for item in res["internal_notes"]]
+        assert "notes" in res
+        notes = [item for item in res["notes"]]
         assert notes
         assert "date" not in notes[0]  # note includes date but it's not valid
 
@@ -298,8 +298,8 @@ def test_transform_internal_note(dumpdir, base_app):
         res = load_and_dump_revision(modified_data)
 
         # Record has one internal note
-        assert "internal_notes" in res
-        notes = [item for item in res["internal_notes"]]
+        assert "notes" in res
+        notes = [item for item in res["notes"]]
         assert notes
         assert "date" in notes[0]  # note has a valid date
 
@@ -308,6 +308,7 @@ def test_transform_internal_note(dumpdir, base_app):
         metadata = record_entry._metadata(res)
         assert "date" in metadata
         assert "2001-02-16" == metadata["date"]
+        assert "note" in metadata
 
 
 def test_transform_keywords(dumpdir, base_app):
