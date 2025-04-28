@@ -21,6 +21,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: cds-migrator-kit
+  VIDEOS_IMAGE: videos-migrator-kit
 
 jobs:
   push:
@@ -42,6 +43,16 @@ jobs:
             # set latest tag for default branch (master)
             type=raw,value=latest,enable={{is_default_branch}}
 
+      - name: Extract GIT metadata for videos-migrator-kit
+        id: meta_videos
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository }}/${{ env.VIDEOS_IMAGE }}
+          tags: |
+            type=semver,pattern={{version}}
+            # set latest tag for default branch (master)
+            type=raw,value=latest,enable={{is_default_branch}}
+
       - name: Log in to the Container registry
         uses: docker/login-action@v2
         with:
@@ -55,3 +66,12 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Build and publish videos image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: ./VideosDockerfile
+          push: true
+          tags: ${{ steps.meta_videos.outputs.tags }}
+          labels: ${{ steps.meta_videos.outputs.labels }}
