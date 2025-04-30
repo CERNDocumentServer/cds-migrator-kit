@@ -39,7 +39,6 @@ from invenio_files_rest.models import (
 )
 from invenio_files_rest.storage import pyfs_storage_factory
 from sqlalchemy.orm.attributes import flag_modified as db_flag_modified
-from invenio_xrootd.storage import EOSFileStorage
 
 from cds_migrator_kit.errors import ManualImportRequired
 
@@ -66,17 +65,18 @@ def copy_file_to_bucket(bucket_id, file_path, is_master=False):
         # Get the location for the file instance
         default_location = video_bucket.location.uri
 
-        if current_app.config["MOUNTED_MEDIA_CEPH_PATH"].startswith("/eos"):
-            file_storage = pyfs_storage_factory(
-                fileinstance=file, default_location=default_location, filestorage_class=EOSFileStorage
-            )
-            file_storage.initialize(size=os.path.getsize(file_path))
-            full_path = Path(file_storage.fileurl.replace("root://eosmedia.cern.ch/", ""))
-        else: # For local migration
-            file_storage = pyfs_storage_factory(
+        # Get the file storage
+        file_storage = file.storage(default_location=default_location)
+        fs, path = file_storage._get_fs()
+        fs.open(path, mode="wb")
+        full_path = Path(file_storage.fileurl.replace("root://eosmedia.cern.ch/", ""))        
+        
+        # For local migration 
+        if not current_app.config["MOUNTED_MEDIA_CEPH_PATH"].startswith("/eos"):
+            storage = pyfs_storage_factory(
                 fileinstance=file, default_location=default_location
             )
-            fp = file_storage.open(mode="wb")
+            fp = storage.open(mode="wb")
             full_path = Path(fp.name.decode()).resolve()
 
         # Check if the destination already exists
@@ -100,7 +100,7 @@ def copy_file_to_bucket(bucket_id, file_path, is_master=False):
                 logger_files.warning(f"[WARNING]" + error_message)
 
         # Update FileInstance
-        file_checksum = file_storage.checksum()
+        file_checksum = file_storage.checksum(use_default_impl=True)
         file_size = os.path.getsize(full_path)
         file.set_uri(file_storage.fileurl, file_size, file_checksum)
 
