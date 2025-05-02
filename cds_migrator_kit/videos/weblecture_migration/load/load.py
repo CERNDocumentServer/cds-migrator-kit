@@ -94,12 +94,22 @@ class CDSVideosLoad(Load):
             # Use dummy files for loading; existence is already checked in the transform stage.
             return {
                 "master_video": "tests/cds-videos/data/files/media_data/2025/1/presenter-720p.mp4",
-                "frames": [str(f) for f in Path("tests/cds-videos/data/files/media_data/2025/1/frames").iterdir() if f.is_file() and not f.name.startswith('.')],
-                "subformats":[
-                    {"path":"tests/cds-videos/data/files/media_data/2025/1/presenter-360p.mp4",
-                    "quality": "360p"}
+                "frames": [
+                    str(f)
+                    for f in Path(
+                        "tests/cds-videos/data/files/media_data/2025/1/frames"
+                    ).iterdir()
+                    if f.is_file() and not f.name.startswith(".")
                 ],
-                "additional_files": ["tests/cds-videos/data/files/media_data/2025/1/1_en.vtt"]
+                "subformats": [
+                    {
+                        "path": "tests/cds-videos/data/files/media_data/2025/1/presenter-360p.mp4",
+                        "quality": "360p",
+                    }
+                ],
+                "additional_files": [
+                    "tests/cds-videos/data/files/media_data/2025/1/1_en.vtt"
+                ],
             }
         return entry.get("record", {}).get("json", {}).get("media_files")
 
@@ -199,7 +209,9 @@ class CDSVideosLoad(Load):
             recid = entry.get("record", {}).get("recid", {})
 
             if self._should_skip_recid(recid):
-                migration_logger.add_success_state(recid, state={"message": "Record already migrated", "value": recid})
+                migration_logger.add_success_state(
+                    recid, state={"message": "Record already migrated", "value": recid}
+                )
                 migration_logger.add_success(recid)
                 return
 

@@ -39,7 +39,8 @@ from ...config import (
     ALLOWED_THESIS_COLLECTIONS,
     IGNORED_THESIS_COLLECTIONS,
     udc_pattern,
-    ALLOWED_DOCUMENT_TAGS, FORMER_COLLECTION_TAGS_TO_KEEP,
+    ALLOWED_DOCUMENT_TAGS,
+    FORMER_COLLECTION_TAGS_TO_KEEP,
 )
 
 from ...models.thesis import thesis_model as model
@@ -64,9 +65,11 @@ def collection(self, key, value):
         raise UnexpectedValue(subfield="a", key=key, value=value, field="690C_")
     if collection == "yellow report":
         subjects = self.get("subjects", [])
-        subjects.append({
-            "subject": collection.upper(),
-        })
+        subjects.append(
+            {
+                "subject": collection.upper(),
+            }
+        )
         self["subjects"] = subjects
     raise IgnoreKey("collection")
 
@@ -129,8 +132,11 @@ def isbn(self, key, value):
             new_id = {"identifier": _isbn, "scheme": "isbn"}
         else:
             destination = "related_identifiers"
-            new_id = {"identifier": _isbn, "scheme": "isbn",
-                      "relation_type": {"id": "isversionof"}}
+            new_id = {
+                "identifier": _isbn,
+                "scheme": "isbn",
+                "relation_type": {"id": "isversionof"},
+            }
         ids = self.get(destination, [])
 
         if new_id not in ids:
@@ -151,14 +157,18 @@ def issn(self, key, value):
 
         ids = self.get("identifiers", [])
 
-        new_id = {"identifier": _issn, "scheme": "issn",
-                  "relation_type": {"id": "ispublishedin"}}
+        new_id = {
+            "identifier": _issn,
+            "scheme": "issn",
+            "relation_type": {"id": "ispublishedin"},
+        }
         if new_id not in ids:
             return new_id
     raise IgnoreKey("identifiers")
 
 
 @model.over("subjects", "(^080__)")
+@for_each_value
 def udc(self, key, value):
     """Check 080 field. Drop UDC."""
     val_a = value.get("a")
@@ -231,9 +241,9 @@ def defense_date(self, key, value):
             parsed_date = parse(value.get("c", ""), dayfirst=True)
             defense_date = parsed_date.date().isoformat()
         except (EDTFParseException, ParserError) as e:
-            raise UnexpectedValue("Not possible to extract defense date.",
-                                  field=key,
-                                  value=value)
+            raise UnexpectedValue(
+                "Not possible to extract defense date.", field=key, value=value
+            )
     thesis_fields["date_defended"] = defense_date
     _custom_fields["thesis:thesis"] = thesis_fields
     self["custom_fields"] = _custom_fields
@@ -259,15 +269,17 @@ def thesis(self, key, value):
     if submission_date:
         # make it edtf compliant
         is_curator_info = "[" in submission_date
-        submission_date = submission_date.replace("-?", "~/").replace("[", "").replace(
-            "]", "")
+        submission_date = (
+            submission_date.replace("-?", "~/").replace("[", "").replace("]", "")
+        )
         if is_curator_info:
             dates = self.get("dates", [])
             submission_date = submission_date.replace("?", "")
             date = {
                 "description": "Date provided by curator, not found on the resource",
-                "date": submission_date, "type": {
-                    "id": "submitted"}}
+                "date": submission_date,
+                "type": {"id": "submitted"},
+            }
             dates.append(date)
             self["dates"] = dates
         else:
@@ -344,7 +356,7 @@ def additional_titles(self, key, value):
             "type": {
                 "id": "translated-title",
             },
-            "lang": {"id": "eng"}
+            "lang": {"id": "eng"},
         }
         return _additional_title
     raise IgnoreKey("additional_titles")
@@ -446,7 +458,7 @@ def note(self, key, value):
 @for_each_value
 def internal_notes(self, key, value):
     """Translate internal notes"""
-    note = value.get('c', "")
+    note = value.get("c", "")
     return {"note": note}
 
 

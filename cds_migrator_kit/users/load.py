@@ -28,8 +28,8 @@ class CDSSubmitterLoad(Load):
         missing_users_dir=None,
         missing_users_filename="people.csv",
         dry_run=False,
-        logger = logging.getLogger("users"),
-        user_api_cls = None
+        logger=logging.getLogger("users"),
+        user_api_cls=None,
     ):
         """Constructor."""
         self.dry_run = dry_run
