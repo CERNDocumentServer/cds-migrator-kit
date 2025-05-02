@@ -62,8 +62,8 @@ ALLOWED_THESIS_COLLECTIONS = [
     "eucard",
     "eucard2",
     "article",
-    "preprint",
-    "core",
+    "preprint", #
+    "core",  # coming from inspire
     "clinot",
     "clicnote",
     "intnote",
@@ -114,6 +114,28 @@ ALLOWED_DOCUMENT_TAGS = [
     "aida-2020",
     "article",
     "intnoteitpubl",
+    "intnoteatlaspubl", # 455788
+    "arc012301", # 1655788
+    "cernitarchive", # 1655788
+]
+
+FORMER_COLLECTION_TAGS_TO_KEEP = [
+    "aida",
+    "eucard2",
+    "eucard",
+    "clinot",
+    "book",
+    "eucardacad",
+    "clicnote",
+    "note",
+    "intnotelhcbpubl",
+    "report",
+    "slintnote",
+    "aida-2020",
+    "intnoteitpubl",
+    "intnoteatlaspubl",
+    "arc012301", # 1655788
+    "cernitarchive", # 1655788
 ]
 
 IGNORED_THESIS_COLLECTIONS = ["cern"]

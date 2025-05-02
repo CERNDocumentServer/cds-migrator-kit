@@ -57,7 +57,8 @@ class ThesisModel(CdsOverdo):
         "245__9",  # source of title, INSPIRE data model
         "246__p",  # to be migrated manually
         "246__n",  # to be migrated manually 968697, 2927034
-        "269__c",  # Redundant (more detailed value is in 260__c imprint.pub_date)
+        "269__a",  # Redundant (more detailed value is in 260__c imprint.pub_date)
+        "269__b",  # Redundant (more detailed value is in 260__c imprint.pub_date)
         "270__m",  # document contact email
         "340__a",  # ignore, spreadsheet
         "500__9",  # provenance of note # TODO
