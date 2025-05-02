@@ -11,7 +11,7 @@ import datetime
 import logging
 import re
 from urllib.parse import urlparse, ParseResult
-from idutils.validators import is_doi, is_handle
+from idutils.validators import is_doi, is_handle, is_urn
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 
@@ -251,14 +251,18 @@ def report_number(self, key, value):
     identifier = StringValue(identifier).parse()
     existing_ids = self.get("identifiers", [])
     scheme = value.get("2")
+    provenance = value.get("9", "")
     if not scheme:
-        scheme = value.get("9", "")
+        scheme = provenance
         is_hidden_report_number = scheme.upper().startswith("CERN-")
         if is_hidden_report_number:
             scheme = None
             identifier = value.get("9")
     if key == "037__" and scheme:
-        if scheme == "hdl":
+        if scheme.lower() == "urn":
+            if not is_urn(identifier) and is_handle(identifier):
+                scheme = "handle"
+        if scheme.lower() == "hdl" :
             scheme = "handle"
         if scheme == "arXiv:reportnumber":
             scheme = "cds_ref"
@@ -530,8 +534,9 @@ def copyrights(self, key, value):
     holder = value.get("d", "")
     statement = value.get("f", "")
     year = value.get("g", "")
+    url = value.get("u", "")
 
-    return f"{year} © {holder}. {statement}"
+    return f"{year} © {holder}. {statement} {url}".strip()
 
 
 @model.over("identifiers", "^8564_")
@@ -639,6 +644,17 @@ def yellow_reports(self, key, value):
         }
         return new_id
     if scheme.lower() == "pacs":
+        raise IgnoreKey("related_identifiers")
+    if not scheme and identifier.startswith("CERN-"):
+        # report number
+        new_id = {
+            "identifier": identifier,
+            "scheme": "cds_ref",
+        }
+        identifiers = self.get("identifiers", [])
+        if new_id not in identifiers:
+            identifiers.append(new_id)
+            self["identifiers"] = identifiers
         raise IgnoreKey("related_identifiers")
 
     raise UnexpectedValue("Unknown value found.", field=key, value=value)

@@ -802,7 +802,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                         "value": file["full_name"],
                     },
                 )
-            if file["status"] and file["status"] not in  ["SSO", "lhcb-general [CERN]"]:
+            if file["status"] and file["status"] not in  ["SSO", "firerole: allow group \"lhcb-general [CERN]\""]:
                 # check if any other restrictions, recid 2267334
                 raise RestrictedFileDetected(
                     field=file["full_name"], value=file["status"], priority="critical"
