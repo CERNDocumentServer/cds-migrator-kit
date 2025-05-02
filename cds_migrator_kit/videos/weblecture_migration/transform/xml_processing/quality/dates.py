@@ -22,7 +22,7 @@ def parse_date(date_str):
         "%Y-%m-%d",  # 1993-08-09
         "%d %b %Y",  # 27 Nov 1998
         "%d %B %Y",  # 27 November 1998
-        "%Y%m%d",    # 20030512
+        "%Y%m%d",  # 20030512
     ]
 
     for format in valid_formats:

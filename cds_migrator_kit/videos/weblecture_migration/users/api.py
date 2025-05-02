@@ -26,8 +26,10 @@ class CDSVideosMigrationUserAPI(MigrationUserAPI):
 
     def __init__(self, remote_account_client_id=None):
         """Constructor."""
-        self.client_id = current_app.config["CERN_APP_OPENID_CREDENTIALS"]["consumer_key"]
-    
+        self.client_id = current_app.config["CERN_APP_OPENID_CREDENTIALS"][
+            "consumer_key"
+        ]
+
     def create_invenio_user(self, email, username):
         """Commit new user in db."""
         try:
@@ -77,4 +79,3 @@ class CDSVideosMigrationUserAPI(MigrationUserAPI):
         db.session.add(remote_account)
 
         return user
-            

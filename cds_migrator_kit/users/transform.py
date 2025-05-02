@@ -20,11 +20,7 @@ cli_logger = logging.getLogger("migrator")
 class SubmitterTransform(RDMRecordTransform):
     """CDSToRDMAffiliationTransform."""
 
-    def __init__(
-        self,
-        dry_run=False,
-        dojson_model=None
-    ):
+    def __init__(self, dry_run=False, dojson_model=None):
         """Constructor."""
         self.dry_run = dry_run
         self.dojson_model = dojson_model

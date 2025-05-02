@@ -72,7 +72,6 @@ def for_each_value(f, duplicates=False):
                     parsed_values.append(f(self, key, value, **kwargs))
             except IgnoreItem:
                 continue
-
         return parsed_values
 
     return wrapper

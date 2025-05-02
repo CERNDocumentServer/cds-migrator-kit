@@ -21,7 +21,6 @@ from sqlalchemy.exc import IntegrityError
 from cds_migrator_kit.transform.dumper import CDSRecordDump
 
 
-
 class CDSMigrationUserAPI(MigrationUserAPI):
     """CDS missing user load class."""
 
@@ -47,4 +46,3 @@ class CDSMigrationUserAPI(MigrationUserAPI):
             db.session.add(user_identity)
             db.session.commit()
             return user_identity
-

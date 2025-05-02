@@ -22,6 +22,7 @@ from cds_migrator_kit.errors import (
 
 logger_files = logging.getLogger("files")
 
+
 class TransformFiles:
     """
     Transform lecturemedia links to file paths for video record.
@@ -35,7 +36,6 @@ class TransformFiles:
         entry_files,
         collection="weblectures",
         media_folder="",
-
     ):
         """Constructor."""
         self.recid = recid
@@ -68,7 +68,11 @@ class TransformFiles:
         """Get all files in a folder."""
         # Get all the files, ignore hidden files
         try:
-            return [f.name for f in Path(directory).iterdir() if f.is_file() and not f.name.startswith('.')]
+            return [
+                f.name
+                for f in Path(directory).iterdir()
+                if f.is_file() and not f.name.startswith(".")
+            ]
         except FileNotFoundError:
             # No files are found, raise an error
             raise ManualImportRequired(
@@ -85,10 +89,9 @@ class TransformFiles:
             # Subformats
             if isinstance(file, dict):
                 # Handle dict format (path + quality)
-                self.transformed_files_json[json_key].append({
-                    "path": str(folder / file["path"]),
-                    "quality": file["quality"]
-                })
+                self.transformed_files_json[json_key].append(
+                    {"path": str(folder / file["path"]), "quality": file["quality"]}
+                )
             # Frames, additional files
             else:
                 # Handle str format (just the file path)
@@ -142,7 +145,9 @@ class TransformFiles:
         # Log missing subformats
         missing_resolutions = required_resolutions - set(composite_videos.keys())
         if missing_resolutions:
-            logger_files.warning(f"Folder:{self.record_media_data_folder} missing composite subformats: {sorted(missing_resolutions)}")
+            logger_files.warning(
+                f"Folder:{self.record_media_data_folder} missing composite subformats: {sorted(missing_resolutions)}"
+            )
 
         # Get the highest quality composite (1080p)
         highest_quality_composite = composite_videos[1080]
@@ -150,7 +155,8 @@ class TransformFiles:
         # Get the required subformats if they exist
         other_composites = [
             {"path": composite_videos[res], "quality": f"{res}p"}
-            for res in [1080, 720, 480, 360] if res in composite_videos
+            for res in [1080, 720, 480, 360]
+            if res in composite_videos
         ]
 
         return highest_quality_composite, other_composites
@@ -161,13 +167,15 @@ class TransformFiles:
         master_composite, subformats = self._get_highest_and_other_composites()
 
         # Add the master composite to file_info_json
-        self.transformed_files_json["master_video"] = str(self.record_media_data_folder / master_composite)
+        self.transformed_files_json["master_video"] = str(
+            self.record_media_data_folder / master_composite
+        )
 
         # Add subformats to file_info_json
         self._add_files_to_file_json(
             json_key="subformats",
             folder=self.record_media_data_folder,
-            files_list=subformats
+            files_list=subformats,
         )
 
         # Frames (generated using composite)
@@ -175,19 +183,21 @@ class TransformFiles:
 
         # Frame folder is missing! Log it
         if not frame_folder.is_dir():
-            logger_files.warning(f"[WARNING] Record:{self.recid} frames folder for composite is missing:{frame_folder}")
+            logger_files.warning(
+                f"[WARNING] Record:{self.recid} frames folder for composite is missing:{frame_folder}"
+            )
             return
 
         frames_list = self._get_all_files_in_folder(frame_folder)
         # Sort frames eg:"frame-1.jpg" to "frame-10.jpg"
-        sorted_frames = sorted(frames_list, key=lambda f: int(re.search(r'frame-(\d+)', f).group(1)))
+        sorted_frames = sorted(
+            frames_list, key=lambda f: int(re.search(r"frame-(\d+)", f).group(1))
+        )
         # Check if missing/extra frames
         if self._frames_exists(sorted_frames):
             # Add frames to file_info_json
             self._add_files_to_file_json(
-                json_key="frames",
-                folder=frame_folder,
-                files_list=sorted_frames
+                json_key="frames", folder=frame_folder, files_list=sorted_frames
             )
 
     def _check_files_in_media_data_folder(self, files_paths):
@@ -203,7 +213,11 @@ class TransformFiles:
             )
 
         # Get all files (even the subfolder files) in media_data folder
-        all_files = {file.name for file in Path(self.record_media_data_folder).rglob("*") if file.is_file()}
+        all_files = {
+            file.name
+            for file in Path(self.record_media_data_folder).rglob("*")
+            if file.is_file()
+        }
         # No file found in media_data folder
         if not all_files:
             raise ManualImportRequired(
@@ -233,10 +247,14 @@ class TransformFiles:
         streams = datajson.get("streams", [])
         # Composite record should have 2 streams
         if self.use_composite and len(streams) != 2:
-            raise UnexpectedValue("Missing presenter/presentation files for composite record!")
+            raise UnexpectedValue(
+                "Missing presenter/presentation files for composite record!"
+            )
         # One video record should have 1 stream
         elif not self.use_composite and len(streams) != 1:
-            raise UnexpectedValue("Missing presenter/presentation files for composite record!")
+            raise UnexpectedValue(
+                "Missing presenter/presentation files for composite record!"
+            )
 
         for stream in streams:
             subformats = stream.get("sources", {}).get("mp4", [])
@@ -245,17 +263,16 @@ class TransformFiles:
             sorted_subformats = sorted(
                 subformats,
                 key=lambda x: int(x.get("res", {}).get("h", 0)),
-                reverse=True
+                reverse=True,
             )
             # Add highest quality video path
             highest_quality_videos.append(sorted_subformats[0]["src"].strip("/"))
             # Add all as subformats
             for file in sorted_subformats:
                 res = file.get("res", {})
-                all_subformats.append({
-                    "path": file["src"].strip("/"),
-                    "quality": f"{res['h']}p"
-                })
+                all_subformats.append(
+                    {"path": file["src"].strip("/"), "quality": f"{res['h']}p"}
+                )
 
         return highest_quality_videos, all_subformats
 
@@ -283,7 +300,9 @@ class TransformFiles:
             )
 
         # Get master and subformats in data.v2.json
-        highest_presenter_presentation, subformats = self._get_highest_and_subformats_from_datajson(data)
+        highest_presenter_presentation, subformats = (
+            self._get_highest_and_subformats_from_datajson(data)
+        )
 
         # Use the composite, composite exists
         if self.use_composite:
@@ -294,7 +313,7 @@ class TransformFiles:
             self._add_files_to_file_json(
                 json_key="additional_files",
                 folder=self.media_folder,
-                files_list=highest_presenter_presentation
+                files_list=highest_presenter_presentation,
             )
 
         # We dont have the composite we'll get the main files from the folder
@@ -302,56 +321,62 @@ class TransformFiles:
             # ~~~~MASTER & SUBFORMATS
             if len(highest_presenter_presentation) != 1:
                 raise ManualImportRequired("Master video file is missing!")
-            self.transformed_files_json["master_video"] = str(self.media_folder / highest_presenter_presentation[0])
+            self.transformed_files_json["master_video"] = str(
+                self.media_folder / highest_presenter_presentation[0]
+            )
 
             # Add them as subformats
             self._add_files_to_file_json(
-                json_key="subformats",
-                folder=self.media_folder,
-                files_list=subformats
+                json_key="subformats", folder=self.media_folder, files_list=subformats
             )
 
             # ~~~~FRAMES~~~~
             # Extract frame list and sort by time
-            frames_list = sorted(data.get("frameList", []), key=lambda frame: frame.get("time", 0))
+            frames_list = sorted(
+                data.get("frameList", []), key=lambda frame: frame.get("time", 0)
+            )
 
             # Check missing or extra frames
             if self._frames_exists(frames_list):
                 self._add_files_to_file_json(
                     json_key="frames",
                     folder=self.media_folder,
-                    files_list=[frame["url"].strip("/") for frame in frames_list] # Get the paths
+                    files_list=[
+                        frame["url"].strip("/") for frame in frames_list
+                    ],  # Get the paths
                 )
 
         # ~~~~SUBTITLES~~~~
         # Get subtitles from data.v2.json
         subtitles = [item["url"].strip("/") for item in data.get("captions", [])]
         self._add_files_to_file_json(
-            json_key="additional_files",
-            folder=self.media_folder,
-            files_list=subtitles
+            json_key="additional_files", folder=self.media_folder, files_list=subtitles
         )
 
         # Exclude already added files from additional files
         subformat_paths = [item["path"] for item in subformats]
-        already_added_files = set(subformat_paths + highest_presenter_presentation + subtitles)
-        additional_files = [file for file in files_paths if file not in already_added_files]
+        already_added_files = set(
+            subformat_paths + highest_presenter_presentation + subtitles
+        )
+        additional_files = [
+            file for file in files_paths if file not in already_added_files
+        ]
 
         # Add additional files
         self._add_files_to_file_json(
             json_key="additional_files",
             folder=self.media_folder,
-            files_list=additional_files
+            files_list=additional_files,
         )
 
     def transform(self):
         """Transform the files for the record"""
         # Initialize the output json
         self.transformed_files_json = {
-            "master_video": "", # Full path of the master video file
+            "master_video": "",  # Full path of the master video file
             "additional_files": [],
             "frames": [],
-            "subformats":[]
+            "subformats": [],
         }
 
         # Get master path from the record
@@ -366,8 +391,8 @@ class TransformFiles:
         self.use_composite = self._check_composite_exists()
 
         # Get the paths of the files (comes from the record marcxml)
-        path_files = [item["path"].strip("/") for item in self.entry_files
-            if "path" in item
+        path_files = [
+            item["path"].strip("/") for item in self.entry_files if "path" in item
         ]
         # Check and set the media_files checking the
         self._set_media_files(path_files)

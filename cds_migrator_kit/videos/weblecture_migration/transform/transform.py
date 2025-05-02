@@ -104,8 +104,8 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         email = json_entry.get("submitter")
         error_message = f"{email} not found - did you run user migration?"
         if not email:
-            email = current_app.config["WEBLECTURES_MIGRATION_SYSTEM_USER"] 
-            error_message = f"{email} not found - did you created system user?"     
+            email = current_app.config["WEBLECTURES_MIGRATION_SYSTEM_USER"]
+            error_message = f"{email} not found - did you created system user?"
         try:
             user = User.query.filter_by(email=email).one()
             return {"id": user.id, "email": email}
@@ -154,7 +154,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         def get_values_in_json(json_data, field):
             """Get the not none values in json as a set"""
             return {d for d in json_data.get(field, []) if d}
-        
+
         def guess_dates(json_data, key, subkey=None):
             """Try to get `date` from other fields.
 
@@ -189,10 +189,10 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
             # Priority: date > publication_date > guessed (indico, notes)
             dates_set = (
-                get_values_in_json(json_data, "date") or
-                get_values_in_json(json_data, "publication_date") or
-                guess_dates(json_data, "url_files", subkey="indico") | 
-                guess_dates(json_data, "internal_notes")
+                get_values_in_json(json_data, "date")
+                or get_values_in_json(json_data, "publication_date")
+                or guess_dates(json_data, "url_files", subkey="indico")
+                | guess_dates(json_data, "internal_notes")
             )
 
             # Return the valid date if only one is found
@@ -246,7 +246,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             dates = get_values_in_json(json_data, "publication_date")
             if len(dates) == 1:
                 return next(iter(dates))
-            
+
         def accelerator_experiment(json_data):
             """Get the accelerator_experiment."""
             entries = json_data.get("accelerator_experiment", [])
@@ -268,7 +268,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "date": record_date,
             "publication_date": publication_date(entry) or record_date,
             "keywords": entry.get("keywords"),
-            "accelerator_experiment": accelerator_experiment(entry)
+            "accelerator_experiment": accelerator_experiment(entry),
         }
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}

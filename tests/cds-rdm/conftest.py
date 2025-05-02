@@ -79,6 +79,9 @@ def datadir():
 @pytest.fixture(scope="module")
 def app_config(app_config):
     """Mimic an instance's configuration."""
+    app_config["SQLALCHEMY_DATABASE_URI"] = (
+        "postgresql+psycopg2://invenio:invenio@localhost/invenio"
+    )
     app_config["REST_CSRF_ENABLED"] = True
     app_config["DATACITE_ENABLED"] = True
     app_config["DATACITE_PREFIX"] = "10.17181"
@@ -186,6 +189,7 @@ def app_config(app_config):
             multiple=True,
         ),
     ]
+
     return app_config
 
 
@@ -205,7 +209,7 @@ def db_session_options():
 
 
 @pytest.fixture(scope="module")
-def create_app(instance_path, entry_points):
+def create_app(instance_path):
     """Application factory fixture."""
     return app_factory.create_api
 

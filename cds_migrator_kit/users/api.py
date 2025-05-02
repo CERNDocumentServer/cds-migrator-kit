@@ -53,7 +53,7 @@ class MigrationUserAPI(ABC):
     @abstractmethod
     def create_invenio_user_identity(self, user_id, person_id):
         """Return new user identity entry.
-        
+
         Abstract method to be implemented in subclasses."""
         raise NotImplementedError
 

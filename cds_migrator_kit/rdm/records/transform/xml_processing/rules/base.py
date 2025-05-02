@@ -115,6 +115,7 @@ def subjects(self, key, value):
         if not (is_cern_scheme or is_recognised):
             raise UnexpectedValue(field=key, subfield=subfield, value=subject_scheme)
 
+    # subject
     val_a = value.get("a", "")
 
     subfield = "2" if "2" in value else "9"
@@ -154,11 +155,13 @@ def subjects(self, key, value):
             except IgnoreKey as e:
                 # ignore the exceptions to pass to next keyword
                 pass
-        all_subj = self.get("subjects", []) + _subjects
-        self["subjects"] = all_subj
+        subjects_list = self.get("subjects", [])
+        subjects_list += _subjects
+        self["subjects"] = subjects_list
         raise IgnoreKey("subjects")
     else:
         subject_value = val_a.strip()
+        _subjects = self.get("subjects", [])
         # invalid schema = euproject info    scheme = scheme
         if validate_subject_scheme(scheme, subfield, key) == "eu":
             descriptions = self.get("additional_descriptions", [])
@@ -179,7 +182,8 @@ def subjects(self, key, value):
                     "subject": subject_value,
                     # "scheme": "CERN", # scheme not accepted when ID is supplied
                 }
-                return subject
+                _subjects.append(subject)
+                self["subjects"] = _subjects
             raise IgnoreKey("subjects")
 
         elif is_keyword:
@@ -187,8 +191,9 @@ def subjects(self, key, value):
                 subject = {
                     "subject": subject_value,
                 }
-                return subject
-
+                _subjects.append(subject)
+                self["subjects"] = _subjects
+            raise IgnoreKey("subjects")
         else:
             raise UnexpectedValue(
                 "unrecognised Subject value and scheme.", field=key, value=value
@@ -262,7 +267,7 @@ def report_number(self, key, value):
         if scheme.lower() == "urn":
             if not is_urn(identifier) and is_handle(identifier):
                 scheme = "handle"
-        if scheme.lower() == "hdl" :
+        if scheme.lower() == "hdl":
             scheme = "handle"
         if scheme == "arXiv:reportnumber":
             scheme = "cds_ref"
@@ -270,9 +275,9 @@ def report_number(self, key, value):
             scheme = scheme.lower()
     if key == "037__" and "n" in value:
         # this means we have URN/HAL schema (only one record in thesis)
-        if value.get("n","") != "URN/HAL":
+        if value.get("n", "") != "URN/HAL":
             raise UnexpectedValue(field=key, value=value, subfield="n")
-        scheme ="handle"
+        scheme = "handle"
     if (key == "037__" and not scheme) or (identifier and key == "088__"):
         # if there is no scheme, it means report number
         scheme = "cds_ref"

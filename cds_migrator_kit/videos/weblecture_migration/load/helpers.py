@@ -53,8 +53,10 @@ def copy_file_to_bucket(bucket_id, file_path, is_master=False):
             file.delete()
             file_storage.delete()
         except Exception as cleanup_error:
-            logger_files.error(f"[ERROR] Cleanup failed after copy file fail: {cleanup_error}")
-        if is_master: # Fail if file is master
+            logger_files.error(
+                f"[ERROR] Cleanup failed after copy file fail: {cleanup_error}"
+            )
+        if is_master:  # Fail if file is master
             raise ManualImportRequired(error_msg, stage="load")
 
     try:
@@ -69,9 +71,9 @@ def copy_file_to_bucket(bucket_id, file_path, is_master=False):
         file_storage = file.storage(default_location=default_location)
         fs, path = file_storage._get_fs()
         fs.open(path, mode="wb")
-        full_path = Path(file_storage.fileurl.replace("root://eosmedia.cern.ch/", ""))        
-        
-        # For local migration 
+        full_path = Path(file_storage.fileurl.replace("root://eosmedia.cern.ch/", ""))
+
+        # For local migration
         if not current_app.config["MOUNTED_MEDIA_CEPH_PATH"].startswith("/eos"):
             storage = pyfs_storage_factory(
                 fileinstance=file, default_location=default_location
@@ -159,7 +161,9 @@ def create_video(project_deposit, video_metadata, video_file_path, submitter):
     except Exception as e:
         raise ManualImportRequired(f"Video creation failed! {e}", stage="load")
 
-    object_version = copy_file_to_bucket(bucket_id=bucket_id, file_path=video_file_path, is_master=True)
+    object_version = copy_file_to_bucket(
+        bucket_id=bucket_id, file_path=video_file_path, is_master=True
+    )
 
     return video_deposit, object_version
 
@@ -190,6 +194,7 @@ def create_flow(object_version, deposit_id, user_id):
     except Exception as e:
         raise ManualImportRequired(f"Flow creation failed! {e}", stage="load")
 
+
 def publish_video_record(deposit_id):
     """Publish video record."""
     try:
@@ -209,7 +214,9 @@ def publish_video_record(deposit_id):
         db.session.commit()
         return video_published
     except Exception as e:
-        raise ManualImportRequired(f"Deposit:{deposit_id} Publish failed: {e}", stage="load")
+        raise ManualImportRequired(
+            f"Deposit:{deposit_id} Publish failed: {e}", stage="load"
+        )
 
 
 def extract_metadata(payload):
@@ -237,7 +244,9 @@ def run_frames_task(payload):
         if celery_task:
             flow_task_metadata = celery_task.get_or_create_flow_task()
             flow_task_metadata.status = FlowTaskStatus.FAILURE
-            logger_flows.error(f"[ERROR] ExtractFramesTask failed! Deposit id: {payload['deposit_id']}, flow id: {payload['flow_id']}")
+            logger_flows.error(
+                f"[ERROR] ExtractFramesTask failed! Deposit id: {payload['deposit_id']}, flow id: {payload['flow_id']}"
+            )
 
 
 def copy_frames(payload, frame_paths):
@@ -256,7 +265,9 @@ def copy_frames(payload, frame_paths):
 
     frames_payload = payload.copy()
     if not len(frame_paths) == 10:
-        logger_flows.warning(f"[WARNING] Deposit: {frames_payload['deposit_id']} frames are creating with celery task.")
+        logger_flows.warning(
+            f"[WARNING] Deposit: {frames_payload['deposit_id']} frames are creating with celery task."
+        )
         # Missing/extra frames, don't use them, create with celery task
         run_frames_task(frames_payload)
         return
@@ -265,7 +276,8 @@ def copy_frames(payload, frame_paths):
     object_version = as_object_version(version_id)
 
     frames_task, kwargs = AVCFlowCeleryTasks.create_task(
-        ExtractFramesTask, frames_payload)
+        ExtractFramesTask, frames_payload
+    )
     frames_task.flow_id = frames_payload.get("flow_id")
     # FramesTask Metadata
     flow_task_metadata = frames_task.get_or_create_flow_task()
@@ -289,7 +301,8 @@ def copy_frames(payload, frame_paths):
         # Renaming is needed because cds-videos getting the first frame file by it's name(frame-1.jpg) for the poster
         start_time = options.get("start_time")
         time_step = options.get("time_step")
-        [frames_task._create_object(
+        [
+            frames_task._create_object(
                 bucket=object_version.bucket,
                 key=f"frame-{i+1}.jpg",
                 stream=file_opener_xrootd(filename, "rb"),
@@ -299,7 +312,8 @@ def copy_frames(payload, frame_paths):
                 master_id=object_version.version_id,
                 timestamp=start_time + (i + 1) * time_step,
             )
-            for i, filename in enumerate(frame_paths)]
+            for i, filename in enumerate(frame_paths)
+        ]
 
         # Temp folder to create gif file
         output_folder = tempfile.mkdtemp()
@@ -367,11 +381,15 @@ def transcode_task(payload, subformats):
     for item in subformats:
         path = item["path"]
         preset_quality = item["quality"]
-        quality_config = current_app.config["CDS_OPENCAST_QUALITIES"].get(preset_quality)
+        quality_config = current_app.config["CDS_OPENCAST_QUALITIES"].get(
+            preset_quality
+        )
 
         # If it's different subformat quality than (360,480,720...) don't upload
         if not quality_config:
-            logger_flows.warning(f"[WARNING] Deposit: {payload['deposit_id']} Subformat quality:{preset_quality} not found in config, skipping {path}")
+            logger_flows.warning(
+                f"[WARNING] Deposit: {payload['deposit_id']} Subformat quality:{preset_quality} not found in config, skipping {path}"
+            )
             continue
         # It'll log if fails
         _copy_subformat(payload, preset_quality, path)
@@ -379,8 +397,7 @@ def transcode_task(payload, subformats):
 
     # Create TranscodeVideoTask
     subformat_payload = payload.copy()
-    transcode_task, kwargs = AVCFlowCeleryTasks.create_task(
-        TranscodeVideoTask, payload)
+    transcode_task, kwargs = AVCFlowCeleryTasks.create_task(TranscodeVideoTask, payload)
     object_version = as_object_version(subformat_payload["version_id"])
     transcode_task.object_version = object_version
     transcode_task.flow_id = subformat_payload["flow_id"]
@@ -399,7 +416,9 @@ def transcode_task(payload, subformats):
             task.status = FlowTaskStatus.SUCCESS
         else:
             # Update the status as FAILURE if missing
-            logger_flows.warning(f"[WARNING] Deposit: {payload['deposit_id']} missing subformat: {preset_quality}!")
+            logger_flows.warning(
+                f"[WARNING] Deposit: {payload['deposit_id']} missing subformat: {preset_quality}!"
+            )
             task.status = FlowTaskStatus.FAILURE
 
     db.session.commit()
@@ -418,5 +437,3 @@ def copy_additional_files(bucket_id, additional_files):
         # Add tags to the additional file
         ObjectVersionTag.create_or_update(obj, "context_type", "additional_file")
         _create_tags(obj)
-
-

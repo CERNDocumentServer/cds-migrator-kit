@@ -10,7 +10,9 @@ import logging
 from pathlib import Path
 import re
 
-from cds_migrator_kit.videos.weblecture_migration.users.api import CDSVideosMigrationUserAPI
+from cds_migrator_kit.videos.weblecture_migration.users.api import (
+    CDSVideosMigrationUserAPI,
+)
 import click
 from flask import current_app
 from flask.cli import with_appcontext

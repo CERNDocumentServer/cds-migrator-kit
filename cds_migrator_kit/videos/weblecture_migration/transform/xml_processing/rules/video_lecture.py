@@ -215,7 +215,7 @@ def creation_date(self, key, value):
 
     - tag 961, subfield code x for creation date
     - tag 961, subfield code c for modification_date
-    
+
     It can also store:
     - library 'l' subfield
     - hour 'h' subfield

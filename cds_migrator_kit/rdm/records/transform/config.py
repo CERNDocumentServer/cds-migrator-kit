@@ -62,7 +62,7 @@ ALLOWED_THESIS_COLLECTIONS = [
     "eucard",
     "eucard2",
     "article",
-    "preprint", #
+    "preprint",  #
     "core",  # coming from inspire
     "clinot",
     "clicnote",
@@ -90,7 +90,6 @@ ALLOWED_THESIS_COLLECTIONS = [
     "publatlas",
     "publlhcb",
     "aida-2020thesis",
-
 ]
 
 ALLOWED_DOCUMENT_TAGS = [
@@ -108,15 +107,15 @@ ALLOWED_DOCUMENT_TAGS = [
     "e-learning",
     "indico",
     "intnotelhcbpubl",
-    "report", # these are all yellow reports in thesis
+    "report",  # these are all yellow reports in thesis
     "preprint",
-    "slintnote", # only 733805
+    "slintnote",  # only 733805
     "aida-2020",
     "article",
     "intnoteitpubl",
-    "intnoteatlaspubl", # 455788
-    "arc012301", # 1655788
-    "cernitarchive", # 1655788
+    "intnoteatlaspubl",  # 455788
+    "arc012301",  # 1655788
+    "cernitarchive",  # 1655788
 ]
 
 FORMER_COLLECTION_TAGS_TO_KEEP = [
@@ -134,8 +133,8 @@ FORMER_COLLECTION_TAGS_TO_KEEP = [
     "aida-2020",
     "intnoteitpubl",
     "intnoteatlaspubl",
-    "arc012301", # 1655788
-    "cernitarchive", # 1655788
+    "arc012301",  # 1655788
+    "cernitarchive",  # 1655788
 ]
 
 IGNORED_THESIS_COLLECTIONS = ["cern"]

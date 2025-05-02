@@ -57,9 +57,13 @@ class SubmitterRunner:
         self.stream = Stream(
             stream_definition.name,
             extract=stream_definition.extract_cls(dirpath),
-            transform=stream_definition.transform_cls(dojson_model=users_migrator_marc21),
+            transform=stream_definition.transform_cls(
+                dojson_model=users_migrator_marc21
+            ),
             load=stream_definition.load_cls(
-                dry_run=dry_run, missing_users_dir=missing_users_dir, user_api_cls=CDSMigrationUserAPI
+                dry_run=dry_run,
+                missing_users_dir=missing_users_dir,
+                user_api_cls=CDSMigrationUserAPI,
             ),
         )
 

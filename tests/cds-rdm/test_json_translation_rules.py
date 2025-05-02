@@ -12,7 +12,7 @@ from cds_migrator_kit.transform.dumper import CDSRecordDump
 from tests.helpers import load_json
 
 
-def test_migrate_record(datadir, base_app):
+def test_migrate_sspn_record(datadir, base_app):
     """Test migrate date."""
     # [[ migrate the record]]
     with base_app.app_context():
@@ -27,7 +27,8 @@ def test_migrate_record(datadir, base_app):
             "recid": "2285569",
             "legacy_recid": 2285569,
             "identifiers": [
-                {"scheme": "cds_ref", "identifier": "CERN-STUDENTS-Note-2017-222"}
+                {"identifier": "2285569", "scheme": "lcds"},
+                {"scheme": "cds_ref", "identifier": "CERN-STUDENTS-Note-2017-222"},
             ],
             "languages": [{"id": "eng"}],
             "creators": [
@@ -66,6 +67,14 @@ def test_migrate_record(datadir, base_app):
                 "cern:departments": ["EP"],
             },
             "contributors": [
+                {
+                    "person_or_org": {
+                        "type": "organizational",
+                        "name": "CERN. Geneva. EP Department",
+                        "family_name": "CERN. Geneva. EP Department",
+                    },
+                    "role": {"id": "hostinginstitution"},
+                },
                 {
                     "person_or_org": {
                         "type": "personal",
@@ -111,6 +120,7 @@ def test_migrate_record_all_fields(datadir, base_app):
             "recid": "2684743",
             "legacy_recid": 2684743,
             "identifiers": [
+                {"scheme": "lcds", "identifier": "2684743"},
                 {"scheme": "cds_ref", "identifier": "CERN-STUDENTS-Note-2019-028"},
                 {"scheme": "cds_ref", "identifier": "CERN-PBC-Notes-2021-006"},
             ],
@@ -166,7 +176,10 @@ def test_migrate_record_all_fields(datadir, base_app):
                         "family_name": "Casolino",
                         "given_name": "Mirkoantonio",
                         "identifiers": [
-                            {"identifier": "INSPIRE-00366594", "scheme": "inspire"},
+                            {
+                                "identifier": "INSPIRE-00366594",
+                                "scheme": "inspire_author",
+                            },
                             {"identifier": "1111", "scheme": "cern"},
                             {"identifier": "2083412", "scheme": "lcds"},
                         ],

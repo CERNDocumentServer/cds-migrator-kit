@@ -22,7 +22,9 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import (
     clean_str,
     clean_val,
 )
-from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import created as base_created
+from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
+    created as base_created,
+)
 from ...models.base import model
 from ..quality.contributors import get_contributor
 
@@ -113,7 +115,7 @@ def keywords(self, key, value):
         # checking if anything else stored in this field
         raise UnexpectedValue(field=key, subfield="9", value=provenance)
 
-    if keyword:  
+    if keyword:
         return {"name": keyword}
 
 
@@ -128,12 +130,13 @@ def accelerator_experiment(self, key, value):
     facility = value.get("f", "").strip()
 
     return {
-        k: v for k, v in {
+        k: v
+        for k, v in {
             "accelerator": accelerator,
             "experiment": experiment,
             "project": project,
             "study": study,
-            "facility": facility
-        }.items() if v
+            "facility": facility,
+        }.items()
+        if v
     }
-    
