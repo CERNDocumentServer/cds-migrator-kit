@@ -84,7 +84,9 @@ def copy_file_to_bucket(bucket_id, file_path, is_master=False):
             raise FileExistsError(f"{full_path} already exists.")
 
         # Copy file to storage.
-        shutil.copy(file_path, full_path)
+        shutil.copyfile(file_path, full_path)
+        with open(full_path, "rb") as f:
+            os.fsync(f.fileno())  # Ensures it's truly written
 
         # Control if the file copied succesfully
         if os.path.getsize(file_path) != os.path.getsize(full_path):
