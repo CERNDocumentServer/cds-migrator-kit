@@ -114,8 +114,8 @@ ALLOWED_DOCUMENT_TAGS = [
     "article",
     "intnoteitpubl",
     "intnoteatlaspubl",  # 455788
-    "arc012301",  # 1655788
-    "cernitarchive",  # 1655788
+    # "arc012301",  # 1655788
+    # "cernitarchive",  # 1655788
 ]
 
 FORMER_COLLECTION_TAGS_TO_KEEP = [
@@ -133,8 +133,8 @@ FORMER_COLLECTION_TAGS_TO_KEEP = [
     "aida-2020",
     "intnoteitpubl",
     "intnoteatlaspubl",
-    "arc012301",  # 1655788
-    "cernitarchive",  # 1655788
+    # "arc012301",  # 1655788
+    # "cernitarchive",  # 1655788
 ]
 
 IGNORED_THESIS_COLLECTIONS = ["cern"]

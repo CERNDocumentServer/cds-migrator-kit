@@ -178,8 +178,8 @@ def subjects(self, key, value):
         if is_controlled_subject:
             if subject_value:
                 subject = {
-                    "id": subject_value,
-                    "subject": subject_value,
+                    "id": subject_value.title().replace(" And ", " and ").replace(" In ", " in ").replace(" Of ", " of "),
+                    # "subject": subject_value.title(),
                     # "scheme": "CERN", # scheme not accepted when ID is supplied
                 }
                 _subjects.append(subject)
@@ -508,6 +508,13 @@ def licenses(self, key, value):
     license_url = clean_val("u", value, str)
     license_id = clean_val("a", value, str)
 
+    # 2897660, 2694245, 684383
+    if license_id in ["CC BY-NC-ND 3.0 US", "CC-BY-NC-ND-3.0-DE", "CC-BY-3.0-DE"]:
+        return {
+            "title": {"en": license_id},
+            "link": license_url,
+            # "description": description,
+        }
     if not license_id:
         raise UnexpectedValue(
             "License title missing", field=key, subfield="a", value=value
