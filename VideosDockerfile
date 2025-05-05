@@ -25,6 +25,14 @@ RUN if [ ! -z "$xrootd_version" ] ; then XROOTD_V="-$xrootd_version" ; else XROO
 # OpenLDAP
 RUN dnf install -y openldap-devel
 
+# FFMPEG
+RUN yum install -y wget
+
+RUN mkdir /usr/local/bin/ffmpeg && \
+    wget -O - https://cds-resources.web.cern.ch/cds-resources/cds-videos/ffmpeg/5.0/ffmpeg-release-amd64-static.tar.xz | tar -xJ --strip-components=1 --directory=/usr/local/bin/ffmpeg/ && \
+    ln -s /usr/local/bin/ffmpeg/ffmpeg /usr/bin/ffmpeg && \
+    ln -s /usr/local/bin/ffmpeg/ffprobe /usr/bin/ffprobe
+
 # CRB (Code Ready Builder): equivalent repository to well-known CentOS PowerTools
 RUN dnf install -y yum-utils
 RUN dnf config-manager --set-enabled crb
