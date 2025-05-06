@@ -44,7 +44,7 @@ from xrootdpyfs.fs import XRootDPyFS
 from cds_migrator_kit.errors import ManualImportRequired
 
 
-def copy_file_to_bucket(bucket_id, file_path, is_master=False):
+def copy_file_to_bucket(bucket_id, file_path, is_master=False, delete_src=True):
     """Create a FileInstance, move the file to FileInstance storage, return the created object version."""
     logger_files = logging.getLogger("files")
 
@@ -92,7 +92,13 @@ def copy_file_to_bucket(bucket_id, file_path, is_master=False):
             common_fs=XRootDPyFS(eos_fs)
             relative_src = os.path.relpath(file_path, common)
             relative_dst = os.path.relpath(full_path, common)
-            common_fs.move(relative_src, relative_dst)
+            if delete_src:
+                common_fs.move(relative_src, relative_dst)
+            else:
+                with open(file_path, "rb") as src, open(full_path, "wb") as dst:
+                    shutil.copyfileobj(src, dst, length=10 * 1024 * 1024)
+                    dst.flush()
+                    os.fsync(dst.fileno())                
 
         # Control if the file copied succesfully
         if source_size != os.path.getsize(full_path):
@@ -347,9 +353,9 @@ def copy_frames(payload, frame_paths):
             shutil.rmtree(output_folder, ignore_errors=True)
 
 
-def _copy_subformat(payload, preset_quality, path):
+def _copy_subformat(payload, preset_quality, path, delete_src=True):
     """Copy the subformat file to bucket and add subformat tags"""
-    obj = copy_file_to_bucket(payload["bucket_id"], path)
+    obj = copy_file_to_bucket(payload["bucket_id"], path, delete_src=delete_src)
     if not obj:
         return
     # Add tags to the subformat
@@ -381,6 +387,10 @@ def transcode_task(payload, subformats):
     subformat_paths (list): A list of file paths of the subformats.
     """
     logger_flows = logging.getLogger("flows")
+    
+    # Get the master_video
+    video_deposit = deposit_video_resolver(payload["deposit_id"])
+    original_file = CDSVideosFilesIterator.get_master_video_file(video_deposit)
 
     for item in subformats:
         path = item["path"]
@@ -395,8 +405,14 @@ def transcode_task(payload, subformats):
                 f"[WARNING] Deposit: {payload['deposit_id']} Subformat quality:{preset_quality} not found in config, skipping {path}"
             )
             continue
-        # It'll log if fails
-        _copy_subformat(payload, preset_quality, path)
+        # Copy the file from master object
+        if preset_quality == f'{original_file["tags"]["height"]}p':
+            file_path = FileInstance.get(original_file["file_id"]).uri
+            master_file_path = file_path.replace("root://eosmedia.cern.ch/", "")
+            _copy_subformat(payload, preset_quality, master_file_path, delete_src=False)
+        else:
+            _copy_subformat(payload, preset_quality, path)
+
         db.session.commit()
 
     # Create TranscodeVideoTask
