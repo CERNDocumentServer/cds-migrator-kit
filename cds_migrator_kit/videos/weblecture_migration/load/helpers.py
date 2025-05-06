@@ -70,6 +70,8 @@ def copy_file_to_bucket(bucket_id, file_path, is_master=False):
 
         # Get the file storage
         file_storage = file.storage(default_location=default_location)
+        # Needed to move file: creates directory
+        fs, path = file_storage._get_fs()
         
         # Get the source file size
         source_size = os.path.getsize(file_path)
