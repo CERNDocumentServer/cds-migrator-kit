@@ -39,6 +39,7 @@ from invenio_files_rest.models import (
 )
 from invenio_files_rest.storage import pyfs_storage_factory
 from sqlalchemy.orm.attributes import flag_modified as db_flag_modified
+from xrootdpyfs.fs import XRootDPyFS
 
 from cds_migrator_kit.errors import ManualImportRequired
 
@@ -69,10 +70,10 @@ def copy_file_to_bucket(bucket_id, file_path, is_master=False):
 
         # Get the file storage
         file_storage = file.storage(default_location=default_location)
-        fs, path = file_storage._get_fs()
-        fs.open(path, mode="wb")
-        full_path = Path(file_storage.fileurl.replace("root://eosmedia.cern.ch/", ""))
-
+        
+        # Get the source file size
+        source_size = os.path.getsize(file_path)
+        
         # For local migration
         if not current_app.config["MOUNTED_MEDIA_CEPH_PATH"].startswith("/eos"):
             storage = pyfs_storage_factory(
@@ -80,20 +81,21 @@ def copy_file_to_bucket(bucket_id, file_path, is_master=False):
             )
             fp = storage.open(mode="wb")
             full_path = Path(fp.name.decode()).resolve()
-
-        # Check if the destination already exists
-        if full_path.exists() and full_path.is_dir() and any(full_path.iterdir()):
-            raise FileExistsError(f"{full_path} already exists.")
-
-        # Copy file to storage.
-        shutil.copyfile(file_path, full_path)
-        with open(full_path, "rb") as f:
-            os.fsync(f.fileno())  # Ensures it's truly written
+            shutil.copy(file_path, full_path)
+        else:
+            eos_path = "root://eosmedia.cern.ch/"
+            full_path = file_storage.fileurl.replace(eos_path, "")
+            common = os.path.commonpath([file_path, full_path]) # /eos/media/cds-videos/dev
+            eos_fs = eos_path + common + "/"
+            common_fs=XRootDPyFS(eos_fs)
+            relative_src = os.path.relpath(file_path, common)
+            relative_dst = os.path.relpath(full_path, common)
+            common_fs.move(relative_src, relative_dst)
 
         # Control if the file copied succesfully
-        if os.path.getsize(file_path) != os.path.getsize(full_path):
+        if source_size != os.path.getsize(full_path):
             error_message = (
-                f"File copy failed: Checksum mismatch! "
+                f"File copy failed: Size mismatch! "
                 f"Source: {file_path}, Destination: {full_path}"
             )
             if is_master:
