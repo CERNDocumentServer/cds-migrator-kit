@@ -18,11 +18,11 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 """CDS-RDM migration rules module."""
 import re
-import arrow
-from edtf import parse_edtf, EDTFParseException, text_to_edtf
+
 from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
 from dojson.utils import force_list
+from edtf import EDTFParseException, parse_edtf, text_to_edtf
 from idutils.normalizers import normalize_isbn, normalize_issn
 from isbnlib import NotValidISBNError
 
@@ -35,14 +35,14 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
 from cds_migrator_kit.transform.xml_processing.rules.base import process_contributors
+
 from ...config import (
+    ALLOWED_DOCUMENT_TAGS,
     ALLOWED_THESIS_COLLECTIONS,
+    FORMER_COLLECTION_TAGS_TO_KEEP,
     IGNORED_THESIS_COLLECTIONS,
     udc_pattern,
-    ALLOWED_DOCUMENT_TAGS,
-    FORMER_COLLECTION_TAGS_TO_KEEP,
 )
-
 from ...models.thesis import thesis_model as model
 
 

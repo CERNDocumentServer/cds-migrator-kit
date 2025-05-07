@@ -14,6 +14,7 @@ from invenio_rdm_migrator.streams import Stream
 
 from cds_migrator_kit.rdm.affiliations.log import AffiliationsLogger
 from cds_migrator_kit.rdm.users.api import CDSMigrationUserAPI
+
 from .transform import users_migrator_marc21
 
 

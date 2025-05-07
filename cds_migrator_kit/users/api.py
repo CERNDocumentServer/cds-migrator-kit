@@ -7,8 +7,8 @@
 
 """cds-migrator-kit user api."""
 
-from copy import deepcopy
 from abc import ABC, abstractmethod
+from copy import deepcopy
 
 from flask import current_app
 from invenio_accounts.models import User, UserIdentity

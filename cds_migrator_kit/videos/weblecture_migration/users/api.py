@@ -6,17 +6,16 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-Videos user api."""
-from copy import deepcopy
 import logging
+from copy import deepcopy
 
-from cds_migrator_kit.users.api import MigrationUserAPI
-
-from invenio_db import db
+from flask import current_app
 from invenio_accounts.models import User, UserIdentity
+from invenio_db import db
 from psycopg.errors import UniqueViolation
 from sqlalchemy.exc import IntegrityError
-from flask import current_app
 
+from cds_migrator_kit.users.api import MigrationUserAPI
 
 logger_submitters = logging.getLogger("submitters")
 

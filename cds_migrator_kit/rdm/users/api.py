@@ -10,15 +10,14 @@ import csv
 import json
 from copy import deepcopy
 
-from cds_migrator_kit.users.api import MigrationUserAPI
-
-from invenio_db import db
 from invenio_accounts.models import User, UserIdentity
 from invenio_cern_sync.sso import cern_remote_app_name
+from invenio_db import db
 from psycopg.errors import UniqueViolation
 from sqlalchemy.exc import IntegrityError
 
 from cds_migrator_kit.transform.dumper import CDSRecordDump
+from cds_migrator_kit.users.api import MigrationUserAPI
 
 
 class CDSMigrationUserAPI(MigrationUserAPI):

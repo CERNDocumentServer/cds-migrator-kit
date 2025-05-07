@@ -10,18 +10,19 @@
 import datetime
 import logging
 import re
-from urllib.parse import urlparse, ParseResult
-from idutils.validators import is_doi, is_handle, is_urn
+from urllib.parse import ParseResult, urlparse
+
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
+from idutils.validators import is_doi, is_handle, is_urn
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.config import (
     CONTROLLED_SUBJECTS_SCHEMES,
-    RECOGNISED_KEYWORD_SCHEMES,
-    PID_SCHEMES_TO_STORE_IN_IDENTIFIERS,
-    udc_pattern,
     KEYWORD_SCHEMES_TO_DROP,
+    PID_SCHEMES_TO_STORE_IN_IDENTIFIERS,
+    RECOGNISED_KEYWORD_SCHEMES,
+    udc_pattern,
 )
 from cds_migrator_kit.rdm.records.transform.models.base_record import (
     rdm_base_record_model as model,
@@ -177,9 +178,15 @@ def subjects(self, key, value):
 
         if is_controlled_subject:
             if subject_value:
+                subject_value = (
+                    subject_value.title()
+                    .replace(" And ", " and ")
+                    .replace(" In ", " in ")
+                    .replace(" Of ", " of ")
+                )
                 subject = {
-                    "id": subject_value.title().replace(" And ", " and ").replace(" In ", " in ").replace(" Of ", " of "),
-                    # "subject": subject_value.title(),
+                    "id": subject_value,
+                    "subject": subject_value,
                     # "scheme": "CERN", # scheme not accepted when ID is supplied
                 }
                 _subjects.append(subject)

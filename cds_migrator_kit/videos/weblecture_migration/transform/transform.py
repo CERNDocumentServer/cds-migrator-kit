@@ -8,18 +8,17 @@
 """CDS-Videos transform step module."""
 import datetime
 import logging
-from pathlib import Path
 import os
+from pathlib import Path
 
 import arrow
+from flask import current_app
+from invenio_accounts.models import User
 from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
 )
-from invenio_accounts.models import User
 from sqlalchemy.exc import NoResultFound
-from flask import current_app
-
 
 from cds_migrator_kit.errors import (
     ManualImportRequired,
