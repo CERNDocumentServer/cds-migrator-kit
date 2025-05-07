@@ -422,7 +422,7 @@ APP_RDM_RECORD_LANDING_PAGE_EXTERNAL_LINKS = [
 ]
 VOCABULARIES_NAMES_SCHEMES = {
     **DEFAULT_VOCABULARIES_NAMES_SCHEMES,
-    "inspire": {
+    "inspire_author": {
         "label": _("Inspire"),
         "validator": schemes.is_inspire_author,
         "datacite": "INSPIRE",

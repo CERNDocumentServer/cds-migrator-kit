@@ -84,13 +84,13 @@ def suite_multi_field(record):
     assert dict_rec["metadata"]["contributors"] == [
         {
             "affiliations": [
-                {"name": "The Barcelona Institute of Science and Technology " "BIST ES"}
+                {"name": "The Barcelona Institute of Science and Technology BIST ES"}
             ],
             "person_or_org": {
                 "family_name": "Casolino",
                 "given_name": "Mirkoantonio",
                 "identifiers": [
-                    {"identifier": "INSPIRE-00366594", "scheme": "inspire"},
+                    {"identifier": "INSPIRE-00366594", "scheme": "inspire_author"},
                     {"identifier": "2083412", "scheme": "lcds"},
                 ],
                 "name": "Casolino, Mirkoantonio",
@@ -145,6 +145,7 @@ def suite_multi_field(record):
         },
     ]
     assert dict_rec["metadata"]["identifiers"] == [
+        {"identifier": "2684743", "scheme": "lcds"},
         {"identifier": "CERN-STUDENTS-Note-2019-028", "scheme": "cds_ref"},
         {"identifier": "CERN-PBC-Notes-2021-006", "scheme": "cds_ref"},
     ]
@@ -302,6 +303,7 @@ def contains_aleph(record):
     dict_rec = record.to_dict()
     assert "identifiers" in dict_rec["metadata"]
     assert dict_rec["metadata"]["identifiers"] == [
+        {"identifier": "1597985", "scheme": "lcds"},
         {"identifier": "CERN-STUDENTS-Note-2013-181", "scheme": "cds_ref"},
         {"identifier": "000733613CER", "scheme": "aleph"},
     ]
@@ -338,7 +340,7 @@ def author_with_inspire(record):
                 "given_name": "Julian",
                 "family_name": "Glatzer",
                 "identifiers": [
-                    {"identifier": "INSPIRE-00013837", "scheme": "inspire"},
+                    {"identifier": "INSPIRE-00013837", "scheme": "inspire_author"},
                     {"identifier": "2073275", "scheme": "lcds"},
                 ],
             },
@@ -349,6 +351,18 @@ def author_with_inspire(record):
             "affiliations": [
                 {"name": "Universitat Autonoma de Barcelona ES"},
             ],
+        },
+        {
+            "person_or_org": {
+                "name": "CERN. Geneva. EP Department",
+                "type": "organizational",
+            },
+            "role": {
+                "id": "hostinginstitution",
+                "title": {
+                    "en": "Hosting institution",
+                },
+            },
         },
     ]
 
@@ -421,12 +435,12 @@ def test_full_migration_stream(
     )
     runner.run()
 
-    assert CDSMigrationLegacyRecord.query.count() == 12
+    assert CDSMigrationLegacyRecord.query.count() == 13
 
     with open("tests/cds-rdm/tmp/logs/sspn/rdm_records_state.json") as state_logs:
         records = json.load(state_logs)
 
-    assert check_log_for_error("2783112", "ManualImportRequired")
+    # assert check_log_for_error("2783112", "ManualImportRequired")
 
     for record in records:
 

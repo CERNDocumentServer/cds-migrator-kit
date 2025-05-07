@@ -15,7 +15,6 @@ import arrow
 from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from cds_rdm.minters import legacy_recid_minter
-from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_db import db
 from invenio_pidstore.errors import PIDAlreadyExists
@@ -24,7 +23,6 @@ from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_records.systemfields.relations import InvalidRelationValue
 from marshmallow import ValidationError
-from psycopg.errors import UniqueViolation
 
 from cds_migrator_kit.errors import CDSMigrationException, ManualImportRequired
 from cds_migrator_kit.reports.log import RDMJsonLogger
@@ -182,7 +180,7 @@ class CDSRecordServiceLoad(Load):
         2. The record's creation date if there are no files.
         3. Today's date if the original value and file creation date is missing.
         """
-        creation_date = entry["record"]["created"].datetime
+        creation_date = entry["record"]["created"].datetime.replace(tzinfo=None)
 
         versions = entry.get("versions", {})
         version_data = versions.get(version, {})
@@ -192,7 +190,9 @@ class CDSRecordServiceLoad(Load):
         if version_data.get("files") and not version == 1 or creation_date_is_today:
             # Subsequent versions should use the file creation date, instead of the record creation date,
             # which is stored as the publication date in the version data
-            creation_date = version_data["publication_date"].datetime
+            creation_date = version_data["publication_date"].datetime.replace(
+                tzinfo=None
+            )
 
         record._record.model.created = creation_date
         record._record.commit()
@@ -215,7 +215,9 @@ class CDSRecordServiceLoad(Load):
         files = version_data.get("files", {})
         for _, file_data in files.items():
             file = record._record.files.entries[file_data["key"]]
-            file.model.created = arrow.get(file_data["creation_date"]).datetime
+            file.model.created = arrow.get(file_data["creation_date"]).datetime.replace(
+                tzinfo=None
+            )
             file.commit()
 
     def _after_publish(self, identity, published_record, entry, version):

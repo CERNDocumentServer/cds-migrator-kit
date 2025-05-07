@@ -72,10 +72,10 @@ def move_file_to_bucket(bucket_id, file_path, is_master=False):
         file_storage = file.storage(default_location=default_location)
         # Needed to move file: creates directory
         fs, path = file_storage._get_fs()
-        
+
         # Get the source file size
         source_size = os.path.getsize(file_path)
-        
+
         # For local migration
         if not current_app.config["MOUNTED_MEDIA_CEPH_PATH"].startswith("/eos"):
             storage = pyfs_storage_factory(
@@ -383,7 +383,7 @@ def transcode_task(payload, subformats):
     subformat_paths (list): A list of file paths of the subformats.
     """
     logger_flows = logging.getLogger("flows")
-    
+
     # Get the master_video
     video_deposit = deposit_video_resolver(payload["deposit_id"])
     original_file = CDSVideosFilesIterator.get_master_video_file(video_deposit)

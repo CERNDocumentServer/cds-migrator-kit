@@ -96,7 +96,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         try:
             return arrow.get(json_entry["_created"])
         except KeyError:
-            return arrow.get(datetime.date.today().isoformat())
+            return arrow.get(datetime.date.today().isoformat()).replace(tzinfo=None)
 
     def _updated(self, record_dump):
         """Returns the creation date of the record."""
@@ -810,6 +810,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 raise RestrictedFileDetected(
                     field=file["full_name"], value=file["status"], priority="critical"
                 )
+
             versions_dict[file_dump["version"]]["files"].update(
                 {
                     file["full_name"]: {
@@ -824,6 +825,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                         "access": file["status"],
                         "type": file["type"],
                         "creation_date": arrow.get(file["creation_date"])
+                        .replace(tzinfo=None)
                         .date()
                         .isoformat(),
                     }
@@ -843,7 +845,9 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             if file["version"] not in versions:
                 versions[file["version"]] = {
                     "files": {},
-                    "publication_date": arrow.get(file["creation_date"]),
+                    "publication_date": arrow.get(file["creation_date"]).replace(
+                        tzinfo=None
+                    ),
                     "access": compute_access(file, record_access),
                 }
 
