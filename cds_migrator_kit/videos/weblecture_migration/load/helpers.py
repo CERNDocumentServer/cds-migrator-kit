@@ -44,7 +44,7 @@ from xrootdpyfs.fs import XRootDPyFS
 from cds_migrator_kit.errors import ManualImportRequired
 
 
-def copy_file_to_bucket(bucket_id, file_path, is_master=False, delete_src=True):
+def move_file_to_bucket(bucket_id, file_path, is_master=False):
     """Create a FileInstance, move the file to FileInstance storage, return the created object version."""
     logger_files = logging.getLogger("files")
 
@@ -92,13 +92,7 @@ def copy_file_to_bucket(bucket_id, file_path, is_master=False, delete_src=True):
             common_fs=XRootDPyFS(eos_fs)
             relative_src = os.path.relpath(file_path, common)
             relative_dst = os.path.relpath(full_path, common)
-            if delete_src:
-                common_fs.move(relative_src, relative_dst)
-            else:
-                with open(file_path, "rb") as src, open(full_path, "wb") as dst:
-                    shutil.copyfileobj(src, dst, length=10 * 1024 * 1024)
-                    dst.flush()
-                    os.fsync(dst.fileno())                
+            common_fs.move(relative_src, relative_dst)
 
         # Control if the file copied succesfully
         if source_size != os.path.getsize(full_path):
@@ -171,7 +165,7 @@ def create_video(project_deposit, video_metadata, video_file_path, submitter):
     except Exception as e:
         raise ManualImportRequired(f"Video creation failed! {e}", stage="load")
 
-    object_version = copy_file_to_bucket(
+    object_version = move_file_to_bucket(
         bucket_id=bucket_id, file_path=video_file_path, is_master=True
     )
 
@@ -353,11 +347,13 @@ def copy_frames(payload, frame_paths):
             shutil.rmtree(output_folder, ignore_errors=True)
 
 
-def _copy_subformat(payload, preset_quality, path, delete_src=True):
+def _copy_subformat(payload, preset_quality, path, created_obj=None):
     """Copy the subformat file to bucket and add subformat tags"""
-    obj = copy_file_to_bucket(payload["bucket_id"], path, delete_src=delete_src)
-    if not obj:
-        return
+    if not created_obj:
+        obj = move_file_to_bucket(payload["bucket_id"], path)
+    else:
+        obj = created_obj
+
     # Add tags to the subformat
     ObjectVersionTag.create(obj, "master", payload["version_id"])
     ObjectVersionTag.create(obj, "media_type", "video")
@@ -407,9 +403,12 @@ def transcode_task(payload, subformats):
             continue
         # Copy the file from master object
         if preset_quality == f'{original_file["tags"]["height"]}p':
-            file_path = FileInstance.get(original_file["file_id"]).uri
-            master_file_path = file_path.replace("root://eosmedia.cern.ch/", "")
-            _copy_subformat(payload, preset_quality, master_file_path, delete_src=False)
+            obj = ObjectVersion.create(
+                                bucket=payload["bucket_id"],
+                                key=os.path.basename(path),
+                                _file_id=original_file["file_id"],
+            )
+            _copy_subformat(payload, preset_quality, path, created_obj=obj)
         else:
             _copy_subformat(payload, preset_quality, path)
 
@@ -448,7 +447,7 @@ def copy_additional_files(bucket_id, additional_files):
     """Load additional files for the master video file."""
     for path in additional_files:
         # Copy the file to FileInstance and create ObjectVersion
-        obj = copy_file_to_bucket(bucket_id, path)
+        obj = move_file_to_bucket(bucket_id, path)
 
         # It'll log if copying fail
         if not obj:
