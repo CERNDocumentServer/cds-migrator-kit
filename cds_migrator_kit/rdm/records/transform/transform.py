@@ -40,11 +40,11 @@ from cds_migrator_kit.rdm.migration_config import (
     VOCABULARIES_NAMES_SCHEMES,
 )
 from cds_migrator_kit.rdm.records.transform.config import (
-    PIDS_SCHEMES_TO_DROP,
-    PIDS_SCHEMES_ALLOWED,
+    FILE_SUBFORMATS_TO_DROP,
     IDENTIFIERS_SCHEMES_TO_DROP,
     IDENTIFIERS_VALUES_TO_DROP,
-    FILE_SUBFORMATS_TO_DROP,
+    PIDS_SCHEMES_ALLOWED,
+    PIDS_SCHEMES_TO_DROP,
 )
 from cds_migrator_kit.reports.log import RDMJsonLogger
 from cds_migrator_kit.transform.dumper import CDSRecordDump

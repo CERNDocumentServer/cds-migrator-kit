@@ -7,24 +7,26 @@
 
 """CDS-Videos migration rules module."""
 
-import pycountry
 import datetime
 
+import pycountry
+
 from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
+    created as base_created,
+)
+from cds_migrator_kit.transform.xml_processing.quality.dates import get_week_start
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
     require,
     strip_output,
 )
-from cds_migrator_kit.transform.xml_processing.quality.dates import get_week_start
 from cds_migrator_kit.transform.xml_processing.quality.parsers import (
     StringValue,
     clean_str,
     clean_val,
 )
-from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
-    created as base_created,
-)
+
 from ...models.base import model
 from ..quality.contributors import get_contributor
 

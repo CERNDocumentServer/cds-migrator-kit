@@ -7,12 +7,9 @@
 
 """CDS-Videos command line module."""
 import logging
-from pathlib import Path
 import re
+from pathlib import Path
 
-from cds_migrator_kit.videos.weblecture_migration.users.api import (
-    CDSVideosMigrationUserAPI,
-)
 import click
 from flask import current_app
 from flask.cli import with_appcontext
@@ -22,6 +19,9 @@ from sqlalchemy.exc import NoResultFound
 from cds_migrator_kit.runner.runner import Runner
 from cds_migrator_kit.videos.weblecture_migration.logger import VideosJsonLogger
 from cds_migrator_kit.videos.weblecture_migration.streams import RecordStreamDefinition
+from cds_migrator_kit.videos.weblecture_migration.users.api import (
+    CDSVideosMigrationUserAPI,
+)
 from cds_migrator_kit.videos.weblecture_migration.users.runner import (
     VideosSubmitterRunner,
 )

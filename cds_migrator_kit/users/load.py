@@ -16,7 +16,6 @@ from invenio_accounts.models import User
 from invenio_rdm_migrator.load.base import Load
 from sqlalchemy.exc import NoResultFound
 
-
 cli_logger = logging.getLogger("migrator")
 
 

@@ -11,6 +11,7 @@ from collections import namedtuple
 from os.path import dirname, join
 
 import pytest
+from cds_rdm.custom_fields import CUSTOM_FIELDS
 from cds_rdm.permissions import (
     CDSCommunitiesPermissionPolicy,
     CDSRDMRecordPermissionPolicy,
@@ -79,9 +80,6 @@ def datadir():
 @pytest.fixture(scope="module")
 def app_config(app_config):
     """Mimic an instance's configuration."""
-    app_config["SQLALCHEMY_DATABASE_URI"] = (
-        "postgresql+psycopg2://invenio:invenio@localhost/invenio"
-    )
     app_config["REST_CSRF_ENABLED"] = True
     app_config["DATACITE_ENABLED"] = True
     app_config["DATACITE_PREFIX"] = "10.17181"
@@ -121,7 +119,7 @@ def app_config(app_config):
     app_config["RDM_RECORDS_PERSONORG_SCHEMES"] = {
         **RDM_RECORDS_PERSONORG_SCHEMES,
         **{
-            "inspire": {
+            "inspire_author": {
                 "label": _("Inspire"),
                 "validator": is_inspire_author,
                 "datacite": "INSPIRE",
@@ -151,8 +149,11 @@ def app_config(app_config):
                 "validator": is_inspire,
                 "datacite": "INSPIRE",
             },
+            "inis": {"label": _("INIS"), "validator": is_inspire, "datacite": "INIS"},
+            "lcds": {"label": _("CDS"), "validator": is_legacy_cds, "datacite": "CDS"},
         },
     }
+
     app_config["SEARCH_INDEX_PREFIX"] = ""
     app_config["CDS_MIGRATOR_KIT_STREAM_CONFIG"] = (
         "tests/cds-rdm/data/sspn/streams.yaml"
@@ -160,35 +161,7 @@ def app_config(app_config):
     base_path = os.path.dirname(os.path.realpath(__file__))
     logs_dir = os.path.join(base_path, "tmp/logs/")
     app_config["CDS_MIGRATOR_KIT_LOGS_PATH"] = logs_dir
-    app_config["RDM_CUSTOM_FIELDS"] = [
-        VocabularyCF(
-            name="cern:experiments",
-            vocabulary_id="experiments",
-            dump_options=True,
-            multiple=True,
-        ),
-        VocabularyCF(
-            name="cern:departments",
-            vocabulary_id="departments",
-            dump_options=True,
-            multiple=True,
-        ),
-        VocabularyCF(
-            name="cern:accelerators",
-            vocabulary_id="accelerators",
-            dump_options=True,
-            multiple=True,
-        ),
-        KeywordCF(name="cern:projects", multiple=True),
-        KeywordCF(name="cern:facilities", multiple=True),
-        KeywordCF(name="cern:studies", multiple=True),
-        VocabularyCF(
-            name="cern:beams",
-            vocabulary_id="beams",
-            dump_options=True,
-            multiple=True,
-        ),
-    ]
+    app_config["RDM_CUSTOM_FIELDS"] = CUSTOM_FIELDS
 
     return app_config
 

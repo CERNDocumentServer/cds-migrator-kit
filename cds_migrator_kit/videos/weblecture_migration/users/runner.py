@@ -14,6 +14,7 @@ import yaml
 from invenio_rdm_migrator.streams import Stream
 
 from cds_migrator_kit.videos.weblecture_migration.logger import SubmitterLogger
+
 from .api import CDSVideosMigrationUserAPI
 from .transform import users_migrator_marc21
 

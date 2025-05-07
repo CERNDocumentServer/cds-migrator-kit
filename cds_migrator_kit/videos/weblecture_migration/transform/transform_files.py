@@ -6,10 +6,10 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-Videos transform module files helper."""
-from pathlib import Path
 import json
 import logging
 import re
+from pathlib import Path
 
 from flask import current_app
 
