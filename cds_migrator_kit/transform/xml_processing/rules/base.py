@@ -76,7 +76,7 @@ def languages(self, key, value):
     if lang:
         lang = lang.lower()
     try:
-        return {"id": pycountry.languages.get(alpha_2=lang.lower()).alpha_3}
+        return {"id": pycountry.languages.lookup(lang).alpha_3.lower()}
     except (KeyError, AttributeError, LookupError):
         raise UnexpectedValue(field=key, subfield="a")
 
