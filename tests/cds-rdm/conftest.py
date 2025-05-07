@@ -39,7 +39,6 @@ from invenio_rdm_records.config import (
     always_valid,
 )
 from invenio_records_resources.proxies import current_service_registry
-from invenio_records_resources.services.custom_fields import KeywordCF
 from invenio_users_resources.records.api import UserAggregate
 from invenio_vocabularies.config import (
     VOCABULARIES_NAMES_SCHEMES as DEFAULT_VOCABULARIES_NAMES_SCHEMES,
@@ -48,7 +47,6 @@ from invenio_vocabularies.contrib.awards.api import Award
 from invenio_vocabularies.contrib.funders.api import Funder
 from invenio_vocabularies.proxies import current_service as vocabulary_service
 from invenio_vocabularies.records.api import Vocabulary
-from invenio_vocabularies.services.custom_fields import VocabularyCF
 
 
 class MockJinjaManifest(JinjaManifest):
@@ -109,7 +107,7 @@ def app_config(app_config):
     )
     app_config["VOCABULARIES_NAMES_SCHEMES"] = {
         **DEFAULT_VOCABULARIES_NAMES_SCHEMES,
-        "inspire": {
+        "inspire_author": {
             "label": _("Inspire"),
             "validator": is_inspire_author,
             "datacite": "INSPIRE",
