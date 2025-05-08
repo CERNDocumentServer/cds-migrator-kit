@@ -134,7 +134,6 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             return UnexpectedValue(
                 message="Multiple master folders! Multiple records should be created.",
                 stage="transform",
-                recid=self.recid,
                 value="master_path",
                 priority="critical",
             )
@@ -142,7 +141,6 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             return UnexpectedValue(
                 message="Master folder does not exists!",
                 stage="transform",
-                recid=self.recid,
                 value="master_path",
                 priority="critical",
             )
