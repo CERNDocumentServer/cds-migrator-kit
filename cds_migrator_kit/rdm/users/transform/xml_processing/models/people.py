@@ -29,6 +29,7 @@ class PeopleAuthority(CdsOverdo):
     __ignore_keys__ = {
         "001",
         "005",
+        "100__a",  # full name
         "372__0",  # affiliations
         "371__1",  # affiliation abbreviation
         "371__0",  # affiliation name
@@ -50,6 +51,6 @@ class PeopleAuthority(CdsOverdo):
     }
 
 
-model = PeopleAuthority(
+people_model = PeopleAuthority(
     bases=(), entry_point_group="cds_migrator_kit.migrator.rules.people"
 )

@@ -28,4 +28,4 @@ SubmitterStreamDefinition = StreamDefinition(
     transform_cls=SubmitterTransform,
     load_cls=CDSSubmitterLoad,
 )
-"""ETL stream for CDS to import users."""
+"""ETL stream for CDS to import submitterd."""

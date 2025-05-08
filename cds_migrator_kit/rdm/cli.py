@@ -119,9 +119,13 @@ def users():
     "--filepath",
     help=".",
 )
+@click.option(
+    "--dirpath",
+    help=".",
+)
 @click.option("--collection")
 @with_appcontext
-def people_run(filepath, collection, dry_run=False):
+def people_run(filepath, collection, dirpath, dry_run=False):
     """Migrate the legacy people collection`."""
     log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "users"
     runner = PeopleAuthorityRunner(
@@ -129,6 +133,7 @@ def people_run(filepath, collection, dry_run=False):
         filepath=filepath,
         log_dir=log_dir,
         dry_run=dry_run,
+        dirpath=dirpath,
     )
     runner.run()
 

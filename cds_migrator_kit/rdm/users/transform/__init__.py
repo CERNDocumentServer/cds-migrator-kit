@@ -11,3 +11,6 @@ from cds_dojson.overdo import OverdoBase
 users_migrator_marc21 = OverdoBase(
     entry_point_models="cds_migrator_kit.migrator.submitter.model"
 )
+
+
+people_marc21 = OverdoBase(entry_point_models="cds_migrator_kit.migrator.users.model")
