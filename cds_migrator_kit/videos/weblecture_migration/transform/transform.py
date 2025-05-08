@@ -277,6 +277,22 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 stage="transform",
             )
 
+        def location(json_data):
+            """Get the location."""
+            # Priority: indico_location (111) > lecture_location (518)
+            indico_location = json_data.get("indico_information", {}).get("location", "")
+            if indico_location:
+                return indico_location
+            lecture_infos = json_data.get("lecture_infos", [])
+            locations =  {item["location"] for item in lecture_infos if "location" in item}
+            if len(locations) == 1:
+                return next(iter(locations))
+            elif len(locations) > 1:
+                raise UnexpectedValue(
+                    f"More than one location found in record: {json_data.get('recid')} values: {locations}.",
+                    stage="transform",
+                )
+
         record_date = reformat_date(entry)
         metadata = {
             "title": entry["title"],
@@ -288,6 +304,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "keywords": entry.get("keywords"),
             "accelerator_experiment": accelerator_experiment(entry),
             "note": notes(entry),
+            "location": location(entry),
         }
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
