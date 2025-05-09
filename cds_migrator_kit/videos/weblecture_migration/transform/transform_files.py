@@ -255,24 +255,30 @@ class TransformFiles:
             raise UnexpectedValue(
                 "Missing presenter/presentation files for composite record!"
             )
-
-        for stream in streams:
-            subformats = stream.get("sources", {}).get("mp4", [])
-            if not subformats:
-                raise UnexpectedValue("Missing MP4 formats in one of the streams")
-            sorted_subformats = sorted(
-                subformats,
-                key=lambda x: int(x.get("res", {}).get("h", 0)),
-                reverse=True,
-            )
-            # Add highest quality video path
-            highest_quality_videos.append(sorted_subformats[0]["src"].strip("/"))
-            # Add all as subformats
-            for file in sorted_subformats:
-                res = file.get("res", {})
-                all_subformats.append(
-                    {"path": file["src"].strip("/"), "quality": f"{res['h']}p"}
+        try:
+            for stream in streams:
+                subformats = stream.get("sources", {}).get("mp4", [])
+                if not subformats:
+                    raise UnexpectedValue("Missing MP4 formats in one of the streams")
+                sorted_subformats = sorted(
+                    subformats,
+                    key=lambda x: int(x.get("res", {}).get("h", 0)),
+                    reverse=True,
                 )
+                # Add highest quality video path
+                highest_quality_videos.append(sorted_subformats[0]["src"].strip("/"))
+                # Add all as subformats
+                for file in sorted_subformats:
+                    res = file.get("res", {})
+                    all_subformats.append(
+                        {"path": file["src"].strip("/"), "quality": f"{res['h']}p"}
+                    )
+        except Exception as e:
+            raise ManualImportRequired(
+                message=f"Subformat transform failed! Check data.v2.json: {self.record_media_data_folder}. Error: {e}",
+                stage="transform",
+                priority="critical",
+            )
 
         return highest_quality_videos, all_subformats
 
