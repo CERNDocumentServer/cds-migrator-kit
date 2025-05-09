@@ -456,22 +456,28 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         stage="vocabulary match",
                     )
 
-        def field_programmes(record_json, custom_fields_dict):
-            programmes = record_json.get("custom_fields", {}).get("cern:programmes", [])
-            for prog in programmes:
-                result = search_vocabulary(prog, "programmes")
+        def field_programmes(record_json):
+            programme = record_json.get("custom_fields", {}).get("cern:programmes")
+            if programme:
+                result = search_vocabulary(programme, "programmes")
 
                 if result["hits"]["total"]:
-                    custom_fields_dict["cern:programmes"].append(
-                        {"id": result["hits"]["hits"][0]["id"]}
-                    )
+                    return {
+                        "id": result["hits"]["hits"][0]["id"]
+                    }
                 else:
                     raise UnexpectedValue(
-                        value=prog,
+                        value=programme,
                         field="programme",
-                        message=f"programme {prog} not found",
+                        message=f"programme {programme} not found",
                         stage="vocabulary match",
                     )
+            else:
+                if record_json["resource_type"] == "publication-thesis":
+
+                    return {"id": "None"}
+                else:
+                    return
 
         def field_departments(record_json, custom_fields_dict):
             departments = record_json.get("custom_fields", {}).get(
@@ -550,7 +556,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             ),
             "cern:studies": json_entry.get("custom_fields", {}).get("cern:studies", []),
             "cern:beams": [],
-            "cern:programmes": [],
+            "cern:programmes": field_programmes(json_entry),
             "thesis:thesis": json_entry.get("custom_fields", {}).get(
                 "thesis:thesis", {}
             ),
@@ -564,7 +570,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         try:
             field_experiments(json_entry, custom_fields)
             field_departments(json_entry, custom_fields)
-            field_programmes(json_entry, custom_fields)
+
         except RecordFlaggedCuration as exc:
             RDMJsonLogger().add_success_state(
                 json_entry["recid"],
@@ -572,6 +578,10 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             )
         field_accelerators(json_entry, custom_fields)
         field_beams(json_entry, custom_fields)
+
+        if custom_fields["cern:programmes"] is None:
+            del custom_fields["cern:programmes"]
+
         forgotten_keys = [
             key
             for key in json_entry["custom_fields"].keys()

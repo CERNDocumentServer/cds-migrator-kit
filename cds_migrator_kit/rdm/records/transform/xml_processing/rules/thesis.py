@@ -193,9 +193,7 @@ def funding(self, key, value):
 
     if programme and not is_fp7_programme:
         # if not fp7, then it is cern programme
-        programmes = _custom_fields.get("cern:programmes", [])
-        programmes.append(programme)
-        _custom_fields["cern:programmes"] = programmes
+        _custom_fields["cern:programmes"] = programme
         return _custom_fields
     elif "f" in value or "c" in value:
         awards = self.get("funding", [])

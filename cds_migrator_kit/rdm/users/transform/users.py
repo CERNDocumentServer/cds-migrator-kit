@@ -52,11 +52,9 @@ class CDSUserEntry(Entry):
             "login_count": None,
         }
 
-    def transform(self, entry):
+    def transform(self, entry, dojson_model):
         """Transform a user single entry."""
-        record_dump = CDSRecordDump(
-            entry,
-        )
+        record_dump = CDSRecordDump(entry, dojson_model=dojson_model)
 
         record_dump.prepare_revisions()
         timestamp, json_data = record_dump.latest_revision
@@ -66,10 +64,14 @@ class CDSUserEntry(Entry):
 class CDSRDMUserTransform(Transform):
     """CDSUserTransform."""
 
+    def __init__(self, workers=None, throw=False, dojson_model=None):
+        self.dojson_model = dojson_model
+        super().__init__(workers, throw)
+
     def _transform(self, entry):
         """Transform the user."""
         user = {}
-        json_data = CDSUserEntry().transform(entry)
+        json_data = CDSUserEntry().transform(entry, dojson_model=self.dojson_model)
         return json_data
 
 

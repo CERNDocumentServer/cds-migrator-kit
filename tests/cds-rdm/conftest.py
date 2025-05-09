@@ -198,6 +198,7 @@ RunningApp = namedtuple(
         "experiments_v",
         "departments_v",
         "accelerators_v",
+        "programmes_v",
         "funders_v",
         "awards_v",
         "licenses_v",
@@ -221,6 +222,7 @@ def running_app(
     experiments_v,
     departments_v,
     accelerators_v,
+    programmes_v,
     funders_v,
     awards_v,
     licenses_v,
@@ -245,6 +247,7 @@ def running_app(
         experiments_v,
         departments_v,
         accelerators_v,
+        programmes_v,
         funders_v,
         awards_v,
         licenses_v,
@@ -798,6 +801,63 @@ def accelerators_v(app, acc_type):
             "type": "accelerators",
         },
     )
+
+    return vocab
+
+
+@pytest.fixture(scope="module")
+def prog_type(app):
+    """Programmes vocabulary type."""
+    return vocabulary_service.create_type(system_identity, "programmes", "pro")
+
+
+@pytest.fixture(scope="module")
+def programmes_v(app, prog_type):
+    """Language vocabulary record."""
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "CERN Administrative Student Program",
+            "title": {
+                "en": "CERN Administrative Student Program",
+            },
+            "type": "programmes",
+        },
+    )
+
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "CERN Doctoral Student Program",
+            "title": {
+                "en": "CERN Doctoral Student Program",
+            },
+            "type": "programmes",
+        },
+    )
+
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "CERN Short Term Internship Program",
+            "title": {
+                "en": "CERN Short Term Internship Program",
+            },
+            "type": "programmes",
+        },
+    )
+
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "None",
+            "title": {
+                "en": "No programme participation",
+            },
+            "type": "programmes",
+        },
+    )
+    Vocabulary.index.refresh()
 
     return vocab
 

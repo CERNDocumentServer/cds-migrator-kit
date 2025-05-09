@@ -404,7 +404,7 @@ def transcode_task(payload, subformats):
             continue
 
         _copy_subformat(payload, preset_quality, path)
-    
+
     # Copy the file from master object
     master_quality = f'{original_file["tags"]["height"]}p'
     quality_config = current_app.config["CDS_OPENCAST_QUALITIES"].get(

@@ -256,7 +256,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             dates = get_values_in_json(json_data, "publication_date")
             if len(dates) == 1:
                 return next(iter(dates))
-            
+
         def notes(json_data):
             """Get the notes."""
             notes = entry.get("notes")
@@ -264,7 +264,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 note_strings = [note.get("note") for note in notes]
                 return "\n".join(note_strings)
             return None
-        
+
         def accelerator_experiment(json_data):
             """Get the accelerator_experiment."""
             entries = json_data.get("accelerator_experiment", [])

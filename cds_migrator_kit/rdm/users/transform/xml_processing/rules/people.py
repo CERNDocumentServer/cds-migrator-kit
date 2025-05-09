@@ -22,7 +22,7 @@ from cds_dojson.marc21.fields.utils import clean_val, out_strip
 from dojson.utils import force_list
 
 # ATTENTION when COPYING! important which model you use as decorator
-from ..models.people import model
+from ..models.people import people_model as model
 
 
 @model.over("email", "^371__")

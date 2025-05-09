@@ -15,13 +15,13 @@ from invenio_rdm_migrator.streams import Stream
 from cds_migrator_kit.rdm.affiliations.log import AffiliationsLogger
 from cds_migrator_kit.rdm.users.api import CDSMigrationUserAPI
 
-from .transform import users_migrator_marc21
+from .transform import users_migrator_marc21, people_marc21
 
 
 class PeopleAuthorityRunner:
     """ETL streams runner."""
 
-    def __init__(self, stream_definition, filepath, log_dir, dry_run):
+    def __init__(self, stream_definition, filepath, log_dir, dry_run, dirpath):
         """Constructor."""
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
@@ -30,9 +30,9 @@ class PeopleAuthorityRunner:
 
         self.stream = Stream(
             stream_definition.name,
-            extract=stream_definition.extract_cls(filepath),
-            transform=stream_definition.transform_cls(),
-            load=stream_definition.load_cls(dry_run=dry_run),
+            extract=stream_definition.extract_cls(dirpath),
+            transform=stream_definition.transform_cls(dojson_model=people_marc21),
+            load=stream_definition.load_cls(dry_run=dry_run, filepath=filepath),
         )
 
     def run(self):
