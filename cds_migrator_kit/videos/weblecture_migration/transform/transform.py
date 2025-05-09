@@ -144,14 +144,14 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             return file_info_json
         elif len(master_paths) > 1:
             # TODO group them to have different file transform to create multiple records
-            return UnexpectedValue(
+            raise UnexpectedValue(
                 message="Multiple master folders! Multiple records should be created.",
                 stage="transform",
                 value="master_path",
                 priority="critical",
             )
         else:
-            return UnexpectedValue(
+            raise UnexpectedValue(
                 message="Master folder does not exists!",
                 stage="transform",
                 value="master_path",
