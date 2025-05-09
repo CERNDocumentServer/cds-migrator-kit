@@ -55,7 +55,7 @@ def move_file_to_bucket(bucket_id, file_path, is_master=False):
             file_storage.delete()
         except Exception as cleanup_error:
             logger_files.error(
-                f"[ERROR] Cleanup failed after copy file fail: {cleanup_error}"
+                f"[ERROR] Cleanup failed after copy file fail!"
             )
         if is_master:  # Fail if file is master
             raise ManualImportRequired(error_msg, stage="load")
@@ -118,12 +118,13 @@ def move_file_to_bucket(bucket_id, file_path, is_master=False):
         )
         return object_version
 
+    # TODO catch specific XRootDPyFS errors
     except FileNotFoundError:
         error_msg = f"File '{file_path}' not found."
         logger_files.warning(f"[WARNING]" + error_msg)
         _cleanup_on_failure(error_msg)
     except Exception as e:
-        error_msg = f"Error uploading file '{file_path}' to bucket: {e}"
+        error_msg = f"Error uploading file '{file_path}' to bucket"
         logger_files.warning(f"[WARNING]" + error_msg)
         _cleanup_on_failure(error_msg)
 
@@ -401,18 +402,23 @@ def transcode_task(payload, subformats):
                 f"[WARNING] Deposit: {payload['deposit_id']} Subformat quality:{preset_quality} not found in config, skipping {path}"
             )
             continue
-        # Copy the file from master object
-        if preset_quality == f'{original_file["tags"]["height"]}p':
-            obj = ObjectVersion.create(
-                                bucket=payload["bucket_id"],
-                                key=os.path.basename(path),
-                                _file_id=original_file["file_id"],
-            )
-            _copy_subformat(payload, preset_quality, path, created_obj=obj)
-        else:
-            _copy_subformat(payload, preset_quality, path)
 
-        db.session.commit()
+        _copy_subformat(payload, preset_quality, path)
+    
+    # Copy the file from master object
+    master_quality = f'{original_file["tags"]["height"]}p'
+    quality_config = current_app.config["CDS_OPENCAST_QUALITIES"].get(
+        master_quality
+    )
+    # Master file quality is a valid subformat quality
+    if quality_config:
+        obj = ObjectVersion.create(
+            bucket=payload["bucket_id"],
+            key=f"{master_quality}.mp4",
+            _file_id=original_file["file_id"],
+        )
+        _copy_subformat(payload, master_quality, None, created_obj=obj)
+    db.session.commit()
 
     # Create TranscodeVideoTask
     subformat_payload = payload.copy()
