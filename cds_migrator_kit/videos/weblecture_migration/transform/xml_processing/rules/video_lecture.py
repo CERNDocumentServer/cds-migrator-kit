@@ -37,7 +37,20 @@ from ..quality.dates import parse_date
 @for_each_value
 def date(self, key, value):
     """Translates date from tag 518."""
-    # 518 'd' subfield
+    # Lecture informations
+    event_id = value.get("g", "").strip()
+    location = value.get("r", "").strip()
+
+    lecture_info = {
+        k: v for k, v in {
+            "event_id": event_id,
+            "location": location
+        }.items() if v
+    }
+    if lecture_info:
+        self["lecture_infos"].append(lecture_info)
+    
+    # Date: 518 'd' subfield
     parsed_date = parse_date(value.get("d", "").strip())
     if parsed_date:
         return parsed_date
@@ -121,7 +134,7 @@ def url_files(self, key, value):
                 indico_link["event_id"] = event_id
 
         # Try to get the date from text
-        text = value.get("y")
+        text = value.get("y", "")
         if text:
             indico_link["text"] = text
         match_date = re.sub(r"^Talk\s*", "", text)
@@ -235,3 +248,25 @@ def creation_date(self, key, value):
         # Check if anything else stored
         raise UnexpectedValue(field=key, subfield="c", value=modification_date)
     return parsed_creation_date
+
+
+@model.over("indico_information", "^111__")
+def indico_information(self, key, value):
+    """Translates indico_informations.
+    
+    111__z: End date, ignored.
+    """
+    title = value.get("a", "").strip()
+    event_id = value.get("g", "").strip()
+    location = value.get("c", "").strip()
+    start_date = value.get("9", "").strip()
+    parsed_date = parse_date(start_date)
+        
+    return {
+        k: v for k, v in {
+            "title": title,
+            "start_date": parsed_date,
+            "event_id": event_id,
+            "location": location,
+        }.items() if v
+    }

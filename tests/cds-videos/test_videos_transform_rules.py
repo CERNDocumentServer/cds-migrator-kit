@@ -413,3 +413,63 @@ def test_transform_accelerator_experiment(dumpdir, base_app):
         assert "facility" not in accelerator_experiment
         assert accelerator_experiment["project"] == "project_test"
         assert accelerator_experiment["experiment"] == "experiment_test"
+
+
+def test_transform_location(dumpdir, base_app):
+    """Test location are correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+
+        # Get record and apply rules
+        entry_data = data[0]
+        res = load_and_dump_revision(entry_data)
+
+        # Record has indico_information
+        assert "indico_information" in res
+        indico_information = res["indico_information"]
+        assert indico_information["title"]
+        assert indico_information["event_id"]
+        assert indico_information["location"]
+        assert indico_information["start_date"]
+
+        # Transform record
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "location" in metadata
+        assert metadata["location"] == "CERN - 513-R-068"
+
+        # Test case: Add location to tag 518
+        modified_data = data[0]
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        # Add new location
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "518", {"r": "New location"}
+        )
+        res = load_and_dump_revision(modified_data)
+
+        # Check 518 location is there as lecture_infos
+        assert "lecture_infos" in res
+        assert "location" in res["lecture_infos"][0]
+
+        # Transform record
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "location" in metadata
+        # Check the location comes from indico_information
+        assert metadata["location"] == "CERN - 513-R-068"
+
+        # Test case: remove 111 tag (indico_information)
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
+            record_marcxml, "111"
+        )
+        res = load_and_dump_revision(modified_data)
+        assert "indico_information" not in res
+
+        # Transform record
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "location" in metadata
+        # Check location is comes from lecture_infos
+        assert metadata["location"] == "New location"

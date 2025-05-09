@@ -49,6 +49,7 @@ class VideoLecture(CdsOverdo):
         "583__a",  # Action note / curation TODO? check with JY
         "583__c",  # Action note / curation TODO? check with JY
         "583__z",  # Action note / curation TODO? check with JY
+        "583__8",  # Action note / curation TODO? check with JY
         "916__n",  # Status week TODO? check with JY
         "916__s",  # Status week TODO? check with JY
         "916__w",  # Status week TODO? check with JY
@@ -74,19 +75,13 @@ class VideoLecture(CdsOverdo):
         "65017a",  # subject value
         "690C_a",  # collection name
         # Conference Information/Indico
-        "111__a",  # Title (indico)
-        "111__9",  # Start date (indico)
-        "111__g",  # Event id (indico)
-        "111__z",  # End date (indico)
-        "111__c",  # Video location (indico location)
         "084__a",  # Indico?
         "084__2",  # Indico?
-        "518__r",  # Video/meeting location
-        "518__g",  # Lectures: conference identification
         "970__a",  # alternative identifier, indico id?
         # Copyright/License
         "542__d",  # Copyright holder
         "542__g",  # Copyright date
+        "542__f",  # Copyright statement
         "542__3",  # Copyright materials
         "540__a",  # License
         "540__b",  # License person/organization
@@ -139,8 +134,18 @@ class VideoLecture(CdsOverdo):
         "0248_a",  # oai identifier
         "0248_p",  # oai identifier
         "0248_q",
+        # Published in - Host item entry
+        "773__a",  # DOI
+        "773__p",  # Title
+        "773__r",  # Record id TODO check
+        # Related document - Other relationship entry
+        "7870_i",  # Relationship information 
+        "7870_r",  # Report number
+        "7870_w",  # Record control number
         # IGNORE
+        "111__z",  # End date (indico)
         "518__h",  # Lectures: Starting time
+        "518__e",  # Speaker (2 record has contributor in 518, they're also added in 511)
         "300__2",  # Imprint
         "300__b",  # Imprint
         "300__8",  # Imprint
@@ -201,8 +206,17 @@ class VideoLecture(CdsOverdo):
         # "693__f",  # facility
         # "500__a",  # Note (-> internal note)
         # "500__9",  # Note/type (-> internal note) https://cds.cern.ch/record/1561636
+        # "111__a",  # Title (indico)
+        # "111__9",  # Start date (indico)
+        # "111__g",  # Event id (indico)
+        # "111__c",  # Video location (indico location)
+        # "518__r",  # Video/meeting location
+        # "518__g",  # Lectures: conference identification
     }
 
+    _default_fields = {
+        "lecture_infos": [],
+    }
 
 model = VideoLecture(
     bases=(base_model,), entry_point_group="cds_migrator_kit.videos.rules.video_lecture"
