@@ -18,6 +18,7 @@ from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
 )
+from invenio_pidstore.models import PersistentIdentifier
 from sqlalchemy.exc import NoResultFound
 
 from cds_migrator_kit.errors import (
@@ -117,8 +118,20 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 priority="critical",
             )
 
+    def _have_migrated_recid(self, recid):
+        """Check if we have minted `lrecid` pid."""
+        pid = PersistentIdentifier.query.filter_by(
+            pid_type="lrecid",
+            pid_value=recid,
+        ).one_or_none()
+        return pid is not None
+
     def _media_files(self, entry):
         """Transform the media files (lecturemedia files) of a record."""
+        # No need to check files if record is migrated (they'll be moved)
+        if self._have_migrated_recid(str(entry["legacy_recid"])):
+            return {}
+        
         # Check if record has one master folder, or more
         master_paths = [
             item["master_path"] for item in entry.get("files") if "master_path" in item

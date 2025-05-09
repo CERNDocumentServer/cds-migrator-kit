@@ -155,7 +155,7 @@ class TransformFiles:
         # Get the required subformats if they exist
         other_composites = [
             {"path": composite_videos[res], "quality": f"{res}p"}
-            for res in [1080, 720, 480, 360]
+            for res in [720, 480, 360]
             if res in composite_videos
         ]
 
@@ -260,6 +260,13 @@ class TransformFiles:
                 subformats = stream.get("sources", {}).get("mp4", [])
                 if not subformats:
                     raise UnexpectedValue("Missing MP4 formats in one of the streams")
+                
+                if len(subformats) == 1:
+                    # TODO is there any better solution to migrate these records?
+                    # Only one video — no need to sort
+                    highest_quality_videos.append(subformats[0]["src"].strip("/"))
+                    continue
+                    
                 sorted_subformats = sorted(
                     subformats,
                     key=lambda x: int(x.get("res", {}).get("h", 0)),
@@ -267,15 +274,18 @@ class TransformFiles:
                 )
                 # Add highest quality video path
                 highest_quality_videos.append(sorted_subformats[0]["src"].strip("/"))
-                # Add all as subformats
-                for file in sorted_subformats:
+                # Add the subformats
+                for file in sorted_subformats[1:]:
                     res = file.get("res", {})
                     all_subformats.append(
                         {"path": file["src"].strip("/"), "quality": f"{res['h']}p"}
                     )
         except Exception as e:
             raise ManualImportRequired(
-                message=f"Subformat transform failed! Check data.v2.json: {self.record_media_data_folder}. Error: {e}",
+                message=(
+                    f"Subformat transform failed! Check data.v2.json: "
+                    f"{self.record_media_data_folder}. Error: {e}"
+                ),
                 stage="transform",
                 priority="critical",
             )
