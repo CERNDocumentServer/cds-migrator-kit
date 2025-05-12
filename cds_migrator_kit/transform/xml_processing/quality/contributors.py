@@ -160,10 +160,14 @@ def extract_json_contributor_ids(info):
     author_orcid = info.get("k")
     if author_orcid:
         author_orcid = author_orcid.replace("ORCID:", "")
-        ids.append({"identifier": author_orcid, "scheme": "orcid"})
+        new_id = {"identifier": author_orcid, "scheme": "orcid"}
+        if new_id not in ids:
+            ids.append(new_id)
 
     inspire = info.get("i", "")
     if inspire and inspire.startswith("INSPIRE-"):
-        ids.append({"identifier": inspire, "scheme": "inspire_author"})
+        new_id = {"identifier": inspire, "scheme": "inspire_author"}
+        if new_id not in ids:
+            ids.append(new_id)
 
     return ids

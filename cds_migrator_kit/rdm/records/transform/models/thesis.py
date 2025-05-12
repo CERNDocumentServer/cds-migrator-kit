@@ -123,7 +123,7 @@ class ThesisModel(CdsOverdo):
         # "701__v",  # raw affiliation string from INSPIRE
         "852__c",
         "852__h",
-        "599__a",
+        # "599__a", # clc sync
         # "595__z", # hidden rn
         # "595__b",
         # "595__c",
