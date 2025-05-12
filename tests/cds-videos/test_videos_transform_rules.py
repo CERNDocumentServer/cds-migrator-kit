@@ -473,3 +473,38 @@ def test_transform_location(dumpdir, base_app):
         assert "location" in metadata
         # Check location is comes from lecture_infos
         assert metadata["location"] == "New location"
+
+
+def test_transform_document_contact(dumpdir, base_app):
+    """Test document contact correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+
+        # Add keyword tag
+        modified_data = data[0]
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "270", {"p": "Contact name"}
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        assert res["contributors"][3]["name"] == "Contact name"
+        assert res["contributors"][3]["role"] == "Document Contact"
+
+        # Transform record
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert metadata["contributors"][3]["name"] == "Contact name"
+        assert metadata["contributors"][3]["role"] == "Document Contact"
+
+        # Test case: Add empty 270 tag
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "270", {"p": ""}
+        )
+        res = load_and_dump_revision(modified_data)
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        roles = [contributor["role"] for contributor in metadata["contributors"]]
+        assert "Document Contact" not in roles

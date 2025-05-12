@@ -237,7 +237,10 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             """
 
             contributors = (
-                json_data.get("contributors") or json_data.get("event_speakers") or None
+                [d for d in json_data.get("contributors", []) if d]
+                or [d for d in json_data.get("event_speakers", []) if d]
+                or None
+                
             )
 
             if not contributors:
