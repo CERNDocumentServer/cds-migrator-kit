@@ -228,7 +228,7 @@ def extract_metadata(payload):
     """Extract the metadata of the master video file."""
     try:
         celery_task, kwargs = AVCFlowCeleryTasks.create_task(
-            ExtractMetadataTask, payload, delete_copied=False
+            ExtractMetadataTask, payload, delete_copied=True
         )
         task_signature = AVCFlowCeleryTasks.create_task_signature(celery_task, **kwargs)
         celery_chain(task_signature).apply()
