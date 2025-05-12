@@ -17,6 +17,7 @@ from cds_rdm.permissions import (
     CDSRDMRecordPermissionPolicy,
 )
 from cds_rdm.schemes import is_aleph, is_inspire, is_inspire_author, is_legacy_cds
+from flask_security.utils import hash_password
 from flask_webpackext.manifest import (
     JinjaManifest,
     JinjaManifestEntry,
@@ -25,9 +26,10 @@ from flask_webpackext.manifest import (
 from invenio_access.models import ActionRoles
 from invenio_access.permissions import superuser_access, system_identity
 from invenio_accounts import testutils
-from invenio_accounts.models import Role
+from invenio_accounts.models import Role, UserIdentity
 from invenio_administration.permissions import administration_access_action
 from invenio_app import factory as app_factory
+from invenio_cern_sync.sso import cern_remote_app_name
 from invenio_cern_sync.users.profile import CERNUserProfileSchema
 from invenio_communities.communities.records.api import Community
 from invenio_i18n import lazy_gettext as _
@@ -590,6 +592,28 @@ def resource_type_v(app, resource_type_type):
         },
     )
 
+    vocabulary_service.create(
+        system_identity,
+        {
+            "id": "publication-thesis",
+            "icon": "table",
+            "props": {
+                "csl": "publication-thesis",
+                "datacite_general": "publication-thesis",
+                "datacite_type": "",
+                "openaire_resourceType": "21",
+                "openaire_type": "dataset",
+                "eurepo": "info:eu-repo/semantics/other",
+                "schema.org": "https://schema.org/Dataset",
+                "subtype": "",
+                "type": "dataset",
+            },
+            "title": {"en": "Publication Thesis"},
+            "tags": ["depositable", "linkable"],
+            "type": "resourcetypes",
+        },
+    )
+
     Vocabulary.index.refresh()
 
     return vocab
@@ -1097,6 +1121,16 @@ def relation_type_v(app, relation_type):
         },
     )
 
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "isversionof",
+            "props": {"datacite": "Is version of"},
+            "title": {"en": "Is version of"},
+            "type": "relationtypes",
+        },
+    )
+
     Vocabulary.index.refresh()
 
     return vocab
@@ -1227,12 +1261,36 @@ def community(running_app, db):
     return comm
 
 
+# @pytest.fixture()
+# def users(app, db):
+#     """Create example user."""
+#     with db.session.begin_nested():
+#         datastore = app.extensions["security"].datastore
+#         user1 = datastore.create_user(
+#             email="info@inveniosoftware.org",
+#             password=hash_password("password"),
+#             active=True,
+#         )
+#         user2 = datastore.create_user(
+#             email="ser-testalot@inveniosoftware.org",
+#             password=hash_password("beetlesmasher"),
+#             active=True,
+#         )
+#         UserIdentity(
+#             id="11115",
+#             method=cern_remote_app_name,
+#             id_user=user2.id,
+#         )
+#     db.session.commit()
+#     return [user1, user2]
+
+
 @pytest.fixture(scope="function")
 def orcid_name_data(app):
     """Name data for orcid user."""
     return {
         "id": "0009-0007-7638-4652",
-        "internal_id": "11115",
+        "internal_id": "3",  # corresponding user id
         "name": "Mendoza, Diego",
         "given_name": "Diego",
         "family_name": "Mendoza",

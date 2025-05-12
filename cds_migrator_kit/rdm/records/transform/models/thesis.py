@@ -206,3 +206,6 @@ class ThesisModel(CdsOverdo):
 thesis_model = ThesisModel(
     bases=(base_model,), entry_point_group="cds_migrator_kit.migrator.rules.thesis"
 )
+
+# https://cds.cern.ch/record/2924799/export/hm?no_redirect_migrated
+# https://cds.cern.ch/record/2891919/export/hm?no_redirect_migrated

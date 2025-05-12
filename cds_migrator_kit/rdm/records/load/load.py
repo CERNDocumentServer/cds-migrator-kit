@@ -11,10 +11,10 @@ import json
 from copy import deepcopy
 
 import arrow
+from cds_rdm.clc_sync.models import CDSToCLCSyncModel
 from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from cds_rdm.minters import legacy_recid_minter
-from cds_rdm.clc_sync.models import CDSToCLCSyncModel
 from invenio_access.permissions import system_identity
 from invenio_db import db
 from invenio_pidstore.errors import PIDAlreadyExists
@@ -426,7 +426,8 @@ class CDSRecordServiceLoad(Load):
             sync = CDSToCLCSyncModel(
                 parent_record_pid=record_state["parent_recid"],
                 status="P",
-                auto_sync=False)
+                auto_sync=False,
+            )
             db.session.add(sync)
 
     def _load(self, entry):

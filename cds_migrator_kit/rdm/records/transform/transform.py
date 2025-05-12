@@ -17,7 +17,7 @@ from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
 from idutils import normalize_ror
 from idutils.validators import is_doi, is_ror
 from invenio_access.permissions import system_identity
-from invenio_accounts.models import User
+from invenio_accounts.models import User, UserIdentity
 from invenio_db import db
 from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
@@ -291,16 +291,20 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 {},
             ).get("identifier")
             if person_id:
-                # due to possible
-                names = NamesMetadata.query.filter_by(internal_id=person_id).all()
-                name = next(
-                    (
-                        name
-                        for name in names
-                        if "unlisted" not in name.json.get("tags", [])
-                    ),
-                    None,
-                )
+                ui = UserIdentity.query.filter_by(id=person_id).one_or_none()
+                if ui:
+                    user_id = ui.user.id
+                    names = NamesMetadata.query.filter_by(
+                        internal_id=str(user_id)
+                    ).all()
+                    name = next(
+                        (
+                            name
+                            for name in names
+                            if "unlisted" not in name.json.get("tags", [])
+                        ),
+                        None,
+                    )
             # filter out cern person_id
             creator["person_or_org"]["identifiers"] = [
                 identifier
@@ -323,9 +327,11 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 for identifier in ids:
                     if identifier not in existing_ids:
                         existing_ids.append(identifier)
-                # assign json explicitly
+
+                # assign json explicitly to names entry
                 json_copy["identifiers"] = existing_ids
                 name.json = json_copy
+
                 db.session.add(name)
                 db.session.commit()
 
@@ -462,9 +468,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 result = search_vocabulary(programme, "programmes")
 
                 if result["hits"]["total"]:
-                    return {
-                        "id": result["hits"]["hits"][0]["id"]
-                    }
+                    return {"id": result["hits"]["hits"][0]["id"]}
                 else:
                     raise UnexpectedValue(
                         value=programme,
@@ -625,7 +629,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         self._verify_creation_date(entry, json_data)
         migration_logger.add_record(json_data)
 
-
         clc_sync = deepcopy(json_data.get("_clc_sync", False))
         if "_clc_sync" in json_data:
             del json_data["_clc_sync"]
@@ -636,7 +639,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "files": self._files(record_dump),
             "pids": self._pids(json_data),
             "metadata": self._metadata(json_data, entry),
-
         }
         custom_fields = self._custom_fields(json_data, record_json_output)
         internal_notes = json_data.get("internal_notes")
