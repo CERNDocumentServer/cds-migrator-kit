@@ -82,14 +82,14 @@ class CDSVideosLoad(Load):
         self._save_original_dumped_record(record_uuid, entry)
 
     def _get_submitter(self, entry):
-        """Get the user id of the submitter"""
+        """Get the user id of the submitter."""
         submitter = entry.get("record", {}).get("owned_by", "")
         if not submitter:
             raise ManualImportRequired(f"No submitter found", stage="load")
         return submitter
 
     def _get_files(self, entry):
-        """Get lecturemedia files"""
+        """Get lecturemedia files."""
         if self.dry_run:
             # Use dummy files for loading; existence is already checked in the transform stage.
             return {

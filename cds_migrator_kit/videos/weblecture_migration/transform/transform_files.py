@@ -27,7 +27,7 @@ class TransformFiles:
     """
     Transform lecturemedia links to file paths for video record.
 
-    Initialize the class and call the `transform` method
+    Initialize the class and call the `transform` method.
     """
 
     def __init__(
@@ -107,17 +107,18 @@ class TransformFiles:
         return False
 
     def _frames_exists(self, frames_list):
-        """Check if there's exactly 10 frames"""
+        """Check if there's exactly 10 frames."""
         if len(frames_list) == 10:
             return True
         # Frames will be generated
         return False
 
     def _get_highest_and_other_composites(self):
-        """Find and return the highest quality composite video (1080p) and subformats (720p, 480p, 360p).
+        """
+        Find and return the highest quality composite video (1080p) and subformats (720p, 480p, 360p).
 
-        Composite videos will always be inside the media_data folder."""
-
+        Composite videos will always be inside the media_data folder.
+        """
         # Get all the files in the folder
         file_list = self._get_all_files_in_folder(self.record_media_data_folder)
 
@@ -201,8 +202,11 @@ class TransformFiles:
             )
 
     def _check_files_in_media_data_folder(self, files_paths):
-        """Check and return all the files in media_data_folder.
-        files_paths: Founded paths from the record marcxml"""
+        """
+        Check and return all the files in media_data_folder.
+
+        files_paths: Founded paths from the record marcxml.
+        """
         # No path found in the record
         if not files_paths:
             raise UnexpectedValue(
@@ -241,7 +245,7 @@ class TransformFiles:
         return all_files
 
     def _get_highest_and_subformats_from_datajson(self, datajson):
-        """Get the highest quality presenter/presentation file, and subformats"""
+        """Get the highest quality presenter/presentation file, and subformats."""
         highest_quality_videos = []
         all_subformats = []
         streams = datajson.get("streams", [])
@@ -260,13 +264,13 @@ class TransformFiles:
                 subformats = stream.get("sources", {}).get("mp4", [])
                 if not subformats:
                     raise UnexpectedValue("Missing MP4 formats in one of the streams")
-                
+
                 if len(subformats) == 1:
                     # TODO is there any better solution to migrate these records?
                     # Only one video — no need to sort
                     highest_quality_videos.append(subformats[0]["src"].strip("/"))
                     continue
-                    
+
                 sorted_subformats = sorted(
                     subformats,
                     key=lambda x: int(x.get("res", {}).get("h", 0)),
@@ -293,11 +297,12 @@ class TransformFiles:
         return highest_quality_videos, all_subformats
 
     def _set_media_files(self, files_paths):
-        """Check the media_data folder with the file paths found in recod marcxml, and set the paths to file_info_json.
+        """
+        Check the media_data folder with the file paths found in recod marcxml and set the paths to file_info_json.
 
         files_paths: file paths comes from the record.
-        media_data_folder includes composite file, vtt files, subformats, frames."""
-
+        media_data_folder includes composite file, vtt files, subformats, frames.
+        """
         # Check the folder and all files exists in the folder
         all_files = self._check_files_in_media_data_folder(files_paths)
 
@@ -386,7 +391,7 @@ class TransformFiles:
         )
 
     def transform(self):
-        """Transform the files for the record"""
+        """Transform the files for the record."""
         # Initialize the output json
         self.transformed_files_json = {
             "master_video": "",  # Full path of the master video file

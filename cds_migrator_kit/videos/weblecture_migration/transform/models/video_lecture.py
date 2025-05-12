@@ -138,7 +138,7 @@ class VideoLecture(CdsOverdo):
         "773__p",  # Title
         "773__r",  # Record id TODO check
         # Related document - Other relationship entry
-        "7870_i",  # Relationship information 
+        "7870_i",  # Relationship information
         "7870_r",  # Report number
         "7870_w",  # Record control number
         # IGNORE
@@ -217,6 +217,7 @@ class VideoLecture(CdsOverdo):
     _default_fields = {
         "lecture_infos": [],
     }
+
 
 model = VideoLecture(
     bases=(base_model,), entry_point_group="cds_migrator_kit.videos.rules.video_lecture"

@@ -75,6 +75,7 @@ class VideosSubmitterModel(CdsOverdo):
         # Copyright/License
         "542__d",  # Copyright holder
         "542__g",  # Copyright date
+        "542__f",  # Copyright statement
         "542__3",  # Copyright materials
         "540__a",  # License
         "540__b",  # License person/organization

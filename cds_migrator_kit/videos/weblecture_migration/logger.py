@@ -23,7 +23,7 @@ class VideosJsonLogger:
 
     @classmethod
     def initialize(cls, log_dir):
-        """Initialize the videos logger"""
+        """Initialize the videos logger."""
         logger_files = logging.getLogger("files")
         fh = logging.FileHandler(log_dir / "files.log")
         fh.setFormatter(formatter)
@@ -40,7 +40,7 @@ class SubmitterLogger:
 
     @classmethod
     def initialize(cls, log_dir):
-        """Initialize the submitter logger"""
+        """Initialize the submitter logger."""
         logger_submitters = logging.getLogger("submitters")
         logger_submitters.setLevel(logging.DEBUG)
         fh = logging.FileHandler(log_dir / "submitters.log")

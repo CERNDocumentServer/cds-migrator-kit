@@ -14,11 +14,11 @@ from pathlib import Path
 import arrow
 from flask import current_app
 from invenio_accounts.models import User
+from invenio_pidstore.models import PersistentIdentifier
 from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
 )
-from invenio_pidstore.models import PersistentIdentifier
 from sqlalchemy.exc import NoResultFound
 
 from cds_migrator_kit.errors import (
@@ -131,7 +131,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         # No need to check files if record is migrated (they'll be moved)
         if self._have_migrated_recid(str(entry["legacy_recid"])):
             return {}
-        
+
         # Check if record has one master folder, or more
         master_paths = [
             item["master_path"] for item in entry.get("files") if "master_path" in item
@@ -162,7 +162,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         """Transform the metadata of a record."""
 
         def get_values_in_json(json_data, field):
-            """Get the not none values in json as a set"""
+            """Get the not none values in json as a set."""
             return {d for d in json_data.get(field, []) if d}
 
         def guess_dates(json_data, key, subkey=None):
@@ -196,7 +196,6 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
         def reformat_date(json_data):
             """Reformat the date for the cds-videos data model."""
-
             # Priority: date > publication_date > guessed (indico, notes)
             dates_set = (
                 get_values_in_json(json_data, "date")
@@ -235,12 +234,10 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             - If there are no contributors, use 906 (event speakers).
             - If no valid contributors are found, use "Unknown, Unknown" and log it.
             """
-
             contributors = (
                 [d for d in json_data.get("contributors", []) if d]
                 or [d for d in json_data.get("event_speakers", []) if d]
                 or None
-                
             )
 
             if not contributors:
@@ -255,7 +252,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             return contributors
 
         def publication_date(json_data):
-            """Get the publication date"""
+            """Get the publication date."""
             dates = get_values_in_json(json_data, "publication_date")
             if len(dates) == 1:
                 return next(iter(dates))
@@ -283,11 +280,15 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         def location(json_data):
             """Get the location."""
             # Priority: indico_location (111) > lecture_location (518)
-            indico_location = json_data.get("indico_information", {}).get("location", "")
+            indico_location = json_data.get("indico_information", {}).get(
+                "location", ""
+            )
             if indico_location:
                 return indico_location
             lecture_infos = json_data.get("lecture_infos", [])
-            locations =  {item["location"] for item in lecture_infos if "location" in item}
+            locations = {
+                item["location"] for item in lecture_infos if "location" in item
+            }
             if len(locations) == 1:
                 return next(iter(locations))
             elif len(locations) > 1:

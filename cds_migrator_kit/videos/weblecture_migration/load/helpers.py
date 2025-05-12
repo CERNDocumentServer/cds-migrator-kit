@@ -54,9 +54,7 @@ def move_file_to_bucket(bucket_id, file_path, is_master=False):
             file.delete()
             file_storage.delete()
         except Exception as cleanup_error:
-            logger_files.error(
-                f"[ERROR] Cleanup failed after copy file fail!"
-            )
+            logger_files.error(f"[ERROR] Cleanup failed after copy file fail!")
         if is_master:  # Fail if file is master
             raise ManualImportRequired(error_msg, stage="load")
 
@@ -87,9 +85,11 @@ def move_file_to_bucket(bucket_id, file_path, is_master=False):
         else:
             eos_path = "root://eosmedia.cern.ch/"
             full_path = file_storage.fileurl.replace(eos_path, "")
-            common = os.path.commonpath([file_path, full_path]) # /eos/media/cds-videos/dev
+            common = os.path.commonpath(
+                [file_path, full_path]
+            )  # /eos/media/cds-videos/dev
             eos_fs = eos_path + common + "/"
-            common_fs=XRootDPyFS(eos_fs)
+            common_fs = XRootDPyFS(eos_fs)
             relative_src = os.path.relpath(file_path, common)
             relative_dst = os.path.relpath(full_path, common)
             common_fs.move(relative_src, relative_dst)
@@ -148,9 +148,11 @@ def create_project(project_metadata, submitter):
 
 
 def create_video(project_deposit, video_metadata, video_file_path, submitter):
-    """Create a video in project with metadata and master video file.
+    """
+    Create a video in project with metadata and master video file.
 
-    Returns video_deposit and master_object"""
+    Returns video_deposit and master_object.
+    """
     try:
         # Create video_deposit
         video_metadata["_project_id"] = project_deposit["_deposit"]["id"]
@@ -349,7 +351,7 @@ def copy_frames(payload, frame_paths):
 
 
 def _copy_subformat(payload, preset_quality, path, created_obj=None):
-    """Copy the subformat file to bucket and add subformat tags"""
+    """Copy the subformat file to bucket and add subformat tags."""
     if not created_obj:
         obj = move_file_to_bucket(payload["bucket_id"], path)
     else:
@@ -407,9 +409,7 @@ def transcode_task(payload, subformats):
 
     # Copy the file from master object
     master_quality = f'{original_file["tags"]["height"]}p'
-    quality_config = current_app.config["CDS_OPENCAST_QUALITIES"].get(
-        master_quality
-    )
+    quality_config = current_app.config["CDS_OPENCAST_QUALITIES"].get(master_quality)
     # Master file quality is a valid subformat quality
     if quality_config:
         obj = ObjectVersion.create(
