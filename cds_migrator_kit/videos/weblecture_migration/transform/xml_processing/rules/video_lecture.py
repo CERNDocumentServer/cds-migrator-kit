@@ -42,14 +42,11 @@ def date(self, key, value):
     location = value.get("r", "").strip()
 
     lecture_info = {
-        k: v for k, v in {
-            "event_id": event_id,
-            "location": location
-        }.items() if v
+        k: v for k, v in {"event_id": event_id, "location": location}.items() if v
     }
     if lecture_info:
         self["lecture_infos"].append(lecture_info)
-    
+
     # Date: 518 'd' subfield
     parsed_date = parse_date(value.get("d", "").strip())
     if parsed_date:
@@ -101,10 +98,8 @@ def performer(self, key, value):
 def event_speakers(self, key, value):
     """Translates event_speakers."""
     name = value.get("p").strip()
-    if name: # Drop empty values https://cds.cern.ch/record/1563786/
-        return get_contributor(
-            key, value, contributor_role="Speaker", name=name
-        )
+    if name:  # Drop empty values https://cds.cern.ch/record/1563786/
+        return get_contributor(key, value, contributor_role="Speaker", name=name)
     return None
 
 
@@ -117,13 +112,17 @@ def url_files(self, key, value):
     if "digital-memory" in url:
         return {
             "digitized": {
-                "url": url,
-                "format": value.get("q"),
-                "link_text": value.get("y"),
-                "public_note": value.get("z"),
-                "nonpublic_note": value.get("x"),
-                "md5_checksum": value.get("w"),
-                "source": value.get("2"),
+                k: v
+                for k, v in {
+                    "url": url,
+                    "format": value.get("q", "").strip(),
+                    "link_text": value.get("y", "").strip(),
+                    "public_note": value.get("z", "").strip(),
+                    "nonpublic_note": value.get("x", "").strip(),
+                    "md5_checksum": value.get("w", "").strip(),
+                    "source": value.get("2", "").strip(),
+                }.items()
+                if v
             }
         }
     elif "indico" in url or "agenda" in url:
@@ -256,7 +255,7 @@ def creation_date(self, key, value):
 @model.over("indico_information", "^111__")
 def indico_information(self, key, value):
     """Translates indico_informations.
-    
+
     111__z: End date, ignored.
     """
     title = value.get("a", "").strip()
@@ -264,14 +263,16 @@ def indico_information(self, key, value):
     location = value.get("c", "").strip()
     start_date = value.get("9", "").strip()
     parsed_date = parse_date(start_date)
-        
+
     return {
-        k: v for k, v in {
+        k: v
+        for k, v in {
             "title": title,
             "start_date": parsed_date,
             "event_id": event_id,
             "location": location,
-        }.items() if v
+        }.items()
+        if v
     }
 
 
@@ -283,5 +284,7 @@ def contributors(self, key, value):
     name = value.get("p", "").strip()
     # Drop empty 270 tag: https://cds.cern.ch/record/2897088
     if name:
-        return get_contributor(key, value, name=name, contributor_role="Document Contact")
+        return get_contributor(
+            key, value, name=name, contributor_role="Document Contact"
+        )
     return None
