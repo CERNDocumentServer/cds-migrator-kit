@@ -8,13 +8,13 @@
 """CDS-RDM migration load module."""
 import datetime
 import json
-import logging
-import os
+from copy import deepcopy
 
 import arrow
 from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from cds_rdm.minters import legacy_recid_minter
+from cds_rdm.clc_sync.models import CDSToCLCSyncModel
 from invenio_access.permissions import system_identity
 from invenio_db import db
 from invenio_pidstore.errors import PIDAlreadyExists
@@ -49,6 +49,7 @@ class CDSRecordServiceLoad(Load):
         """Constructor."""
         self.dry_run = dry_run
         self.legacy_pids_to_redirect = {}
+        self.clc_sync = False
 
         if legacy_pids_to_redirect is not None:
             with open(legacy_pids_to_redirect, "r") as fp:
@@ -420,9 +421,22 @@ class CDSRecordServiceLoad(Load):
             return True
         return False
 
+    def _after_load_clc_sync(self, record_state):
+        if self.clc_sync:
+            sync = CDSToCLCSyncModel(
+                parent_record_pid=record_state["parent_recid"],
+                status="P",
+                auto_sync=False)
+            db.session.add(sync)
+
     def _load(self, entry):
         """Use the services to load the entries."""
         if entry:
+
+            self.clc_sync = deepcopy(entry.get("_clc_sync", False))
+            if "_clc_sync" in entry:
+                del entry["_clc_sync"]
+
             recid = entry.get("record", {}).get("recid", {})
 
             if self._should_skip_recid(recid):
@@ -440,6 +454,7 @@ class CDSRecordServiceLoad(Load):
                         self._save_original_dumped_record(
                             entry, recid_state_after_load, migration_logger
                         )
+                        self._after_load_clc_sync(recid_state_after_load)
                 migration_logger.add_success(recid)
             except ManualImportRequired as e:
                 migration_logger.add_log(e, record=entry)

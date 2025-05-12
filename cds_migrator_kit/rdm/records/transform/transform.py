@@ -624,12 +624,19 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         timestamp, json_data = record_dump.latest_revision
         self._verify_creation_date(entry, json_data)
         migration_logger.add_record(json_data)
+
+
+        clc_sync = deepcopy(json_data.get("_clc_sync", False))
+        if "_clc_sync" in json_data:
+            del json_data["_clc_sync"]
+
         record_json_output = {
             "created": self._created(json_data),
             "updated": self._updated(record_dump),
             "files": self._files(record_dump),
             "pids": self._pids(json_data),
             "metadata": self._metadata(json_data, entry),
+
         }
         custom_fields = self._custom_fields(json_data, record_json_output)
         internal_notes = json_data.get("internal_notes")
@@ -659,6 +666,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "owned_by": self._owner(json_data),
             # keep the original extracted entry for storing it
             "_original_dump": entry,
+            "_clc_sync": clc_sync,
         }
 
 
@@ -718,6 +726,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         try:
             record = self._record(entry)
             original_dump = record.pop("_original_dump", {})
+            clc_sync = record.pop("_clc_sync", {})
 
             if record:
                 return {
@@ -725,6 +734,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                     "versions": self._versions(entry, record),
                     "parent": self._parent(entry, record),
                     "_original_dump": original_dump,
+                    "_clc_sync": clc_sync,
                 }
         except (
             LossyConversion,

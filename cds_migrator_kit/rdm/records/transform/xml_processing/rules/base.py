@@ -712,3 +712,12 @@ def related_identifiers(self, key, value):
     if new_id not in rel_ids:
         return new_id
     raise IgnoreKey("related_identifiers")
+
+
+@model.over("_clc_sync", "^599__")
+def sync(self, key, value):
+    """Translates related identifiers."""
+    sync = value.get("a")
+    if sync in ["ILSSYNC", "ILSLINK"]:
+        return True
+    return False

@@ -374,7 +374,7 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {
 RDM_RECORDS_PERSONORG_SCHEMES = {
     **RDM_RECORDS_PERSONORG_SCHEMES,
     **{
-        "inspire": {
+        "inspire_author": {
             "label": _("Inspire"),
             "validator": schemes.is_inspire_author,
             "datacite": "INSPIRE",
