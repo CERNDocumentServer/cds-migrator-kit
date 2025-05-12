@@ -100,9 +100,12 @@ def performer(self, key, value):
 @require(["p"])
 def event_speakers(self, key, value):
     """Translates event_speakers."""
-    return get_contributor(
-        key, value, contributor_role="Speaker", name=value.get("p").strip()
-    )
+    name = value.get("p").strip()
+    if name: # Drop empty values https://cds.cern.ch/record/1563786/
+        return get_contributor(
+            key, value, contributor_role="Speaker", name=name
+        )
+    return None
 
 
 @model.over("url_files", "^8564_")
@@ -270,3 +273,15 @@ def indico_information(self, key, value):
             "location": location,
         }.items() if v
     }
+
+
+@model.over("contributors", "^270__")
+@for_each_value
+@require(["p"])
+def contributors(self, key, value):
+    """Translates contributors."""
+    name = value.get("p", "").strip()
+    # Drop empty 270 tag: https://cds.cern.ch/record/2897088
+    if name:
+        return get_contributor(key, value, name=name, contributor_role="Document Contact")
+    return None

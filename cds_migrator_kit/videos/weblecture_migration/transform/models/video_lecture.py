@@ -122,7 +122,6 @@ class VideoLecture(CdsOverdo):
         # Contributor?
         "110__a",  # corporate author
         "700__m",  # author's email
-        "270__p",  # document contact --> add as a contributor with a correct role
         # Internal Note
         "595__a",  # Internal Note --> curation field
         "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it? what does UNCL mean
@@ -212,6 +211,7 @@ class VideoLecture(CdsOverdo):
         # "111__c",  # Video location (indico location)
         # "518__r",  # Video/meeting location
         # "518__g",  # Lectures: conference identification
+        # "270__p",  # document contact --> add as a contributor with a correct role
     }
 
     _default_fields = {
