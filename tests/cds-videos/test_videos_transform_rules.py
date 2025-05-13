@@ -491,13 +491,13 @@ def test_transform_document_contact(dumpdir, base_app):
         # Extract record
         res = load_and_dump_revision(modified_data)
         assert res["contributors"][3]["name"] == "Contact name"
-        assert res["contributors"][3]["role"] == "Document Contact"
+        assert res["contributors"][3]["role"] == "ContactPerson"
 
         # Transform record
         record_entry = CDSToVideosRecordEntry()
         metadata = record_entry._metadata(res)
         assert metadata["contributors"][3]["name"] == "Contact name"
-        assert metadata["contributors"][3]["role"] == "Document Contact"
+        assert metadata["contributors"][3]["role"] == "ContactPerson"
 
         # Test case: Add empty 270 tag
         modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
@@ -507,4 +507,4 @@ def test_transform_document_contact(dumpdir, base_app):
         record_entry = CDSToVideosRecordEntry()
         metadata = record_entry._metadata(res)
         roles = [contributor["role"] for contributor in metadata["contributors"]]
-        assert "Document Contact" not in roles
+        assert "ContactPerson" not in roles

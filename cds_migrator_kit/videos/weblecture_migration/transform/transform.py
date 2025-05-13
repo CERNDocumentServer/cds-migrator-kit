@@ -309,6 +309,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "accelerator_experiment": accelerator_experiment(entry),
             "note": notes(entry),
             "location": location(entry),
+            "legacy_recid": entry.get("legacy_recid")
         }
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}

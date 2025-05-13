@@ -34,7 +34,7 @@ from ..quality.contributors import get_contributor
 @model.over("legacy_recid", "^001")
 def recid(self, key, value):
     """Record Identifier."""
-    self["recid"] = value  # TODO recid??
+    self["recid"] = value
     return int(value)
 
 

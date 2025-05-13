@@ -81,15 +81,11 @@ def imprint(self, key, value):
 @model.over("contributors", "^511__")
 @for_each_value
 @require(["a"])
-def performer(self, key, value):
-    """Translates performer/Participant."""
-    role = value.get("e")
-    if role and role.strip().lower() != "speaker":
-        # checking if anything else stored in this field
-        raise UnexpectedValue(
-            "Different role found", field=key, subfield="e", value=role
-        )
-    return get_contributor(key, value, contributor_role="Performer")
+def related_person(self, key, value):
+    """Translates related person."""
+    role = value.get("e", "").strip().lower()
+    contributor_role = "" if role else "RelatedPerson"
+    return get_contributor(key, value, contributor_role=contributor_role)
 
 
 @model.over("event_speakers", "^906__")
@@ -115,12 +111,12 @@ def url_files(self, key, value):
                 k: v
                 for k, v in {
                     "url": url,
-                    "format": value.get("q", "").strip(),
-                    "link_text": value.get("y", "").strip(),
-                    "public_note": value.get("z", "").strip(),
-                    "nonpublic_note": value.get("x", "").strip(),
-                    "md5_checksum": value.get("w", "").strip(),
-                    "source": value.get("2", "").strip(),
+                    "format": value.get("q", ""),
+                    "link_text": value.get("y", ""),
+                    "public_note": value.get("z", ""),
+                    "nonpublic_note": value.get("x", ""),
+                    "md5_checksum": value.get("w", ""),
+                    "source": value.get("2", ""),
                 }.items()
                 if v
             }
@@ -279,12 +275,12 @@ def indico_information(self, key, value):
 @model.over("contributors", "^270__")
 @for_each_value
 @require(["p"])
-def contributors(self, key, value):
-    """Translates contributors."""
+def contact_person(self, key, value):
+    """Translates contact person."""
     name = value.get("p", "").strip()
     # Drop empty 270 tag: https://cds.cern.ch/record/2897088
     if name:
         return get_contributor(
-            key, value, name=name, contributor_role="Document Contact"
+            key, value, name=name, contributor_role="ContactPerson"
         )
     return None
