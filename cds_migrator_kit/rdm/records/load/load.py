@@ -429,6 +429,7 @@ class CDSRecordServiceLoad(Load):
                 auto_sync=False,
             )
             db.session.add(sync)
+            db.session.commit()
 
     def _load(self, entry):
         """Use the services to load the entries."""

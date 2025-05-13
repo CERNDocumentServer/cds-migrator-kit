@@ -614,6 +614,28 @@ def resource_type_v(app, resource_type_type):
         },
     )
 
+    vocabulary_service.create(
+        system_identity,
+        {
+            "id": "dataset",
+            "icon": "table",
+            "props": {
+                "csl": "dataset",
+                "datacite_general": "dataset",
+                "datacite_type": "",
+                "openaire_resourceType": "21",
+                "openaire_type": "dataset",
+                "eurepo": "info:eu-repo/semantics/other",
+                "schema.org": "https://schema.org/Dataset",
+                "subtype": "",
+                "type": "dataset",
+            },
+            "title": {"en": "Dataset"},
+            "tags": ["depositable", "linkable"],
+            "type": "resourcetypes",
+        },
+    )
+
     Vocabulary.index.refresh()
 
     return vocab
@@ -890,14 +912,15 @@ def programmes_v(app, prog_type):
 def funders_v(app, funder_data):
     """Funder vocabulary record."""
     funders_service = current_service_registry.get("funders")
-    funder = funders_service.create(
-        system_identity,
-        funder_data,
-    )
+    for funder in funder_data:
+        new_funder = funders_service.create(
+            system_identity,
+            funder,
+        )
 
     Funder.index.refresh()
 
-    return funder
+    return new_funder
 
 
 @pytest.fixture(scope="module")
@@ -924,6 +947,27 @@ def awards_v(app, funders_v):
             "funder": {"id": "00rbzpz17"},
             "acronym": "HIT-CF",
             "program": "H2020",
+        },
+    )
+    award = awards_service.create(
+        system_identity,
+        {
+            "id": "00k4n6c32::654168",
+            "identifiers": [
+                {
+                    "identifier": "https://cordis.europa.eu/project/id/755021",
+                    "scheme": "url",
+                }
+            ],
+            "number": "654168",
+            "title": {
+                "en": (
+                    "Advanced European Infrastructures for Detectors at Accelerators (2020)"
+                ),
+            },
+            "funder": {"id": "00k4n6c32"},
+            "acronym": "AIDA-2020",
+            "program": "H2020-EU.1.4.",
         },
     )
 
@@ -1087,6 +1131,16 @@ def description_type_v(app, description_type):
         },
     )
 
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "technical-info",
+            "title": {"en": "Technical info"},
+            "props": {"datacite": "Technical info"},
+            "type": "descriptiontypes",
+        },
+    )
+
     Vocabulary.index.refresh()
 
     return vocab
@@ -1145,21 +1199,37 @@ def initialise_custom_fields(app, db, location, cli_runner):
 @pytest.fixture(scope="module")
 def funder_data():
     """Implements a funder's data."""
-    return {
-        "id": "00rbzpz17",
-        "identifiers": [
-            {
-                "identifier": "00rbzpz17",
-                "scheme": "ror",
+    return [
+        {
+            "id": "00rbzpz17",
+            "identifiers": [
+                {
+                    "identifier": "00rbzpz17",
+                    "scheme": "ror",
+                },
+                {"identifier": "10.13039/501100001665", "scheme": "doi"},
+            ],
+            "name": "Agence Nationale de la Recherche",
+            "title": {
+                "fr": "National Agency for Research",
             },
-            {"identifier": "10.13039/501100001665", "scheme": "doi"},
-        ],
-        "name": "Agence Nationale de la Recherche",
-        "title": {
-            "fr": "National Agency for Research",
+            "country": "FR",
         },
-        "country": "FR",
-    }
+        {
+            "id": " 00k4n6c32",
+            "identifiers": [
+                {
+                    "identifier": " 00k4n6c32",
+                    "scheme": "ror",
+                },
+            ],
+            "name": "European Commission",
+            "title": {
+                "fr": "European Commission",
+            },
+            "country": "BE",
+        },
+    ]
 
 
 @pytest.fixture()
