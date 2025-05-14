@@ -700,10 +700,13 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         return {}
 
     def _parent(self, entry, record):
-        try:
-            owner = int(record["owned_by"])
-        except (ValueError, TypeError):
-            owner = "-1"
+        if record["owned_by"] == "system":
+            owner = "system"
+        else:
+            try:
+                owner = int(record["owned_by"])
+            except (ValueError, TypeError):
+                owner = "system"
         parent = {
             "created": record["created"],  # same as the record
             "updated": record["updated"],  # same as the record

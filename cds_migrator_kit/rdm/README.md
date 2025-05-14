@@ -264,13 +264,13 @@ DELETE FROM pidstore_pid WHERE pid_type = 'doi';
 - Cleanup indexed documents from opensearch
 
 ```
-POST /cds-rdm-rdmrecords/_delete_by_query
+POST /cds-rdm-dev-rdmrecords/_delete_by_query
 {
   "query": {
     "match_all": {}
   }
 }
-POST /cds-rdm-communities/_delete_by_query
+POST /cds-rdm-dev-communities/_delete_by_query
 {
   "query": {
     "match_all": {}
