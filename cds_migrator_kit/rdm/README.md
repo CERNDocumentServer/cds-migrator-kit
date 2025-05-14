@@ -241,7 +241,7 @@ If you want to cleanup a previous migration run without having to re setup every
 i.e not repopulating all vocabularies which takes a lot of time, then run the following
 recipe:
 
-- Cleanup db tables from pgadmin
+- Cleanup db tables from pgadmin (**!!! ONLY ON DEV or local !!!**)
 
 ```sql
 DELETE FROM rdm_versions_state;
@@ -250,6 +250,8 @@ DELETE FROM rdm_drafts_files;
 DELETE FROM rdm_records_metadata;
 DELETE FROM rdm_drafts_metadata;
 DELETE FROM rdm_parents_metadata;
+DELETE FROM communities_files;
+DELETE FROM oaiserver_set;
 DELETE FROM communities_metadata;
 DELETE FROM files_objecttags;
 DELETE FROM files_object;
@@ -259,6 +261,8 @@ DELETE FROM files_files;
 DELETE FROM pidstore_pid WHERE pid_type = 'lrecid';
 DELETE FROM pidstore_pid WHERE pid_type = 'recid';
 DELETE FROM pidstore_pid WHERE pid_type = 'doi';
+DELETE FROM cds_clc_record_sync;
+DELETE FROM cds_migration_legacy_records;
 ```
 
 - Cleanup indexed documents from opensearch

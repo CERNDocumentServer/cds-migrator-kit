@@ -189,7 +189,9 @@ class CDSRecordStatsLoad(Load):
             event_type, record = entry
             recid = record["legacy_recid"]
             try:
-                self._process_legacy_events_for_recid(recid, record, "cds*", event_type)
+                self._process_legacy_events_for_recid(
+                    recid, record, "cds-2*", event_type
+                )
                 self.validate_stats_for_recid(recid, record, event_type)
             except Exception as ex:
                 logger.error(ex)
