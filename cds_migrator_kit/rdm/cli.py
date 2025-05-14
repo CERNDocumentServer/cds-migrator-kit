@@ -147,13 +147,17 @@ def people_run(filepath, collection, dirpath, dry_run=False):
     "--dirpath",
     help="Path to the record dumps dir to extract submitters from.",
 )
+@click.option(
+    "--users-dir-path",
+    help="Path to the record dumps dir to extract submitters from.",
+)
 @with_appcontext
-def submitters_run(dirpath, dry_run=False):
+def submitters_run(dirpath, users_dir_path, dry_run=False):
     """Migrate the legacy statistics for the records in `filepath`."""
     log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "submitters"
     runner = SubmitterRunner(
         stream_definition=SubmitterStreamDefinition,
-        missing_users_dir="cds_migrator_kit/rdm/data/users",
+        missing_users_dir=users_dir_path,
         dirpath=dirpath,
         log_dir=log_dir,
         dry_run=dry_run,
