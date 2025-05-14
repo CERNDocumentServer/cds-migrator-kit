@@ -85,7 +85,7 @@ def process_download_event(entry, rec_context, logger):
         rec for rec in rec_context["versions"] if rec["version"] == _legacy_file_version
     ]
     if not _record_version:
-        logger.error(f"No record version found for {rec_context['legacy_recid']}")
+        logger.warning(f"No record version found for {rec_context['legacy_recid']}")
         return {}
 
     _record_version = _record_version[0]
