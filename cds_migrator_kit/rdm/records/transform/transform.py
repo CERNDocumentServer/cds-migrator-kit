@@ -315,25 +315,26 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 # update identifiers of the authors to the latest known
                 ids = creator["person_or_org"]["identifiers"]
                 # check ids supplied by the names vocabulary and add missing
-                for identifier in name.json["identifiers"]:
+                for identifier in name.json.get("identifiers", []):
                     if identifier not in ids and identifier.get("scheme") != "cern":
                         ids.append(identifier)
 
                 # copy names identifiers and json to assign explicitly json object
                 # due to how postgres assignment of json is handled
                 json_copy = deepcopy(name.json)
-                existing_ids = deepcopy(name.json["identifiers"])
+                existing_ids = deepcopy(name.json.get("identifiers", []))
                 # update the names vocab to contain other ids found during migration
                 for identifier in ids:
                     if identifier not in existing_ids:
                         existing_ids.append(identifier)
 
-                # assign json explicitly to names entry
-                json_copy["identifiers"] = existing_ids
-                name.json = json_copy
+                if existing_ids:
+                    # assign json explicitly to names entry
+                    json_copy["identifiers"] = existing_ids
+                    name.json = json_copy
 
-                db.session.add(name)
-                db.session.commit()
+                    db.session.add(name)
+                    db.session.commit()
 
         def creators(json, key="creators"):
             _creators = deepcopy(json.get(key, []))
