@@ -179,7 +179,7 @@ class CDSRecordStatsLoad(Load):
                 f"Successfully migrated statistics for {recid} `{event_type}` in RDM: {new_total['count']}"
             )
         except AssertionError as e:
-            logger.error(
+            logger.warning(
                 f"Not all events of type {event_type} were migrated for record: {recid}. Legacy count: {legacy_total['count']} - RDM count: {new_total['count']}"
             )
 
