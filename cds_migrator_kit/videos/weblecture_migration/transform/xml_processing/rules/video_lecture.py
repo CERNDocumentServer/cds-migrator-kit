@@ -25,6 +25,7 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
     require,
 )
+from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
 
 # ATTENTION when COPYING! important which model you use as decorator
 from ...models.video_lecture import model
@@ -281,9 +282,7 @@ def contact_person(self, key, value):
     name = value.get("p", "").strip()
     # Drop empty 270 tag: https://cds.cern.ch/record/2897088
     if name:
-        return get_contributor(
-            key, value, name=name, contributor_role="ContactPerson"
-        )
+        return get_contributor(key, value, name=name, contributor_role="ContactPerson")
     return None
 
 
@@ -295,7 +294,7 @@ def collaboration(self, key, value):
     # Check if anything else stored
     if corporate_name and corporate_name != "CERN. Geneva":
         raise UnexpectedValue(field=key, subfield="a", value=corporate_name)
-        
+
     cern_paper = value.get("5", "").strip()
     # Check if anything else stored
     if cern_paper and cern_paper != "EP":
@@ -303,8 +302,8 @@ def collaboration(self, key, value):
         migration_logger.add_success_state(
             self["recid"],
             {
-                "message": f"Found other value than 'EP' in collaboration", 
-                "value": cern_paper
+                "message": f"Found other value than 'EP' in collaboration",
+                "value": cern_paper,
             },
         )
     collaboration = value.get("g", "").strip()
@@ -313,3 +312,52 @@ def collaboration(self, key, value):
             key, value, name=collaboration, contributor_role="ResearchGroup"
         )
     return None
+
+
+@model.over("alternate_identifiers", "^088__")
+@for_each_value
+def report_number(self, key, value):
+    """Translates report number."""
+    identifier = value.get("a", "")
+    identifier = StringValue(identifier).parse()
+    provenance = value.get("9", "")
+    z_value = value.get("z", "")
+    if z_value:
+        raise UnexpectedValue(field=key, subfield="z", value=z_value)
+    if identifier and provenance:
+        raise UnexpectedValue(
+            message="Report number: two values!", field=key, value=value
+        )
+    if not identifier and not provenance:
+        raise UnexpectedValue(
+            message="Report number: missing identifier!", field=key, value=value
+        )
+    return {"scheme": "CERN Report Number", "value": identifier or provenance}
+
+
+@model.over("alternate_identifiers", "^035__")
+@for_each_value
+@require(["a"])
+def system_control_number(self, key, value):
+    """
+    Translates system control number.
+
+    Possible schema values:
+    Indico, Agendamaker, AgendaMaker, CERCER, CERN annual report.
+    """
+    schema = value.get("9", "")
+    identifier = value.get("a", "")
+    identifier = StringValue(identifier).parse()
+
+    # Some identifiers: '0329956CERCER' https://cds.cern.ch/record/403279
+    if not schema:
+        for suffix in ("CERCER", "CER"):
+            if identifier.endswith(suffix):
+                schema = suffix
+                identifier = identifier[: -len(suffix)]
+                break
+    if not schema:
+        raise UnexpectedValue(
+            message="System control number: Schema is missing!", field=key, value=value
+        )
+    return {"scheme": schema, "value": identifier}

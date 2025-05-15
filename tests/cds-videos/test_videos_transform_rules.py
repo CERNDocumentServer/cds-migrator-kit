@@ -535,3 +535,27 @@ def test_transform_collaboration(dumpdir, base_app):
             contributor.get("role") for contributor in metadata["contributors"]
         ]
         assert "ResearchGroup" in contributor_roles
+
+
+def test_transform_alternative_identifiers(dumpdir, base_app):
+    """Test alternative_identifiers correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+        modified_data = data[1]
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        assert "alternate_identifiers" in res
+        assert len(res["alternate_identifiers"]) == 7
+
+        # Add report number (tag 088)
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "088", {"a": "Report Number"}
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        assert "alternate_identifiers" in res
+        assert len(res["alternate_identifiers"]) == 8

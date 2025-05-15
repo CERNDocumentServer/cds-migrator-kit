@@ -93,11 +93,6 @@ class VideoLecture(CdsOverdo):
         # Alternative identifiers
         "962__n",  # `Presented at` note (conference/linked document)
         "962__b",  # `Presented at` record (conference/linked document)
-        "088__9",  # Report number (make it alternative identifier with cds reference?)
-        "088__z",  # Report number (make it alternative identifier with cds reference?)
-        "035__9",  # Inspire schema (Indico/AgendaMaker)
-        "035__a",  # Inspire id value
-        "088__a",  # Report Number --> alternative identifier with ds reference
         # Additional Title, Volume, Note
         "246__a",  # Additional title
         "246__i",  # Additional title/display text
@@ -221,6 +216,11 @@ class VideoLecture(CdsOverdo):
         # "710__5",  # department / organisation author
         # "710__a",  # organisation author
         # "710__g",  # organisation author
+        # "088__9",  # Report number (make it alternative identifier with cds reference?)
+        # "088__z",  # Report number (make it alternative identifier with cds reference?)
+        # "088__a",  # Report Number
+        # "035__9",  # Inspire schema (Indico/AgendaMaker)
+        # "035__a",  # Inspire id value
     }
 
     _default_fields = {
