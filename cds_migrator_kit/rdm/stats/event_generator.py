@@ -256,14 +256,13 @@ def prepare_new_doc(
                 continue
             logger.info("Processed: {0}".format(doc["_id"]))
 
-            # Retrieve year and month from timestamp
+            # Retrieve year from timestamp
             date_object = datetime.fromisoformat(processed_doc["timestamp"])
             year = f"{date_object.year:4}"
-            month = f"{date_object.month:02}"
 
             yield {
                 "_op_type": "create",
-                "_index": f"{dest_search_index_prefix}-{index_type}-{year}-{month}",
+                "_index": f"{dest_search_index_prefix}-{index_type}-{year}",
                 "_source": processed_doc,
                 "_id": new_doc["_id"],
             }
