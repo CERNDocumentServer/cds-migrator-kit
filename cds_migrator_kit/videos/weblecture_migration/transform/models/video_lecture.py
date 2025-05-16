@@ -73,7 +73,10 @@ class VideoLecture(CdsOverdo):
         "490__v",  # Series: volume
         "650172",  # subject provenance
         "65017a",  # subject value
+        "650272",  # Subject category provenance
+        "65027a",  # Subject category value
         "690C_a",  # collection name
+        "080__a",  # Subject code
         # Conference Information/Indico
         "084__a",  # Indico?
         "084__2",  # Indico?
@@ -101,6 +104,8 @@ class VideoLecture(CdsOverdo):
         "246__b",  # Additional title remaining
         "246__n",  # Volume
         "246__p",  # Volume
+        # French Description
+        "590__a",
         # Restricted
         "5061_f",
         "5061_d",
@@ -124,19 +129,20 @@ class VideoLecture(CdsOverdo):
         "700__m",  # author's email
         # Internal Note
         "595__a",  # Internal Note --> curation field
+        "595__s",  # Subject note --> curation field
         "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it? what does UNCL mean
-        # Collaboration --> add new role to contributors
-        "710__5",  # department / organisation author
-        "710__a",  # organisation author
-        "710__g",  # organisation author
         # OAI
         "0248_a",  # oai identifier
         "0248_p",  # oai identifier
         "0248_q",
+        # DOI
+        "0247_a",  # doi value
+        "0247_2",
         # Published in - Host item entry
         "773__a",  # DOI
         "773__p",  # Title
         "773__r",  # Record id TODO check
+        "773__u",  # URL
         # Related document - Other relationship entry
         "7870_i",  # Relationship information
         "7870_r",  # Report number
@@ -212,6 +218,9 @@ class VideoLecture(CdsOverdo):
         # "518__r",  # Video/meeting location
         # "518__g",  # Lectures: conference identification
         # "270__p",  # document contact --> add as a contributor with a correct role
+        # "710__5",  # department / organisation author
+        # "710__a",  # organisation author
+        # "710__g",  # organisation author
     }
 
     _default_fields = {

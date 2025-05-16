@@ -481,7 +481,7 @@ def test_transform_document_contact(dumpdir, base_app):
         # Load test data
         data = load_json(dumpdir, "lecture.json")
 
-        # Add keyword tag
+        # Add document contact
         modified_data = data[0]
         record_marcxml = modified_data["record"][-1]["marcxml"]
         modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
@@ -508,3 +508,30 @@ def test_transform_document_contact(dumpdir, base_app):
         metadata = record_entry._metadata(res)
         roles = [contributor["role"] for contributor in metadata["contributors"]]
         assert "ContactPerson" not in roles
+
+
+def test_transform_collaboration(dumpdir, base_app):
+    """Test collaboration correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+
+        # Add collaboration
+        modified_data = data[0]
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "710", {"g": "Collaboration name"}
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        assert res["contributors"][3]["name"] == "Collaboration name"
+        assert res["contributors"][3]["role"] == "ResearchGroup"
+
+        # Transform record
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        contributor_roles = [
+            contributor.get("role") for contributor in metadata["contributors"]
+        ]
+        assert "ResearchGroup" in contributor_roles
