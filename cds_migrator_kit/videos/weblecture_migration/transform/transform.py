@@ -297,6 +297,29 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                     stage="transform",
                 )
 
+        def alternate_identifiers(json_data):
+            """Transform alternate_identifiers."""
+            alternate_identifiers = json_data.get("alternate_identifiers", [])
+
+            # Add indico id as alternate identifier
+            event_id = json_data.get("indico_information", {}).get("event_id", "")
+            if event_id:
+                identifier = {"scheme": "Indico", "value": event_id}
+                alternate_identifiers.append(identifier)
+            else:
+                indico_links = [
+                    item["indico"]
+                    for item in json_data.get("url_files", [])
+                    if "indico" in item
+                ]
+                event_ids = [
+                    item["event_id"] for item in indico_links if "event_id" in item
+                ]
+                for id in event_ids:
+                    identifier = {"scheme": "Indico", "value": id}
+                    alternate_identifiers.append(identifier)
+            return alternate_identifiers
+
         record_date = reformat_date(entry)
         metadata = {
             "title": entry["title"],
@@ -309,7 +332,8 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "accelerator_experiment": accelerator_experiment(entry),
             "note": notes(entry),
             "location": location(entry),
-            "legacy_recid": entry.get("legacy_recid")
+            "legacy_recid": entry.get("legacy_recid"),
+            "alternate_identifiers": alternate_identifiers(entry),
         }
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
