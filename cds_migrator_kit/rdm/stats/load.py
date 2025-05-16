@@ -144,7 +144,7 @@ class CDSRecordStatsLoad(Load):
         """Validate that stats in legacy and new RDM."""
         legacy_total = os_count(
             self.src_os_client,
-            "cds*",
+            "cds-2*",
             q=generate_query(
                 event_type, recid, self.LEGACY_TO_RDM_EVENTS_MAP, self.less_than_date
             ),
