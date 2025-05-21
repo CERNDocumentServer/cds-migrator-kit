@@ -118,10 +118,10 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 priority="critical",
             )
 
-    def _have_migrated_recid(self, recid):
+    def check_pid_exists(self, recid, pid_type="lrecid"):
         """Check if we have minted `lrecid` pid."""
         pid = PersistentIdentifier.query.filter_by(
-            pid_type="lrecid",
+            pid_type=pid_type,
             pid_value=recid,
         ).one_or_none()
         return pid is not None
@@ -129,7 +129,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
     def _media_files(self, entry):
         """Transform the media files (lecturemedia files) of a record."""
         # No need to check files if record is migrated (they'll be moved)
-        if self._have_migrated_recid(str(entry["legacy_recid"])):
+        if self.check_pid_exists(str(entry["legacy_recid"])):
             return {}
 
         # Check if record has one master folder, or more
@@ -297,15 +297,38 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                     stage="transform",
                 )
 
+        def get_report_number(json_data):
+            """Return the report number."""
+            report_numbers = json_data.get("report_number", [])
+            if len(report_numbers) > 1:
+                raise UnexpectedValue(
+                    "More than one report number found.",
+                    stage="transform",
+                )
+            if len(report_numbers) == 1:
+                # If report number exists put it in curation
+                report_number = report_numbers[0]
+                return report_numbers, self.check_pid_exists(
+                    report_number, pid_type="rn"
+                )
+            return None, None
+
         def get_keywords(json_data):
             """Return keywords."""
-            keywords = entry.get("keywords", [])
-            subject_categories = entry.get("subject_categories", [])
+            keywords = json_data.get("keywords", [])
+            subject_categories = json_data.get("subject_categories", [])
 
             all_keywords = [
                 keyword for keyword in keywords + subject_categories if keyword
             ]
             return all_keywords
+
+        def get_related_identifiers(json_data):
+            """Return related_identifiers."""
+            related_identifiers = [
+                d for d in json_data.get("related_identifiers", []) if d
+            ]
+            return related_identifiers
 
         record_date = reformat_date(entry)
         metadata = {
@@ -319,10 +342,20 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "accelerator_experiment": accelerator_experiment(entry),
             "note": notes(entry),
             "location": location(entry),
-            "legacy_recid": entry.get("legacy_recid")
+            "legacy_recid": entry.get("legacy_recid"),
+            "related_identifiers": get_related_identifiers(entry),
         }
         _curation = entry.get("_curation", {})
+        # If report number exists put it in curation
+        # Report_number is a list with one value
+        report_number, is_curation = get_report_number(entry)
+        if report_number:
+            if is_curation:
+                _curation["legacy_report_number"] = report_number[0]
+            else:
+                metadata["report_number"] = report_number
         metadata["_curation"] = _curation
+
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
 

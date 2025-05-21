@@ -19,6 +19,9 @@ from invenio_db import db
 from invenio_pidstore.models import PersistentIdentifier
 from invenio_rdm_migrator.load.base import Load
 from invenio_records_files.api import Record
+from cds.modules.records.providers import CDSReportNumberProvider
+from invenio_pidstore.errors import PIDAlreadyExists
+from sqlalchemy.exc import IntegrityError
 
 from cds_migrator_kit.errors import (
     ManualImportRequired,
@@ -113,10 +116,28 @@ class CDSVideosLoad(Load):
             }
         return entry.get("record", {}).get("json", {}).get("media_files")
 
+    def reserve_report_number(self, video_deposit, report_number):
+        try:
+            # Reserve report number
+            CDSReportNumberProvider.create(
+                object_type="rec",
+                object_uuid=None,
+                data=video_deposit,
+                pid_value=report_number,
+            )
+        except IntegrityError as e:
+            raise ManualImportRequired(f"Report number reserve failed! {e}")
+        except PIDAlreadyExists:
+            raise ManualImportRequired(
+                f"Report number reserve failed! {report_number} already exists!"
+            )
+
     def create_publish_single_video_record(self, entry):
         """Create and publish project and video for single video record."""
         # Get transformed metadata
         metadata = entry.get("record", {}).get("json", {}).get("metadata")
+        # Get report_number
+        report_number = metadata.get("report_number", None)
         # Get transformed media files
         media_files = self._get_files(entry)
 
@@ -139,7 +160,9 @@ class CDSVideosLoad(Load):
             bucket_id = video_deposit["_buckets"]["deposit"]
 
             # Create flow and payload
-            flow, payload = create_flow(master_object, video_deposit_id, user_id=2)
+            flow, payload = create_flow(
+                master_object, video_deposit_id, user_id=submitter["id"]
+            )
 
             # Create tags for the master video file
             init_object_version(flow.flow_metadata, has_remote_file_to_download=None)
@@ -165,6 +188,10 @@ class CDSVideosLoad(Load):
 
         # Index deposit
         index_deposit_project(video_deposit_id)
+
+        # Reserve the report number
+        if report_number:
+            self.reserve_report_number(video_deposit, report_number[0])
 
         # Publish video
         published_video = publish_video_record(deposit_id=video_deposit_id)
