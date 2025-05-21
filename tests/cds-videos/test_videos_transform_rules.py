@@ -550,6 +550,52 @@ def test_transform_collaboration(dumpdir, base_app):
         assert "department" in metadata["_curation"]
 
 
+# TODO Setup cds-videos and test it's minted correctly
+def test_report_number(dumpdir, base_app):
+    """Test report_number correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+        modified_data = data[1]
+
+        # Add report number (tag 088)
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "088", {"a": "Report Number"}
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        assert "report_number" in res
+        assert len(res["report_number"]) == 1
+
+
+def test_transform_related_identifiers(dumpdir, base_app):
+    """Test related_identifiers correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+        modified_data = data[1]
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        assert "related_identifiers" in res
+        assert len(res["related_identifiers"]) == 7
+
+        # Add valid date and transform
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "518", {"d": "2025-05-26"}
+        )
+        res = load_and_dump_revision(modified_data)
+
+        # Transform record
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "related_identifiers" in metadata
+        assert len(metadata["related_identifiers"]) == 6
+
+
 def test_transform_corporate_author(dumpdir, base_app):
     """Test corporate_author correctly transformed."""
     with base_app.app_context():

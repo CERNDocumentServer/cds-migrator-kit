@@ -25,6 +25,7 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
     require,
 )
+from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
 
 # ATTENTION when COPYING! important which model you use as decorator
 from ...models.video_lecture import model
@@ -316,6 +317,62 @@ def collaboration(self, key, value):
             key, value, name=collaboration, contributor_role="ResearchGroup"
         )
     return None
+
+
+@model.over("report_number", "^088__")
+@for_each_value
+def report_number(self, key, value):
+    """Translates report number."""
+    identifier = value.get("a", "")
+    identifier = StringValue(identifier).parse()
+    provenance = value.get("9", "")
+    z_value = value.get("z", "")
+    if z_value:
+        raise UnexpectedValue(field=key, subfield="z", value=z_value)
+    if identifier and provenance:
+        raise UnexpectedValue(
+            message="Report number: two values!", field=key, value=value
+        )
+    if not identifier and not provenance:
+        raise UnexpectedValue(
+            message="Report number: missing identifier!", field=key, value=value
+        )
+    return identifier or provenance
+
+
+@model.over("related_identifiers", "^035__")
+@for_each_value
+@require(["a"])
+def system_control_number(self, key, value):
+    """
+    Translates system control number.
+
+    Possible schema values:
+    - Indico, Agendamaker, AgendaMaker, CERCER, CERN annual report.
+    Transform these schemas, rest will be dropped:
+    - Indico, Agendamaker, AgendaMaker
+    """
+    schema = value.get("9", "")
+    identifier = value.get("a", "")
+    identifier = StringValue(identifier).parse()
+
+    # TODO Check with indico if we can convert the values to URL
+    if schema in ["Indico", "Agendamaker", "AgendaMaker"]:
+        return {
+            "scheme": "Indico",
+            "identifier": identifier,
+            "relation_type": "IsPartOf",
+        }
+
+    # Some identifiers: '0329956CERCER' https://cds.cern.ch/record/403279
+    elif schema in ["CERCER", "CERN annual report"] or any(
+        identifier.endswith(suffix) for suffix in ("CERCER", "CER")
+    ):
+        return None
+    else:  # Check if any other value stored
+        raise UnexpectedValue(
+            message="Unkown system control number schema!", field=key, value=schema
+        )
 
 
 @model.over("contributors", "^110__")
