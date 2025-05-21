@@ -39,7 +39,7 @@ def get_contributor_role(subfield, role, raise_unexpected=False):
 
 
 def get_contributor(key, value, contributor_role="", name=""):
-    """Create contributor json for tag 518 and 269."""
+    """Create contributor json."""
     beard = value.get("9")
     if beard is not None and beard != "#BEARD#":
         # checking if anything else stored in this field
@@ -47,7 +47,7 @@ def get_contributor(key, value, contributor_role="", name=""):
         # and it should be ignored if value == #BEARD#
         raise UnexpectedValue(field=key, subfield="9", value=beard)
     if not name:
-        name = value.get("a").strip()
+        name = value.get("a", "").strip()
     affiliation = value.get("u", "")
     contributor = {"name": name}
     if affiliation:
@@ -58,4 +58,6 @@ def get_contributor(key, value, contributor_role="", name=""):
         # Role is mandatory from UI but not for the datamodel?
         role = get_contributor_role("e", value.get("e", ""))
         contributor.update({"role": role})
+    if not name:
+        raise UnexpectedValue(field=key, subfield="a", message="Contributor name missing!")
     return contributor

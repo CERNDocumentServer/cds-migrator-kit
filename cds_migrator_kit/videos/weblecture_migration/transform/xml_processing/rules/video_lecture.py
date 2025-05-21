@@ -20,6 +20,7 @@
 import re
 
 from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.reports.log import RDMJsonLogger
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
     require,
@@ -280,7 +281,33 @@ def contact_person(self, key, value):
     name = value.get("p", "").strip()
     # Drop empty 270 tag: https://cds.cern.ch/record/2897088
     if name:
+        return get_contributor(key, value, name=name, contributor_role="ContactPerson")
+    return None
+
+
+@model.over("contributors", "^710__")
+@for_each_value
+def collaboration(self, key, value):
+    """Translates collaboration."""
+    corporate_name = value.get("a", "").strip()
+    # Check if anything else stored
+    if corporate_name and corporate_name != "CERN. Geneva":
+        raise UnexpectedValue(field=key, subfield="a", value=corporate_name)
+
+    cern_paper = value.get("5", "").strip()
+    # Check if anything else stored
+    if cern_paper and cern_paper != "EP":
+        migration_logger = RDMJsonLogger(collection="weblectures")
+        migration_logger.add_success_state(
+            self["recid"],
+            {
+                "message": f"Found other value than 'EP' in collaboration",
+                "value": cern_paper,
+            },
+        )
+    collaboration = value.get("g", "").strip()
+    if collaboration:
         return get_contributor(
-            key, value, name=name, contributor_role="ContactPerson"
+            key, value, name=collaboration, contributor_role="ResearchGroup"
         )
     return None
