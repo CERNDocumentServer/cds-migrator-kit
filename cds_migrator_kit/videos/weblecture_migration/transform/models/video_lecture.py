@@ -44,26 +44,14 @@ class VideoLecture(CdsOverdo):
         "961__a",  # ? TODO? check with JY
         "961__b",  # ? TODO? check with JY
         "964__a",  # Item owner TODO? check with JY
-        "916__d",  # Status week? TODO? check with JY
         "901__u",  # Affiliation at Conversion? TODO? check with JY
         "583__a",  # Action note / curation TODO? check with JY
         "583__c",  # Action note / curation TODO? check with JY
         "583__z",  # Action note / curation TODO? check with JY
         "583__8",  # Action note / curation TODO? check with JY
-        "916__n",  # Status week TODO? check with JY
-        "916__s",  # Status week TODO? check with JY
-        "916__w",  # Status week TODO? check with JY
-        "916__y",  # Status week TODO? check with JY
-        "916__a",  # Status week TODO? check with JY
         "306__a",  # ? TODO? check with JY
         "336__a",  # ? TODO? check with JY
         "981__a",  # duplicate record id TODO? check with JY
-        "916__a",  # Status week TODO? check with JY
-        "916__d",  # Status week TODO? check with JY
-        "916__e",  # Status week TODO? check with JY
-        "916__s",  # Status week TODO? check with JY
-        "916__w",  # Status week TODO? check with JY
-        "916__y",  # Status week TODO? check with JY
         "960__a",  # Base?
         # Category, Collection, Series, Keywords
         "980__a",  # collection tag
@@ -87,11 +75,6 @@ class VideoLecture(CdsOverdo):
         # Alternative identifiers
         "962__n",  # `Presented at` note (conference/linked document)
         "962__b",  # `Presented at` record (conference/linked document)
-        "088__9",  # Report number (make it alternative identifier with cds reference?)
-        "088__z",  # Report number (make it alternative identifier with cds reference?)
-        "035__9",  # Inspire schema (Indico/AgendaMaker)
-        "035__a",  # Inspire id value
-        "088__a",  # Report Number --> alternative identifier with ds reference
         # Additional Title, Volume, Note
         "246__a",  # Additional title
         "246__i",  # Additional title/display text
@@ -219,6 +202,11 @@ class VideoLecture(CdsOverdo):
         # "710__5",  # department / organisation author
         # "710__a",  # organisation author
         # "710__g",  # organisation author
+        # "088__9",  # Report number (use as report number or curation)
+        # "088__z",  # Report number (use as report number or curation)
+        # "088__a",  # Report Number
+        # "035__9",  # Inspire schema (Indico/AgendaMaker)
+        # "035__a",  # Inspire id value
         # "916__s",  # Status week created
         # "916__w",  # Status week created
         # "110__a",  # corporate author
