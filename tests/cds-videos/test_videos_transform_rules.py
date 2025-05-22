@@ -50,6 +50,7 @@ def test_transform_rules_reqired_metadata(dumpdir, base_app):
         assert res["recid"] == "2233152"
         assert res["language"] == "en"
         assert res["contributors"] == [
+            {"name": "CERN", "role": "Producer"},
             {
                 "name": "Brodski, Michael",
                 "role": "Speaker",
@@ -85,6 +86,7 @@ def test_transform_required_metadata(dumpdir, base_app):
             "<!--HTML--><p>In this <strong>presentation in english</strong>"
         )
         assert metadata["contributors"] == [
+            {"name": "CERN", "role": "Producer"},
             {
                 "name": "Brodski, Michael",
                 "role": "Speaker",
@@ -164,7 +166,10 @@ def test_transform_contributor(dumpdir, base_app):
         # Test case: Return event contributor due to missing contributor
         modified_data = data[0]
         record_marcxml = modified_data["record"][-1]["marcxml"]
-        record_marcxml = remove_tag_from_marcxml(record_marcxml, "700")
+        record_marcxml = remove_tag_from_marcxml(record_marcxml, "110")
+        modified_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
+            record_marcxml, "700"
+        )
         res = load_and_dump_revision(modified_data)
 
         # Transform record
@@ -181,6 +186,7 @@ def test_transform_contributor(dumpdir, base_app):
         ]
 
         # Test case: Return "Unknown" due to missing contributor
+        record_marcxml = modified_data["record"][-1]["marcxml"]
         modified_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
             record_marcxml, "906"
         )
@@ -326,13 +332,13 @@ def test_transform_keywords(dumpdir, base_app):
 
         # Extract record
         res = load_and_dump_revision(modified_data)
+        assert len(res["keywords"]) == 1
 
-        # Transform record
+        # Transform record subject category will be added as keyword
         record_entry = CDSToVideosRecordEntry()
         metadata = record_entry._metadata(res)
         assert "keywords" in metadata
-        assert len(metadata["keywords"]) == 1
-        assert metadata["keywords"][0]["name"] == "keyword_test"
+        assert len(metadata["keywords"]) == 3
 
 
 def test_transform_accelerator_experiment(dumpdir, base_app):
@@ -490,14 +496,14 @@ def test_transform_document_contact(dumpdir, base_app):
 
         # Extract record
         res = load_and_dump_revision(modified_data)
-        assert res["contributors"][3]["name"] == "Contact name"
-        assert res["contributors"][3]["role"] == "ContactPerson"
+        assert res["contributors"][4]["name"] == "Contact name"
+        assert res["contributors"][4]["role"] == "ContactPerson"
 
         # Transform record
         record_entry = CDSToVideosRecordEntry()
         metadata = record_entry._metadata(res)
-        assert metadata["contributors"][3]["name"] == "Contact name"
-        assert metadata["contributors"][3]["role"] == "ContactPerson"
+        assert metadata["contributors"][4]["name"] == "Contact name"
+        assert metadata["contributors"][4]["role"] == "ContactPerson"
 
         # Test case: Add empty 270 tag
         modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
@@ -520,13 +526,18 @@ def test_transform_collaboration(dumpdir, base_app):
         modified_data = data[0]
         record_marcxml = modified_data["record"][-1]["marcxml"]
         modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
-            record_marcxml, "710", {"g": "Collaboration name"}
+            record_marcxml,
+            "710",
+            {"g": "Collaboration name", "a": "Corporate name", "5": "Department"},
         )
 
         # Extract record
         res = load_and_dump_revision(modified_data)
-        assert res["contributors"][3]["name"] == "Collaboration name"
-        assert res["contributors"][3]["role"] == "ResearchGroup"
+        assert len(res["contributors"]) == 6
+        assert res["contributors"][5]["name"] == "Collaboration name"
+        assert res["contributors"][5]["role"] == "ResearchGroup"
+        assert "_curation" in res
+        assert res["_curation"]["department"] == "Department"
 
         # Transform record
         record_entry = CDSToVideosRecordEntry()
@@ -535,3 +546,44 @@ def test_transform_collaboration(dumpdir, base_app):
             contributor.get("role") for contributor in metadata["contributors"]
         ]
         assert "ResearchGroup" in contributor_roles
+        assert "Producer" in contributor_roles
+        assert "department" in metadata["_curation"]
+
+
+def test_transform_corporate_author(dumpdir, base_app):
+    """Test corporate_author correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+
+        # Extract record
+        res = load_and_dump_revision(data[0])
+        contributor_roles = [
+            contributor.get("role") for contributor in res["contributors"]
+        ]
+        assert "Producer" in contributor_roles
+
+        # Transform record
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        contributor_roles = [
+            contributor.get("role") for contributor in metadata["contributors"]
+        ]
+        assert "Producer" in contributor_roles
+
+
+def test_transform_subject_category(dumpdir, base_app):
+    """Test subject_category are correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+
+        # Extract record
+        res = load_and_dump_revision(data[0])
+        assert "keywords" not in res
+
+        # Transform: subject category will be keyword
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "keywords" in metadata
+        assert len(metadata["keywords"]) == 2

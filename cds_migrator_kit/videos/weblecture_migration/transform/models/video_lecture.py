@@ -68,15 +68,9 @@ class VideoLecture(CdsOverdo):
         # Category, Collection, Series, Keywords
         "980__a",  # collection tag
         "980__b",  # Secondary collection indicator
-        "65027a",  # TODO Subject category = Event?
         "490__a",  # TODO Series
         "490__v",  # Series: volume
-        "650172",  # subject provenance
-        "65017a",  # subject value
-        "650272",  # Subject category provenance
-        "65027a",  # Subject category value
         "690C_a",  # collection name
-        "080__a",  # Subject code
         # Conference Information/Indico
         "084__a",  # Indico?
         "084__2",  # Indico?
@@ -125,7 +119,6 @@ class VideoLecture(CdsOverdo):
         "260__a",
         "260__b",
         # Contributor?
-        "110__a",  # corporate author
         "700__m",  # author's email
         # Internal Note
         "595__a",  # Internal Note --> curation field
@@ -164,6 +157,11 @@ class VideoLecture(CdsOverdo):
         "963__a",  # values: PUBLIC/RESTRICTED
         "8564_8",  # File: bibdoc id
         "8564_s",  # File: file size
+        "916__d",  # period for books only one record
+        "916__y",  # Status week year
+        "916__e",  # spreadsheet no record
+        "916__a",  # Status week only one record value:1 https://cds.cern.ch/record/423917
+        "080__a",  # Subject code, only 4 record: 1206221, 225152, 225151, 254588
         # IMPLEMENTED
         # "520__a",  # Note (-> description.type = abstract
         # "001",
@@ -221,10 +219,19 @@ class VideoLecture(CdsOverdo):
         # "710__5",  # department / organisation author
         # "710__a",  # organisation author
         # "710__g",  # organisation author
+        # "916__s",  # Status week created
+        # "916__w",  # Status week created
+        # "110__a",  # corporate author
+        # "650172",  # subject provenance
+        # "65017a",  # subject value
+        # "650272",  # Subject category provenance
+        # "65027a",  # Subject category value
     }
 
     _default_fields = {
         "lecture_infos": [],
+        "_curation": {},
+        "contributors": []
     }
 
 
