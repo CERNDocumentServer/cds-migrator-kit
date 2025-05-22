@@ -69,5 +69,6 @@ target/
 # migration data folder
 **/migration/data/**
 **/migration/log/**
+**/weblecture_migration/data/**
 
 **.DS_Store

@@ -297,6 +297,16 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                     stage="transform",
                 )
 
+        def get_keywords(json_data):
+            """Return keywords."""
+            keywords = entry.get("keywords", [])
+            subject_categories = entry.get("subject_categories", [])
+
+            all_keywords = [
+                keyword for keyword in keywords + subject_categories if keyword
+            ]
+            return all_keywords
+
         record_date = reformat_date(entry)
         metadata = {
             "title": entry["title"],
@@ -305,12 +315,14 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "language": entry.get("language"),
             "date": record_date,
             "publication_date": publication_date(entry) or record_date,
-            "keywords": entry.get("keywords"),
+            "keywords": get_keywords(entry),
             "accelerator_experiment": accelerator_experiment(entry),
             "note": notes(entry),
             "location": location(entry),
             "legacy_recid": entry.get("legacy_recid")
         }
+        _curation = entry.get("_curation", {})
+        metadata["_curation"] = _curation
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
 

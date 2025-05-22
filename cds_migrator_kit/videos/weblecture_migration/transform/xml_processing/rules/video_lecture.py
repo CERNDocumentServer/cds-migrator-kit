@@ -290,24 +290,60 @@ def contact_person(self, key, value):
 def collaboration(self, key, value):
     """Translates collaboration."""
     corporate_name = value.get("a", "").strip()
-    # Check if anything else stored
-    if corporate_name and corporate_name != "CERN. Geneva":
-        raise UnexpectedValue(field=key, subfield="a", value=corporate_name)
-
-    cern_paper = value.get("5", "").strip()
-    # Check if anything else stored
-    if cern_paper and cern_paper != "EP":
-        migration_logger = RDMJsonLogger(collection="weblectures")
-        migration_logger.add_success_state(
-            self["recid"],
-            {
-                "message": f"Found other value than 'EP' in collaboration",
-                "value": cern_paper,
-            },
-        )
     collaboration = value.get("g", "").strip()
+    cern_department = value.get("5", "").strip()
+
+    # Add with role 'Producer'
+    if corporate_name:
+        if corporate_name in ["CERN, Geneva", "CERN. Geneva"]:
+            corporate_name = "CERN"
+        self["contributors"].append(
+            get_contributor(
+                key, value, name=corporate_name, contributor_role="Producer"
+            )
+        )
+
+    # Add it in curation
+    if cern_department:
+        if self["_curation"].get("department"):
+            raise UnexpectedValue(
+                field=key, subfield="5", message="Multiple departments!"
+            )
+        self["_curation"]["department"] = cern_department
+
     if collaboration:
         return get_contributor(
             key, value, name=collaboration, contributor_role="ResearchGroup"
         )
     return None
+
+
+@model.over("contributors", "^110__")
+@require(["a"])
+@for_each_value
+def corporate_author(self, key, value):
+    """Translates corporate_author."""
+    corporate_name = value.get("a", "").strip()
+
+    if corporate_name in ["CERN, Geneva", "CERN. Geneva"]:
+        corporate_name = "CERN"
+
+    if corporate_name:
+        return get_contributor(
+            key, value, name=corporate_name, contributor_role="Producer"
+        )
+    return None
+
+
+@model.over("subject_categories", "(^65017)|(^65027)")
+@for_each_value
+def subject_categories(self, key, value):
+    """Translates subject_category as keywords from tag 65017,65027."""
+    keyword = value.get("a", "").strip()
+    source = value.get("2", "").strip()
+    if source and source != "SzGeCERN":
+        # checking if anything else stored in this field
+        raise UnexpectedValue(field=key, subfield="9", value=source)
+
+    if keyword:
+        return {"name": keyword}
