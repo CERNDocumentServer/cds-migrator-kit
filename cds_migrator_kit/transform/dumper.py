@@ -29,6 +29,7 @@ class CDSRecordDump:
         source_type="marcxml",
         latest_only=True,
         dojson_model=migrator_marc21,
+        raise_on_missing_rules=True,
     ):
         """Initialize."""
         self.data = data
@@ -37,6 +38,7 @@ class CDSRecordDump:
         self.dojson_model = dojson_model
         self.latest_revision = None
         self.files = None
+        self.raise_on_missing_rules = raise_on_missing_rules
 
     @property
     def created(self):
@@ -73,7 +75,6 @@ class CDSRecordDump:
         json_converted_record = self.dojson_model.do(marc_record)
 
         missing = self.dojson_model.missing(marc_record)
-
-        if missing:
+        if missing and self.raise_on_missing_rules:
             raise LossyConversion(missing=missing)
         return timestamp, json_converted_record
