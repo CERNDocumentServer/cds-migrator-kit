@@ -15,7 +15,9 @@ json_dump_dir = "/eos/media/cds/cds-rdm/dev/migration/thesis/dump"
 def copy_collection_file(dump_files, destination_prefix, working_dir):
     file_log = open(os.path.join(working_dir, "files.log"), "wb")
 
-    for dump_file in dump_files:
+    for i, dump_file in enumerate(dump_files):
+        print(dump_file)
+        print("FILE {} out of {}-------------------------------------------------".format(i, len(dump_files)))
         with open(dump_file, "r") as json_dump:
             data = json.load(json_dump)
             for record in data:

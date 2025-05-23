@@ -50,6 +50,7 @@ def creators(self, key, value):
 
 
 @model.over("contributors", "(^700__)|(^701__)")
+@for_each_value
 @require(["a"])
 def contributors(self, key, value):
     """Translates contributors."""

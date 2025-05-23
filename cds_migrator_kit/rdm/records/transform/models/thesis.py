@@ -53,39 +53,46 @@ class ThesisModel(CdsOverdo):
         "100__j",  # alternative spelling of the name
         "100__m",  # author's email <-- decided not to keep in RDM,
         "100__q",  # alternative spelling of the name
+        "100__v",
         "242__9",  # source of TRANSLATED title, INSPIRE data model
         "245__9",  # source of title, INSPIRE data model
-        "246__p",  # to be migrated manually
         "246__n",  # to be migrated manually 968697, 2927034
+        "246__p",  # to be migrated manually
         "269__a",  # Redundant (more detailed value is in 260__c imprint.pub_date)
         "269__b",  # Redundant (more detailed value is in 260__c imprint.pub_date)
         "270__m",  # document contact email
+        "300__a",  # pages
         "340__a",  # ignore, spreadsheet
         "500__9",  # provenance of note # TODO
         "520__9",  # abstract provenance
+        "540__3",  # all the copyrights seem not to need this qualifier
         "540__b",  # material of license
         "540__f",  # funder of OA, to be manually migrated, 2845118
-        "540__3",  # all the copyrights seem not to need this qualifier
         "542__3",  # ignored, all the values were equal thesis
-        "595__a",  # always value CERN EDS, not displayed
         "594__a",  # PUB 466504, 455788
+        "595__a",  # always value CERN EDS, not displayed
         "650272",  # scheme of subjects, other than CERN
-        "6532_9",  # scheme of subjects, other than CERN
-        "6531_n",  # looks like relevance or order of subjects (bibclassify, 1198695)
         "6531_9",  # looks like relevance or order of subjects (bibclassify, 1198695)
+        "6531_n",  # looks like relevance or order of subjects (bibclassify, 1198695)
+        "6532_9",  # scheme of subjects, other than CERN
         "690C_e",  # 878811  fermilab
         "700__m",  # author's email <-- decided not to keep in RDM,
+        "700__v",
         "701__j",
         "701__m",  # supervisors's email <-- decided not to keep in RDM,
+        "701__v",
         "720__a",  # author's duplicate
         "773__o",  # spreadsheet
         "773__x",  # spreadsheet
+        "852__c",
+        "852__h",
         "8564_8",  # Files system field
         "8564_s",  # Files system field
         "8564_x",  # Files system field
         "8564_y",  # Files / URLS label
         "916__d",  # spreadsheet
         "916__e",  # spreadsheet
+        "916__y",  # year
         "960__a",  # collection id? usually value 14, to confirm if we ignore
         "961__c",  # CDS modification tag # TODO
         "961__h",  # CDS modification tag # TODO
@@ -94,7 +101,6 @@ class ThesisModel(CdsOverdo):
         "962__k",  # description of the related works
         "964__a",  # spreadsheet
         "970__b",  # spreadsheet
-        # "980__a",  # collection tag
         "981__a",  # duplicated record marker # TODO -> decide how to handle these
         "999C50",  # https://cds.cern.ch/record/2284609/export/hm?ln=en CMS contributions
         "999C52",  # https://cds.cern.ch/record/2640188/export/hm?ln=en
@@ -119,24 +125,19 @@ class ThesisModel(CdsOverdo):
         "999C6a",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
         "999C6t",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
         "999C6v",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
+        # "980__a",  # collection tag
         # "100_v",
         # "701__v",  # raw affiliation string from INSPIRE
-        "852__c",
-        "852__h",
         # "599__a", # clc sync
         # "595__z", # hidden rn
         # "595__b",
         # "595__c",
-        "100__v",
-        "700__v",
-        "701__v",
         # Fields which should not appear
         # "502__u",  # miscataloguing university, TODO check occurences
         # TO IMPLEMENT /decide
         # "035__9",  # Inspire schema
         # "035__a",  # Inspire id value, contains unknown identifiers, TBD what to do
         # "269__a",  # imprint place
-        "300__a",  # number of pages (imprint?)
         # "340__a",  # resource type ?
         # "490__a",  # tag for experiment + thesis
         # "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it? what does UNCL mean
@@ -144,7 +145,7 @@ class ThesisModel(CdsOverdo):
         # "701__",   # contributors (implemented, to confirm this is the right field)
         # "710__5",  # department / organisation author
         # "710__a",  # organisation author
-        "916__y",  # year
+
         # "937__c",  # modification date
         # "937__s",  # modification person
         # "961__c",  # seems like a set of identifiers, to be defined
