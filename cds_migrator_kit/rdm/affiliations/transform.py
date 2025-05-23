@@ -15,6 +15,7 @@ from invenio_rdm_migrator.streams.records.transform import RDMRecordTransform
 from cds_migrator_kit.transform.dumper import CDSRecordDump
 
 from . import affiliations_migrator_marc21
+from .log import AffiliationsLogger
 
 cli_logger = logging.getLogger("migrator")
 
@@ -106,8 +107,13 @@ class CDSToRDMAffiliationTransform(RDMRecordTransform):
     def _transform(self, entry):
         """Transform a single entry."""
         # creates the output structure for load step
-        record_dump = CDSRecordDump(entry, dojson_model=affiliations_migrator_marc21)
-        record_dump.prepare_revisions()
+        try:
+            record_dump = CDSRecordDump(entry, dojson_model=affiliations_migrator_marc21,
+                                        raise_on_missing_rules=False)
+            record_dump.prepare_revisions()
+        except Exception as e:
+            logger = AffiliationsLogger.get_logger()
+            logger.error(str(e))
 
         timestamp, json_data = record_dump.latest_revision
         try:
