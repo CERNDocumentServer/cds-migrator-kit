@@ -328,7 +328,75 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             related_identifiers = [
                 d for d in json_data.get("related_identifiers", []) if d
             ]
+
+            # Existing identifiers to prevent duplicates
+            added_indico_ids = set(
+                d["identifier"]
+                for d in related_identifiers
+                if d.get("scheme") == "Indico"
+            )
+
+            url_files = [
+                item.get("indico") or item.get("url_file")
+                for item in json_data.get("url_files", [])
+                if "indico" in item or "url_file" in item
+            ]
+
+            for item in url_files:
+                related_identifiers.append(
+                    {
+                        "scheme": "URL",
+                        "identifier": item["url"],
+                        "relation_type": "IsPartOf",
+                    }
+                )
+
+                event_id = item.get("event_id")
+                if event_id and event_id not in added_indico_ids:
+                    related_identifiers.append(
+                        {
+                            "scheme": "Indico",
+                            "identifier": event_id,
+                            "relation_type": "IsPartOf",
+                        }
+                    )
+                    added_indico_ids.add(event_id)
+
             return related_identifiers
+
+        def get_curation(json_data):
+            """Return _curation."""
+            _curation = json_data.get("_curation", {})
+            # Add volumes
+            additional_titles = json_data.get("additional_titles", [])
+            volumes = [item["volume"] for item in additional_titles if "volume" in item]
+            if volumes:
+                _curation["volumes"] = volumes
+
+            return _curation
+
+        def get_additional_titles(json_data):
+            """Return additional_titles."""
+            tag_246 = json_data.get("additional_titles", {})
+            _titles = [item for item in tag_246 if "title" in item]
+            additional_titles = []
+            for title_item in _titles:
+                additional_title = {
+                    "title": title_item["title"],
+                    "type": (
+                        "TranslatedTitle"
+                        if "lang" in title_item
+                        else "AlternativeTitle"
+                    ),
+                }
+                if "lang" in title_item:
+                    additional_title["lang"] = title_item["lang"]
+                additional_titles.append(additional_title)
+            return additional_titles
+
+        def get_additional_descriptions(json_data):
+            """Return additional_descriptions."""
+            return [d for d in json_data.get("additional_descriptions", []) if d]
 
         record_date = reformat_date(entry)
         metadata = {
@@ -344,8 +412,10 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "location": location(entry),
             "legacy_recid": entry.get("legacy_recid"),
             "related_identifiers": get_related_identifiers(entry),
+            "additional_titles": get_additional_titles(entry),
+            "additional_descriptions": get_additional_descriptions(entry),
         }
-        _curation = entry.get("_curation", {})
+        _curation = get_curation(entry)
         # If report number exists put it in curation
         # Report_number is a list with one value
         report_number, is_curation = get_report_number(entry)

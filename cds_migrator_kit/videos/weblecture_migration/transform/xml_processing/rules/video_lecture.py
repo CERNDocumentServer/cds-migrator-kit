@@ -404,3 +404,40 @@ def subject_categories(self, key, value):
 
     if keyword:
         return {"name": keyword}
+
+
+@model.over("additional_titles", "^246__")
+@for_each_value
+def additional_titles(self, key, value):
+    """Translates additional_titles and volumes."""
+    additional_title = {}
+    title = value.get("a", "").strip()
+    title_remainder = value.get("b", "").strip()
+    lang = value.get("i", "").strip()
+    part = value.get("n", "").strip()
+    volume = value.get("p", "").strip()
+
+    if title:
+        formatted_title = f"{title} : {title_remainder}" if title_remainder else title
+        additional_title["title"] = formatted_title
+        if lang:
+            if lang != "Titre français":
+                raise UnexpectedValue(field=key, subfield="i", value=lang)
+            additional_title["lang"] = "fr"
+
+    if volume:
+        formatted_volume = f"{part} : {volume}" if part else volume
+        additional_title["volume"] = formatted_volume
+
+    if additional_title:
+        return additional_title
+
+
+@model.over("additional_descriptions", "^590__")
+@for_each_value
+def additional_descriptions(self, key, value):
+    """Translates additional_descriptions."""
+    description = value.get("a", "").strip()
+    if description:
+        return {"description": description, "type": "Other", "lang": "fr"}
+    return None
