@@ -52,7 +52,6 @@ class VideoLecture(CdsOverdo):
         "306__a",  # ? TODO? check with JY
         "336__a",  # ? TODO? check with JY
         "981__a",  # duplicate record id TODO? check with JY
-        "960__a",  # Base?
         # Category, Collection, Series, Keywords
         "980__a",  # collection tag
         "980__b",  # Secondary collection indicator
@@ -60,8 +59,6 @@ class VideoLecture(CdsOverdo):
         "490__v",  # Series: volume
         "690C_a",  # collection name
         # Conference Information/Indico
-        "084__a",  # Indico?
-        "084__2",  # Indico?
         "970__a",  # alternative identifier, indico id?
         # Copyright/License
         "542__d",  # Copyright holder
@@ -75,14 +72,6 @@ class VideoLecture(CdsOverdo):
         # Alternative identifiers
         "962__n",  # `Presented at` note (conference/linked document)
         "962__b",  # `Presented at` record (conference/linked document)
-        # Additional Title, Volume, Note
-        "246__a",  # Additional title
-        "246__i",  # Additional title/display text
-        "246__b",  # Additional title remaining
-        "246__n",  # Volume
-        "246__p",  # Volume
-        # French Description
-        "590__a",
         # Restricted
         "5061_f",
         "5061_d",
@@ -145,6 +134,9 @@ class VideoLecture(CdsOverdo):
         "916__e",  # spreadsheet no record
         "916__a",  # Status week only one record value:1 https://cds.cern.ch/record/423917
         "080__a",  # Subject code, only 4 record: 1206221, 225152, 225151, 254588
+        "084__a",  # Other classification number
+        "084__2",  # Other classification number
+        "960__a",  # Base number
         # IMPLEMENTED
         # "520__a",  # Note (-> description.type = abstract
         # "001",
@@ -214,6 +206,12 @@ class VideoLecture(CdsOverdo):
         # "65017a",  # subject value
         # "650272",  # Subject category provenance
         # "65027a",  # Subject category value
+        # "246__a",  # Additional title
+        # "246__i",  # Additional title/display text
+        # "246__b",  # Additional title remaining
+        # "246__n",  # Volume
+        # "246__p",  # Volume
+        # "590__a",  # French Description
     }
 
     _default_fields = {

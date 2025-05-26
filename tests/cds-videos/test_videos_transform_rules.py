@@ -593,7 +593,14 @@ def test_transform_related_identifiers(dumpdir, base_app):
         record_entry = CDSToVideosRecordEntry()
         metadata = record_entry._metadata(res)
         assert "related_identifiers" in metadata
-        assert len(metadata["related_identifiers"]) == 6
+        indico_identifiers = [
+            item
+            for item in metadata["related_identifiers"]
+            if item["scheme"] == "Indico"
+        ]
+        assert len(indico_identifiers) == 6
+        # During transform `URL` added as related identifier
+        assert len(metadata["related_identifiers"]) == 7
 
 
 def test_transform_corporate_author(dumpdir, base_app):
@@ -633,3 +640,72 @@ def test_transform_subject_category(dumpdir, base_app):
         metadata = record_entry._metadata(res)
         assert "keywords" in metadata
         assert len(metadata["keywords"]) == 2
+
+
+def test_additional_titles(dumpdir, base_app):
+    """Test additional_titles correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+        modified_data = data[0]
+
+        # Add additional title (tag 246) with volume
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml,
+            "246",
+            {
+                "a": "Title",
+                "b": "Title remainder",
+                "i": "Titre français",
+                "n": "Part 1",
+                "p": "Volume",
+            },
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        assert "additional_titles" in res
+        assert len(res["additional_titles"]) == 1
+
+        # Transform: volume will be in curation
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "additional_titles" in metadata
+        assert len(metadata["additional_titles"]) == 1
+        additional_title = metadata["additional_titles"][0]
+        assert additional_title["lang"] == "fr"
+        assert additional_title["title"] == "Title : Title remainder"
+        assert additional_title["type"] == "TranslatedTitle"
+        volumes = metadata["_curation"]["volumes"]
+        assert len(volumes) == 1
+        assert volumes[0] == "Part 1 : Volume"
+
+
+def test_additional_descriptions(dumpdir, base_app):
+    """Test additional_descriptions correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+        modified_data = data[0]
+
+        # Add additional title (tag 246) with volume
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "590", {"a": "French Description"}
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        assert "additional_descriptions" in res
+        assert len(res["additional_descriptions"]) == 1
+
+        # Transform: volume will be in curation
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "additional_descriptions" in metadata
+        assert len(metadata["additional_descriptions"]) == 1
+        additional_description = metadata["additional_descriptions"][0]
+        assert additional_description["description"] == "French Description"
+        assert additional_description["type"] == "Other"
+        assert additional_description["lang"] == "fr"
