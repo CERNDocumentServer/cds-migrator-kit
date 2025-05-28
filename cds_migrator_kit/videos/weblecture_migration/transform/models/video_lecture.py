@@ -60,15 +60,6 @@ class VideoLecture(CdsOverdo):
         "690C_a",  # collection name
         # Conference Information/Indico
         "970__a",  # alternative identifier, indico id?
-        # Copyright/License
-        "542__d",  # Copyright holder
-        "542__g",  # Copyright date
-        "542__f",  # Copyright statement
-        "542__3",  # Copyright materials
-        "540__a",  # License
-        "540__b",  # License person/organization
-        "540__u",  # License URL
-        "540__3",  # License material
         # Alternative identifiers
         "962__n",  # `Presented at` note (conference/linked document)
         "962__b",  # `Presented at` record (conference/linked document)
@@ -212,6 +203,14 @@ class VideoLecture(CdsOverdo):
         # "246__n",  # Volume
         # "246__p",  # Volume
         # "590__a",  # French Description
+        # "542__d",  # Copyright holder
+        # "542__g",  # Copyright date
+        # "542__f",  # Copyright statement
+        # "542__3",  # Copyright materials
+        # "540__a",  # License
+        # "540__b",  # License person/organization
+        # "540__u",  # License URL
+        # "540__3",  # License material
     }
 
     _default_fields = {

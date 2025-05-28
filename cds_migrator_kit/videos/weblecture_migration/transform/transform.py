@@ -414,6 +414,8 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "related_identifiers": get_related_identifiers(entry),
             "additional_titles": get_additional_titles(entry),
             "additional_descriptions": get_additional_descriptions(entry),
+            "license": entry.get("license"),
+            "copyright": entry.get("copyright"),
         }
         _curation = get_curation(entry)
         # If report number exists put it in curation

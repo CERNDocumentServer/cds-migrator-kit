@@ -441,3 +441,48 @@ def additional_descriptions(self, key, value):
     if description:
         return {"description": description, "type": "Other", "lang": "fr"}
     return None
+
+
+@model.over("license", "^540__")
+def license(self, key, value):
+    """Translates license."""
+    license = value.get("a", "").strip()
+    credit = value.get("b", "").strip()
+    url = value.get("u", "").strip()
+    material = value.get("3", "").strip()
+
+    return {
+        k: v
+        for k, v in {
+            "url": url,
+            "credit": credit,
+            "license": license,
+            "material": material,
+        }.items()
+        if v
+    }
+
+
+@model.over("copyright", "^542__")
+def copyright(self, key, value):
+    """Translates copyright."""
+    holder = value.get("d", "").strip()
+    statement = value.get("f", "").strip()
+    year = value.get("g", "").strip()
+    material = value.get("3", "").strip()
+
+    # Drop material
+    if material and material not in ["publication", "Report"]:
+        raise UnexpectedValue(field=key, subfield="3", value=material)
+
+    full_holder = f"{year} © {holder}. {statement}".strip()
+    if not full_holder:
+        raise UnexpectedValue(message="Holder is missing for copyright!")
+
+    copyright = {"holder": full_holder}
+    if year:
+        copyright["year"] = year
+    if "CERN" in holder:
+        copyright["url"] = "http://copyright.web.cern.ch"
+
+    return copyright
