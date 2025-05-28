@@ -709,3 +709,52 @@ def test_additional_descriptions(dumpdir, base_app):
         assert additional_description["description"] == "French Description"
         assert additional_description["type"] == "Other"
         assert additional_description["lang"] == "fr"
+
+
+def test_license(dumpdir, base_app):
+    """Test license correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+        modified_data = data[1]
+
+        # Add valid date to not fail transform
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "518", {"d": "2025-05-26"}
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        assert "license" in res
+        assert res["license"]["license"] == "CC-BY-3.0"
+        assert res["license"]["material"] == "Report"
+
+        # Transform
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "license" in metadata
+        assert metadata["license"]["license"] == "CC-BY-3.0"
+        assert metadata["license"]["material"] == "Report"
+
+
+def test_copyright(dumpdir, base_app):
+    """Test copyright correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+
+        # Extract record
+        res = load_and_dump_revision(data[0])
+        assert "copyright" in res
+        assert res["copyright"]["holder"] == "2016 © CERN."
+        assert res["copyright"]["year"] == "2016"
+        assert res["copyright"]["url"] == "http://copyright.web.cern.ch"
+
+        # Transform
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "copyright" in metadata
+        assert metadata["copyright"]["holder"] == "2016 © CERN."
+        assert metadata["copyright"]["year"] == "2016"
+        assert metadata["copyright"]["url"] == "http://copyright.web.cern.ch"
