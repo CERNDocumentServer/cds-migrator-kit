@@ -33,6 +33,7 @@ from ..quality.contributors import (
     get_contributor,
 )
 from ..quality.dates import parse_date
+from ..quality.identifiers import get_new_indico_id, is_doi, transform_legacy_urls
 
 
 @model.over("date", "^518__")
@@ -42,6 +43,11 @@ def date(self, key, value):
     # Lecture informations
     event_id = value.get("g", "").strip()
     location = value.get("r", "").strip()
+
+    # Try to convert new id
+    new_id = get_new_indico_id(event_id)
+    if new_id:
+        event_id = str(new_id)
 
     lecture_info = {
         k: v for k, v in {"event_id": event_id, "location": location}.items() if v
@@ -124,7 +130,10 @@ def url_files(self, key, value):
             }
         }
     elif "indico" in url or "agenda" in url:
-        indico_link = {"url": url}
+        indico_link = {}
+        url = transform_legacy_urls(url, type="indico")
+        if url:
+            indico_link["url"] = url
 
         # Try to get event id
         match_id = re.search(r"(?:ida=|confId=|event/)([\w\d]+)", url)
@@ -145,7 +154,10 @@ def url_files(self, key, value):
 
         return {"indico": indico_link}
 
-    url_file = {"url_file": {"url": url}}
+    url_file = {"url_file": {}}
+    url = transform_legacy_urls(url)
+    if url:
+        url_file["url_file"]["url"] = url
     text = value.get("y")
     if text:
         url_file["url_file"]["text"] = text
@@ -262,6 +274,11 @@ def indico_information(self, key, value):
     start_date = value.get("9", "").strip()
     parsed_date = parse_date(start_date)
 
+    # Try to convert new id
+    new_id = get_new_indico_id(event_id)
+    if new_id:
+        event_id = str(new_id)
+
     return {
         k: v
         for k, v in {
@@ -355,14 +372,22 @@ def system_control_number(self, key, value):
     schema = value.get("9", "")
     identifier = value.get("a", "")
     identifier = StringValue(identifier).parse()
+    rel_ids = self.get("related_identifiers", [])
 
-    # TODO Check with indico if we can convert the values to URL
     if schema in ["Indico", "Agendamaker", "AgendaMaker"]:
-        return {
+        # Try to convert new id
+        id = get_new_indico_id(identifier)
+        if id:
+            identifier = str(id)
+
+        rel_id = {
             "scheme": "Indico",
             "identifier": identifier,
             "relation_type": "IsPartOf",
         }
+        if rel_id not in rel_ids:
+            return rel_id
+        return None
 
     # Some identifiers: '0329956CERCER' https://cds.cern.ch/record/403279
     elif schema in ["CERCER", "CERN annual report"] or any(
@@ -444,6 +469,7 @@ def additional_descriptions(self, key, value):
 
 
 @model.over("license", "^540__")
+@for_each_value
 def license(self, key, value):
     """Translates license."""
     license = value.get("a", "").strip()
@@ -486,3 +512,100 @@ def copyright(self, key, value):
         copyright["url"] = "http://copyright.web.cern.ch"
 
     return copyright
+
+
+@model.over("related_identifiers", "^962__")
+@for_each_value
+def presented_at(self, key, value):
+    """Translates related identifiers."""
+    recid = value.get("b")
+    material = value.get("n", "").lower().strip()  # drop
+    rel_ids = self.get("related_identifiers", [])
+    res_type = "Event"
+    if material and material.lower() == "book":
+        res_type = "Book"
+    if not recid:
+        raise UnexpectedValue(message="Identifier is missing!", field=key)
+    new_id = {
+        "identifier": recid,
+        "scheme": "CDS",
+        "relation_type": "IsPartOf",
+        "resource_type": res_type,
+    }
+
+    if new_id not in rel_ids:
+        return new_id
+    return None
+
+
+@model.over("related_identifiers", "^773__")
+@for_each_value
+def published_in(self, key, value):
+    """Translates related identifiers."""
+    recid = value.get("r", "")
+    doi = value.get("a", "")  # it's also recid?
+    title = value.get("p", "")  # drop?
+    url = value.get("u", "")
+
+    if is_doi(doi):
+        raise UnexpectedValue(message="It's a DOI not recid!", field=key, value=doi)
+
+    # Should be one identifier
+    identifiers = [i for i in [recid, doi, url] if i]
+    if len(identifiers) > 1:
+        raise UnexpectedValue(message="Multiple identifiers found!", field=key)
+
+    if url:
+        new_id = {
+            "identifier": url,
+            "scheme": "URL",
+            "relation_type": "IsVariantFormOf",
+        }
+    elif recid or doi:
+        cds_id = recid or doi
+        new_id = {
+            "identifier": cds_id,
+            "scheme": "CDS",
+            "relation_type": "IsVariantFormOf",
+        }
+    else:
+        raise UnexpectedValue(message="No identifier found!", field=key)
+
+    rel_ids = self.get("related_identifiers", [])
+    if new_id not in rel_ids:
+        return new_id
+    return None
+
+
+@model.over("related_identifiers", "^7870_")
+@for_each_value
+def related_document(self, key, value):
+    """Translates related identifiers."""
+    recid = value.get("w", "")
+    report_number = value.get("r", "")  # drop
+    relation = value.get("i", "")
+
+    res_type = None
+    if relation:
+        if relation.lower() == "conference paper":
+            res_type = "ConferencePaper"
+        elif relation.lower() == "yellow report":
+            res_type = "Report"
+        else:
+            raise UnexpectedValue(message="Unknown relation!", field=key)
+
+    if recid:
+        new_id = {
+            "identifier": recid,
+            "scheme": "CDS",
+            "relation_type": "IsVariantFormOf",
+        }
+    else:
+        raise UnexpectedValue(message="No identifier found!", field=key)
+    if res_type:
+        new_id["resource_type"] = res_type
+
+    rel_ids = self.get("related_identifiers", [])
+    if new_id not in rel_ids:
+        return new_id
+    return None

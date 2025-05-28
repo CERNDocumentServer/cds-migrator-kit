@@ -22,6 +22,12 @@ For the files, modify the `migration_config.py` file located at `cds_migrator_ki
 - Composite videos will always be named as `<id-composite-...p-quality.mp4>`, and frames of the composite will be stored in `MOUNTED_MEDIA_CEPH_PATH/frames`.
 - If no composite exists (i.e., the master contains only one video), subformats and frames will be obtained using `data.v2.json`.
 
+## Indico ID Mapping (Legacy to New)
+
+To convert legacy indico IDs to new IDs, you need the mapping JSON file. You can find the `indico-legacy-ids.json` file in  CERNBOX:` \CDS Videos\Projects\Weblectures migration\indico_ids_mapping` folder.  
+
+Make sure to update the `CDS_MIGRATOR_KIT_INDICO_LEGACY_IDS`config variable with the full path to `indico-legacy-ids.json` file.
+
 ## Missing Users Migration
 
 If you need to migrate missing users, you need `missing_users.json` and `people.csv` files, you can find the files in CERNBOX:` \CDS Videos\Projects\Weblectures migration\user-files`. Place the files in `cds_migrator_kit/videos/weblecture_migration/data/users/` or update the `submitters/data_dir` in `cds_migrator_kit/videos/weblecture_migration/streams.yaml`. User migration is also using the same record dumps with record migration, so make sure you have your dumps in `cds_migrator_kit/videos/weblecture_migration/data/weblectures/dump/` folder.
