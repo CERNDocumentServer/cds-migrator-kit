@@ -58,11 +58,6 @@ class VideoLecture(CdsOverdo):
         "490__a",  # TODO Series
         "490__v",  # Series: volume
         "690C_a",  # collection name
-        # Conference Information/Indico
-        "970__a",  # alternative identifier, indico id?
-        # Alternative identifiers
-        "962__n",  # `Presented at` note (conference/linked document)
-        "962__b",  # `Presented at` record (conference/linked document)
         # Restricted
         "5061_f",
         "5061_d",
@@ -94,15 +89,6 @@ class VideoLecture(CdsOverdo):
         # DOI
         "0247_a",  # doi value
         "0247_2",
-        # Published in - Host item entry
-        "773__a",  # DOI
-        "773__p",  # Title
-        "773__r",  # Record id TODO check
-        "773__u",  # URL
-        # Related document - Other relationship entry
-        "7870_i",  # Relationship information
-        "7870_r",  # Report number
-        "7870_w",  # Record control number
         # IGNORE
         "111__z",  # End date (indico)
         "518__h",  # Lectures: Starting time
@@ -211,6 +197,16 @@ class VideoLecture(CdsOverdo):
         # "540__b",  # License person/organization
         # "540__u",  # License URL
         # "540__3",  # License material
+        # "962__n",  # `Presented at` note (conference/linked document)
+        # "962__b",  # `Presented at` record (conference/linked document)
+        # "773__a",  # DOI
+        # "773__p",  # Title
+        # "773__r",  # Record id TODO check
+        # "773__u",  # URL
+        # "7870_i",  # Relationship information
+        # "7870_r",  # Report number
+        # "7870_w",  # Record control number
+        # "970__a",  # alternative identifier, indico id?
     }
 
     _default_fields = {

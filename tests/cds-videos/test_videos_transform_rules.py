@@ -11,6 +11,7 @@
 from os.path import dirname, join
 
 import pytest
+from flask import current_app
 
 from cds_migrator_kit.errors import (
     MissingRequiredField,
@@ -570,7 +571,7 @@ def test_report_number(dumpdir, base_app):
         assert len(res["report_number"]) == 1
 
 
-def test_transform_related_identifiers(dumpdir, base_app):
+def test_transform_system_control_number(dumpdir, base_app):
     """Test related_identifiers correctly transformed."""
     with base_app.app_context():
         # Load test data
@@ -579,13 +580,19 @@ def test_transform_related_identifiers(dumpdir, base_app):
 
         # Extract record
         res = load_and_dump_revision(modified_data)
+
         assert "related_identifiers" in res
-        assert len(res["related_identifiers"]) == 7
+        assert len(res["related_identifiers"]) == 8
 
         # Add valid date and transform
         record_marcxml = modified_data["record"][-1]["marcxml"]
         modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
             record_marcxml, "518", {"d": "2025-05-26"}
+        )
+        # Remove presented at, it'll test later
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
+            record_marcxml, "962"
         )
         res = load_and_dump_revision(modified_data)
 
@@ -598,9 +605,9 @@ def test_transform_related_identifiers(dumpdir, base_app):
             for item in metadata["related_identifiers"]
             if item["scheme"] == "Indico"
         ]
-        assert len(indico_identifiers) == 6
+        assert len(indico_identifiers) == 5
         # During transform `URL` added as related identifier
-        assert len(metadata["related_identifiers"]) == 7
+        assert len(metadata["related_identifiers"]) == 6
 
 
 def test_transform_corporate_author(dumpdir, base_app):
@@ -727,15 +734,15 @@ def test_license(dumpdir, base_app):
         # Extract record
         res = load_and_dump_revision(modified_data)
         assert "license" in res
-        assert res["license"]["license"] == "CC-BY-3.0"
-        assert res["license"]["material"] == "Report"
+        assert res["license"][0]["license"] == "CC-BY-3.0"
+        assert res["license"][0]["material"] == "Report"
 
         # Transform
         record_entry = CDSToVideosRecordEntry()
         metadata = record_entry._metadata(res)
         assert "license" in metadata
-        assert metadata["license"]["license"] == "CC-BY-3.0"
-        assert metadata["license"]["material"] == "Report"
+        assert metadata["license"][0]["license"] == "CC-BY-3.0"
+        assert metadata["license"][0]["material"] == "Report"
 
 
 def test_copyright(dumpdir, base_app):
@@ -758,3 +765,97 @@ def test_copyright(dumpdir, base_app):
         assert metadata["copyright"]["holder"] == "2016 © CERN."
         assert metadata["copyright"]["year"] == "2016"
         assert metadata["copyright"]["url"] == "http://copyright.web.cern.ch"
+
+
+def test_related_identifiers(dumpdir, base_app):
+    """
+    Test related_identifiers correctly transformed.
+
+    962: Presented at -> related_identifiers with scheme CDS
+    773: Published in -> related_identifiers with scheme URL or CDS
+    787: Related document -> related_identifiers with scheme CDS
+    Indico IDs and links.
+    """
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+        modified_data = data[1]
+
+        # Add valid date to not fail transform
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "518", {"d": "2025-05-28"}
+        )
+        # Remove system control number, it's tested already
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
+            record_marcxml, "035"
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        assert "related_identifiers" in res
+        identifier = res["related_identifiers"][0]
+        assert identifier["identifier"] == "515422"
+        assert identifier["scheme"] == "CDS"
+        assert identifier["relation_type"] == "IsPartOf"
+
+        # Transform record
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "related_identifiers" in metadata
+        # During transform `URL` added as related identifier
+        assert len(metadata["related_identifiers"]) == 2
+
+        # Add published in
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "773", {"a": "489562"}
+        )
+        # Add related document
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "787", {"w": "489562", "i": "Conference paper"}, ind1="0"
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        assert "related_identifiers" in res
+        published_in = res["related_identifiers"][1]
+        assert published_in["identifier"] == "489562"
+        assert published_in["scheme"] == "CDS"
+        assert published_in["relation_type"] == "IsVariantFormOf"
+
+        related_document = res["related_identifiers"][2]
+        assert related_document["identifier"] == "489562"
+        assert related_document["scheme"] == "CDS"
+        assert related_document["relation_type"] == "IsVariantFormOf"
+        assert related_document["resource_type"] == "ConferencePaper"
+
+        # Transform record
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "related_identifiers" in metadata
+        # During transform `URL` added as related identifier
+        assert len(metadata["related_identifiers"]) == 4
+
+
+def test_legacy_indico_id_transform(dumpdir, base_app):
+    """Test converting legacy Indico IDs to new format."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+
+        # Extract record
+        res = load_and_dump_revision(data[1])
+
+        # Assertions
+        assert "related_identifiers" in res
+        related_ids = [item for item in res["related_identifiers"] if item]
+        assert len(related_ids) == 6
+
+        indico_ids = [
+            item["identifier"] for item in related_ids if item["scheme"] == "Indico"
+        ]
+        for identifier in indico_ids:
+            assert not identifier.startswith("a")

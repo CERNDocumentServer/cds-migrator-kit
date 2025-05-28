@@ -161,9 +161,12 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
     def _metadata(self, entry):
         """Transform the metadata of a record."""
 
-        def get_values_in_json(json_data, field):
-            """Get the not none values in json as a set."""
-            return {d for d in json_data.get(field, []) if d}
+        def get_values_in_json(json_data, field, type=set):
+            """Get the not none values in json."""
+            if type == set:
+                return {d for d in json_data.get(field, []) if d}
+            if type == list:
+                return [d for d in json_data.get(field, []) if d]
 
         def guess_dates(json_data, key, subkey=None):
             """Try to get `date` from other fields.
@@ -235,8 +238,8 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             - If no valid contributors are found, use "Unknown, Unknown" and log it.
             """
             contributors = (
-                [d for d in json_data.get("contributors", []) if d]
-                or [d for d in json_data.get("event_speakers", []) if d]
+                get_values_in_json(json_data, "contributors", type=list)
+                or get_values_in_json(json_data, "event_speakers", type=list)
                 or None
             )
 
@@ -325,15 +328,8 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
         def get_related_identifiers(json_data):
             """Return related_identifiers."""
-            related_identifiers = [
-                d for d in json_data.get("related_identifiers", []) if d
-            ]
-
-            # Existing identifiers to prevent duplicates
-            added_indico_ids = set(
-                d["identifier"]
-                for d in related_identifiers
-                if d.get("scheme") == "Indico"
+            related_identifiers = get_values_in_json(
+                json_data, "related_identifiers", type=list
             )
 
             url_files = [
@@ -341,26 +337,51 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 for item in json_data.get("url_files", [])
                 if "indico" in item or "url_file" in item
             ]
-
-            for item in url_files:
-                related_identifiers.append(
-                    {
-                        "scheme": "URL",
-                        "identifier": item["url"],
-                        "relation_type": "IsPartOf",
-                    }
+            # Get indico id's and raise if different
+            event_ids = {
+                item["event_id"] for item in url_files if item and "event_id" in item
+            }
+            # Get event id's from indico_information(111) and tag 970
+            event_ids.update(
+                filter(
+                    None,
+                    [
+                        json_data.get("indico_information", {}).get("event_id"),
+                        json_data.get("system_number"),
+                    ],
                 )
+            )
+            if len(event_ids) == 1:
+                identifier = next(iter(event_ids))
+                rel = {
+                    "scheme": "Indico",
+                    "identifier": identifier,
+                    "relation_type": "IsPartOf",
+                }
+                if rel not in related_identifiers:
+                    related_identifiers.append(rel)
+            elif len(event_ids) > 1:
+                raise UnexpectedValue(
+                    f"Multiple Indico IDs found: {event_ids}",
+                    stage="transform",
+                )
+            else:
+                RDMJsonLogger(collection="weblectures").add_success_state(
+                    json_data["recid"],
+                    {"message": "Indico ID is missing!", "value": "indico"},
+                )
+            # Add the url's
+            for item in url_files:
+                if not item or "url" not in item:
+                    continue
 
-                event_id = item.get("event_id")
-                if event_id and event_id not in added_indico_ids:
-                    related_identifiers.append(
-                        {
-                            "scheme": "Indico",
-                            "identifier": event_id,
-                            "relation_type": "IsPartOf",
-                        }
-                    )
-                    added_indico_ids.add(event_id)
+                rel = {
+                    "scheme": "URL",
+                    "identifier": item["url"],
+                    "relation_type": "IsPartOf",
+                }
+                if rel not in related_identifiers:
+                    related_identifiers.append(rel)
 
             return related_identifiers
 
@@ -396,7 +417,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
         def get_additional_descriptions(json_data):
             """Return additional_descriptions."""
-            return [d for d in json_data.get("additional_descriptions", []) if d]
+            return get_values_in_json(json_data, "additional_descriptions", type=list)
 
         record_date = reformat_date(entry)
         metadata = {
