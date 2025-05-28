@@ -52,3 +52,5 @@ CDS_MIGRATOR_KIT_VIDEOS_STREAM_CONFIG = (
 MOUNTED_MEDIA_CEPH_PATH = "/cephfs/media_data"
 
 WEBLECTURES_MIGRATION_SYSTEM_USER = "weblecture-service@cern.ch"
+
+CDS_MIGRATOR_KIT_INDICO_LEGACY_IDS = "cds_migrator_kit/videos/weblecture_migration/data/indico/indico-legacy-ids.json"

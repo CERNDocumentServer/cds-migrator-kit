@@ -329,13 +329,6 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 d for d in json_data.get("related_identifiers", []) if d
             ]
 
-            # Existing identifiers to prevent duplicates
-            added_indico_ids = set(
-                d["identifier"]
-                for d in related_identifiers
-                if d.get("scheme") == "Indico"
-            )
-
             url_files = [
                 item.get("indico") or item.get("url_file")
                 for item in json_data.get("url_files", [])
@@ -343,24 +336,25 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             ]
 
             for item in url_files:
-                related_identifiers.append(
-                    {
-                        "scheme": "URL",
-                        "identifier": item["url"],
+                if not item or "url" not in item:
+                    continue
+
+                rel = {
+                    "scheme": "URL",
+                    "identifier": item["url"],
+                    "relation_type": "IsPartOf",
+                }
+                if rel not in related_identifiers:
+                    related_identifiers.append(rel)
+
+                if "event_id" in item:
+                    rel = {
+                        "scheme": "Indico",
+                        "identifier": item["event_id"],
                         "relation_type": "IsPartOf",
                     }
-                )
-
-                event_id = item.get("event_id")
-                if event_id and event_id not in added_indico_ids:
-                    related_identifiers.append(
-                        {
-                            "scheme": "Indico",
-                            "identifier": event_id,
-                            "relation_type": "IsPartOf",
-                        }
-                    )
-                    added_indico_ids.add(event_id)
+                    if rel not in related_identifiers:
+                        related_identifiers.append(rel)
 
             return related_identifiers
 

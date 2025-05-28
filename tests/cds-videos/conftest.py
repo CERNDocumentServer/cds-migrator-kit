@@ -30,6 +30,9 @@ def app_config(app_config):
     )
     app_config["CDS_MIGRATOR_KIT_LOGS_PATH"] = logs_dir
     app_config["CDS_MIGRATOR_KIT_STREAM_CONFIG"] = "tests/cds-videos/data/streams.yaml"
+    app_config["CDS_MIGRATOR_KIT_INDICO_LEGACY_IDS"] = (
+        "tests/cds-videos/data/indico/indico_mapping.json"
+    )
     return app_config
 
 
