@@ -28,6 +28,9 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     require,
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
+from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.curation import (
+    transform_subfields,
+)
 
 # ATTENTION when COPYING! important which model you use as decorator
 from ...models.video_lecture import model
@@ -632,3 +635,36 @@ def related_document(self, key, value):
         return indico_id
     else:
         raise UnexpectedValue(field=key, subfield="a")
+
+
+def append_transformed_subfields(self, key, value, field_name):
+    """Helper to append transformed subfields to a curation field."""
+    curation = self["_curation"]
+    existing_values = curation.get(field_name, [])
+    existing_values.extend(transform_subfields(key, value))
+    if existing_values:
+        curation[field_name] = existing_values
+
+
+@model.over("physical_location", "^852__")
+@for_each_value
+def physical_location(self, key, value):
+    """Translates physical location."""
+    append_transformed_subfields(self, key, value, "physical_location")
+
+
+@model.over("physical_medium", "^340__")
+@for_each_value
+def physical_medium(self, key, value):
+    """Translates physical medium."""
+    if value.get("a") == "Streaming video":
+        value = dict(value)
+        del value["a"]
+    append_transformed_subfields(self, key, value, "physical_medium")
+
+
+@model.over("internal_note", "^595__")
+@for_each_value
+def internal_note(self, key, value):
+    """Translates internal note."""
+    append_transformed_subfields(self, key, value, "internal_note")
