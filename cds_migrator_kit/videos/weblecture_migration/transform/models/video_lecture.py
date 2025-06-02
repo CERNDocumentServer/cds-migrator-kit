@@ -31,13 +31,6 @@ class VideoLecture(CdsOverdo):
 
     __ignore_keys__ = {
         "003",
-        # 340: Drop streaming video, anything else we copy over to curation field.
-        "340__a",  # Physical medium -> curation field
-        "340__d",  # Physical medium/recording technique -> curation field
-        "340__9",  # Physical medium/CD-ROM -> curation field
-        "340__k",  # Physical medium/ -> curation field
-        "340__j",  # Physical medium/ -> curation field
-        "340__8",  # Physical medium/id? -> curation field https://cds.cern.ch/record/2234827
         # check with JY
         "961__h",  # Hour? TODO? check with JY
         "961__l",  # Library? TODO? check with JY
@@ -64,24 +57,12 @@ class VideoLecture(CdsOverdo):
         "5061_5",
         "5061_a",
         "5061_2",
-        # Location (Shelving/Library)
-        "852__c",  # Location (Shelving/Library)
-        "852__b",  # Location (Shelving/?)
-        "852__8",  # Location (Shelving/id?) https://cds.cern.ch/record/2234827
-        "852__h",  # Location (Shelving) example: https://cds.cern.ch/record/254588/
-        "852__a",  # Location (Shelving) example: https://cds.cern.ch/record/558348
-        "852__x",  # Location (Shelving/ type? DVD) example: https://cds.cern.ch/record/690000/
-        "852__9",  # Location (Shelving/ note?) example: https://cds.cern.ch/record/2233722
         # Date/Extra Reduntant
         "260__c",  # Redundant (more detailed value is in 269__c imprint.pub_date)
         "260__a",
         "260__b",
         # Contributor?
         "700__m",  # author's email
-        # Internal Note
-        "595__a",  # Internal Note --> curation field
-        "595__s",  # Subject note --> curation field
-        "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it? what does UNCL mean
         # OAI
         "0248_a",  # oai identifier
         "0248_p",  # oai identifier
@@ -206,6 +187,22 @@ class VideoLecture(CdsOverdo):
         # "7870_i",  # Relationship information
         # "7870_r",  # Report number
         # "7870_w",  # Record control number
+        # "852__c",  # Location _curation
+        # "852__b",  # Location _curation
+        # "852__8",  # Location _curation https://cds.cern.ch/record/2234827
+        # "852__h",  # Location _curation example: https://cds.cern.ch/record/254588/
+        # "852__a",  # Location _curation example: https://cds.cern.ch/record/558348
+        # "852__x",  # Location _curation example: https://cds.cern.ch/record/690000/
+        # "852__9",  # Location _curation example: https://cds.cern.ch/record/2233722
+        # "340__a",  # Physical medium -> curation, drop streaming video
+        # "340__d",  # Physical medium/recording technique -> curation field
+        # "340__9",  # Physical medium/CD-ROM -> curation field
+        # "340__k",  # Physical medium/ -> curation field
+        # "340__j",  # Physical medium/ -> curation field
+        # "340__8",  # Physical medium/id? -> curation field https://cds.cern.ch/record/2234827
+        # "595__a",  # Internal Note --> curation field
+        # "595__s",  # Subject note --> curation field
+        # "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it? what does UNCL mean
         # "970__a",  # alternative identifier, indico id?
     }
 

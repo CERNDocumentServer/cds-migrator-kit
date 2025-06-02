@@ -859,3 +859,41 @@ def test_legacy_indico_id_transform(dumpdir, base_app):
         ]
         for identifier in indico_ids:
             assert not identifier.startswith("a")
+
+
+def test_transform_curation(dumpdir, base_app):
+    """Test tags 852, 340, 595 transformed to _curation."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+
+        # Add `streaming video` to physical medium
+        modified_data = data[1]
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "340", {"a": "Streaming video"}
+        )
+
+        # Extract record
+        res = load_and_dump_revision(data[1])
+
+        # Assertions
+        assert "_curation" in res
+        curation = res["_curation"]
+        assert "physical_location" in curation
+        assert "physical_medium" in curation
+        assert "internal_note" in curation
+
+        physical_location = curation["physical_location"]
+        assert len(physical_location) == 2
+        assert physical_location[0] == "852__c:CERN Central Library"
+        assert physical_location[1] == "852__h:Acad. Train. 392"
+
+        physical_medium = curation["physical_medium"]
+        assert "340__a:Streaming video" not in physical_medium
+        assert len(physical_medium) == 1
+        assert physical_medium[0] == "340__a:paper"
+
+        internal_note = curation["internal_note"]
+        assert len(internal_note) == 1
+        assert internal_note[0] == "595__a:OA"
