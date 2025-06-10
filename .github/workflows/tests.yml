@@ -96,6 +96,7 @@ jobs:
         run: |
           pip install -U pip setuptools wheel
           pip install uritemplate
+          pip install "pytest-cov<4.0.0"
           pip install ".[$EXTRAS]"
           pip freeze
           docker --version

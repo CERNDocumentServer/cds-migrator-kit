@@ -36,18 +36,9 @@ class VideoLecture(CdsOverdo):
         "961__l",  # Library? TODO? check with JY
         "961__a",  # ? TODO? check with JY
         "961__b",  # ? TODO? check with JY
-        "964__a",  # Item owner TODO? check with JY
         "901__u",  # Affiliation at Conversion? TODO? check with JY
-        "583__a",  # Action note / curation TODO? check with JY
-        "583__c",  # Action note / curation TODO? check with JY
-        "583__z",  # Action note / curation TODO? check with JY
-        "583__8",  # Action note / curation TODO? check with JY
-        "306__a",  # ? TODO? check with JY
-        "336__a",  # ? TODO? check with JY
         "981__a",  # duplicate record id TODO? check with JY
         # Category, Collection, Series, Keywords
-        "980__a",  # collection tag
-        "980__b",  # Secondary collection indicator
         "490__a",  # TODO Series
         "490__v",  # Series: volume
         "690C_a",  # collection name
@@ -59,17 +50,14 @@ class VideoLecture(CdsOverdo):
         "5061_2",
         # Date/Extra Reduntant
         "260__c",  # Redundant (more detailed value is in 269__c imprint.pub_date)
-        "260__a",
-        "260__b",
+        "260__a",  # Usually Geneva
+        "260__b",  # Usually CERN
         # Contributor?
         "700__m",  # author's email
         # OAI
         "0248_a",  # oai identifier
         "0248_p",  # oai identifier
         "0248_q",
-        # DOI
-        "0247_a",  # doi value
-        "0247_2",
         # IGNORE
         "111__z",  # End date (indico)
         "518__h",  # Lectures: Starting time
@@ -96,7 +84,7 @@ class VideoLecture(CdsOverdo):
         "084__2",  # Other classification number
         "960__a",  # Base number
         # IMPLEMENTED
-        # "520__a",  # Note (-> description.type = abstract
+        # "520__a",  # description
         # "001",
         # "041__a",  # languages
         # "906__p",  # event speakers
@@ -204,12 +192,26 @@ class VideoLecture(CdsOverdo):
         # "595__s",  # Subject note --> curation field
         # "595__z",  # SOME RECORD HAVE UNCL as value, do we keep it? what does UNCL mean
         # "970__a",  # alternative identifier, indico id?
+        # "0247_a",  # doi value
+        # "0247_2",
+        # "980__a",  # collection tag
+        # "980__b",  # Secondary collection indicator
+        # "583__a",  # Action note / curation
+        # "583__c",  # Action note / curation
+        # "583__z",  # Action note / curation
+        # "583__8",  # Action note / curation
+        # "964__a",  # curation
+        # "336__a",  # curation
+        # "306__a",  # Duration, curation
     }
 
     _default_fields = {
         "lecture_infos": [],
         "_curation": {},
-        "contributors": []
+        "contributors": [],
+        "alternate_identifiers": [],
+        "additional_languages": [],
+        "collections": [],
     }
 
 

@@ -53,10 +53,12 @@ def add_tag_to_marcxml(marcxml, tag, subfields, ind1=" "):
     # Create new datafield element
     new_datafield = ET.Element("datafield", tag=tag, ind1=ind1, ind2=" ")
 
-    # Add subfields
-    for code, value in subfields.items():
-        subfield = ET.SubElement(new_datafield, "subfield", code=code)
-        subfield.text = value
+    for code, values in subfields.items():
+        if not isinstance(values, list):
+            values = [values]  # Normalize to list
+        for value in values:
+            subfield = ET.SubElement(new_datafield, "subfield", code=code)
+            subfield.text = value
 
     # Append the new datafield
     root.append(new_datafield)

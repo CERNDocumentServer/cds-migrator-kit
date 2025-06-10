@@ -419,6 +419,15 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             """Return additional_descriptions."""
             return get_values_in_json(json_data, "additional_descriptions", type=list)
 
+        def get_collections(json_data):
+            """Return collection tags."""
+            collections = get_values_in_json(json_data, "collections", type=list)
+            # If collection is missing add `Lectures`
+            if not collections:
+                collections.append("Lectures")
+            # TODO after implementing restrictions, if not CMS or Atlas add `Lectures/Restricted General Talks`
+            return collections
+
         record_date = reformat_date(entry)
         metadata = {
             "title": entry["title"],
@@ -437,6 +446,10 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "additional_descriptions": get_additional_descriptions(entry),
             "license": entry.get("license"),
             "copyright": entry.get("copyright"),
+            "doi": entry.get("doi"),
+            "alternate_identifiers": entry.get("alternate_identifiers"),
+            "additional_languages": entry.get("additional_languages"),
+            "collections": get_collections(entry),
         }
         _curation = get_curation(entry)
         # If report number exists put it in curation

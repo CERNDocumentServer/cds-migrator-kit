@@ -11,7 +11,7 @@ import datetime
 
 import pycountry
 
-from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.errors import MissingRequiredField, UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
     created as base_created,
 )
@@ -59,15 +59,24 @@ def description(self, key, value):
 @model.over("language", "^041__")
 @require(["a"])
 @strip_output
-def language(self, key, value):
+def languages(self, key, value):
     """Translates language field."""
-    lang = clean_str(value.get("a"))
-    if lang:
-        lang = lang.lower()
+    raw_lang = value.get("a")
+    raw_lang = raw_lang if isinstance(raw_lang, (list, tuple)) else [raw_lang]
+
     try:
-        return pycountry.languages.lookup(lang).alpha_2.lower()
-    except (KeyError, AttributeError, LookupError):
-        raise UnexpectedValue(field=key, subfield="a")
+        langs = [
+            pycountry.languages.lookup(clean_str(r).lower()).alpha_2.lower()
+            for r in raw_lang
+        ]
+    except Exception:
+        raise UnexpectedValue(field=key, subfield="a", value=raw_lang)
+
+    if not langs:
+        raise MissingRequiredField(field=key, subfield="a", value=raw_lang)
+
+    self["additional_languages"].extend(langs[1:])
+    return langs[0]
 
 
 @model.over("contributors", "^100__")
