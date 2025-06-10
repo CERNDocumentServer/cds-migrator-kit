@@ -862,7 +862,7 @@ def test_legacy_indico_id_transform(dumpdir, base_app):
 
 
 def test_transform_curation(dumpdir, base_app):
-    """Test tags 852, 340, 595 transformed to _curation."""
+    """Test tags 852, 340, 595, 964, 853, 336 transformed to _curation."""
     with base_app.app_context():
         # Load test data
         data = load_json(dumpdir, "lecture.json")
@@ -870,12 +870,20 @@ def test_transform_curation(dumpdir, base_app):
         # Add `streaming video` to physical medium
         modified_data = data[1]
         record_marcxml = modified_data["record"][-1]["marcxml"]
-        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+        record_marcxml = add_tag_to_marcxml(
             record_marcxml, "340", {"a": "Streaming video"}
+        )
+        # Add tag 583
+        record_marcxml = add_tag_to_marcxml(
+            record_marcxml, "583", {"a": "curation", "c": "Decembre 2020"}
+        )
+        # Add tag 336
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "336", {"a": "Multiple videos identified"}
         )
 
         # Extract record
-        res = load_and_dump_revision(data[1])
+        res = load_and_dump_revision(modified_data)
 
         # Assertions
         assert "_curation" in res
@@ -883,6 +891,11 @@ def test_transform_curation(dumpdir, base_app):
         assert "physical_location" in curation
         assert "physical_medium" in curation
         assert "internal_note" in curation
+        assert "legacy_marc_fields" in curation
+        legacy_marc_fields = curation["legacy_marc_fields"]
+        assert "964" in legacy_marc_fields
+        assert "583" in legacy_marc_fields
+        assert "336" in legacy_marc_fields
 
         physical_location = curation["physical_location"]
         assert len(physical_location) == 2
@@ -897,3 +910,146 @@ def test_transform_curation(dumpdir, base_app):
         internal_note = curation["internal_note"]
         assert len(internal_note) == 1
         assert internal_note[0] == "595__a:OA"
+
+        tag_964 = curation["legacy_marc_fields"]["964"]
+        assert len(tag_964) == 1
+        assert tag_964[0] == "964__a:0002"
+
+        tag_583 = curation["legacy_marc_fields"]["583"]
+        assert len(tag_583) == 2
+        assert tag_583[0] == "583__a:curation"
+        assert tag_583[1] == "583__c:Decembre 2020"
+
+        tag_336 = curation["legacy_marc_fields"]["336"]
+        assert len(tag_336) == 1
+        assert tag_336[0] == "336__a:Multiple videos identified"
+
+
+def test_doi(dumpdir, base_app):
+    """Test DOI correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+
+        modified_data = data[0]
+
+        # Add a DOI
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "024", {"a": "10.17181/CERN"}, ind1="7"
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        assert "doi" in res
+
+        # Transform
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "doi" in metadata
+        assert metadata["doi"] == "10.17181/CERN"
+
+        # Test case: add DOI with another prefix
+        modified_data = data[0]
+
+        # Add a DOI
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "024", {"a": "10.19181/CERN"}, ind1="7"
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+
+        # Transform
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "doi" not in metadata
+        assert "alternate_identifiers" in metadata
+        identifier = metadata["alternate_identifiers"][0]
+        assert identifier["value"] == "10.19181/CERN"
+        assert identifier["scheme"] == "DOI"
+
+
+def test_collection_tags(dumpdir, base_app):
+    """Test collections correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+
+        # Extract record
+        res = load_and_dump_revision(data[0])
+        assert "collections" in res
+
+        # Transform
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+
+        assert "collections" in metadata
+        tags = metadata["collections"]
+        assert "Indico" not in tags
+        assert "Lectures,E-learning modules" in tags
+        assert "Lectures" in tags
+
+
+def test_additional_languages(dumpdir, base_app):
+    """Test additional languages correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+
+        modified_data = data[0]
+
+        # Remove current language
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
+            record_marcxml, "041"
+        )
+        # Add multiple language
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "041", {"a": ["eng", "fre"]}
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        assert "language" in res
+        assert "additional_languages" in res
+
+        # Transform
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+
+        assert "language" in metadata
+        assert metadata["language"] == "en"
+        assert "additional_languages" in metadata
+        assert len(metadata["additional_languages"]) == 1
+        assert metadata["additional_languages"][0] == "fr"
+
+
+def test_producer(dumpdir, base_app):
+    """Test imprint correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+
+        modified_data = data[0]
+
+        # Add a imprint with a different value than CERN Geneva
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "269", {"a": "Paris", "b": "Lawrence Berkeley Nat. Lab."}
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+
+        # Transform
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        contributors = metadata["contributors"]
+        producers = [item for item in contributors if item["role"] == "Producer"]
+        assert {
+            "name": "Paris Lawrence Berkeley Nat. Lab.",
+            "role": "Producer",
+        } in producers

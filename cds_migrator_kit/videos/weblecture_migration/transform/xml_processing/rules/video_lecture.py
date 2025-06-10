@@ -22,6 +22,7 @@ import re
 from idutils.validators import is_doi
 
 from cds_migrator_kit.errors import UnexpectedValue
+from dojson.errors import IgnoreKey
 from cds_migrator_kit.reports.log import RDMJsonLogger
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
@@ -75,15 +76,16 @@ def date(self, key, value):
 def imprint(self, key, value):
     """Translates date from tag 269."""
     name = value.get("b")
-    if name and name.strip().upper() != "CERN":
-        # checking if anything else stored in this field
-        # and it should be ignored if value == CERN
-        raise UnexpectedValue(field=key, subfield="b", value=name)
     place = value.get("a")
-    if place and place.strip().upper() != "GENEVA":
-        # checking if anything else stored in this field
-        # and it should be ignored if value == Geneva
-        raise UnexpectedValue(field=key, subfield="a", value=place)
+
+    # Transform as contributor if different than CERN Geneva
+    producer = " ".join(
+        part
+        for part in (place, name)
+        if part and part.upper() not in {"GENEVA", "CERN"}
+    )
+    if producer:
+        self["contributors"].append({"name": producer, "role": "Producer"})
 
     date_field = value.get("c")  # 269 'c' subfield (e.g., '1993-08-09')
     parsed_date = parse_date(date_field)
@@ -350,7 +352,7 @@ def report_number(self, key, value):
     identifier = StringValue(identifier).parse()
     provenance = value.get("9", "")
     z_value = value.get("z", "")
-    if z_value:
+    if z_value and z_value != "1/1":
         raise UnexpectedValue(field=key, subfield="z", value=z_value)
     if identifier and provenance:
         raise UnexpectedValue(
@@ -381,6 +383,9 @@ def system_control_number(self, key, value):
     rel_ids = self.get("related_identifiers", [])
 
     if schema in ["Indico", "Agendamaker", "AgendaMaker"]:
+        if schema == "AgendaMaker":
+            append_collection_hierarchy(self, "Lectures,Video Lectures")
+
         # Try to convert new id and exlude the contribution
         identifier = re.split(r"[cs]", identifier, 1)[0]
         id = get_new_indico_id(identifier)
@@ -637,13 +642,22 @@ def related_document(self, key, value):
         raise UnexpectedValue(field=key, subfield="a")
 
 
-def append_transformed_subfields(self, key, value, field_name):
+def append_transformed_subfields(self, key, value, field_name, subfield_name=None):
     """Helper to append transformed subfields to a curation field."""
     curation = self["_curation"]
-    existing_values = curation.get(field_name, [])
-    existing_values.extend(transform_subfields(key, value))
-    if existing_values:
-        curation[field_name] = existing_values
+    transformed = transform_subfields(key, value)
+
+    if subfield_name:
+        existing_values = curation.setdefault(field_name, {})
+        legacy_field = existing_values.get(subfield_name, [])
+        legacy_field.extend(transformed)
+        if legacy_field:
+            curation[field_name][subfield_name] = legacy_field
+    else:
+        existing_values = curation.get(field_name, [])
+        existing_values.extend(transformed)
+        if existing_values:
+            curation[field_name] = existing_values
 
 
 @model.over("physical_location", "^852__")
@@ -658,6 +672,7 @@ def physical_location(self, key, value):
 def physical_medium(self, key, value):
     """Translates physical medium."""
     if value.get("a") == "Streaming video":
+        append_collection_hierarchy(self, "Lectures,Video Lectures")
         value = dict(value)
         del value["a"]
     append_transformed_subfields(self, key, value, "physical_medium")
@@ -668,3 +683,104 @@ def physical_medium(self, key, value):
 def internal_note(self, key, value):
     """Translates internal note."""
     append_transformed_subfields(self, key, value, "internal_note")
+
+
+@model.over("964", "^964__")
+@for_each_value
+def physical_location(self, key, value):
+    """Translates tag 964."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "964")
+
+
+@model.over("583", "^583__")
+@for_each_value
+def physical_location(self, key, value):
+    """Translates tag 583."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "583")
+
+
+@model.over("336", "^336__")
+@for_each_value
+def physical_location(self, key, value):
+    """Translates tag 336."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "336")
+
+
+@model.over("306", "^306__")
+@for_each_value
+def curation_duration(self, key, value):
+    """Translates tag 306."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "306")
+
+
+@model.over("doi", "^0247_")
+def doi(self, key, value):
+    """Translates DOI."""
+    doi = value.get("a", "")
+    title = value.get("2", "")
+    type = value.get("q", "")
+
+    if title and title.upper() != "DOI":
+        raise UnexpectedValue(field=key, value=title)
+    if type and type != "ebook":
+        raise UnexpectedValue(field=key, value=title)
+
+    if not is_doi(doi):
+        raise UnexpectedValue(message="It's not a DOI!", field=key, value=doi)
+
+    # Use as DOI
+    if doi.startswith("10.17181"):
+        return doi
+    else:
+        alternate_identifiers = self["alternate_identifiers"]
+        alternate_identifiers.append({"scheme": "DOI", "value": doi})
+        self["alternate_identifiers"] = alternate_identifiers
+        IgnoreKey("doi")
+
+
+def append_collection_hierarchy(self, tag_string):
+    """Appends hierarchical tag levels to self['collections']."""
+    parts = tag_string.split(",")
+    for i in range(1, len(parts) + 1):
+        hierarchical_tag = ",".join(parts[:i])
+        if hierarchical_tag not in self["collections"]:
+            self["collections"].append(hierarchical_tag)
+
+
+@model.over("collections", "^980__")
+@for_each_value
+def collection_tags(self, key, value):
+    """Translates collection_tags."""
+    collection_mapping = {
+        "ACAD": "Lectures,Academic Training Lectures",
+        "Indico": "",  # omit
+        "Colloquia": "Lectures,Talks Seminars and Other Events,Colloquia",
+        "TALK": "Lectures,Talks Seminars and Other Events,Other Talks",
+        "CMTE": "Lectures,Talks Seminars and Other Events,CERN-wide meetings, trainings and events",
+        "CR": "Lectures,Talks Seminars and Other Events,Conference records",
+        "OE": "Lectures,Talks Seminars and Other Events,Outreach events",
+        "SSW": "Lectures,Talks Seminars and Other Events,Scientific Seminars and Workshops",
+        "TP": "Lectures,Talks Seminars and Other Events,Teacher Programmes",
+        "e-learning": "Lectures,E-learning modules",
+        "E-LEARNING": "Lectures,E-learning modules",
+        "Restricted_ATLAS_Talks": "Lectures,Restricted ATLAS Talks",
+        "SL": "Lectures,Talks Seminars and Other Events,Student Lectures",
+        "Restricted_CMS_Talks": "Lectures,Restricted CMS Talks",
+        "VIDEOARC": "",  # omit
+    }
+
+    primary = value.get("a", "").strip()
+    secondary = value.get("b", "").strip()
+
+    if primary and primary not in collection_mapping:
+        raise UnexpectedValue(field=key, value={"a": primary})
+    if secondary and secondary not in collection_mapping:
+        raise UnexpectedValue(field=key, value={"b": secondary})
+
+    primary_tag = collection_mapping.get(primary, "")
+    secondary_tag = collection_mapping.get(secondary, "")
+
+    if primary_tag:
+        append_collection_hierarchy(self, primary_tag)
+    if secondary_tag:
+        append_collection_hierarchy(self, secondary_tag)
