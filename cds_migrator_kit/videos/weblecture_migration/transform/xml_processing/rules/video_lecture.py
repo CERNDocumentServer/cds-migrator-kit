@@ -19,10 +19,10 @@
 """Common Videos fields."""
 import re
 
+from dojson.errors import IgnoreKey
 from idutils.validators import is_doi
 
 from cds_migrator_kit.errors import UnexpectedValue
-from dojson.errors import IgnoreKey
 from cds_migrator_kit.reports.log import RDMJsonLogger
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
@@ -91,6 +91,26 @@ def imprint(self, key, value):
     parsed_date = parse_date(date_field)
     if parsed_date:  # If parsing succeeds, return the formatted date
         return parsed_date
+
+
+@model.over("_", "^260__")
+@for_each_value
+def tag260(self, key, value):
+    """Check tag 269."""
+
+    def validate_location(val, subfield):
+        if val and val.upper() not in {"GENEVA", "CERN"}:
+            raise UnexpectedValue(
+                field=key, subfield=subfield, value=val, message="Unexpected tag 260"
+            )
+
+    date_field = value.get("c")  # more detailed in 269__c, drop
+    name = value.get("b")
+    place = value.get("a")
+
+    validate_location(place, "a")
+    validate_location(name, "b")
+    IgnoreKey("_")
 
 
 @model.over("contributors", "^511__")
@@ -458,9 +478,12 @@ def additional_titles(self, key, value):
         formatted_title = f"{title} : {title_remainder}" if title_remainder else title
         additional_title["title"] = formatted_title
         if lang:
-            if lang != "Titre français":
+            # Transform as TranslatedTitle
+            if lang == "Titre français":
+                additional_title["lang"] = "fr"
+            # Transform as AlternativeTitle
+            elif lang not in ["Previous title", "Also quoted as"]:
                 raise UnexpectedValue(field=key, subfield="i", value=lang)
-            additional_title["lang"] = "fr"
 
     if volume:
         formatted_volume = f"{part} : {volume}" if part else volume
@@ -784,3 +807,25 @@ def collection_tags(self, key, value):
         append_collection_hierarchy(self, primary_tag)
     if secondary_tag:
         append_collection_hierarchy(self, secondary_tag)
+
+
+@model.over("additional_descriptions", "^490__")
+@for_each_value
+def series(self, key, value):
+    """Translates collection_tags."""
+    series = value.get("a", "").strip()
+    volume = value.get("v", "").strip()
+
+    if not series:
+        raise UnexpectedValue(field=key, message="Missing series information!")
+
+    # Add collection if it's CAS
+    if series == "CERN Accelerator School":
+        append_collection_hierarchy(self, "Lectures,CERN Accelerator School")
+
+    # Add as keyword
+    self["keywords"].append({"name": series})
+
+    # Add as additional description
+    description = f"{series},{volume}" if volume else series
+    return {"description": description, "type": "SeriesInformation"}
