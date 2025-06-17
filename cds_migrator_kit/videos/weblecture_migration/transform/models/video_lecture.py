@@ -39,8 +39,6 @@ class VideoLecture(CdsOverdo):
         "901__u",  # Affiliation at Conversion? TODO? check with JY
         "981__a",  # duplicate record id TODO? check with JY
         # Category, Collection, Series, Keywords
-        "490__a",  # TODO Series
-        "490__v",  # Series: volume
         "690C_a",  # collection name
         # Restricted
         "5061_f",
@@ -48,16 +46,8 @@ class VideoLecture(CdsOverdo):
         "5061_5",
         "5061_a",
         "5061_2",
-        # Date/Extra Reduntant
-        "260__c",  # Redundant (more detailed value is in 269__c imprint.pub_date)
-        "260__a",  # Usually Geneva
-        "260__b",  # Usually CERN
         # Contributor?
         "700__m",  # author's email
-        # OAI
-        "0248_a",  # oai identifier
-        "0248_p",  # oai identifier
-        "0248_q",
         # IGNORE
         "111__z",  # End date (indico)
         "518__h",  # Lectures: Starting time
@@ -83,6 +73,9 @@ class VideoLecture(CdsOverdo):
         "084__a",  # Other classification number
         "084__2",  # Other classification number
         "960__a",  # Base number
+        "0248_a",  # oai identifier
+        "0248_p",  # oai identifier
+        "0248_q",  # oai
         # IMPLEMENTED
         # "520__a",  # description
         # "001",
@@ -203,6 +196,11 @@ class VideoLecture(CdsOverdo):
         # "964__a",  # curation
         # "336__a",  # curation
         # "306__a",  # Duration, curation
+        # "490__a",  # Series
+        # "490__v",  # Series: volume
+        # "260__c",  # Redundant, drop (more detailed value is in 269__c)
+        # "260__a",  # Geneva drop
+        # "260__b",  # CERN drop
     }
 
     _default_fields = {
@@ -212,6 +210,7 @@ class VideoLecture(CdsOverdo):
         "alternate_identifiers": [],
         "additional_languages": [],
         "collections": [],
+        "keywords": [],
     }
 
 

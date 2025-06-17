@@ -638,9 +638,16 @@ def test_transform_subject_category(dumpdir, base_app):
         # Load test data
         data = load_json(dumpdir, "lecture.json")
 
+        modified_data = data[0]
+        # Remove 490 it's also transformed as keyword
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
+            record_marcxml, "490"
+        )
+
         # Extract record
-        res = load_and_dump_revision(data[0])
-        assert "keywords" not in res
+        res = load_and_dump_revision(modified_data)
+        assert not res["keywords"]  # Should be empty
 
         # Transform: subject category will be keyword
         record_entry = CDSToVideosRecordEntry()
@@ -696,8 +703,11 @@ def test_additional_descriptions(dumpdir, base_app):
         data = load_json(dumpdir, "lecture.json")
         modified_data = data[0]
 
-        # Add additional title (tag 246) with volume
+        # Remove 490 it's also transformed as additional description
         record_marcxml = modified_data["record"][-1]["marcxml"]
+        record_marcxml = remove_tag_from_marcxml(record_marcxml, "490")
+
+        # Add additional title (tag 246) with volume
         modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
             record_marcxml, "590", {"a": "French Description"}
         )
@@ -1053,3 +1063,49 @@ def test_producer(dumpdir, base_app):
             "name": "Paris Lawrence Berkeley Nat. Lab.",
             "role": "Producer",
         } in producers
+
+
+def test_series(dumpdir, base_app):
+    """Test series correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+        modified_data = data[1]
+
+        # Add valid date to not fail transform
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "518", {"d": "2025-05-26"}
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+
+        # Transform
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+
+        additional_descriptions = metadata["additional_descriptions"]
+        assert {
+            "description": "CERN Academic Training Lecture,392",
+            "type": "SeriesInformation",
+        } in additional_descriptions
+        assert {
+            "description": "Regular Lecture Programme",
+            "type": "SeriesInformation",
+        } in additional_descriptions
+
+        keywords = metadata["keywords"]
+        assert {"name": "CERN Academic Training Lecture"} in keywords
+        assert {"name": "Regular Lecture Programme"} in keywords
+
+        # Test case: add CAS as Series
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "490", {"a": "CERN Accelerator School"}
+        )
+        res = load_and_dump_revision(modified_data)
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        collections = metadata["collections"]
+        assert "Lectures,CERN Accelerator School" in collections
