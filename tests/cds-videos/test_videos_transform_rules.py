@@ -8,10 +8,10 @@
 
 """CDS-Videos migration tests."""
 
+import copy
 from os.path import dirname, join
 
 import pytest
-from flask import current_app
 
 from cds_migrator_kit.errors import (
     MissingRequiredField,
@@ -1109,3 +1109,98 @@ def test_series(dumpdir, base_app):
         metadata = record_entry._metadata(res)
         collections = metadata["collections"]
         assert "Lectures,CERN Accelerator School" in collections
+
+
+def test_restrictions(dumpdir, base_app):
+    """Test restrictions correctly transformed."""
+    with base_app.app_context():
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+        modified_data = copy.deepcopy(data[0])
+
+        # Add dummy group and email restriction
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        record_marcxml = add_tag_to_marcxml(
+            record_marcxml,
+            tag="506",
+            subfields={
+                "a": "Restricted",
+                "d": [
+                    "dummy-group1 [CERN]",
+                    "dummy-group2 [CERN]",
+                    "dummy-group3 [CERN]",
+                ],
+                "f": "group",
+                "2": "CDS Invenio",
+                "5": "SzGeCERN",
+            },
+            ind1="1",
+        )
+        record_marcxml = add_tag_to_marcxml(
+            record_marcxml,
+            tag="506",
+            subfields={
+                "a": "Restricted",
+                "d": [
+                    "dummyemail1@example.com",
+                    "dummyemail2@example.com",
+                    "dummyemail3@example.com",
+                ],
+                "f": "email",
+                "2": "CDS Invenio",
+                "5": "SzGeCERN",
+            },
+            ind1="1",
+        )
+        modified_data["record"][-1]["marcxml"] = record_marcxml
+
+        # Extract and transform record
+        res = load_and_dump_revision(modified_data)
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+
+        # Check `_access["read"]``
+        assert "_access" in metadata
+        assert "read" in metadata["_access"]
+        assert sorted(metadata["_access"]["read"]) == sorted(
+            [
+                "dummy-group1@cern.ch",
+                "dummy-group2@cern.ch",
+                "dummy-group3@cern.ch",
+                "dummyemail1@example.com",
+                "dummyemail2@example.com",
+                "dummyemail3@example.com",
+            ]
+        )
+        # Check  `_access["update"]`
+        assert (
+            base_app.config["WEBLECTURES_MIGRATION_SYSTEM_USER"]
+            in metadata["_access"]["update"]
+        )
+
+        # Check "Lectures,Restricted General Talks" is added to collections
+        assert "collections" in metadata
+        assert "Lectures,Restricted General Talks" in metadata["collections"]
+
+        # Test case: use cern-accounts due to missing restrictions
+        modified_data = copy.deepcopy(data[0])
+
+        # Add restriction without groups or emails
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml,
+            tag="506",
+            subfields={
+                "a": "Restricted",
+            },
+            ind1="1",
+        )
+        # Extract and transform record
+        res = load_and_dump_revision(modified_data)
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+
+        # Check `_access["read"]``
+        assert "_access" in metadata
+        assert "read" in metadata["_access"]
+        assert metadata["_access"]["read"] == ["cern-accounts@cern.ch"]

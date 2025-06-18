@@ -152,7 +152,11 @@ class CDSVideosLoad(Load):
         submitter = self._get_submitter(entry)
 
         # TODO `type` will be changed
-        project_metadata = {"category": "CERN", "type": "VIDEO"}
+        project_metadata = {
+            "category": "CERN",
+            "type": "VIDEO",
+            "_access": metadata["_access"],
+        }
         try:
             # Create project
             project_deposit = create_project(project_metadata, submitter)
