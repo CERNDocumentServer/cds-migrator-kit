@@ -423,10 +423,24 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             """Return collection tags."""
             collections = get_values_in_json(json_data, "collections", type=list)
             # If collection is missing add `Lectures`
-            if not collections:
+            if "Lectures" not in collections:
                 collections.append("Lectures")
-            # TODO after implementing restrictions, if not CMS or Atlas add `Lectures/Restricted General Talks`
             return collections
+        
+        def get_access(json_data):
+            """Generate access permissions based on restrictions."""
+            # Update permissions
+            submitter = self._owner(json_data)
+            update = list({submitter["email"], current_app.config["WEBLECTURES_MIGRATION_SYSTEM_USER"]})
+
+            access = {"update":update}
+            
+            # Read permissions
+            restrictions = json_data.get("restriction", [])
+            all_emails = [email for sublist in restrictions for email in sublist]
+            if all_emails:
+                access["read"] = all_emails
+            return access
 
         record_date = reformat_date(entry)
         metadata = {
@@ -450,6 +464,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "alternate_identifiers": entry.get("alternate_identifiers"),
             "additional_languages": entry.get("additional_languages"),
             "collections": get_collections(entry),
+            "_access": get_access(entry)
         }
         _curation = get_curation(entry)
         # If report number exists put it in curation
@@ -461,6 +476,16 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             else:
                 metadata["report_number"] = report_number
         metadata["_curation"] = _curation
+        
+        # Add Restricted General Talks to collections
+        if metadata["_access"].get("read"):
+            collections = metadata.get("collections", [])
+            if (
+                "Lectures,Restricted CMS Talks" not in collections and
+                "Lectures,Restricted ATLAS Talks" not in collections
+            ):
+                collections.append("Lectures,Restricted General Talks")
+                metadata["collections"] = collections
 
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}

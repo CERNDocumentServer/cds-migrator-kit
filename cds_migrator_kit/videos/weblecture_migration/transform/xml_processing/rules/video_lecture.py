@@ -829,3 +829,45 @@ def series(self, key, value):
     # Add as additional description
     description = f"{series},{volume}" if volume else series
     return {"description": description, "type": "SeriesInformation"}
+
+
+@model.over("restriction", "^5061_")
+@for_each_value
+def restriction(self, key, value):
+    """Translates restriction."""
+    access = value.get("a", "").strip()
+    restriction_type = value.get("f", "").strip()
+    source = value.get("2", "").strip()
+    institution = value.get("5", "").strip()
+
+    if access != "Restricted":
+        raise UnexpectedValue(field=key, value=access)
+    if restriction_type and restriction_type not in {"group", "email"}:
+        raise UnexpectedValue(field=key, value=restriction_type)
+    if source and source != "CDS Invenio":
+        raise UnexpectedValue(field=key, value=source)
+    if institution and institution != "SzGeCERN":
+        raise UnexpectedValue(field=key, value=institution)
+
+    # Get restrictions
+    restriction_entries = value.get("d", [])
+    if not isinstance(restriction_entries, (list, tuple)):
+        restriction_entries = [restriction_entries]
+    if not restriction_entries:
+        UnexpectedValue(message="Missing restrictions!")
+    emails = []
+
+    if restriction_type == "group":
+        for entry in restriction_entries:
+            if entry.endswith("[CERN]"):
+                # Convert to email format
+                group_name = entry.replace("[CERN]", "").strip()
+                emails.append(f"{group_name}@cern.ch")
+            else:  # cern-personel?
+                raise UnexpectedValue(
+                    message=f"Unknown restriction group format: {entry}"
+                )
+    else:  # email type
+        emails = restriction_entries
+
+    return emails
