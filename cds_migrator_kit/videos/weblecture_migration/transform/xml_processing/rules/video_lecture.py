@@ -20,6 +20,7 @@
 import re
 
 from dojson.errors import IgnoreKey
+from flask import current_app
 from idutils.validators import is_doi
 
 from cds_migrator_kit.errors import UnexpectedValue
@@ -774,23 +775,7 @@ def append_collection_hierarchy(self, tag_string):
 @for_each_value
 def collection_tags(self, key, value):
     """Translates collection_tags."""
-    collection_mapping = {
-        "ACAD": "Lectures,Academic Training Lectures",
-        "Indico": "",  # omit
-        "Colloquia": "Lectures,Talks Seminars and Other Events,Colloquia",
-        "TALK": "Lectures,Talks Seminars and Other Events,Other Talks",
-        "CMTE": "Lectures,Talks Seminars and Other Events,CERN-wide meetings, trainings and events",
-        "CR": "Lectures,Talks Seminars and Other Events,Conference records",
-        "OE": "Lectures,Talks Seminars and Other Events,Outreach events",
-        "SSW": "Lectures,Talks Seminars and Other Events,Scientific Seminars and Workshops",
-        "TP": "Lectures,Talks Seminars and Other Events,Teacher Programmes",
-        "e-learning": "Lectures,E-learning modules",
-        "E-LEARNING": "Lectures,E-learning modules",
-        "Restricted_ATLAS_Talks": "Lectures,Restricted ATLAS Talks",
-        "SL": "Lectures,Talks Seminars and Other Events,Student Lectures",
-        "Restricted_CMS_Talks": "Lectures,Restricted CMS Talks",
-        "VIDEOARC": "",  # omit
-    }
+    collection_mapping = current_app.config["COLLECTION_MAPPING"]
 
     primary = value.get("a", "").strip()
     secondary = value.get("b", "").strip()
@@ -829,3 +814,49 @@ def series(self, key, value):
     # Add as additional description
     description = f"{series},{volume}" if volume else series
     return {"description": description, "type": "SeriesInformation"}
+
+
+@model.over("restriction", "^5061_")
+@for_each_value
+def restriction(self, key, value):
+    """Translates restriction."""
+    access = value.get("a", "").strip()
+    restriction_type = value.get("f", "").strip()
+    source = value.get("2", "").strip()
+    institution = value.get("5", "").strip()
+
+    if access != "Restricted":
+        raise UnexpectedValue(field=key, value=access)
+    if source and source != "CDS Invenio":
+        raise UnexpectedValue(field=key, value=source)
+    if institution and institution != "SzGeCERN":
+        raise UnexpectedValue(field=key, value=institution)
+
+    # If missing restrictions, return cern-accounts
+    restriction_entries = value.get("d", [])
+    if not restriction_entries:
+        return ["cern-accounts@cern.ch"]
+
+    # Convert restriction entries to emails
+    emails = []
+    if not isinstance(restriction_entries, (list, tuple)):
+        restriction_entries = [restriction_entries]
+
+    if restriction_type == "group":
+        for entry in restriction_entries:
+            if entry.endswith("[CERN]"):
+                # Convert to email format
+                group_name = entry.replace("[CERN]", "").strip()
+                emails.append(f"{group_name}@cern.ch")
+            else:
+                raise UnexpectedValue(
+                    field=key, message=f"Unknown restriction group format: {entry}"
+                )
+    elif restriction_type == "email":
+        emails = restriction_entries
+    else:
+        raise UnexpectedValue(
+            field=key, value=restriction_type, message="Unknown restriction type!"
+        )
+
+    return emails

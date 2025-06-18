@@ -133,8 +133,6 @@ def move_file_to_bucket(bucket_id, file_path, is_master=False):
 def create_project(project_metadata, submitter):
     """Create a project with metadata."""
     try:
-        # Add submitter
-        project_metadata["_access"] = {"update": [submitter.get("email")]}
         project_deposit = Project.create(project_metadata)
         submitter_id = submitter.get("id")
 

@@ -40,12 +40,6 @@ class VideoLecture(CdsOverdo):
         "981__a",  # duplicate record id TODO? check with JY
         # Category, Collection, Series, Keywords
         "690C_a",  # collection name
-        # Restricted
-        "5061_f",
-        "5061_d",
-        "5061_5",
-        "5061_a",
-        "5061_2",
         # Contributor?
         "700__m",  # author's email
         # IGNORE
@@ -201,6 +195,11 @@ class VideoLecture(CdsOverdo):
         # "260__c",  # Redundant, drop (more detailed value is in 269__c)
         # "260__a",  # Geneva drop
         # "260__b",  # CERN drop
+        # "5061_f",  # Restriction
+        # "5061_d",  # Restriction
+        # "5061_5",  # Restriction
+        # "5061_a",  # Restriction
+        # "5061_2",  # Restriction
     }
 
     _default_fields = {

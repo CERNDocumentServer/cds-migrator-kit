@@ -123,17 +123,14 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         return record_files
 
     def _owner(self, json_entry):
-        email = json_entry.get("submitter")
-        error_message = f"{email} not found - did you run user migration?"
-        if not email:
-            email = current_app.config["WEBLECTURES_MIGRATION_SYSTEM_USER"]
-            error_message = f"{email} not found - did you created system user?"
+        """Get the weblectures-user as record owner."""
+        email = current_app.config["WEBLECTURES_MIGRATION_SYSTEM_USER"]
         try:
             user = User.query.filter_by(email=email).one()
             return {"id": user.id, "email": email}
         except NoResultFound:
             raise UnexpectedValue(
-                message=error_message,
+                message=f"{email} not found - did you created system user?",
                 stage="transform",
                 recid=json_entry["legacy_recid"],
                 value=email,
@@ -444,11 +441,27 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         def get_collections(json_data):
             """Return collection tags."""
             collections = get_values_in_json(json_data, "collections", type=list)
-            # If collection is missing add `Lectures`
             if not collections:
-                collections.append("Lectures")
-            # TODO after implementing restrictions, if not CMS or Atlas add `Lectures/Restricted General Talks`
+                raise MissingRequiredField(message="Collection is missing!")
             return collections
+
+        def get_access(json_data):
+            """Generate access permissions based on restrictions."""
+            # Update permissions
+            update = [current_app.config["WEBLECTURES_MIGRATION_SYSTEM_USER"]]
+            submitter = json_data.get("submitter")
+            if submitter:
+                # Add submitter to update list
+                update.append(submitter)
+
+            access = {"update": update}
+
+            # Read permissions
+            restrictions = json_data.get("restriction", [])
+            all_emails = list({email for sublist in restrictions for email in sublist})
+            if all_emails:
+                access["read"] = all_emails
+            return access
 
         record_date = reformat_date(entry)
         metadata = {
@@ -472,6 +485,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "alternate_identifiers": entry.get("alternate_identifiers"),
             "additional_languages": entry.get("additional_languages"),
             "collections": get_collections(entry),
+            "_access": get_access(entry),
         }
         _curation = get_curation(entry)
         # If report number exists put it in curation
@@ -483,6 +497,22 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             else:
                 metadata["report_number"] = report_number
         metadata["_curation"] = _curation
+
+        # Add Restricted General Talks to collections
+        collections = metadata.get("collections", [])
+        collection_mapping = current_app.config["COLLECTION_MAPPING"]
+        if metadata["_access"].get("read") and (
+            (
+                collection_mapping["TALK"] in collections
+                and collection_mapping["Restricted_ATLAS_Talks"] not in collections
+                and collection_mapping["Restricted_CMS_Talks"] not in collections
+            )
+            or ("Lectures,Video Lectures" in collections)
+        ):
+            collections.append("Lectures,Restricted General Talks")
+            if "Lectures" not in collections:
+                collections.append("Lectures")
+            metadata["collections"] = collections
 
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
