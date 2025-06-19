@@ -413,26 +413,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "copyright": json_entry.get("copyright"),
         }
 
-        keys = deepcopy(list(json_entry.keys()))
 
-        helper_keys = [
-            "recid",
-            "legacy_recid",
-            "agency_code",
-            "submitter",
-            "_created",
-            "record_restriction",
-            "custom_fields",
-            "_pids",
-            "internal_notes",
-        ]
-        for item in helper_keys:
-            if item in keys:
-                keys.remove(item)
 
-        forgotten_keys = [key for key in keys if key not in list(metadata.keys())]
-        if forgotten_keys:
-            raise ManualImportRequired("Unassigned metadata key", value=forgotten_keys)
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}
 
@@ -641,6 +623,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "pids": self._pids(json_data),
             "metadata": self._metadata(json_data, entry),
         }
+
         custom_fields = self._custom_fields(json_data, record_json_output)
         internal_notes = json_data.get("internal_notes")
         if custom_fields:
@@ -657,6 +640,27 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 entry["recid"],
                 {"message": exc.message, "value": exc.value},
             )
+        helper_keys = [
+            "recid",
+            "legacy_recid",
+            "agency_code",
+            "submitter",
+            "_created",
+            "record_restriction",
+            "custom_fields",
+            "_pids",
+            "internal_notes",
+        ]
+
+        metadata = deepcopy(record_json_output["metadata"])
+        keys = deepcopy(list(json_data.keys()))
+        for item in helper_keys:
+            if item in keys:
+                keys.remove(item)
+
+        forgotten_keys = [key for key in keys if key not in list(metadata.keys())]
+        if forgotten_keys:
+            raise ManualImportRequired("Unassigned metadata key", value=forgotten_keys)
         return {
             "created": self._created(json_data),
             "updated": self._updated(record_dump),
@@ -943,3 +947,5 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
     #     "type": "Main",
     #     "full_path": "/opt/cdsweb/var/data/files/g50/502379/CM-P00080632-e.pdf;1"
     #   },]
+
+
