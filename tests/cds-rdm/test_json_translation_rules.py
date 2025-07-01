@@ -101,7 +101,7 @@ def test_migrate_sspn_record(datadir, base_app):
                 },
             ],
             "submitter": "oa@cern.ch",
-            "_created": "2017-09-18",
+            "status_week_date": "2017-09-18",
             "record_restriction": "public",
         }
 
@@ -239,6 +239,6 @@ def test_migrate_record_all_fields(datadir, base_app):
                 },
             ],
             "submitter": "vj@cern.ch",
-            "_created": "2019-07-29",
+            "status_week_date": "2019-07-29",
             "record_restriction": "public",
         }

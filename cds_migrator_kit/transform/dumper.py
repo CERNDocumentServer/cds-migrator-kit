@@ -41,9 +41,11 @@ class CDSRecordDump:
         self.raise_on_missing_rules = raise_on_missing_rules
 
     @property
-    def created(self):
-        """Get creation date."""
-        return self.latest_revision[0]
+    def first_created(self):
+        """Get first record creation date."""
+        # modification datetime of first revision is the creation date of the whole record
+        # this assumption is based on the hstRECORD dump from invenio-migrator module
+        return self.data["record"][0]["modification_datetime"]
 
     def prepare_revisions(self):
         """Prepare revisions."""

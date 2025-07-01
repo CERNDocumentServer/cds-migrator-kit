@@ -84,7 +84,7 @@ def test_full_thesis_stream(
         {"subject": "TOP"},
     ]
 
-    assert new_record["created"] == "2020-10-19T00:00:00+00:00"
+    assert new_record["created"] == "2025-04-29T08:25:01+00:00"
 
     # original DOI coming from DESY
     assert new_record["pids"]["doi"] == {

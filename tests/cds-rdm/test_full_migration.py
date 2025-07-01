@@ -38,7 +38,7 @@ from cds_migrator_kit.runner.runner import Runner
 def suite_multi_field(record):
     """2684743."""
     dict_rec = record.to_dict()
-    assert dict_rec["created"] == "2019-07-29T00:00:00+00:00"
+    assert dict_rec["created"] == "2019-08-02T22:21:57+00:00"
     assert dict_rec["versions"]["index"] == 1
     assert dict_rec["status"] == "published"
     assert dict_rec["access"] == {
@@ -217,7 +217,7 @@ def multiple_versions(record, record_state):
             )
             dict_first_version = first_version.to_dict()
             # It matches record created date instead of the file creation date
-            assert dict_first_version["created"] == "2024-02-19T00:00:00+00:00"
+            assert dict_first_version["created"] == "2024-02-19T12:42:58+00:00"
 
     assert dict_rec["versions"]["index"] == 2
     # Check that the record creation date matches the files creation date
@@ -334,7 +334,7 @@ def author_with_inspire(record):
     assert "contributors" in dict_rec["metadata"]
     # Assert that the creation date matches the file creation date
     # as the record's one is missing
-    assert dict_rec["created"] == "2017-11-23T16:06:45+00:00"
+    assert dict_rec["created"] == "2017-11-23T16:29:37+00:00"
     assert dict_rec["metadata"]["contributors"] == [
         {
             "person_or_org": {

@@ -181,14 +181,12 @@ class CDSRecordServiceLoad(Load):
         2. The record's creation date if there are no files.
         3. Today's date if the original value and file creation date is missing.
         """
-        creation_date = entry["record"]["created"].datetime.replace(tzinfo=None)
+        creation_date = arrow.get(entry["record"]["created"]).datetime.replace(tzinfo=None)
 
         versions = entry.get("versions", {})
         version_data = versions.get(version, {})
-        # Use records creation date for the first version, unless it was created today
-        # which means it was missing so we rely on the files creation date
-        creation_date_is_today = creation_date.date() == datetime.date.today()
-        if version_data.get("files") and not version == 1 or creation_date_is_today:
+
+        if version_data.get("files") and version != 1:
             # Subsequent versions should use the file creation date, instead of the record creation date,
             # which is stored as the publication date in the version data
             creation_date = version_data["publication_date"].datetime.replace(
