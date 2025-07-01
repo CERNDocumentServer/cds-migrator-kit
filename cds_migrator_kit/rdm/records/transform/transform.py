@@ -92,11 +92,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         self.dry_run = dry_run
         super().__init__(partial)
 
-    def _created(self, json_entry):
-        try:
-            return arrow.get(json_entry["_created"])
-        except KeyError:
-            return arrow.get(datetime.date.today().isoformat()).replace(tzinfo=None)
+    def _created(self, entry):
+        return entry["created"]
 
     def _updated(self, record_dump):
         """Returns the creation date of the record."""
@@ -350,7 +347,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
         def _publication_date(entry, dump_record):
             pub_date = entry.get("publication_date")
-            created = entry.get("_created")
+            created = entry.get("status_week_date")
             files = dump_record["files"]
             if not (pub_date or created or files):
                 raise MissingRequiredField(
@@ -358,7 +355,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 )
             if not pub_date:
                 if created:
-                    pub_date = entry["_created"]
+                    pub_date = entry["status_week_date"]
                 elif files:
                     pub_date = files[0]["creation_date"]
             return arrow.get(pub_date).date().isoformat()
@@ -587,7 +584,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         creation date) and no creation date, raise an exception.
         """
         if not entry.get("files") and not (
-            json_data.get("_created") or json_data.get("publication_date")
+            json_data.get("status_week_date") or json_data.get("publication_date")
         ):
             raise ManualImportRequired(
                 message="Record missing creation date",
@@ -609,6 +606,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         migration_logger = RDMJsonLogger()
         record_dump.prepare_revisions()
         timestamp, json_data = record_dump.latest_revision
+
         self._verify_creation_date(entry, json_data)
         migration_logger.add_record(json_data)
 
@@ -617,8 +615,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             del json_data["_clc_sync"]
 
         record_json_output = {
-            "created": self._created(json_data),
-            "updated": self._updated(record_dump),
             "files": self._files(record_dump),
             "pids": self._pids(json_data),
             "metadata": self._metadata(json_data, entry),
@@ -645,7 +641,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "legacy_recid",
             "agency_code",
             "submitter",
-            "_created",
+            "status_week_date",
             "record_restriction",
             "custom_fields",
             "_pids",
@@ -662,7 +658,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         if forgotten_keys:
             raise ManualImportRequired("Unassigned metadata key", value=forgotten_keys)
         return {
-            "created": self._created(json_data),
+            "created": record_dump.first_created,
             "updated": self._updated(record_dump),
             "version_id": self._version_id(record_dump),
             "index": self._index(record_dump),

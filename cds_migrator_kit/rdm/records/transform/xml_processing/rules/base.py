@@ -55,7 +55,7 @@ def recid(self, key, value):
     return int(value)
 
 
-@model.over("_created", "(^916__)")
+@model.over("status_week_date", "(^916__)")
 @require(["w"])
 def created(self, key, value):
     """Translates created information to fields."""
