@@ -114,7 +114,14 @@ class CDSVideosLoad(Load):
                     "tests/cds-videos/data/files/media_data/2025/1/1_en.vtt"
                 ],
             }
-        return entry.get("record", {}).get("json", {}).get("media_files")
+
+        json_data = entry.get("record", {}).get("json", {})
+        media_files = json_data.get("media_files", {})
+        afs_files = json_data.get("files", [])
+
+        media_files.setdefault("additional_files", []).extend(afs_files)
+
+        return media_files
 
     def reserve_report_number(self, video_deposit, report_number):
         try:

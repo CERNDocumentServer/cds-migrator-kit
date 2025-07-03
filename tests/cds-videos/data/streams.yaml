@@ -5,6 +5,6 @@ records:
     tmp_dir: tests/cds-videos/tmp
     log_dir: tests/cds-videos/log
     extract:
-      dirpath: tests/cds-videos/dump/
+      dirpath: tests/cds-videos/data/dump/
     transform:
-      files_dump_dir: tests/cds-videos/files/
+      files_dump_dir: tests/cds-videos/data/files/afs
