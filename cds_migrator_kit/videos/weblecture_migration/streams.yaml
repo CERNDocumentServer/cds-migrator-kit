@@ -7,7 +7,7 @@ records:
     extract:
       dirpath: cds_migrator_kit/videos/weblecture_migration/data/weblectures/dump/
     transform:
-      files_dump_dir: cds_migrator_kit/videos/weblecture_migration/data/weblectures/files/
+      files_dump_dir: /path_to/afs_files/
 submitters:
     data_dir: cds_migrator_kit/videos/weblecture_migration/data/users
     tmp_dir: cds_migrator_kit/videos/weblecture_migration/tmp/users

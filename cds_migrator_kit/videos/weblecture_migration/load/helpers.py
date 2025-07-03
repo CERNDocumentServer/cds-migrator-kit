@@ -39,7 +39,6 @@ from invenio_files_rest.models import (
 )
 from invenio_files_rest.storage import pyfs_storage_factory
 from sqlalchemy.orm.attributes import flag_modified as db_flag_modified
-from xrootdpyfs.fs import XRootDPyFS
 
 from cds_migrator_kit.errors import ManualImportRequired
 
@@ -83,6 +82,8 @@ def move_file_to_bucket(bucket_id, file_path, is_master=False):
             full_path = Path(fp.name.decode()).resolve()
             shutil.copy(file_path, full_path)
         else:
+            from xrootdpyfs.fs import XRootDPyFS
+
             eos_path = "root://eosmedia.cern.ch/"
             full_path = file_storage.fileurl.replace(eos_path, "")
             common = os.path.commonpath(

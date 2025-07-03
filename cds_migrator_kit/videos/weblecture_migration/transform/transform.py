@@ -47,9 +47,11 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         self,
         partial=False,
         dry_run=False,
+        files_dump_dir=None,
     ):
         """Constructor."""
         self.dry_run = dry_run
+        self.files_dump_dir = files_dump_dir
         super().__init__(partial)
 
     def _schema(self, entry):
@@ -98,7 +100,27 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
     def _files(self, record_dump):
         """Transform the files of a record."""
-        raise NotImplementedError("_files are not implemented for this class.")
+        record_dump.prepare_files()
+        files = record_dump.files
+
+        record_files = []
+
+        for k in files.keys():
+            # Get the latest version
+            file = files[k][-1]
+            full_path = file.get("full_path")
+            path = full_path.replace(";1", "").replace(";2", "")
+            path = path.replace("/opt/cdsweb/var/data/files", self.files_dump_dir)
+            if not os.path.exists(path):
+                raise ManualImportRequired(
+                    message="AFS file not found!",
+                    stage="transform",
+                    value=path,
+                    priority="critical",
+                )
+            record_files.append(path)
+        
+        return record_files
 
     def _owner(self, json_entry):
         email = json_entry.get("submitter")
@@ -483,6 +505,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "created": self._created(json_data),
             "updated": self._updated(record_dump),
             "media_files": self._media_files(json_data),
+            "files": self._files(record_dump),
         }
 
         return {
@@ -517,6 +540,7 @@ class CDSToVideosRecordTransform(RDMRecordTransform):
     def _record(self, entry):
         return CDSToVideosRecordEntry(
             dry_run=self.dry_run,
+            files_dump_dir=self.files_dump_dir,
         ).transform(entry)
 
     def _draft(self, entry):
