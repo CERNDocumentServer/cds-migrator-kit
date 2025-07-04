@@ -561,14 +561,17 @@ def test_report_number(dumpdir, base_app):
 
         # Add report number (tag 088)
         record_marcxml = modified_data["record"][-1]["marcxml"]
-        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+        record_marcxml = add_tag_to_marcxml(
             record_marcxml, "088", {"a": "Report Number"}
+        )
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "088", {"a": "Second Report Number"}
         )
 
         # Extract record
         res = load_and_dump_revision(modified_data)
         assert "report_number" in res
-        assert len(res["report_number"]) == 1
+        assert len(res["report_number"]) == 2
 
 
 def test_transform_system_control_number(dumpdir, base_app):
@@ -883,6 +886,8 @@ def test_transform_curation(dumpdir, base_app):
         record_marcxml = add_tag_to_marcxml(
             record_marcxml, "340", {"a": "Streaming video"}
         )
+        # Add valid date to not fail transform
+        record_marcxml = add_tag_to_marcxml(record_marcxml, "518", {"d": "2025-05-26"})
         # Add tag 583
         record_marcxml = add_tag_to_marcxml(
             record_marcxml, "583", {"a": "curation", "c": "Decembre 2020"}
@@ -933,6 +938,17 @@ def test_transform_curation(dumpdir, base_app):
         tag_336 = curation["legacy_marc_fields"]["336"]
         assert len(tag_336) == 1
         assert tag_336[0] == "336__a:Multiple videos identified"
+
+        # Transform and test digitized
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert "_curation" in metadata
+        curation = metadata["_curation"]
+        assert "digitized" in curation
+        assert len(curation["digitized"]) == 3
+        assert "digital-memory" in curation["digitized"][0]["url"]
+        assert "digital-memory" in curation["digitized"][1]["url"]
+        assert "digital-memory" in curation["digitized"][2]["url"]
 
 
 def test_doi(dumpdir, base_app):
@@ -1204,3 +1220,48 @@ def test_restrictions(dumpdir, base_app):
         assert "_access" in metadata
         assert "read" in metadata["_access"]
         assert metadata["_access"]["read"] == ["cern-accounts@cern.ch"]
+
+
+def test_transform_affiliation(dumpdir, base_app):
+    """Test affiliation correctly transformed."""
+    with base_app.app_context():
+        data = load_json(dumpdir, "lecture.json")
+
+        modified_data = data[0]
+        # Add affiliation
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "901", {"u": "Affiliation"}
+        )
+
+        # Extract record
+        res = load_and_dump_revision(modified_data)
+        # Transform and fail multiple speakers with one affiliation
+        record_entry = CDSToVideosRecordEntry()
+        with pytest.raises(UnexpectedValue):
+            record_entry._metadata(res)
+
+        # Test case: Only one speaker with affiliation
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        record_marcxml = remove_tag_from_marcxml(record_marcxml, "700")
+        record_marcxml = remove_tag_from_marcxml(record_marcxml, "906")
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml,
+            "700",
+            {"a": "test name"},
+        )
+        # Extract and transform record
+        res = load_and_dump_revision(modified_data)
+        assert res.get("contributors")
+        record_entry = CDSToVideosRecordEntry()
+        metadata = record_entry._metadata(res)
+        assert metadata.get("contributors")
+        speakers = [
+            contributor
+            for contributor in metadata["contributors"]
+            if contributor["role"] == "Speaker"
+        ]
+        assert len(speakers) == 1
+        assert speakers[0]["name"] == "test name"
+        assert speakers[0]["role"] == "Speaker"
+        assert speakers[0]["affiliations"] == ["Affiliation"]

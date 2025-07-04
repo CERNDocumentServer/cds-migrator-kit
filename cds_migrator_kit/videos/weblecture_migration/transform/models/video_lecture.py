@@ -36,8 +36,6 @@ class VideoLecture(CdsOverdo):
         "961__l",  # Library? TODO? check with JY
         "961__a",  # ? TODO? check with JY
         "961__b",  # ? TODO? check with JY
-        "901__u",  # Affiliation at Conversion? TODO? check with JY
-        "981__a",  # duplicate record id TODO? check with JY
         # Category, Collection, Series, Keywords
         "690C_a",  # collection name
         # Contributor?
@@ -70,6 +68,7 @@ class VideoLecture(CdsOverdo):
         "0248_a",  # oai identifier
         "0248_p",  # oai identifier
         "0248_q",  # oai
+        "981__a",  # duplicate record id, checked with Jens
         # IMPLEMENTED
         # "520__a",  # description
         # "001",
@@ -200,6 +199,7 @@ class VideoLecture(CdsOverdo):
         # "5061_5",  # Restriction
         # "5061_a",  # Restriction
         # "5061_2",  # Restriction
+        # "901__u",  # Affiliation
     }
 
     _default_fields = {
