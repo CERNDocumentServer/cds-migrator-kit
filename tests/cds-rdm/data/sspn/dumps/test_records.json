@@ -490,7 +490,7 @@
     "files": [
       {
         "comment": null,
-        "status": "SSO",
+        "status": "firerole: allow group \"it-dep\",\"hr-dep [CERN]\"\r\nallow email \"uploader@inveniosoftware.org\"",
         "version": 1,
         "encoding": null,
         "creation_date": "2021-10-04T12:52:58+00:00",

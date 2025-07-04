@@ -8,6 +8,7 @@
 """CDS-RDM migration load module."""
 import datetime
 import json
+import re
 from copy import deepcopy
 
 import arrow
@@ -16,6 +17,7 @@ from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from cds_rdm.minters import legacy_recid_minter
 from invenio_access.permissions import system_identity
+from invenio_accounts.models import User
 from invenio_db import db
 from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_pidstore.models import PersistentIdentifier
@@ -142,13 +144,99 @@ class CDSRecordServiceLoad(Load):
     def _load_parent_access(self, draft, entry):
         """Load access rights."""
         parent = draft._record.parent
+
+        # Set parent access from entry data
         access = entry["parent"]["json"]["access"]
         parent.access = access
+
+        parent.commit()
+
+    def _load_parent_access_grants(self, draft, access_dict):
+        """Load access grants from metadata."""
+        record = draft._record
+        parent = record.parent
+        identity = system_identity
+        migration_logger = RDMJsonLogger()
+
+        metadata = access_dict.get("meta", "")
+        permission = "view"  # Default permission for grants
+
+        if metadata == "SSO":
+            groups = ["cern-personnel"]
+            emails = []
+        else:
+            # Warn about unexpected formats
+            if not any(
+                kw in metadata for kw in ("firerole: allow group", "allow email")
+            ):
+                migration_logger.add_log(
+                    f"Unexpected access grant format: {metadata}", record=record
+                )
+
+            groups, emails = CDSRecordServiceLoad._parse_access_metadata(metadata)
+
+        # Helper function for creating and validating grants
+        def _create_grant(subject_type, subject_id):
+            try:
+                grant_data = {
+                    "grants": [
+                        {
+                            "subject": {"type": subject_type, "id": str(subject_id)},
+                            "permission": permission,
+                        }
+                    ]
+                }
+                # Validate the grant data against the schema
+                current_rdm_records_service.access.schema_grants.load(
+                    grant_data,
+                    context={"identity": identity},
+                    raise_errors=True,
+                )
+
+                # Create the grant
+                grant = parent.access.grants.create(
+                    subject_type=subject_type,
+                    subject_id=subject_id,
+                    permission=permission,
+                    origin="migrated",
+                )
+                # Validate subject existence
+                if not current_rdm_records_service.access._validate_grant_subject(
+                    identity, grant
+                ):
+                    raise ValidationError("Could not find the specified subject.")
+
+            except ValidationError as e:
+                exc = ManualImportRequired(
+                    message=str(e),
+                    field="access",
+                    subfield="subject.id",
+                    stage="load",
+                    recid=record.get("id"),
+                    priority="warning",
+                )
+                migration_logger.add_log(exc, record=record)
+            except Exception as e:
+                migration_logger.add_log(f"Grant creation failed: {e}", record=record)
+
+        # Apply group-based grants
+        for group in groups:
+            _create_grant(subject_type="role", subject_id=group)
+
+        # Apply user-based grants
+        for email in emails:
+            user = User.query.filter_by(email=email).one_or_none()
+            if user:
+                _create_grant(subject_type="user", subject_id=user.id)
+            else:
+                migration_logger.add_log(
+                    f"User not found for email: {email}", record=record
+                )
+
         parent.commit()
 
     def _load_record_access(self, draft, access_dict):
         record = draft._record
-        # TODO hook in here if we want to share with groups
 
         record.access = access_dict["access_obj"]
         record.commit()
@@ -255,6 +343,7 @@ class CDSRecordServiceLoad(Load):
                 )
             # TODO we can use unit of work when it is moved to invenio-db module
             self._load_parent_access(draft, entry)
+            self._load_parent_access_grants(draft, access)
             self._load_communities(draft, entry)
             db.session.commit()
         else:
@@ -273,7 +362,6 @@ class CDSRecordServiceLoad(Load):
             draft = current_rdm_records_service.update_draft(
                 identity, draft["id"], data=missing_data
             )
-
         self._load_record_access(draft, access)
         self._load_files(draft, entry, files)
 
@@ -502,3 +590,28 @@ class CDSRecordServiceLoad(Load):
                     f"Failed to redirect {legacy_src_pid} to {legacy_dest_pid}: {str(exc)}",
                     record={"recid": legacy_src_pid},
                 )
+
+    def _parse_access_metadata(metadata):
+        groups = []
+        emails = []
+
+        # Normalize newlines
+        metadata = metadata.replace("\r\n", "\n")
+
+        # Match group entries: all quoted values after 'allow group'
+        group_block = re.search(r'allow group\s+((?:"[^"]+",?\s*)+)', metadata)
+        if group_block:
+            group_values = re.findall(r'"([^"]+)"', group_block.group(1))
+            for g in group_values:
+                # Remove legacy '[CERN]' suffix if present
+                if g.endswith(" [CERN]"):
+                    g = g.rsplit(" [CERN]", 1)[0]
+                groups.append(g.strip())
+
+        # Match email entries: all quoted values after 'allow email'
+        email_block = re.search(r'allow email\s+((?:"[^"]+",?\s*)+)', metadata)
+        if email_block:
+            email_values = re.findall(r'"([^"]+)"', email_block.group(1))
+            emails.extend(email_values)
+
+        return groups, emails

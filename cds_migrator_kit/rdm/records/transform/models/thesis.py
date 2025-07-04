@@ -145,7 +145,6 @@ class ThesisModel(CdsOverdo):
         # "701__",   # contributors (implemented, to confirm this is the right field)
         # "710__5",  # department / organisation author
         # "710__a",  # organisation author
-
         # "937__c",  # modification date
         # "937__s",  # modification person
         # "961__c",  # seems like a set of identifiers, to be defined

@@ -108,8 +108,11 @@ class CDSToRDMAffiliationTransform(RDMRecordTransform):
         """Transform a single entry."""
         # creates the output structure for load step
         try:
-            record_dump = CDSRecordDump(entry, dojson_model=affiliations_migrator_marc21,
-                                        raise_on_missing_rules=False)
+            record_dump = CDSRecordDump(
+                entry,
+                dojson_model=affiliations_migrator_marc21,
+                raise_on_missing_rules=False,
+            )
             record_dump.prepare_revisions()
         except Exception as e:
             logger = AffiliationsLogger.get_logger()
