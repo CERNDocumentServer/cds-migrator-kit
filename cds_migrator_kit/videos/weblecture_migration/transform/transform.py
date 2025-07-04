@@ -274,6 +274,29 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
                 contributors = [{"name": "Unknown, Unknown"}]
 
+            affiliation = json_data.get("affiliation", "")
+            if affiliation:
+                # Get only speakers
+                speakers = [
+                    contributor
+                    for contributor in contributors
+                    if contributor.get("role") == "Speaker"
+                ]
+                if len(speakers) != 1:
+                    raise UnexpectedValue(
+                        "Multiple/missing speakers with one affiliation!"
+                    )
+                affiliations = speakers[0].get("affiliations", [])
+                if affiliation not in affiliations:
+                    migration_logger = RDMJsonLogger(collection="weblectures")
+
+                    migration_logger.add_success_state(
+                        json_data["legacy_recid"],
+                        state={"message": "Affiliation added", "value": affiliation},
+                    )
+                    affiliations.append(affiliation)
+                    speakers[0]["affiliations"] = affiliations
+
             return contributors
 
         def publication_date(json_data):
@@ -326,11 +349,6 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             """Return the report number."""
             report_numbers = json_data.get("report_number", [])
             if len(report_numbers) > 1:
-                raise UnexpectedValue(
-                    "More than one report number found.",
-                    stage="transform",
-                )
-            if len(report_numbers) == 1:
                 # If report number exists put it in curation
                 report_number = report_numbers[0]
                 return report_numbers, self.check_pid_exists(
@@ -415,6 +433,13 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             volumes = [item["volume"] for item in additional_titles if "volume" in item]
             if volumes:
                 _curation["volumes"] = volumes
+            digitized = [
+                item.get("digitized")
+                for item in json_data.get("url_files", [])
+                if "digitized" in item
+            ]
+            if digitized:
+                _curation["digitized"] = digitized
 
             return _curation
 
@@ -496,7 +521,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         report_number, is_curation = get_report_number(entry)
         if report_number:
             if is_curation:
-                _curation["legacy_report_number"] = report_number[0]
+                _curation["legacy_report_number"] = report_number
             else:
                 metadata["report_number"] = report_number
         metadata["_curation"] = _curation

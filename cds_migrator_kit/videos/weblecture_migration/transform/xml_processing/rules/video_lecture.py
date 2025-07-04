@@ -143,6 +143,12 @@ def event_speakers(self, key, value):
 @require(["u"])
 def url_files(self, key, value):
     """Detects 8564 files."""
+
+    def format_field(val):
+        if isinstance(val, (list, tuple)):
+            return "\n".join(str(v) for v in val if v)
+        return val if val else None
+
     url = value.get("u")
     if "digital-memory" in url:
         return {
@@ -150,12 +156,12 @@ def url_files(self, key, value):
                 k: v
                 for k, v in {
                     "url": url,
-                    "format": value.get("q", ""),
-                    "link_text": value.get("y", ""),
-                    "public_note": value.get("z", ""),
-                    "nonpublic_note": value.get("x", ""),
-                    "md5_checksum": value.get("w", ""),
-                    "source": value.get("2", ""),
+                    "format": format_field(value.get("q")),
+                    "link_text": format_field(value.get("y")),
+                    "public_note": format_field(value.get("z")),
+                    "nonpublic_note": format_field(value.get("x")),
+                    "md5_checksum": format_field(value.get("w")),
+                    "source": format_field(value.get("2")),
                 }.items()
                 if v
             }
@@ -355,11 +361,11 @@ def collaboration(self, key, value):
 
     # Add it in curation
     if cern_department:
-        if self["_curation"].get("department"):
-            raise UnexpectedValue(
-                field=key, subfield="5", message="Multiple departments!"
-            )
-        self["_curation"]["department"] = cern_department
+        existing = self["_curation"].get("department")
+        if existing:
+            self["_curation"]["department"] = f"{existing}, {cern_department}"
+        else:
+            self["_curation"]["department"] = cern_department
 
     if collaboration:
         return get_contributor(
@@ -818,6 +824,13 @@ def series(self, key, value):
     # Add as additional description
     description = f"{series},{volume}" if volume else series
     return {"description": description, "type": "SeriesInformation"}
+
+
+@model.over("affiliation", "^901__")
+def affiliation(self, key, value):
+    """Translates affiliation."""
+    affiliation = value.get("u", "").strip()
+    return affiliation
 
 
 @model.over("restriction", "^5061_")

@@ -4,7 +4,7 @@ To run the migration of weblectures locally, follow these steps:
 
 ## Dump a Subset of Records on Legacy
 
-Run the following command to dump a subset of records:
+Run the following command on webnode: `cds-migration-01` to dump a subset of records:
 
 .. code-block:: bash
 
