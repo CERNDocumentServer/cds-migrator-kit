@@ -54,19 +54,19 @@ MOUNTED_MEDIA_CEPH_PATH = "/cephfs/media_data"
 WEBLECTURES_MIGRATION_SYSTEM_USER = "weblecture-service@cern.ch"
 
 COLLECTION_MAPPING = {
-    "ACAD": "Lectures,Academic Training Lectures",
+    "ACAD": "Lectures::Academic Training Lectures",
     "Indico": "",  # omit
-    "Colloquia": "Lectures,Talks Seminars and Other Events,Colloquia",
-    "TALK": "Lectures,Talks Seminars and Other Events,Other Talks",
-    "CMTE": "Lectures,Talks Seminars and Other Events,CERN-wide meetings trainings and events",
-    "CR": "Lectures,Talks Seminars and Other Events,Conference records",
-    "OE": "Lectures,Talks Seminars and Other Events,Outreach events",
-    "SSW": "Lectures,Talks Seminars and Other Events,Scientific Seminars and Workshops",
-    "TP": "Lectures,Talks Seminars and Other Events,Teacher Programmes",
-    "e-learning": "Lectures,E-learning modules",
-    "E-LEARNING": "Lectures,E-learning modules",
-    "Restricted_ATLAS_Talks": "Lectures,Restricted ATLAS Talks",
-    "SL": "Lectures,Talks Seminars and Other Events,Student Lectures",
-    "Restricted_CMS_Talks": "Lectures,Restricted CMS Talks",
+    "Colloquia": "Lectures::Talks, Seminars and Other Events::Colloquia",
+    "TALK": "Lectures::Talks, Seminars and Other Events::Other Talks",
+    "CMTE": "Lectures::Talks, Seminars and Other Events::CERN-wide meetings, trainings and events",
+    "CR": "Lectures::Talks, Seminars and Other Events,Conference records",
+    "OE": "Lectures:Talks, Seminars and Other Events::Outreach events",
+    "SSW": "Lectures::Talks, Seminars and Other Events::Scientific Seminars and Workshops",
+    "TP": "Lectures::Talks, Seminars and Other Events::Teacher Programmes",
+    "e-learning": "Lectures::E-learning modules",
+    "E-LEARNING": "Lectures::E-learning modules",
+    "Restricted_ATLAS_Talks": "Lectures::Restricted ATLAS Talks",
+    "SL": "Lectures::Talks, Seminars and Other Events::Student Lectures",
+    "Restricted_CMS_Talks": "Lectures::Restricted CMS Talks",
     "VIDEOARC": "",  # omit
 }

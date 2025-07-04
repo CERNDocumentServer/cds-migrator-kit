@@ -998,7 +998,7 @@ def test_collection_tags(dumpdir, base_app):
         assert "collections" in metadata
         tags = metadata["collections"]
         assert "Indico" not in tags
-        assert "Lectures,E-learning modules" in tags
+        assert "Lectures::E-learning modules" in tags
         assert "Lectures" in tags
 
 
@@ -1108,7 +1108,7 @@ def test_series(dumpdir, base_app):
         record_entry = CDSToVideosRecordEntry()
         metadata = record_entry._metadata(res)
         collections = metadata["collections"]
-        assert "Lectures,CERN Accelerator School" in collections
+        assert "Lectures::CERN Accelerator School" in collections
 
 
 def test_restrictions(dumpdir, base_app):
@@ -1178,9 +1178,9 @@ def test_restrictions(dumpdir, base_app):
             in metadata["_access"]["update"]
         )
 
-        # Check "Lectures,Restricted General Talks" is added to collections
+        # Check "Lectures::Restricted General Talks" is added to collections
         assert "collections" in metadata
-        assert "Lectures,Restricted General Talks" in metadata["collections"]
+        assert "Lectures::Restricted General Talks" in metadata["collections"]
 
         # Test case: use cern-accounts due to missing restrictions
         modified_data = copy.deepcopy(data[0])

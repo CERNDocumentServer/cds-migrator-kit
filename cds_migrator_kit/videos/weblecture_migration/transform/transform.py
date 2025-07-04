@@ -36,6 +36,9 @@ from cds_migrator_kit.videos.weblecture_migration.transform import (
 from cds_migrator_kit.videos.weblecture_migration.transform.transform_files import (
     TransformFiles,
 )
+from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.collections import (
+    append_collection_hierarchy,
+)
 
 cli_logger = logging.getLogger("migrator")
 
@@ -119,7 +122,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                     priority="critical",
                 )
             record_files.append(path)
-        
+
         return record_files
 
     def _owner(self, json_entry):
@@ -507,12 +510,11 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 and collection_mapping["Restricted_ATLAS_Talks"] not in collections
                 and collection_mapping["Restricted_CMS_Talks"] not in collections
             )
-            or ("Lectures,Video Lectures" in collections)
+            or ("Lectures::Video Lectures" in collections)
         ):
-            collections.append("Lectures,Restricted General Talks")
-            if "Lectures" not in collections:
-                collections.append("Lectures")
-            metadata["collections"] = collections
+            metadata["collections"] = append_collection_hierarchy(
+                collections, "Lectures::Restricted General Talks"
+            )
 
         # filter empty keys
         return {k: v for k, v in metadata.items() if v}

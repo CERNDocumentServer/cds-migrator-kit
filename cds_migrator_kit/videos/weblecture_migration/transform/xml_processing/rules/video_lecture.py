@@ -30,6 +30,9 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     require,
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
+from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.collections import (
+    append_collection_hierarchy,
+)
 from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.curation import (
     transform_subfields,
 )
@@ -405,7 +408,9 @@ def system_control_number(self, key, value):
 
     if schema in ["Indico", "Agendamaker", "AgendaMaker"]:
         if schema == "AgendaMaker":
-            append_collection_hierarchy(self, "Lectures,Video Lectures")
+            self["collections"] = append_collection_hierarchy(
+                self["collections"], "Lectures::Video Lectures"
+            )
 
         # Try to convert new id and exlude the contribution
         identifier = re.split(r"[cs]", identifier, 1)[0]
@@ -696,7 +701,9 @@ def physical_location(self, key, value):
 def physical_medium(self, key, value):
     """Translates physical medium."""
     if value.get("a") == "Streaming video":
-        append_collection_hierarchy(self, "Lectures,Video Lectures")
+        self["collections"] = append_collection_hierarchy(
+            self["collections"], "Lectures::Video Lectures"
+        )
         value = dict(value)
         del value["a"]
     append_transformed_subfields(self, key, value, "physical_medium")
@@ -762,15 +769,6 @@ def doi(self, key, value):
         IgnoreKey("doi")
 
 
-def append_collection_hierarchy(self, tag_string):
-    """Appends hierarchical tag levels to self['collections']."""
-    parts = tag_string.split(",")
-    for i in range(1, len(parts) + 1):
-        hierarchical_tag = ",".join(parts[:i])
-        if hierarchical_tag not in self["collections"]:
-            self["collections"].append(hierarchical_tag)
-
-
 @model.over("collections", "^980__")
 @for_each_value
 def collection_tags(self, key, value):
@@ -789,9 +787,13 @@ def collection_tags(self, key, value):
     secondary_tag = collection_mapping.get(secondary, "")
 
     if primary_tag:
-        append_collection_hierarchy(self, primary_tag)
+        self["collections"] = append_collection_hierarchy(
+            self["collections"], primary_tag
+        )
     if secondary_tag:
-        append_collection_hierarchy(self, secondary_tag)
+        self["collections"] = append_collection_hierarchy(
+            self["collections"], secondary_tag
+        )
 
 
 @model.over("additional_descriptions", "^490__")
@@ -806,7 +808,9 @@ def series(self, key, value):
 
     # Add collection if it's CAS
     if series == "CERN Accelerator School":
-        append_collection_hierarchy(self, "Lectures,CERN Accelerator School")
+        self["collections"] = append_collection_hierarchy(
+            self["collections"], "Lectures::CERN Accelerator School"
+        )
 
     # Add as keyword
     self["keywords"].append({"name": series})
