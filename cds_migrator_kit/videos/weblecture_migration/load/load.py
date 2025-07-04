@@ -15,12 +15,12 @@ from cds.modules.flows.deposit import index_deposit_project
 from cds.modules.flows.files import init_object_version
 from cds.modules.legacy.minters import legacy_recid_minter
 from cds.modules.legacy.models import CDSMigrationLegacyRecord
+from cds.modules.records.providers import CDSReportNumberProvider
 from invenio_db import db
+from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_pidstore.models import PersistentIdentifier
 from invenio_rdm_migrator.load.base import Load
 from invenio_records_files.api import Record
-from cds.modules.records.providers import CDSReportNumberProvider
-from invenio_pidstore.errors import PIDAlreadyExists
 from sqlalchemy.exc import IntegrityError
 
 from cds_migrator_kit.errors import (

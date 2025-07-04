@@ -41,6 +41,7 @@ from invenio_rdm_records.config import (
     always_valid,
 )
 from invenio_records_resources.proxies import current_service_registry
+from invenio_users_resources.proxies import current_groups_service
 from invenio_users_resources.records.api import UserAggregate
 from invenio_vocabularies.config import (
     VOCABULARIES_NAMES_SCHEMES as DEFAULT_VOCABULARIES_NAMES_SCHEMES,
@@ -1369,3 +1370,52 @@ def orcid_name_data(app):
         ],
         "affiliations": [{"name": "CERN"}],
     }
+
+
+def _create_group(id, name, description, is_managed, database, datastore):
+    """Creates a Role/Group."""
+    r = datastore.create_role(
+        id=id, name=name, description=description, is_managed=is_managed
+    )
+    datastore.commit()
+    return r
+
+
+@pytest.fixture(scope="module")
+def group1(database, app):
+    """A single group."""
+    ds = app.extensions["invenio-accounts"].datastore
+    r = _create_group(
+        id="it-dep",
+        name="it-dep",
+        description="IT Department",
+        is_managed=True,
+        database=database,
+        datastore=ds,
+    )
+    return r
+
+
+@pytest.fixture(scope="module")
+def group2(database, app):
+    """A single group."""
+    ds = app.extensions["invenio-accounts"].datastore
+    r = _create_group(
+        id="hr-dep",
+        name="hr-dep",
+        description="HR Department",
+        is_managed=True,
+        database=database,
+        datastore=ds,
+    )
+    return r
+
+
+@pytest.fixture(scope="module")
+def groups(database, group1, group2):
+    """Available indexed groups."""
+    roles = [group1, group2]
+
+    current_groups_service.indexer.process_bulk_queue()
+    current_groups_service.record_cls.index.refresh()
+    return roles

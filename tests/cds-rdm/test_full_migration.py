@@ -268,6 +268,29 @@ def file_restricted(record):
     assert dict_rec["files"]["count"] == 1
 
 
+def parent_access_fields(record):
+    """2783104."""
+    dict_rec = record.to_dict()
+    # For "status": "firerole: allow group \"it-dep\",\"hr-dep [CERN]\"\r\nallow email \"uploader@inveniosoftware.org\"",
+    assert dict_rec["parent"]["access"]["grants"] == [
+        {
+            "permission": "view",
+            "subject": {"id": "it-dep", "type": "role"},
+            "origin": "migrated",
+        },
+        {
+            "permission": "view",
+            "subject": {"id": "hr-dep", "type": "role"},
+            "origin": "migrated",
+        },
+        {
+            "permission": "view",
+            "subject": {"id": "2", "type": "user"},
+            "origin": "migrated",
+        },
+    ]
+
+
 def irregular_exp_field(record):
     """2046076."""
     dict_rec = record.to_dict()
@@ -393,6 +416,7 @@ def test_full_migration_stream(
     orcid_name_data,
     community,
     mocker,
+    groups,
 ):
     # Creates a new name for the orcid_user
 
@@ -432,6 +456,7 @@ def test_full_migration_stream(
             file_missing(loaded_rec)
         if record["legacy_recid"] == "2783104":
             file_restricted(loaded_rec)
+            parent_access_fields(loaded_rec)
         if record["legacy_recid"] == "2046076":
             irregular_exp_field(loaded_rec)
         if record["legacy_recid"] == "2041388":

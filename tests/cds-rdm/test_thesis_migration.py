@@ -132,7 +132,7 @@ def test_full_thesis_stream(
     assert new_record["pids"] == {
         "doi": {"identifier": "10.18154/RWTH-2020-05782", "provider": "external"},
         "oai": {
-            "identifier": f'oai:oai:invenio-app-rdm.org::{new_record["id"]}',
+            "identifier": f'oai:cds-rdm.com:{new_record["id"]}',
             "provider": "oai",
         },
     }
