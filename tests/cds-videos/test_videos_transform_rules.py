@@ -335,11 +335,16 @@ def test_transform_keywords(dumpdir, base_app):
         res = load_and_dump_revision(modified_data)
         assert len(res["keywords"]) == 1
 
-        # Transform record subject category will be added as keyword
+        # Transform record subject category and subject indicator will be added as keyword
         record_entry = CDSToVideosRecordEntry()
         metadata = record_entry._metadata(res)
         assert "keywords" in metadata
-        assert len(metadata["keywords"]) == 3
+        assert len(metadata["keywords"]) == 6
+        keywords = [keyword["name"] for keyword in metadata["keywords"]]
+        # Tag 690 subject indicators
+        assert "TALK" in keywords
+        assert "movingimages" in keywords
+        assert "CERN" in keywords
 
 
 def test_transform_accelerator_experiment(dumpdir, base_app):
@@ -644,8 +649,10 @@ def test_transform_subject_category(dumpdir, base_app):
         modified_data = data[0]
         # Remove 490 it's also transformed as keyword
         record_marcxml = modified_data["record"][-1]["marcxml"]
+        record_marcxml = remove_tag_from_marcxml(record_marcxml, "490")
+        # Remove 690 it's also transformed as keyword
         modified_data["record"][-1]["marcxml"] = remove_tag_from_marcxml(
-            record_marcxml, "490"
+            record_marcxml, "690"
         )
 
         # Extract record

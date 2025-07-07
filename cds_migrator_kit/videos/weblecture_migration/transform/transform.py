@@ -360,9 +360,12 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             """Return keywords."""
             keywords = json_data.get("keywords", [])
             subject_categories = json_data.get("subject_categories", [])
+            subject_indicators = json_data.get("subject_indicators", [])
 
             all_keywords = [
-                keyword for keyword in keywords + subject_categories if keyword
+                keyword
+                for keyword in keywords + subject_categories + subject_indicators
+                if keyword
             ]
             return all_keywords
 
