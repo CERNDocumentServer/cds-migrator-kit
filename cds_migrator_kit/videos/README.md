@@ -8,7 +8,11 @@ Run the following command on webnode: `cds-migration-01` to dump a subset of rec
 
 .. code-block:: bash
 
-    inveniomigrator dump records -q '8567_x:"Absolute master path" 8567_d:/mnt/master_share* -980__C:MIGRATED -980__c:DELETED -5831_a:digitized' --file-prefix lectures --chunk-size=1000
+    inveniomigrator dump records -q "8567_x:'Absolute master path' 8567_d:/mnt/master_share* -980__C:MIGRATED -980__c:DELETED -5831_a:digitized" --file-prefix lectures --chunk-size=1000
+
+
+> **Note:**  
+> For the query, be sure to use single quotes (`'`) instead of double quotes (`"`),  
 
 Place your dumps into the `cds_migrator_kit/videos/weblecture_migration/data/weblectures/dump/` folder, or update the `records/weblectures/extract/dirpath:` in `cds_migrator_kit/videos/weblecture_migration/streams.yaml`.
 

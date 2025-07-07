@@ -461,6 +461,18 @@ def corporate_author(self, key, value):
     return None
 
 
+@model.over("subject_indicators", "^690C_")
+@for_each_value
+def subject_indicators(self, key, value):
+    """Translates subject_indicators as keywords from tag 690C."""
+    subject = value.get("a", "").strip()
+    if subject:
+        if subject not in ["ACAD", "CERN", "TALK", "movingimages", "SSLP", "reviewed"]:
+            # checking if anything else stored in this field
+            raise UnexpectedValue(field=key, subfield="a", value=subject)
+    return {"name": subject}
+
+
 @model.over("subject_categories", "(^65017)|(^65027)")
 @for_each_value
 def subject_categories(self, key, value):

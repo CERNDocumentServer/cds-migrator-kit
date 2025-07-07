@@ -27,7 +27,7 @@ from .base import model as base_model
 class VideoLecture(CdsOverdo):
     """Translation Index for CERN Video Lectures."""
 
-    __query__ = '8567_.x:"Absolute master path" 8567_.d:/mnt/master_share* -980__.C:MIGRATED -980__.c:DELETED -5831_.a:digitized'
+    __query__ = "8567_.x:'Absolute master path' 8567_.d:/mnt/master_share* -980__.C:MIGRATED -980__.c:DELETED -5831_.a:digitized"
 
     __ignore_keys__ = {
         "003",
@@ -36,10 +36,6 @@ class VideoLecture(CdsOverdo):
         "961__l",  # Library? TODO? check with JY
         "961__a",  # ? TODO? check with JY
         "961__b",  # ? TODO? check with JY
-        # Category, Collection, Series, Keywords
-        "690C_a",  # collection name
-        # Contributor?
-        "700__m",  # author's email
         # IGNORE
         "111__z",  # End date (indico)
         "518__h",  # Lectures: Starting time
@@ -200,6 +196,7 @@ class VideoLecture(CdsOverdo):
         # "5061_a",  # Restriction
         # "5061_2",  # Restriction
         # "901__u",  # Affiliation
+        # "690C_a",  # collection name -> keywords
     }
 
     _default_fields = {
