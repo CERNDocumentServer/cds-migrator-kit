@@ -249,13 +249,8 @@ class TransformFiles:
         highest_quality_videos = []
         all_subformats = []
         streams = datajson.get("streams", [])
-        # Composite record should have 2 streams
-        if self.use_composite and len(streams) != 2:
-            raise UnexpectedValue(
-                "Missing presenter/presentation files for composite record!"
-            )
         # One video record should have 1 stream
-        elif not self.use_composite and len(streams) != 1:
+        if not self.use_composite and len(streams) != 1:
             raise UnexpectedValue(
                 "Missing presenter/presentation files for composite record!"
             )
