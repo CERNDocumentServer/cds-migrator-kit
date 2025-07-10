@@ -484,6 +484,9 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             if submitter:
                 # Add submitter to update list
                 update.append(submitter)
+            collections = get_collections(json_data)
+            if "Lectures::CERN Accelerator School" in collections:
+                update.extend(current_app.config["CAS_LECTURES_ACCESS"])
 
             access = {"update": update}
 

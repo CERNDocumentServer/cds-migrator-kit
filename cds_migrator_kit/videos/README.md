@@ -128,3 +128,77 @@ To visualize errors locally, run:
 .. code-block:: shell
 
     gunicorn -b :8080 --timeout 120 --graceful-timeout 60 cds_migrator_kit.app:app --reload --log-level debug --capture-output --access-logfile '-' --error-logfile '-'
+
+
+## Clean-up dev env
+
+### 1. Drop all public tables
+
+```bash
+psql -U cds -h dbod-cdsvideos-dev.cern.ch -p 6623 -d cds
+# password from paas secret
+```
+
+```sql
+DO $$
+DECLARE
+    stmt text;
+BEGIN
+    SELECT string_agg(
+        'DROP TABLE IF EXISTS "' || tablename || '" CASCADE;', 
+        ' '
+    )
+    INTO stmt
+    FROM pg_tables
+    WHERE schemaname = 'public';
+
+    -- EXECUTE dynamic SQL string
+    EXECUTE stmt;
+END $$;
+```
+### 2. Reinitialize database and index
+
+```bash
+cds db init create
+cds index destroy --force --yes-i-know
+cds index init --force
+cds index queue init purge
+```
+
+### 3. Declare stat queues
+
+```bash
+cds queues declare
+```
+### 4. Create QA role and permissions
+
+```bash
+cds roles create cds-operators-qa
+cds access allow deposit-admin-access role cds-operators-qa
+cds access allow superuser-access role cds-operators-qa
+
+cds roles add <user> cds-operators-qa
+```
+
+### 5. Create a default files location
+
+```bash
+cds files location --default videos root://eosmedia.cern.ch//eos/media/cds-videos/dev/files/
+```
+
+### 6. Load demo data
+
+```bash
+cds fixtures sequence-generator
+cds fixtures categories
+cds fixtures pages
+cds fixtures keywords
+cds fixtures licenses
+```
+
+### 7. Reindex OpenDefinition licenses
+
+```bash
+cds index reindex -t od_lic --yes-i-know
+cds index run
+```

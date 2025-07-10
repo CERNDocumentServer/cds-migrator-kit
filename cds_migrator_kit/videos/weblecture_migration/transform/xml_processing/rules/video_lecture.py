@@ -825,7 +825,7 @@ def series(self, key, value):
         raise UnexpectedValue(field=key, message="Missing series information!")
 
     # Add collection if it's CAS
-    if series == "CERN Accelerator School":
+    if "CERN Accelerator School" in series:
         self["collections"] = append_collection_hierarchy(
             self["collections"], "Lectures::CERN Accelerator School"
         )
