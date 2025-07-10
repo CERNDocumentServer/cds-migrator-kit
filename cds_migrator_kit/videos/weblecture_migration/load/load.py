@@ -151,9 +151,8 @@ class CDSVideosLoad(Load):
         # Owner
         submitter = self._get_submitter(entry)
 
-        # TODO `type` will be changed
         project_metadata = {
-            "category": "CERN",
+            "category": "LECTURES",
             "type": "VIDEO",
             "_access": metadata["_access"],
         }
