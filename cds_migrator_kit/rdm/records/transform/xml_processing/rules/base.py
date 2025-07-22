@@ -12,6 +12,7 @@ import logging
 import re
 from urllib.parse import ParseResult, urlparse
 
+from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 from idutils.validators import is_doi, is_handle, is_urn
@@ -63,7 +64,7 @@ def created(self, key, value):
         source = clean_val("s", value, str)
         # h = human catalogued
         # n = script catalogued or via submission
-        if source not in ["n", "h", "m"]:
+        if source not in ["n", "h", "m", "r"]:
             raise UnexpectedValue(subfield="s", key=key, value=value)
     date_values = value.get("w")
     if not date_values or not date_values[0]:
@@ -452,20 +453,12 @@ def corporate_author(self, key, value):
     raise IgnoreKey("contributors")
 
 
-@model.over("additional_titles", "(^242__)|(^210__)")
+@model.over("additional_titles", "(^242__)")
 @for_each_value
 def additional_titles(self, key, value):
     """Translates title translations."""
     _additional_titles = self.get("additional_titles", [])
-    if key == "210__":
-        abbreviation = clean_val("a", value, str, req=True)
-        _additional_titles.append(
-            {
-                "title": abbreviation,
-                "type": {"id": "other"},
-            }
-        )
-    elif "a" in value:
+    if "a" in value:
         _additional_titles.append(
             {
                 "title": clean_val("a", value, str, req=True),
@@ -484,6 +477,23 @@ def additional_titles(self, key, value):
         )
     if _additional_titles:
         self["additional_titles"] = _additional_titles
+    raise IgnoreKey("additional_titles")
+
+
+@model.over("additional_descriptions", "^210__")
+@for_each_value
+def additional_titles(self, key, value):
+    """Translates title translations."""
+    _additional_descriptions = self.get("additional_descriptions", [])
+    abbreviation = clean_val("a", value, str, req=True)
+    _additional_descriptions.append(
+        {
+            "title": abbreviation,
+            "type": {"id": "other"},
+        }
+    )
+    if _additional_descriptions:
+        self["additional_titles"] = _additional_descriptions
     raise IgnoreKey("additional_titles")
 
 
@@ -514,9 +524,16 @@ def licenses(self, key, value):
     _license = dict()
     license_url = clean_val("u", value, str)
     license_id = clean_val("a", value, str)
-
+    if "b" in value:
+        imposing = value.get("b")
+        self["copyright"] = f"© {imposing}.".strip()
     # 2897660, 2694245, 684383
-    if license_id in ["CC BY-NC-ND 3.0 US", "CC-BY-NC-ND-3.0-DE", "CC-BY-3.0-DE"]:
+    if license_id in [
+        "CC BY-NC-ND 3.0 US",
+        "CC-BY-NC-ND-3.0-DE",
+        "CC-BY-3.0-DE",
+        "CC-BY",
+    ]:
         return {
             "title": {"en": license_id},
             "link": license_url,
@@ -529,6 +546,7 @@ def licenses(self, key, value):
     license_id.lower()
     is_standard_license = True
     is_arxiv = "arxiv" in license_id
+
     if not license_id.startswith("CC"):
         is_standard_license = False
 
@@ -721,3 +739,150 @@ def sync(self, key, value):
     if sync in ["ILSSYNC", "ILSLINK"]:
         return True
     return False
+
+
+@model.over("publication_date", "(^260__)", override=True)
+def imprint_info(self, key, value):
+    """Translates publication_date field."""
+
+    publication_date_str = value.get("c")
+    if publication_date_str:
+        try:
+            date_obj = parse(publication_date_str)
+            return date_obj.strftime("%Y-%m-%d")
+        except (ParserError, TypeError) as e:
+            raise UnexpectedValue(
+                field=key,
+                value=value,
+                message=f"Can't parse provided publication date. Value: {publication_date_str}",
+            )
+    raise IgnoreKey("publication_date")
+
+
+@model.over("custom_fields", "(^269__)")
+def imprint_info(self, key, value):
+    """Translates imprint - WARNING - also publisher and publication_date.
+
+    In case of summer student notes this field contains only date
+    but it needs to be reimplemented for the base set of rules -
+    it will contain also imprint place
+    """
+    _custom_fields = self.get("custom_fields", {})
+    imprint = _custom_fields.get("imprint:imprint", {})
+
+    publication_date_str = value.get("c")
+    _publisher = value.get("b")
+    place = value.get("a")
+    if _publisher and not self.get("publisher"):
+        self["publisher"] = _publisher
+    if place:
+        imprint["place"] = place
+    self["custom_fields"]["imprint:imprint"] = imprint
+    if publication_date_str:
+        try:
+            date_obj = parse(publication_date_str)
+            self["publication_date"] = date_obj.strftime("%Y-%m-%d")
+        except (ParserError, TypeError) as e:
+            raise UnexpectedValue(
+                field=key,
+                value=value,
+                message=f"Can't parse provided publication date. Value: {publication_date_str}",
+            )
+    raise IgnoreKey("custom_fields")
+
+
+@model.over("internal_notes", "^595__")
+@for_each_value
+def note(self, key, value):
+    """Translates notes."""
+
+    def process(_note):
+        if _note:
+            if _note.strip().lower() in [
+                "cern invenio websubmit",
+                "cern eds",
+                "cds",
+                "lanl eds",
+                "clas1",
+            ]:
+                return
+            return {"note": _note}
+
+    _note = force_list(value.get("a", ""))
+    _note_z = force_list(value.get("z", ""))
+    notes_list = _note_z + _note
+    _note_b = value.get("b", "")
+    _note_c = value.get("c", "")
+
+    is_gensbm_tag = (
+        "".join(_note).strip() == "CERN Invenio WebSubmit"
+        and _note_b.strip() in ("GENSBM", "GENEU")
+        or _note_c.strip() == "1"
+    )
+    if is_gensbm_tag:
+        raise IgnoreKey("internal_notes")
+    elif (
+        _note_b.strip() not in ("GENSBM", "GENEU")
+        and "".join(_note).strip() == "CERN Invenio WebSubmit"
+    ):
+        raise UnexpectedValue("invalid internal notes", field=key, value=value)
+
+    notes = self.get("internal_notes", [])
+    for item in notes_list:
+        res = process(item)
+        if res:
+            notes.append(res)
+
+    self["internal_notes"] = notes
+    raise IgnoreKey("internal_notes")
+
+
+@model.over("additional_titles", "(^246__)")
+@for_each_value
+@require(["a"])
+def additional_titles(self, key, value):
+    """Translates additional titles."""
+    description_text = value.get("a")
+    translated_subtitle = value.get("b")
+    source = value.get("9")
+    is_abbreviation = value.get("i") == "Abbreviation"
+
+    if is_abbreviation:
+        additional_descriptions = self.get("additional_descriptions", [])
+
+        additional_descriptions.append(
+            {
+                "description": f"Abbreviation: {description_text}",
+                "type": {
+                    "id": "other",  # what's with the lang
+                },
+            }
+        )
+        self["additional_descriptions"] = additional_descriptions
+        raise IgnoreKey("additional_titles")
+    if source:
+        _additional_title = {
+            "title": description_text,
+            "type": {
+                "id": "alternative-title",
+            },
+        }
+    else:
+        _additional_title = {
+            "title": description_text,
+            "type": {
+                "id": "translated-title",
+            },
+        }
+    if description_text and _additional_title:
+        return _additional_title
+    if translated_subtitle:
+        _additional_title = {
+            "title": translated_subtitle,
+            "type": {
+                "id": "translated-title",
+            },
+            "lang": {"id": "eng"},
+        }
+        return _additional_title
+    raise IgnoreKey("additional_titles")

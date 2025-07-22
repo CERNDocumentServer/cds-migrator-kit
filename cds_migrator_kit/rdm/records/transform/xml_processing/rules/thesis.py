@@ -27,6 +27,7 @@ from idutils.normalizers import normalize_isbn, normalize_issn
 from isbnlib import NotValidISBNError
 
 from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.rdm.records.transform.models.thesis import thesis_model as model
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     filter_list_values,
     for_each_value,
@@ -43,7 +44,6 @@ from ...config import (
     IGNORED_THESIS_COLLECTIONS,
     udc_pattern,
 )
-from ...models.thesis import thesis_model as model
 
 
 @model.over("contributors", "^701__")
@@ -74,7 +74,7 @@ def collection(self, key, value):
     raise IgnoreKey("collection")
 
 
-@model.over("publication_date", "(^260__)|(^250__)")
+@model.over("publication_date", "(^260__)|(^250__)", override=True)
 def imprint_info(self, key, value):
     """Translates imprint - WARNING - also publisher and publication_date.
 
@@ -110,109 +110,6 @@ def imprint_info(self, key, value):
                     message=f"Can't parse provided publication date. Value: {publication_date_str}",
                 )
     raise IgnoreKey("publication_date")
-
-
-@model.over("custom_fields", "(^020__)")
-def isbn(self, key, value):
-    _custom_fields = self.get("custom_fields", {})
-    _isbn = StringValue(value.get("a", "")).parse()
-    if _isbn:
-        try:
-            _isbn = normalize_isbn(_isbn)
-
-        except NotValidISBNError as e:
-            raise UnexpectedValue("Not a valid ISBN.", field=key, value=value)
-        is_cern_isbn = _isbn.startswith("978-92-9083")
-        thesis_fields = _custom_fields.get("imprint:imprint", {})
-        thesis_fields["isbn"] = _isbn
-        _custom_fields["imprint:imprint"] = thesis_fields
-
-        if is_cern_isbn:
-            destination = "identifiers"
-            new_id = {"identifier": _isbn, "scheme": "isbn"}
-        else:
-            destination = "related_identifiers"
-            new_id = {
-                "identifier": _isbn,
-                "scheme": "isbn",
-                "relation_type": {"id": "isversionof"},
-            }
-        ids = self.get(destination, [])
-
-        if new_id not in ids:
-            ids.append(new_id)
-        self[destination] = ids
-    return _custom_fields
-
-
-@model.over("related_identifiers", "(^022__)")
-@for_each_value
-def issn(self, key, value):
-    _issn = StringValue(value.get("a", "")).parse()
-    if _issn:
-        try:
-            _issn = normalize_issn(_issn)
-        except NotValidISBNError as e:
-            raise UnexpectedValue("Not a valid ISSN.", field=key, value=value)
-
-        ids = self.get("identifiers", [])
-
-        new_id = {
-            "identifier": _issn,
-            "scheme": "issn",
-            "relation_type": {"id": "ispublishedin"},
-        }
-        if new_id not in ids:
-            return new_id
-    raise IgnoreKey("identifiers")
-
-
-@model.over("subjects", "(^080__)")
-@for_each_value
-def udc(self, key, value):
-    """Check 080 field. Drop UDC."""
-    val_a = value.get("a")
-    if val_a and re.findall(udc_pattern, val_a):
-        raise IgnoreKey("identifiers")
-    raise UnexpectedValue(
-        "UDC format check failed.", field=key, subfield="a", value=value
-    )
-
-
-@model.over("custom_fields", "(^536__)")
-def funding(self, key, value):
-    _custom_fields = self.get("custom_fields", {})
-    programme = value.get("a")
-    _access_info = value.get("r", "").strip().lower()
-    if _access_info and _access_info not in ["openaccess", "open access"]:
-        raise UnexpectedValue(
-            "Access information has unexpected value", field=key, value=value
-        )
-    # https://cerneu.web.cern.ch/fp7-projects
-    is_fp7_programme = programme and programme.strip().lower() == "fp7"
-
-    if programme and not is_fp7_programme:
-        # if not fp7, then it is cern programme
-        _custom_fields["cern:programmes"] = programme
-        return _custom_fields
-    elif "f" in value or "c" in value:
-        awards = self.get("funding", [])
-        # this one is reliable, I checked the DB
-        try:
-            _funding = value.get("f", "").strip().lower()
-            _grant_number = value.get("c", "").strip().lower()
-        except AttributeError as e:
-            raise UnexpectedValue(
-                "Multiple grant numbers must be in separate tag", field=key, value=value
-            )
-        award = {
-            "award": {"id": f"00k4n6c32::{_grant_number}"},
-            "funder": {"id": "00k4n6c32"},
-        }
-        if award not in awards:
-            awards.append(award)
-        self["funding"] = awards
-    raise IgnoreKey("custom_fields")
 
 
 @model.over("custom_fields", "(^269__)")
@@ -296,70 +193,6 @@ def thesis(self, key, value):
     return _custom_fields
 
 
-@model.over("custom_fields", "(^773__)")
-def journal(self, key, value):
-    _custom_fields = self.get("custom_fields", {})
-    journal_fields = _custom_fields.get("journal:journal", {})
-    year = StringValue(value.get("y", "")).parse()
-    meeting_fields = ["p", "n", "v", "c"]
-    is_journal_year = False
-    for field in meeting_fields:
-        if field in value:
-            is_journal_year = True
-            break
-
-    pub_date = self.get("publication_date")
-    # if we only have 773 in the record and no other journal fields,
-    # it is not journal date
-    if not is_journal_year and "y" in value and not pub_date:
-        self["publication_date"] = year
-
-    journal_fields["title"] = StringValue(value.get("p", "")).parse()
-    journal_fields["issue"] = StringValue(value.get("n", "")).parse()
-    journal_fields["volume"] = StringValue(value.get("v", "")).parse()
-    journal_fields["pages"] = StringValue(value.get("c", "")).parse()
-
-    _custom_fields["journal:journal"] = journal_fields
-    return _custom_fields
-
-
-@model.over("additional_titles", "(^246__)")
-@for_each_value
-@require(["a"])
-def additional_titles(self, key, value):
-    """Translates additional titles."""
-    description_text = value.get("a")
-    translated_subtitle = value.get("b")
-    source = value.get("9")
-
-    if source:
-        _additional_title = {
-            "title": description_text,
-            "type": {
-                "id": "alternative-title",
-            },
-        }
-    else:
-        _additional_title = {
-            "title": description_text,
-            "type": {
-                "id": "translated-title",
-            },
-        }
-    if description_text and _additional_title:
-        return _additional_title
-    if translated_subtitle:
-        _additional_title = {
-            "title": translated_subtitle,
-            "type": {
-                "id": "translated-title",
-            },
-            "lang": {"id": "eng"},
-        }
-        return _additional_title
-    raise IgnoreKey("additional_titles")
-
-
 @model.over("dates", "(^500__)")
 @for_each_value
 def dates(self, key, value):
@@ -406,64 +239,12 @@ def dates(self, key, value):
     raise IgnoreKey("dates")
 
 
-@model.over("internal_notes", "^595__")
-@for_each_value
-def note(self, key, value):
-    """Translates notes."""
-
-    def process(_note):
-        if _note:
-            if _note.strip().lower() in [
-                "cern invenio websubmit",
-                "cern eds",
-                "cds",
-                "lanl eds",
-                "clas1",
-            ]:
-                return
-            return {"note": _note}
-
-    _note = force_list(value.get("a", ""))
-    _note_z = force_list(value.get("z", ""))
-    notes_list = _note_z + _note
-    _note_b = value.get("b", "")
-    _note_c = value.get("c", "")
-
-    is_gensbm_tag = (
-        "".join(_note).strip() == "CERN Invenio WebSubmit"
-        and _note_b.strip() in ("GENSBM", "GENEU")
-        or _note_c.strip() == "1"
-    )
-    if is_gensbm_tag:
-        raise IgnoreKey("internal_notes")
-    elif (
-        _note_b.strip() not in ("GENSBM", "GENEU")
-        and "".join(_note).strip() == "CERN Invenio WebSubmit"
-    ):
-        raise UnexpectedValue("invalid internal notes", field=key, value=value)
-
-    notes = self.get("internal_notes", [])
-    for item in notes_list:
-        res = process(item)
-        if res:
-            notes.append(res)
-
-    self["internal_notes"] = notes
-    raise IgnoreKey("internal_notes")
-
-
-@model.over("internal_notes", "^562__")
-@for_each_value
-def internal_notes(self, key, value):
-    """Translate internal notes"""
-    note = value.get("c", "")
-    return {"note": note}
-
-
 @model.over("affiliations", "^901__")
 @for_each_value
-def collection(self, key, value):
+def rec_affiliation(self, key, value):
     affiliation = value.get("u", "")
+    if type(affiliation) is not str:
+        raise UnexpectedValue(f"Record affiliation has a wrong format.")
     affiliation = affiliation.replace("U.", "University")
     uni = self.get("custom_fields", {}).get("thesis:thesis", {}).get("university")
     if uni != affiliation:
@@ -471,34 +252,6 @@ def collection(self, key, value):
             f"Record affiliation (901: {affiliation}) not equal with thesis university 502:{uni}"
         )
     raise IgnoreKey("affiliations")
-
-
-@model.over("related_identifiers", "^962_")
-@for_each_value
-def related_identifiers(self, key, value):
-    """Translates related identifiers."""
-    recid = value.get("b")
-    material = value.get("n", "").lower().strip()
-    rel_ids = self.get("related_identifiers", [])
-    res_type = None
-    if material and material == "book":
-        # if book we know that is published in a book,
-        res_type = "publication-book"
-    elif material:
-        #  otherwise it will be a conference reference
-        res_type = "event"
-    new_id = {
-        "identifier": f"https://cds.cern.ch/records/{recid}",
-        "scheme": "url",
-        "relation_type": {"id": "references"},
-    }
-
-    if res_type:
-        new_id.update({"resource_type": {"id": res_type}})
-
-    if new_id not in rel_ids:
-        return new_id
-    raise IgnoreKey("related_identifiers")
 
 
 @model.over("collection", "^980__")

@@ -163,6 +163,7 @@ def app_config(app_config):
     logs_dir = os.path.join(base_path, "tmp/logs/")
     app_config["CDS_MIGRATOR_KIT_LOGS_PATH"] = logs_dir
     app_config["RDM_CUSTOM_FIELDS"] = CUSTOM_FIELDS
+    app_config["CDS_MIGRATOR_KIT_ENV"] = "test"
 
     return app_config
 

@@ -141,7 +141,7 @@ def get_contributor_affiliations(info):
     return parsed_affiliations
 
 
-def extract_json_contributor_ids(info):
+def extract_json_contributor_ids(info, orcid_subfield="k"):
     """Extract author IDs from MARC tags."""
     SOURCES = {
         "AUTHOR|(INSPIRE)": "inspire_author",
@@ -157,7 +157,7 @@ def extract_json_contributor_ids(info):
             identifier = match.group(3)
             ids.append({"identifier": identifier, "scheme": SOURCES[match.group(1)]})
 
-    author_orcid = info.get("k")
+    author_orcid = info.get(orcid_subfield)
     if author_orcid:
         author_orcid = author_orcid.replace("ORCID:", "")
         new_id = {"identifier": author_orcid, "scheme": "orcid"}

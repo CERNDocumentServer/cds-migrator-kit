@@ -60,7 +60,7 @@ class CdsOverdo(Overdo):
             self.build()
 
         if isinstance(blob, GroupableOrderedDict):
-            items = blob.iteritems(repeated=True, with_order=False)
+            items = blob.iteritems(repeated=True)
         else:
             items = iteritems(blob)
         for key, value in items:
@@ -68,7 +68,6 @@ class CdsOverdo(Overdo):
                 result = self.index.query(key)
                 if not result:
                     raise MissingRule(key)
-
                 name, creator = result
                 data = creator(output, key, value)
                 if getattr(creator, "__extend__", False):
