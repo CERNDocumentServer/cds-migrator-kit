@@ -21,7 +21,7 @@
 
 from cds_migrator_kit.transform.overdo import CdsOverdo
 
-from ..models.base_record import rdm_base_record_model as base_model
+from .base_publication_record import rdm_base_publication_model
 
 
 class ThesisModel(CdsOverdo):
@@ -101,7 +101,7 @@ class ThesisModel(CdsOverdo):
         "962__k",  # description of the related works
         "964__a",  # spreadsheet
         "970__b",  # spreadsheet
-        "981__a",  # duplicated record marker # TODO -> decide how to handle these
+        "981__a",  # duplicated record marker
         "999C50",  # https://cds.cern.ch/record/2284609/export/hm?ln=en CMS contributions
         "999C52",  # https://cds.cern.ch/record/2640188/export/hm?ln=en
         "999C59",  # https://cds.cern.ch/record/2284615/export/hm?ln=en
@@ -204,7 +204,8 @@ class ThesisModel(CdsOverdo):
 
 
 thesis_model = ThesisModel(
-    bases=(base_model,), entry_point_group="cds_migrator_kit.migrator.rules.thesis"
+    bases=(rdm_base_publication_model,),
+    entry_point_group="cds_migrator_kit.migrator.rules.thesis",
 )
 
 # https://cds.cern.ch/record/2924799/export/hm?no_redirect_migrated

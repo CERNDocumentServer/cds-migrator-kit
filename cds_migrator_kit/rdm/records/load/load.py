@@ -9,6 +9,7 @@
 import datetime
 import json
 import re
+import os
 from copy import deepcopy
 
 import arrow
@@ -16,6 +17,7 @@ from cds_rdm.clc_sync.models import CDSToCLCSyncModel
 from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from cds_rdm.minters import legacy_recid_minter
+from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
 from invenio_db import db
@@ -27,11 +29,16 @@ from invenio_records.systemfields.relations import InvalidRelationValue
 from marshmallow import ValidationError
 
 from cds_migrator_kit.errors import CDSMigrationException, ManualImportRequired
-from cds_migrator_kit.reports.log import RDMJsonLogger
+from cds_migrator_kit.reports.log import MigrationProgressLogger, RecordStateLogger
 
 
 def import_legacy_files(filepath):
     """Download file from legacy."""
+    if current_app.config["CDS_MIGRATOR_KIT_ENV"] == "local":
+        import cds_migrator_kit
+
+        base_path = os.path.dirname(os.path.realpath(cds_migrator_kit.__file__))
+        filepath = os.path.join(base_path, "rdm/data/files/dummy.pdf")
     filestream = open(filepath, "rb")
     return filestream
 
@@ -47,12 +54,15 @@ class CDSRecordServiceLoad(Load):
         entries=None,
         dry_run=False,
         legacy_pids_to_redirect=None,
+        collection=None,
     ):
         """Constructor."""
         self.dry_run = dry_run
         self.legacy_pids_to_redirect = {}
         self.clc_sync = False
-
+        self.collection = collection
+        self.migration_logger = MigrationProgressLogger(collection=collection)
+        self.record_state_logger = RecordStateLogger(collection=collection)
         if legacy_pids_to_redirect is not None:
             with open(legacy_pids_to_redirect, "r") as fp:
                 self.legacy_pids_to_redirect = json.load(fp)
@@ -64,7 +74,6 @@ class CDSRecordServiceLoad(Load):
     def _load_files(self, draft, entry, version_files):
         """Load files to draft."""
         recid = entry.get("record", {}).get("recid", {})
-        migration_logger = RDMJsonLogger()
         identity = system_identity  # Should we create an identity for the migration?
 
         for filename, file_data in version_files.items():
@@ -116,18 +125,19 @@ class CDSRecordServiceLoad(Load):
                 )
                 legacy_checksum = f"md5:{file_data['checksum']}"
                 new_checksum = result.to_dict()["checksum"]
-                try:
-                    assert legacy_checksum == new_checksum
-                except AssertionError:
-                    raise ManualImportRequired(
-                        message=f"Files checksum failed legacy:{legacy_checksum} calculated new: {new_checksum}",
-                        field="checksum",
-                        stage="load",
-                        recid=recid,
-                        priority="critical",
-                        value=file_data["key"],
-                        subfield=None,
-                    )
+                if current_app.config["CDS_MIGRATOR_KIT_ENV"] != "local":
+                    try:
+                        assert legacy_checksum == new_checksum
+                    except AssertionError:
+                        raise ManualImportRequired(
+                            message=f"Files checksum failed legacy:{legacy_checksum} calculated new: {new_checksum}",
+                            field="checksum",
+                            stage="load",
+                            recid=recid,
+                            priority="critical",
+                            value=file_data["key"],
+                            subfield=None,
+                        )
 
             except Exception as e:
                 exc = ManualImportRequired(
@@ -138,7 +148,7 @@ class CDSRecordServiceLoad(Load):
                     stage="file load",
                     priority="critical",
                 )
-                migration_logger.add_log(exc, record=entry)
+                self.migration_logger.add_log(exc, record=entry)
                 raise e
 
     def _load_parent_access(self, draft, entry):
@@ -269,7 +279,9 @@ class CDSRecordServiceLoad(Load):
         2. The record's creation date if there are no files.
         3. Today's date if the original value and file creation date is missing.
         """
-        creation_date = arrow.get(entry["record"]["created"]).datetime.replace(tzinfo=None)
+        creation_date = arrow.get(entry["record"]["created"]).datetime.replace(
+            tzinfo=None
+        )
 
         versions = entry.get("versions", {})
         version_data = versions.get(version, {})
@@ -326,9 +338,12 @@ class CDSRecordServiceLoad(Load):
             # when draft is None, it means the initial version one was hard deleted
             # and we don't have index 1
             # we decided to skip it and act normal
-            draft = current_rdm_records_service.create(
-                identity, data=entry["record"]["json"]
-            )
+            try:
+                draft = current_rdm_records_service.create(
+                    identity, data=entry["record"]["json"]
+                )
+            except Exception as e:
+                raise ManualImportRequired(message=str(e))
             if draft.errors:
                 raise ManualImportRequired(
                     message=f"{str(draft.errors)}: {str(entry['record']['json'])}",
@@ -365,7 +380,7 @@ class CDSRecordServiceLoad(Load):
 
         return draft
 
-    def _load_versions(self, entry, logger):
+    def _load_versions(self, entry):
         """Load other versions of the record."""
         versions = entry["versions"]
         legacy_recid = entry["record"]["recid"]
@@ -392,7 +407,7 @@ class CDSRecordServiceLoad(Load):
             record_state_context = self._load_record_state(legacy_recid, records)
             # Dump the computed record state. This is useful to migrate then the record stats
             if record_state_context:
-                logger.add_record_state(record_state_context)
+                self.record_state_logger.add_record_state(record_state_context)
                 return record_state_context
 
     def _dry_load(self, entry):
@@ -477,7 +492,7 @@ class CDSRecordServiceLoad(Load):
                 recid_state["latest_version_object_uuid"] = str(rec.id)
         return recid_state
 
-    def _save_original_dumped_record(self, entry, recid_state, logger):
+    def _save_original_dumped_record(self, entry, recid_state):
         """Save the original dumped record.
 
         This is the originally extracted record before any transformation.
@@ -530,22 +545,22 @@ class CDSRecordServiceLoad(Load):
             if self._should_skip_recid(recid):
                 return
 
-            migration_logger = RDMJsonLogger()
             try:
                 if self.dry_run:
                     self._dry_load(entry)
                 else:
                     recid_state_after_load = self._load_versions(
-                        entry, migration_logger
+                        entry,
                     )
                     if recid_state_after_load:
                         self._save_original_dumped_record(
-                            entry, recid_state_after_load, migration_logger
+                            entry,
+                            recid_state_after_load,
                         )
                         self._after_load_clc_sync(recid_state_after_load)
-                migration_logger.add_success(recid)
+                self.migration_logger.finalise_record(recid)
             except ManualImportRequired as e:
-                migration_logger.add_log(e, record=entry)
+                self.migration_logger.add_log(e, record=entry)
             except PIDAlreadyExists as e:
                 # TODO remove when there is a way of cleaning local environment from
                 # previous run of migration
@@ -559,7 +574,7 @@ class CDSRecordServiceLoad(Load):
                     value=e.pid_value,
                     subfield="PID",
                 )
-                migration_logger.add_log(exc, record=entry)
+                self.migration_logger.add_log(exc, record=entry)
             except (CDSMigrationException, ValidationError, InvalidRelationValue) as e:
                 exc = ManualImportRequired(
                     message=str(e),
@@ -568,11 +583,10 @@ class CDSRecordServiceLoad(Load):
                     recid=recid,
                     priority="warning",
                 )
-                migration_logger.add_log(exc, record=entry)
+                self.migration_logger.add_log(exc, record=entry)
 
     def _cleanup(self, *args, **kwargs):
         """Post migration process."""
-        migration_logger = RDMJsonLogger()
         for legacy_src_pid, legacy_dest_pid in self.legacy_pids_to_redirect.items():
             if self._have_migrated_recid(legacy_src_pid):
                 continue
@@ -581,10 +595,10 @@ class CDSRecordServiceLoad(Load):
                 assert str(parent_dest_pid.status) == "R"
                 legacy_recid_minter(legacy_src_pid, parent_dest_pid.object_uuid)
                 db.session.commit()
-                migration_logger.add_success(legacy_src_pid)
+                self.migration_logger.finalise_record(legacy_src_pid)
             except Exception as exc:
                 db.session.rollback()
-                migration_logger.add_log(
+                self.migration_logger.add_log(
                     f"Failed to redirect {legacy_src_pid} to {legacy_dest_pid}: {str(exc)}",
                     record={"recid": legacy_src_pid},
                 )

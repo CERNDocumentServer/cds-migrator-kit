@@ -62,7 +62,6 @@ def title(self, key, value):
 def description(self, key, value):
     """Translates description."""
     description_text = StringValue(value.get("a")).parse()
-
     return description_text
 
 

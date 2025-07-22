@@ -64,6 +64,7 @@ class Runner:
                 if definition.transform_cls:
                     transform = definition.transform_cls(
                         dry_run=dry_run,
+                        collection=collection,
                         **stream_config[collection].get("transform", {}),
                     )
 
@@ -77,6 +78,7 @@ class Runner:
                             data_dir=data_dir,
                             tmp_dir=tmp_dir,
                             dry_run=dry_run,
+                            collection=collection,
                             **stream_config[collection].get("load", {}),
                         ),
                     )

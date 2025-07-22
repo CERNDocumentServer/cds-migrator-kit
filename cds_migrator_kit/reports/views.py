@@ -34,7 +34,7 @@ def index():
 
 
 @blueprint.route("/results/<collection>")
-def results(collection=None):
+def results(collection):
     """Render a basic view."""
     try:
         display_errors_only = request.args.get("errors", 0)

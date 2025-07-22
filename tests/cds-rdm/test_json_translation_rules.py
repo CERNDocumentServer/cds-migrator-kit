@@ -48,6 +48,7 @@ def test_migrate_sspn_record(datadir, base_app):
             "publisher": "CERN",
             "publication_date": "2017-06-24",
             "description": "The High Granularity end-cap Calorimeter is part of the phase-2 CMS upgrade (see Figure \\ref{fig:cms})\\cite{Contardo:2020886}. It's goal it to provide measurements of high resolution in time, space and energy. Given such measurements, the purpose of this work is to discuss the use of Deep Neural Networks for the task of particle and trajectory reconstruction, identification and energy estimation, during my participation in the CERN Summer Students Program.",
+            "internal_notes": [],
             "subjects": [
                 {
                     "id": "Particle Physics - Experiment",
@@ -65,6 +66,9 @@ def test_migrate_sspn_record(datadir, base_app):
                 "cern:studies": [],
                 "cern:beams": [],
                 "cern:departments": ["EP"],
+                "imprint:imprint": {
+                    "place": "Geneva",
+                },
             },
             "contributors": [
                 {
@@ -141,7 +145,7 @@ def test_migrate_record_all_fields(datadir, base_app):
             "title": "FLUKA and ActiWiz benchmark on BDF materials",
             "additional_descriptions": [
                 {
-                    "description": "Abbreviations: BDF stands for Beam Dump Facility",
+                    "description": "Abbreviation: BDF stands for Beam Dump Facility",
                     "type": {"id": "other"},
                 }
             ],
@@ -166,6 +170,9 @@ def test_migrate_record_all_fields(datadir, base_app):
                 "cern:studies": ["Physics Beyond Colliders"],
                 "cern:beams": [],
                 "cern:departments": ["HSE"],
+                "imprint:imprint": {
+                    "place": "Geneva",
+                },
             },
             "contributors": [
                 {

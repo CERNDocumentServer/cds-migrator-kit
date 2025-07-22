@@ -57,6 +57,9 @@ def suite_multi_field(record):
     assert dict_rec["custom_fields"] == {
         "cern:departments": [{"id": "HSE", "title": {"en": "HSE"}}],
         "cern:studies": ["Physics Beyond Colliders"],
+        "imprint:imprint": {
+            "place": "Geneva",
+        },
     }
 
     assert dict_rec["metadata"]["creators"] == [
@@ -156,7 +159,7 @@ def suite_multi_field(record):
 
     assert dict_rec["metadata"]["additional_descriptions"] == [
         {
-            "description": "Abbreviations: BDF stands for Beam Dump Facility",
+            "description": "Abbreviation: BDF stands for Beam Dump Facility",
             "type": {"id": "other", "title": {"en": "Other"}},
         }
     ]
@@ -231,6 +234,7 @@ def multiple_versions_with_cs(record):
     assert dict_rec["custom_fields"] == {
         "cern:experiments": [{"id": "CMS", "title": {"en": "CMS"}}],
         "cern:departments": [{"id": "PH", "title": {"en": "PH"}}],
+        "imprint:imprint": {"place": "Geneva"},
     }
 
 
@@ -243,6 +247,7 @@ def multiple_custom_fields(record):
             {"id": "CERN AD", "title": {"en": "CERN AD"}},
             {"id": "CERN AD", "title": {"en": "CERN AD"}},
         ],
+        "imprint:imprint": {"place": "Geneva"},
     }
 
 
@@ -299,6 +304,7 @@ def irregular_exp_field(record):
         "cern:accelerators": [
             {"id": "CERN AD", "title": {"en": "CERN AD"}},
         ],
+        "imprint:imprint": {"place": "Geneva"},
     }
     assert "subjects" in dict_rec["metadata"]
     assert dict_rec["metadata"]["subjects"] == [
@@ -432,7 +438,7 @@ def test_full_migration_stream(
 
     assert CDSMigrationLegacyRecord.query.count() == 13
 
-    with open("tests/cds-rdm/tmp/logs/sspn/rdm_records_state.json") as state_logs:
+    with open("tests/cds-rdm/tmp/logs/sspn/rdm_records_state.json", "r") as state_logs:
         records = json.load(state_logs)
 
     # assert check_log_for_error("2783112", "ManualImportRequired")

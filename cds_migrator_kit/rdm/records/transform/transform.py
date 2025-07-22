@@ -46,7 +46,7 @@ from cds_migrator_kit.rdm.records.transform.config import (
     PIDS_SCHEMES_ALLOWED,
     PIDS_SCHEMES_TO_DROP,
 )
-from cds_migrator_kit.reports.log import RDMJsonLogger
+from cds_migrator_kit.reports.log import MigrationProgressLogger, RecordStateLogger
 from cds_migrator_kit.transform.dumper import CDSRecordDump
 from cds_migrator_kit.transform.errors import LossyConversion
 
@@ -84,12 +84,16 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         missing_users_filename="people.csv",
         affiliations_mapping=None,
         dry_run=False,
+        collection=None,
     ):
         """Constructor."""
         self.missing_users_dir = missing_users_dir
         self.missing_users_filename = missing_users_filename
         self.affiliations_mapping = affiliations_mapping
         self.dry_run = dry_run
+        self.collection = collection
+        self.migration_logger = MigrationProgressLogger(collection=collection)
+        self.record_state_logger = RecordStateLogger(collection=collection)
         super().__init__(partial)
 
     def _created(self, entry):
@@ -253,7 +257,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     transformed_aff.append(affiliation)
                 except RecordFlaggedCuration as exc:
                     # Save not exact match affiliation and reraise to flag the record
-                    RDMJsonLogger().add_success_state(
+                    self.migration_logger.add_information(
                         json_entry["recid"],
                         {"message": exc.message, "value": exc.value},
                     )
@@ -409,10 +413,27 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "rights": json_entry.get("rights"),
             "copyright": json_entry.get("copyright"),
         }
-
-
-
         # filter empty keys
+        helper_keys = [
+            "recid",
+            "legacy_recid",
+            "agency_code",
+            "submitter",
+            "status_week_date",
+            "record_restriction",
+            "custom_fields",
+            "_pids",
+            "internal_notes",
+        ]
+
+        keys = deepcopy(list(json_entry.keys()))
+        for item in helper_keys:
+            if item in keys:
+                keys.remove(item)
+
+        forgotten_keys = [key for key in keys if key not in list(metadata.keys())]
+        if forgotten_keys:
+            raise ManualImportRequired("Unassigned metadata key", value=forgotten_keys)
         return {k: v for k, v in metadata.items() if v}
 
     def _custom_fields(self, json_entry, json_output):
@@ -458,7 +479,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     )
             else:
                 if record_json["resource_type"] == "publication-thesis":
-
                     return {"id": "None"}
                 else:
                     return
@@ -490,7 +510,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "cern:accelerators", []
             )
             for accelerator in accelerators:
-                if accelerator.lower().strip() == "not applicable":
+                if accelerator.lower().strip() in ["not applicable", "xx"]:
                     continue
                 result = search_vocabulary(accelerator, "accelerators")
                 if result["hits"]["total"]:
@@ -556,7 +576,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             field_departments(json_entry, custom_fields)
 
         except RecordFlaggedCuration as exc:
-            RDMJsonLogger().add_success_state(
+            self.migration_logger.add_information(
                 json_entry["recid"],
                 {"message": exc.message, "value": exc.value},
             )
@@ -575,7 +595,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             raise ManualImportRequired(
                 "Unassigned custom field key", value=forgotten_keys
             )
-        return custom_fields
+        # filter out null values
+        return {k: v for k, v in custom_fields.items() if v}
 
     def _verify_creation_date(self, entry, json_data):
         """Verify creation date.
@@ -603,12 +624,12 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             entry,
         )
 
-        migration_logger = RDMJsonLogger()
         record_dump.prepare_revisions()
         timestamp, json_data = record_dump.latest_revision
 
         self._verify_creation_date(entry, json_data)
-        migration_logger.add_record(json_data)
+
+        self.record_state_logger.add_record(json_data)
 
         clc_sync = deepcopy(json_data.get("_clc_sync", False))
         if "_clc_sync" in json_data:
@@ -632,31 +653,11 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         try:
             access = self._access(json_data, record_dump)
         except RecordFlaggedCuration as exc:
-            RDMJsonLogger().add_success_state(
+            self.migration_logger.add_information(
                 entry["recid"],
                 {"message": exc.message, "value": exc.value},
             )
-        helper_keys = [
-            "recid",
-            "legacy_recid",
-            "agency_code",
-            "submitter",
-            "status_week_date",
-            "record_restriction",
-            "custom_fields",
-            "_pids",
-            "internal_notes",
-        ]
 
-        metadata = deepcopy(record_json_output["metadata"])
-        keys = deepcopy(list(json_data.keys()))
-        for item in helper_keys:
-            if item in keys:
-                keys.remove(item)
-
-        forgotten_keys = [key for key in keys if key not in list(metadata.keys())]
-        if forgotten_keys:
-            raise ManualImportRequired("Unassigned metadata key", value=forgotten_keys)
         return {
             "created": record_dump.first_created,
             "updated": self._updated(record_dump),
@@ -684,12 +685,16 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         missing_users=None,
         community_id=None,
         dry_run=False,
+        collection=None,
     ):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
         self.missing_users_dir = Path(missing_users).absolute().as_posix()
         self.community_id = community_id
         self.dry_run = dry_run
+        self.collection = collection
+        self.migration_logger = MigrationProgressLogger(collection=collection)
+        self.record_state_logger = RecordStateLogger(collection=collection)
         self.db_state = {"affiliations": CDSMigrationAffiliationMapping}
         super().__init__(workers, throw)
 
@@ -728,7 +733,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
     def _transform(self, entry):
         """Transform a single entry."""
         # creates the output structure for load step
-        migration_logger = RDMJsonLogger()
+        migration_logger = self.migration_logger
         try:
             record = self._record(entry)
             original_dump = record.pop("_original_dump", {})
@@ -757,6 +762,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             missing_users_dir=self.missing_users_dir,
             affiliations_mapping=self.db_state["affiliations"],
             dry_run=self.dry_run,
+            collection=self.collection,
         ).transform(entry)
 
     def _draft(self, entry):
@@ -800,7 +806,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             full_path = Path(file["full_path"])
 
             if file["subformat"] in FILE_SUBFORMATS_TO_DROP:
-                RDMJsonLogger().add_success_state(
+                self.migration_logger.add_information(
                     str(file["recid"]),
                     {
                         "message": f"File subformat {file['subformat']} dropped.",
@@ -811,7 +817,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
 
             if file["type"] == "Plot":
                 # skip figures
-                RDMJsonLogger().add_success_state(
+                self.migration_logger.add_information(
                     str(file["recid"]),
                     {
                         "message": f"Plot file dropped.",
@@ -821,7 +827,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 return
             if file["hidden"]:
                 # skip hidden files
-                RDMJsonLogger().add_success_state(
+                self.migration_logger.add_information(
                     str(file["recid"]),
                     {
                         "message": f"Hidden file dropped.",
@@ -836,7 +842,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                         / full_path.relative_to(legacy_path_root),
                         "id_bibdoc": file["bibdocid"],
                         "key": file["full_name"],
-                        "metadata": {},
+                        "metadata": {"description": file["description"]},
                         "mimetype": file["mime"],
                         "checksum": file["checksum"],
                         "version": file["version"],
@@ -935,5 +941,3 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
     #     "type": "Main",
     #     "full_path": "/opt/cdsweb/var/data/files/g50/502379/CM-P00080632-e.pdf;1"
     #   },]
-
-

@@ -18,16 +18,15 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
 """CDS-RDM Summer student model."""
-
+from cds_migrator_kit.rdm.records.transform.models.base_publication_record import (
+    rdm_base_publication_model,
+)
 from cds_migrator_kit.transform.overdo import CdsOverdo
-
-from .base_record import rdm_base_record_model
 
 
 class SummerStudentNotes(CdsOverdo):
     """Translation Index for CERN Summer Student Project Notes."""
 
-    # __query__ = "980__:INTNOTEEPPUBLL 980__:NOTE 037__:CERN-STUDENTS-Note-\"/(.*?)/\""
     __query__ = "037__:CERN-STUDENTS-Note-* -980__c:DELETED"
 
     __ignore_keys__ = {
@@ -106,6 +105,6 @@ class SummerStudentNotes(CdsOverdo):
 
 
 sspn_model = SummerStudentNotes(
-    bases=(rdm_base_record_model,),
+    bases=(rdm_base_publication_model,),
     entry_point_group="cds_migrator_kit.migrator.rules.ssn",
 )

@@ -442,3 +442,5 @@ CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(
     SRC_SEARCH_SCROLL="1h",
 )
 """Config for record statistics migration."""
+
+CDS_MIGRATOR_KIT_ENV = "local"

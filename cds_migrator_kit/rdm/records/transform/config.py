@@ -137,7 +137,7 @@ FORMER_COLLECTION_TAGS_TO_KEEP = [
     # "cernitarchive",  # 1655788
 ]
 
-IGNORED_THESIS_COLLECTIONS = ["cern"]
+IGNORED_THESIS_COLLECTIONS = ["cern", "preprint", "clinot"]
 
 
 udc_pattern = r"\b\d+(?:\.\d+)*-?\d*(?:\.\d+)*\b"
