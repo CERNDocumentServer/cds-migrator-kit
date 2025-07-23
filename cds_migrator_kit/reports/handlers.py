@@ -10,7 +10,7 @@
 
 import logging
 
-from cds_migrator_kit.reports.log import RDMJsonLogger
+from cds_migrator_kit.reports.log import MigrationProgressLogger
 
 cli_logger = logging.getLogger("migrator")
 
@@ -35,7 +35,7 @@ def migration_exception_handler(
                 recid, exc.message, key, value, output
             )
         )
-        RDMJsonLogger(collection=collection).add_log(
+        MigrationProgressLogger(collection=collection).add_log(
             exc, key=key, value=value, record=output
         )
 

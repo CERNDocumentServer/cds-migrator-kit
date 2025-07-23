@@ -166,7 +166,6 @@ class CDSRecordServiceLoad(Load):
         record = draft._record
         parent = record.parent
         identity = system_identity
-        migration_logger = RDMJsonLogger()
 
         metadata = access_dict.get("meta", "")
         permission = "view"  # Default permission for grants
@@ -179,7 +178,7 @@ class CDSRecordServiceLoad(Load):
             if not any(
                 kw in metadata for kw in ("firerole: allow group", "allow email")
             ):
-                migration_logger.add_log(
+                self.migration_logger.add_log(
                     f"Unexpected access grant format: {metadata}", record=record
                 )
 

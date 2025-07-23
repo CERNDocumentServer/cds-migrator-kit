@@ -13,7 +13,7 @@ import logging
 
 from flask import Blueprint, abort, current_app, jsonify, render_template, request
 
-from .log import JsonLogger, RDMJsonLogger
+from .log import MigrationProgressLogger, RecordStateLogger
 
 cli_logger = logging.getLogger("migrator")
 
@@ -43,7 +43,7 @@ def results(collection):
         pagination = request.args.get("pagination", 0)
         prev_page = False
         next_page = False
-        logger = RDMJsonLogger(collection=collection)
+        logger = MigrationProgressLogger(collection=collection)
         record_logs = logger.read_log()
         template = "cds_migrator_kit_records/records.html"
         record_logs = list(record_logs)
@@ -95,7 +95,7 @@ def results(collection):
 @blueprint.route("/record/<collection>/<recid>")
 def send_json(collection, recid):
     """Serves static json preview output files."""
-    logger = RDMJsonLogger(collection=collection)
+    logger = RecordStateLogger(collection=collection)
     records = logger.load_record_dumps()
     if recid not in records:
         abort(404)

@@ -17,21 +17,7 @@ from copy import deepcopy
 from flask import current_app
 
 
-class Singleton(type):
-    """Temporary solution for this logger."""
-
-    _instances = {}
-
-    def __call__(cls, *args, **kwargs):
-        """Call."""
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
-
-class JsonLogger(metaclass=Singleton):
-    """Log migration statistic to file controller."""
-
+class StandardLogger:
     logger = None
 
     @classmethod
@@ -76,36 +62,27 @@ class JsonLogger(metaclass=Singleton):
         """Get migration logger."""
         return logging.getLogger("migrator-rules")
 
+
+class MigrationProgressLogger:
+
     def __init__(
-        self, stats_filename, records_filename, records_state_filename, collection
+        self,
+        collection,
+        log_progress_filename="rdm_migration_errors.csv",
     ):
         """Constructor."""
         self._logs_path = os.path.join(
             current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"], collection
         )
-        self.STAT_FILEPATH = os.path.join(self._logs_path, stats_filename)
-        self.RECORD_FILEPATH = os.path.join(self._logs_path, records_filename)
-        self.RECORD_STATE_FILEPATH = os.path.join(
-            self._logs_path, records_state_filename
+        self.PROGRESS_LOG_FILEPATH = os.path.join(
+            self._logs_path, log_progress_filename
         )
         self.collection = collection
 
         if not os.path.exists(self._logs_path):
             os.makedirs(self._logs_path)
 
-        self.error_file = None
-        self.record_dump_file = None
-        self._success_state_cache = {}
-
-    def start_log(self):
-        """Initialize logging file descriptors."""
-        # init log files
-        self.error_file = open(self.STAT_FILEPATH, "w")
-        self.record_dump_file = open(self.RECORD_FILEPATH, "w")
-        self.records_state_dump_file = open(self.RECORD_STATE_FILEPATH, "w")
-        self.error_file.truncate(0)
-        self.record_dump_file.truncate(0)
-        self.records_state_dump_file.truncate(0)
+        self.error_file = open(self.PROGRESS_LOG_FILEPATH, "a")
         columns = [
             "recid",
             "stage",
@@ -118,44 +95,25 @@ class JsonLogger(metaclass=Singleton):
             "priority",
         ]
         self.log_writer = csv.DictWriter(self.error_file, fieldnames=columns)
+        self._temp_state_cache = {}
+
+    def start_log(self):
+        """Initialize logging file descriptors."""
+        # init log files
+
+        self.error_file.truncate(0)
         self.log_writer.writeheader()
-        self.record_dump_file.write("{\n")
-        self.records_state_dump_file.write("[\n")
 
     def read_log(self):
         """Read error log file."""
-        self.error_file = open(self.STAT_FILEPATH, "r")
+        self.error_file = open(self.PROGRESS_LOG_FILEPATH, "r")
         reader = csv.DictReader(self.error_file)
         for row in reader:
             yield row
 
-    def load_record_dumps(self):
-        """Load stats from file as json."""
-        self.record_dump_file = open(self.RECORD_FILEPATH, "r")
-        return json.load(self.record_dump_file)
-
     def finalise(self):
         """Finalise logging files."""
         self.error_file.close()
-        # remove last comma and newline in the json dump
-        self.record_dump_file.seek(self.record_dump_file.tell() - 2, os.SEEK_SET)
-        # close the dict
-        self.record_dump_file.write("}")
-        self.record_dump_file.close()
-        self.records_state_dump_file.seek(
-            self.records_state_dump_file.tell() - 2, os.SEEK_SET
-        )
-        self.records_state_dump_file.write("]")
-        self.records_state_dump_file.close()
-
-    def add_record(self, record, **kwargs):
-        """Add record to list of collected records."""
-        recid = record["legacy_recid"]
-        self.record_dump_file.write(f'"{recid}": {json.dumps(record)},\n')
-
-    def add_record_state(self, record_state, **kwargs):
-        """Add record state."""
-        self.records_state_dump_file.write(f"{json.dumps(record_state)},\n")
 
     def add_log(self, exc, record=None, key=None, value=None):
         """Add exception log."""
@@ -182,33 +140,90 @@ class JsonLogger(metaclass=Singleton):
         }
         self.log_writer.writerow(error_format)
         logger_migrator.error(exc)
+        self.error_file.flush()
 
-    def add_success_state(self, recid, state):
+    def add_information(self, recid, state):
         """Save a temporary success state for recid.
 
         For example, we store affiliation warnings when we don't match.
         """
-        if recid in self._success_state_cache:
-            new_state = deepcopy(self._success_state_cache[recid])
+        if recid in self._temp_state_cache:
+            new_state = deepcopy(self._temp_state_cache[recid])
             new_state["message"] = f"{new_state['message']}\n{state['message']}"
             new_state["value"] = f"{new_state['value']}\n{state['value']}"
             state = new_state
-        self._success_state_cache[recid] = state
+        self._temp_state_cache[recid] = state
 
-    def add_success(self, recid):
+    def finalise_record(self, recid):
         """Log recid as success."""
-        _state = self._success_state_cache.pop(recid, {})
+        _state = self._temp_state_cache.pop(recid, {})
         self.log_writer.writerow({"recid": recid, "clean": True, **_state})
 
 
-class RDMJsonLogger(JsonLogger):
-    """Log rdm record migration statistic to file controller."""
+class RecordStateLogger:
 
-    def __init__(self, collection=None):
+    def __init__(
+        self,
+        collection,
+        records_dump_filename="rdm_records_dump.json",
+        records_state_filename="rdm_records_state.json",
+    ):
         """Constructor."""
-        super().__init__(
-            stats_filename="rdm_migration_errors.csv",
-            records_filename="rdm_records_dump.json",
-            records_state_filename="rdm_records_state.json",
-            collection=collection,
+        self._logs_path = os.path.join(
+            current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"], collection
         )
+        self.RECORD_DUMP_FILEPATH = os.path.join(self._logs_path, records_dump_filename)
+        self.RECORD_STATE_FILEPATH = os.path.join(
+            self._logs_path, records_state_filename
+        )
+        self.collection = collection
+
+        if not os.path.exists(self._logs_path):
+            os.makedirs(self._logs_path)
+
+        self.record_dump_file = open(self.RECORD_DUMP_FILEPATH, "a")
+        self.record_state_file = open(self.RECORD_STATE_FILEPATH, "a")
+
+    def start_log(self):
+        """Initialize logging file descriptors."""
+        # init log files
+        with open(self.RECORD_DUMP_FILEPATH, "w") as temp_dump_file:
+            temp_dump_file.truncate(0)
+            temp_dump_file.write("{\n")
+        with open(self.RECORD_STATE_FILEPATH, "w") as temp_state_file:
+            temp_state_file.truncate(0)
+            temp_state_file.write("[\n")
+
+    def add_record(self, record, **kwargs):
+        """Add record to list of collected records."""
+        recid = record["legacy_recid"]
+        self.record_dump_file.write(f'"{recid}": {json.dumps(record)},\n')
+        self.record_dump_file.flush()
+
+    def add_record_state(self, record_state, **kwargs):
+        """Add record state."""
+        self.record_state_file.write(f"{json.dumps(record_state)},\n")
+        self.record_state_file.flush()
+
+    def load_record_dumps(self):
+        """Load stats from file as json."""
+        record_dump_file = open(self.RECORD_DUMP_FILEPATH, "r")
+        return json.load(record_dump_file)
+
+    def finalise(self):
+        """Finalise logging files."""
+        # remove last comma and newline in the json dump
+        self.record_dump_file.close()
+        self.record_state_file.close()
+
+        with open(self.RECORD_DUMP_FILEPATH, "r+") as temp_dump_file:
+            temp_dump_file.seek(0, 2)
+            temp_dump_file.truncate(temp_dump_file.tell() - 2)
+            temp_dump_file.seek(0, 2)
+            temp_dump_file.write("}")
+
+        with open(self.RECORD_STATE_FILEPATH, "r+") as temp_state_file:
+            temp_state_file.seek(0, 2)
+            temp_state_file.truncate(temp_state_file.tell() - 2)
+            temp_state_file.seek(0, 2)
+            temp_state_file.write("]")

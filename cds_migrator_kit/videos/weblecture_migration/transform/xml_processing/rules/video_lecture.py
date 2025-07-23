@@ -24,7 +24,6 @@ from flask import current_app
 from idutils.validators import is_doi
 
 from cds_migrator_kit.errors import UnexpectedValue
-from cds_migrator_kit.reports.log import RDMJsonLogger
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
     require,

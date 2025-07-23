@@ -13,7 +13,11 @@ import yaml
 from invenio_rdm_migrator.logging import FailedTxLogger, Logger
 from invenio_rdm_migrator.streams import Stream
 
-from cds_migrator_kit.reports.log import RDMJsonLogger
+from cds_migrator_kit.reports.log import (
+    MigrationProgressLogger,
+    RecordStateLogger,
+    StandardLogger,
+)
 
 
 # local version of the invenio-rdm-migrator Runner class
@@ -47,7 +51,7 @@ class Runner:
                 self.log_dir.mkdir(parents=True, exist_ok=True)
 
                 Logger.initialize(self.log_dir)
-                RDMJsonLogger.initialize(self.log_dir)
+                StandardLogger.initialize(self.log_dir)
                 FailedTxLogger.initialize(self.log_dir)
                 # get will return a None for e.g. files:
 
@@ -86,8 +90,11 @@ class Runner:
 
     def run(self):
         """Run ETL streams."""
-        migration_logger = RDMJsonLogger(collection=self.collection)
+        migration_logger = MigrationProgressLogger(collection=self.collection)
+        record_state_logger = RecordStateLogger(collection=self.collection)
+
         migration_logger.start_log()
+        record_state_logger.start_log()
         for stream in self.streams:
             try:
                 stream.run(cleanup=True)
@@ -99,3 +106,4 @@ class Runner:
                 raise e
             finally:
                 migration_logger.finalise()
+                record_state_logger.finalise()

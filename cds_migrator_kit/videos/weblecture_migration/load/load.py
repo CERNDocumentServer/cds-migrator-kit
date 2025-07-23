@@ -28,7 +28,7 @@ from cds_migrator_kit.errors import (
     MissingRequiredField,
     UnexpectedValue,
 )
-from cds_migrator_kit.reports.log import RDMJsonLogger
+from cds_migrator_kit.reports.log import MigrationProgressLogger
 
 from .helpers import (
     copy_additional_files,
@@ -240,21 +240,21 @@ class CDSVideosLoad(Load):
 
     def _load(self, entry):
         """Use the services to load the entries."""
-        migration_logger = RDMJsonLogger(collection="weblectures")
+        migration_logger = MigrationProgressLogger(collection="weblectures")
 
         if entry:
             recid = entry.get("record", {}).get("recid", {})
 
             if self._should_skip_recid(recid):
-                migration_logger.add_success_state(
+                migration_logger.add_information(
                     recid, state={"message": "Record already migrated", "value": recid}
                 )
-                migration_logger.add_success(recid)
+                migration_logger.add_information(recid)
                 return
 
             try:
                 self.create_publish_single_video_record(entry)
-                migration_logger.add_success(recid)
+                migration_logger.add_information(recid)
             except (
                 UnexpectedValue,
                 ManualImportRequired,
