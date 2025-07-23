@@ -27,7 +27,7 @@ from cds_migrator_kit.errors import (
     RestrictedFileDetected,
     UnexpectedValue,
 )
-from cds_migrator_kit.reports.log import RDMJsonLogger
+from cds_migrator_kit.reports.log import MigrationProgressLogger, RecordStateLogger
 from cds_migrator_kit.transform.dumper import CDSRecordDump
 from cds_migrator_kit.transform.errors import LossyConversion
 from cds_migrator_kit.videos.weblecture_migration.transform import (
@@ -288,9 +288,9 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                     )
                 affiliations = speakers[0].get("affiliations", [])
                 if affiliation not in affiliations:
-                    migration_logger = RDMJsonLogger(collection="weblectures")
+                    migration_logger = MigrationProgressLogger(collection="weblectures")
 
-                    migration_logger.add_success_state(
+                    migration_logger.add_information(
                         json_data["legacy_recid"],
                         state={"message": "Affiliation added", "value": affiliation},
                     )
@@ -409,7 +409,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                     stage="transform",
                 )
             else:
-                RDMJsonLogger(collection="weblectures").add_success_state(
+                MigrationProgressLogger(collection="weblectures").add_information(
                     json_data["recid"],
                     {"message": "Indico ID is missing!", "value": "indico"},
                 )
@@ -557,12 +557,12 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
     def transform(self, entry):
         """Transform a record single entry."""
         record_dump = CDSRecordDump(data=entry, dojson_model=videos_migrator_marc21)
-        migration_logger = RDMJsonLogger(collection="weblectures")
+        record_state_logger = RecordStateLogger(collection="weblectures")
 
         record_dump.prepare_revisions()
         timestamp, json_data = record_dump.latest_revision
 
-        migration_logger.add_record(json_data)
+        record_state_logger.add_record(json_data)
         record_json_output = {
             "metadata": self._metadata(json_data),
             "created": self._created(json_data),
@@ -612,7 +612,7 @@ class CDSToVideosRecordTransform(RDMRecordTransform):
     def _transform(self, entry):
         """Transform a single entry."""
         # creates the output structure for load step
-        migration_logger = RDMJsonLogger(collection="weblectures")
+        migration_logger = MigrationProgressLogger(collection="weblectures")
 
         try:
             record = self._record(entry)

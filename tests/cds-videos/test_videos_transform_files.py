@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from cds_migrator_kit.reports.log import RDMJsonLogger
+from cds_migrator_kit.reports.log import MigrationProgressLogger, StandardLogger
 from cds_migrator_kit.videos.weblecture_migration.load.load import CDSVideosLoad
 from cds_migrator_kit.videos.weblecture_migration.transform.transform import (
     CDSToVideosRecordEntry,
@@ -91,8 +91,8 @@ def test_transform_afs_files(base_app):
         log_dir = Path(stream_config["records"]["weblectures"]["log_dir"])
         log_dir.mkdir(parents=True, exist_ok=True)
 
-        RDMJsonLogger.initialize(log_dir)
-        migration_logger = RDMJsonLogger(collection="weblectures")
+        StandardLogger.initialize(log_dir)
+        migration_logger = MigrationProgressLogger(collection="weblectures")
         migration_logger.start_log()
 
         # Load test data
