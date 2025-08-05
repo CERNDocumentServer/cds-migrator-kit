@@ -60,13 +60,13 @@ def results(collection):
         else:
             paginated_record_logs = record_logs
         for log in record_logs:
-            if log["priority"] == "critical":
+            if log.get("priority") == "critical":
                 critical += 1
-            if log["priority"] == "warning":
+            if log.get("priority") == "warning":
                 warning += 1
-            if log["clean"] == "False":
+            if log.get("clean") == "False":
                 errored += 1
-            if log["clean"] == "True":
+            if log.get("clean") == "True":
                 migrated += 1
         return render_template(
             template,

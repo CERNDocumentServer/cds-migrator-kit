@@ -103,6 +103,7 @@ class MigrationProgressLogger:
 
         self.error_file.truncate(0)
         self.log_writer.writeheader()
+        self.error_file.flush()
 
     def read_log(self):
         """Read error log file."""
@@ -119,12 +120,9 @@ class MigrationProgressLogger:
         """Add exception log."""
         logger_migrator = logging.getLogger("migrator-rules")
 
-        if record:
-            recid = record.get("recid", None) or record.get("record", {}).get(
-                "recid", {}
-            )
-        else:
-            recid = getattr(exc, "recid", None)
+        recid = getattr(exc, "recid", None)
+        if not recid and record:
+            recid = record.get("recid", None) or record.get("record", {}).get("recid")
 
         subfield = f"subfield: {exc.subfield}" if getattr(exc, "subfield", None) else ""
         error_format = {

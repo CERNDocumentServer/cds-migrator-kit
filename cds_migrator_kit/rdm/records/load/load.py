@@ -161,7 +161,7 @@ class CDSRecordServiceLoad(Load):
 
         parent.commit()
 
-    def _load_parent_access_grants(self, draft, access_dict):
+    def _load_parent_access_grants(self, draft, access_dict, entry):
         """Load access grants from metadata."""
         record = draft._record
         parent = record.parent
@@ -170,7 +170,9 @@ class CDSRecordServiceLoad(Load):
         metadata = access_dict.get("meta", "")
         permission = "view"  # Default permission for grants
 
-        if metadata == "SSO":
+        if not metadata:
+            return
+        elif metadata == "SSO":
             groups = ["cern-personnel"]
             emails = []
         else:
@@ -178,55 +180,55 @@ class CDSRecordServiceLoad(Load):
             if not any(
                 kw in metadata for kw in ("firerole: allow group", "allow email")
             ):
-                self.migration_logger.add_log(
-                    f"Unexpected access grant format: {metadata}", record=record
+                raise ManualImportRequired(
+                    message="Unexpected permission format.",
+                    field="access",
+                    subfield="subject.id",
+                    stage="load",
+                    recid=entry["record"]["recid"],
+                    priority="critical",
                 )
 
             groups, emails = CDSRecordServiceLoad._parse_access_metadata(metadata)
 
         # Helper function for creating and validating grants
         def _create_grant(subject_type, subject_id):
-            try:
-                grant_data = {
-                    "grants": [
-                        {
-                            "subject": {"type": subject_type, "id": str(subject_id)},
-                            "permission": permission,
-                        }
-                    ]
-                }
-                # Validate the grant data against the schema
-                current_rdm_records_service.access.schema_grants.load(
-                    grant_data,
-                    context={"identity": identity},
-                    raise_errors=True,
-                )
+            grant_data = {
+                "grants": [
+                    {
+                        "subject": {"type": subject_type, "id": str(subject_id)},
+                        "permission": permission,
+                    }
+                ]
+            }
+            # Validate the grant data against the schema
+            current_rdm_records_service.access.schema_grants.load(
+                grant_data,
+                context={"identity": identity},
+                raise_errors=True,
+            )
 
-                # Create the grant
-                grant = parent.access.grants.create(
-                    subject_type=subject_type,
-                    subject_id=subject_id,
-                    permission=permission,
-                    origin="migrated",
-                )
-                # Validate subject existence
-                if not current_rdm_records_service.access._validate_grant_subject(
-                    identity, grant
-                ):
-                    raise ValidationError("Could not find the specified subject.")
-
-            except ValidationError as e:
-                exc = ManualImportRequired(
-                    message=str(e),
+            # Create the grant
+            grant = parent.access.grants.create(
+                subject_type=subject_type,
+                subject_id=subject_id,
+                permission=permission,
+                origin="migrated",
+            )
+            # Validate subject existence
+            is_local_dev = current_app.config["CDS_MIGRATOR_KIT_ENV"] == "local"
+            if not is_local_dev and not current_rdm_records_service.access._validate_grant_subject(
+                identity, grant
+            ):
+                raise ManualImportRequired(
+                    message="Verification of access subject failed (likely not existing entry)",
                     field="access",
                     subfield="subject.id",
                     stage="load",
-                    recid=record.get("id"),
+                    recid=entry["record"]["recid"],
                     priority="warning",
+                    value=subject_id,
                 )
-                migration_logger.add_log(exc, record=record)
-            except Exception as e:
-                migration_logger.add_log(f"Grant creation failed: {e}", record=record)
 
         # Apply group-based grants
         for group in groups:
@@ -238,7 +240,7 @@ class CDSRecordServiceLoad(Load):
             if user:
                 _create_grant(subject_type="user", subject_id=user.id)
             else:
-                migration_logger.add_log(
+                self.migration_logger.add_log(
                     f"User not found for email: {email}", record=record
                 )
 
@@ -355,7 +357,7 @@ class CDSRecordServiceLoad(Load):
                 )
             # TODO we can use unit of work when it is moved to invenio-db module
             self._load_parent_access(draft, entry)
-            self._load_parent_access_grants(draft, access)
+            self._load_parent_access_grants(draft, access, entry)
             self._load_communities(draft, entry)
             db.session.commit()
         else:
