@@ -206,7 +206,8 @@ class RecordStateLogger:
     def load_record_dumps(self):
         """Load stats from file as json."""
         record_dump_file = open(self.RECORD_DUMP_FILEPATH, "r")
-        return json.load(record_dump_file)
+        yield json.load(record_dump_file)
+        record_dump_file.close()
 
     def finalise(self):
         """Finalise logging files."""

@@ -8,6 +8,16 @@ from ...config import IGNORED_THESIS_COLLECTIONS
 from ...models.sy import sy_model as model
 
 
+@model.over("collection", "^690C_")
+@for_each_value
+def collection(self, key, value):
+    """Translates collection field."""
+    collection = value.get("a").strip().lower()
+    if collection not in ["publsy", "intnote", "cern", "preprint"]:
+        raise UnexpectedValue(subfield="a", key=key, value=value, field="690C_")
+    raise IgnoreKey("collection")
+
+
 @model.over("resource_type", "^980__", override=True)
 def resource_type(self, key, value):
     """Translates resource_type."""
