@@ -95,6 +95,7 @@ def results(collection):
 @blueprint.route("/record/<collection>/<recid>")
 def send_json(collection, recid):
     """Serves static json preview output files."""
+    print(collection, recid)
     logger = RecordStateLogger(collection=collection)
     records = logger.load_record_dumps()
     if recid not in records:
