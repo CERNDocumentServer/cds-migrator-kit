@@ -21,17 +21,17 @@ class SYModel(CdsOverdo):
         "0248_a",
         "0248_p",
         "0248_q",
-        "100__m",
-        "300__a",
-        "270__m",
-        "700__m",
-        "690C_a",
-        "8564_8",
-        "8564_s",
-        "8564_x",
-        "8564_y",  # file description - done by files dump
-        "937__c",
-        "937__s",
+        "100__m",  # email of contributor
+        "300__a",  # number of pages
+        # "270__m",
+        "700__m",  # email of contributor
+        # "690C_a",
+        # "8564_8",
+        # "8564_s",
+        # "8564_x",
+        # "8564_y",  # file description - done by files dump
+        # "937__c",
+        # "937__s",
         "960__a",  # base number
         "961__c",  # CDS modification tag # TODO
         "961__h",  # CDS modification tag # TODO
