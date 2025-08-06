@@ -85,6 +85,7 @@ def app_config(app_config):
     app_config["DATACITE_ENABLED"] = True
     app_config["DATACITE_PREFIX"] = "10.17181"
     app_config["OAUTH_REMOTE_APP_NAME"] = "cern"
+    app_config["OAISERVER_ID_PREFIX"] = "cds-rdm.com"
     app_config["CERN_APP_CREDENTIALS"] = {
         "consumer_key": "CHANGE ME",
         "consumer_secret": "CHANGE ME",
