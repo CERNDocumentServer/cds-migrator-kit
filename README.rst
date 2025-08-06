@@ -24,7 +24,7 @@ To install the package with RDM, run:
 
 .. code-block:: bash
 
-    pip install ".[rdm]"
+    pip install -e ".[rdm]"
 
 To see available RDM commands, run:
 
@@ -55,7 +55,7 @@ Install rdm and test dependencies:
 
 .. code-block:: bash
 
-    pip install ".[rdm,tests]"
+    pip install -e ".[rdm,tests]"
 
 
 Run the rdm tests:
