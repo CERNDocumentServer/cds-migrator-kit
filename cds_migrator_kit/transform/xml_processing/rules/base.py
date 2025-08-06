@@ -80,7 +80,7 @@ def languages(self, key, value):
         raise UnexpectedValue(field=key, subfield="a")
 
 
-def process_contributors(key, value):
+def process_contributors(key, value, orcid_subfield="k"):
     """Utility processing contributors XML."""
     role = value.get("e")
     if role:
@@ -119,7 +119,7 @@ def process_contributors(key, value):
         "person_or_org": {
             "type": "personal",
             **names,
-            "identifiers": extract_json_contributor_ids(value),
+            "identifiers": extract_json_contributor_ids(value, orcid_subfield),
         }
     }
     if role:

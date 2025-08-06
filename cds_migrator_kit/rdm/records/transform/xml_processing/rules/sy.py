@@ -4,6 +4,8 @@ from dojson.errors import IgnoreKey
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import for_each_value
 
+from ......transform.xml_processing.quality.decorators import require
+from ......transform.xml_processing.rules.base import process_contributors
 from ...config import IGNORED_THESIS_COLLECTIONS
 from ...models.sy import sy_model as model
 
@@ -41,3 +43,11 @@ def resource_type(self, key, value):
         return map[value]
     except KeyError:
         raise UnexpectedValue("Unknown resource type", key=key, value=value)
+
+
+@model.over("creators", "^100__", override=True)
+@for_each_value
+@require(["a"])
+def creators(self, key, value):
+    """Translates the creators field."""
+    return process_contributors(key, value, orcid_subfield="j")
