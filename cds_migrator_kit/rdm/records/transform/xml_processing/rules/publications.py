@@ -31,6 +31,7 @@ from ...models.base_publication_record import rdm_base_publication_model as mode
 def isbn(self, key, value):
     _custom_fields = self.get("custom_fields", {})
     _isbn = StringValue(value.get("a", "")).parse()
+
     if _isbn:
         try:
             _isbn = normalize_isbn(_isbn)
