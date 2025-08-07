@@ -71,7 +71,7 @@ def created(self, key, value):
         return datetime.date.today().isoformat()
     if isinstance(date_values, list):
         date = min(date_values)
-    if isinstance(date_values, tuple):
+    elif isinstance(date_values, tuple):
         date = int(date_values[0])
     else:
         date = int(date_values)
@@ -697,7 +697,7 @@ def yellow_reports(self, key, value):
     raise UnexpectedValue("Unknown value found.", field=key, value=value)
 
 
-@model.over("related_identifiers", "^7870_")
+@model.over("related_identifiers", "^787[0_]_")
 @for_each_value
 def related_identifiers(self, key, value):
     """Translates related identifiers."""
@@ -837,7 +837,7 @@ def note(self, key, value):
     raise IgnoreKey("internal_notes")
 
 
-@model.over("additional_titles", "(^246__)")
+@model.over("additional_titles", "(^246_[1_])")
 @for_each_value
 @require(["a"])
 def additional_titles(self, key, value):
