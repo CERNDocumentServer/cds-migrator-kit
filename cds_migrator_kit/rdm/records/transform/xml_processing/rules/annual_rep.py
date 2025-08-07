@@ -25,11 +25,56 @@ def subjects(self, key, value):
     raise IgnoreKey("subjects")
 
 
+@model.over("related_identifiers_custom_fields", "^962_", override=True)
+@for_each_value
+def related_identifiers_custom_fields(self, key, value):
+    """Handles both custom fields and related identifiers from 962_."""
+
+    # ------------------------------
+    # Related Identifiers
+    # ------------------------------
+    recid = value.get("b")
+    year = "".join(filter(str.isdigit, value.get("n", "")))[:4]
+    related_works = self.get("related_identifiers", [])
+
+    new_id = {
+        "identifier": recid,
+        "scheme": "lcds",
+        "relation_type": {"id": "ispartof"},
+        "resource_type": {"id": "publication-report"},
+    }
+
+    if new_id not in related_works:
+        related_works.append(new_id)
+        self["related_identifiers"] = related_works
+
+    # ------------------------------
+    # Journal & Imprint
+    # ------------------------------
+
+    _custom_fields = self.get("custom_fields", {})
+    journal_fields = _custom_fields.get("journal:journal", {})
+    imprint_fields = _custom_fields.get("imprint:imprint", {})
+    journal_fields["title"] = f"CERN Annual Report {year}"
+    journal_fields["volume"] = value.get("s", "")
+    if self.get("title") in value.get("v", ""):  # It is a volume
+        journal_fields["pages"] = StringValue(value.get("k", "")).parse()
+    else:  # It is an article of the volume
+        imprint_fields["title"] = StringValue(value.get("v", "")).parse()
+        imprint_fields["pages"] = StringValue(value.get("k", "")).parse()
+
+    _custom_fields["journal:journal"] = journal_fields
+    _custom_fields["imprint:imprint"] = imprint_fields
+    self["custom_fields"] = _custom_fields
+
+    # Return nothing, updated both fields in-place
+    raise IgnoreKey("related_identifiers_custom_fields")
+
+
 @model.over("isbn", "(^020__)", override=True)
 def isbn(self, key, value):
     _isbn = StringValue(value.get("a", "")).parse()
     _isbn_material = StringValue(value.get("u", "")).parse()
-
     if _isbn:
         try:
             _isbn = normalize_isbn(_isbn)
@@ -52,7 +97,6 @@ def isbn(self, key, value):
             }
         ids = self.get(destination, [])
         if not ids:
-            import ipdb;ipdb.set_trace()
             ids = []
         if new_id not in ids:
             ids.append(new_id)

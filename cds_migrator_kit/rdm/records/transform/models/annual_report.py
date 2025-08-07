@@ -15,7 +15,9 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 class AnnualReportModel(CdsOverdo):
     """Translation model for MoUs."""
 
-    __query__ = "980__.a:CERN_Annual_Report_Issues OR 980__.a:CERN_Annual_Report_Contributions"
+    __query__ = (
+        "980__.a:CERN_Annual_Report_Issues OR 980__.a:CERN_Annual_Report_Contributions"
+    )
 
     __ignore_keys__ = {
         "0248_a",
@@ -49,7 +51,14 @@ class AnnualReportModel(CdsOverdo):
     _default_fields = {
         "resource_type": {"id": "publication-report"},
         "custom_fields": {},
-        "creators": [{"person_or_org": {"type": "organizational", "name": "European Organization for Nuclear Research"}}]
+        "creators": [
+            {
+                "person_or_org": {
+                    "type": "organizational",
+                    "name": "European Organization for Nuclear Research",
+                }
+            }
+        ],
     }
 
 
