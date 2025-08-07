@@ -45,6 +45,7 @@ class AnnualReportModel(CdsOverdo):
         "961__h",  # CDS modification tag
         "961__l",  # CDS modification tag
         "961__x",  # CDS modification tag
+        "970__d",  # duplicate record id
         "981__a",  # duplicate record id
     }
 
