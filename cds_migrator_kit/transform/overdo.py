@@ -63,6 +63,7 @@ class CdsOverdo(Overdo):
             items = blob.iteritems(repeated=True)
         else:
             items = iteritems(blob)
+        items = sorted(items, key=lambda item: item[0])
         for key, value in items:
             try:
                 result = self.index.query(key)
