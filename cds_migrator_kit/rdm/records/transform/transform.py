@@ -85,6 +85,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         affiliations_mapping=None,
         dry_run=False,
         collection=None,
+        restricted=False,
     ):
         """Constructor."""
         self.missing_users_dir = missing_users_dir
@@ -92,6 +93,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         self.affiliations_mapping = affiliations_mapping
         self.dry_run = dry_run
         self.collection = collection
+        self.restricted = restricted
         self.migration_logger = MigrationProgressLogger(collection=collection)
         self.record_state_logger = RecordStateLogger(collection=collection)
         super().__init__(partial)
@@ -108,7 +110,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         return 1
 
     def _access(self, entry, record_dump):
-        restrictions = entry.get("record_restriction")
+        restrictions = (
+            "restricted" if self.restricted else entry.get("record_restriction")
+        )
 
         if not restrictions:
             raise RecordFlaggedCuration(
@@ -413,6 +417,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "rights": json_entry.get("rights"),
             "copyright": json_entry.get("copyright"),
         }
+
         # filter empty keys
         helper_keys = [
             "recid",
@@ -657,7 +662,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 entry["recid"],
                 {"message": exc.message, "value": exc.value},
             )
-
         return {
             "created": record_dump.first_created,
             "updated": self._updated(record_dump),
@@ -686,6 +690,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         community_id=None,
         dry_run=False,
         collection=None,
+        restricted=False,
     ):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
@@ -693,6 +698,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         self.community_id = community_id
         self.dry_run = dry_run
         self.collection = collection
+        self.restricted = restricted
         self.migration_logger = MigrationProgressLogger(collection=collection)
         self.record_state_logger = RecordStateLogger(collection=collection)
         self.db_state = {"affiliations": CDSMigrationAffiliationMapping}
@@ -758,11 +764,13 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
 
     def _record(self, entry):
         # could be in draft as well, depends on how we decide to publish
+
         return CDSToRDMRecordEntry(
             missing_users_dir=self.missing_users_dir,
             affiliations_mapping=self.db_state["affiliations"],
             dry_run=self.dry_run,
             collection=self.collection,
+            restricted=self.restricted,
         ).transform(entry)
 
     def _draft(self, entry):
