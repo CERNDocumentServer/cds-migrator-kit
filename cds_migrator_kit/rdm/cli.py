@@ -50,8 +50,13 @@ def migration():
     help="Collection name to be migrated",
     required=True,
 )
+@click.option(
+    "--restricted",
+    is_flag=True,
+    help="Mark the migration as restricted (e.g. for restricted records)",
+)
 @with_appcontext
-def run(collection, dry_run=False):
+def run(collection, dry_run=False, restricted=False):
     """Run."""
     stream_config = current_app.config["CDS_MIGRATOR_KIT_STREAM_CONFIG"]
     runner = Runner(
@@ -60,6 +65,7 @@ def run(collection, dry_run=False):
         config_filepath=Path(stream_config).absolute(),
         dry_run=dry_run,
         collection=collection,
+        restricted=restricted,
     )
     runner.run()
 

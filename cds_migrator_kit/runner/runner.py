@@ -31,11 +31,14 @@ class Runner:
         with open(filepath) as f:
             return yaml.safe_load(f)
 
-    def __init__(self, stream_definitions, config_filepath, dry_run, collection):
+    def __init__(
+        self, stream_definitions, config_filepath, dry_run, collection, restricted=False
+    ):
         """Constructor."""
         config = self._read_config(config_filepath)
         self.collection = collection
         self.db_uri = config.get("db_uri")
+        self.restricted = restricted
         # start parsing streams
         self.streams = []
         for definition in stream_definitions:
@@ -70,6 +73,7 @@ class Runner:
                         dry_run=dry_run,
                         collection=collection,
                         **stream_config[collection].get("transform", {}),
+                        restricted=self.restricted,
                     )
 
                 self.streams.append(
