@@ -33,16 +33,13 @@ class ITModel(CdsOverdo):
         "8564_x",  # Files system field
         "8564_y",  # Files / URLS label
         "916__y",  # year
+        "937__c",  # last modified
+        "937__s",  # last modified
         "960__a",  # collection id? usually value 14, to confirm if we ignore
         "961__c",  # CDS modification tag
         "961__h",  # CDS modification tag
         "961__l",  # CDS modification tag
         "961__x",  # CDS modification tag
-        "964__a",  # TODO
-        "594__a",  # document type TODO
-        "540__3",  # material of copyright
-        "937__c",  # last modified
-        "937__s",  # last modified
         "981__a",  # duplicated record marker
         "999C50",  # https://cds.cern.ch/record/2284609/export/hm?ln=en CMS contributions
         "999C52",  # https://cds.cern.ch/record/2640188/export/hm?ln=en
@@ -67,19 +64,6 @@ class ITModel(CdsOverdo):
         "999C6a",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
         "999C6t",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
         "999C6v",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
-        # "110__a",
-        # "246_1a",
-        # "690C_a",
-        # "520__b",
-        # "773__y",
-        # "773__n",
-        # "773__p",
-        # "773__c",
-        # "0248_q",
-        # "8564_8",
-        # "8564_s",
-        # "8564_x",
-        # "980__a",
     }
 
     _default_fields = {

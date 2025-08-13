@@ -95,6 +95,16 @@ def udc(self, key, value):
     )
 
 
+@model.over("internal_notes", "(^500__)")
+def internal_notes(self, key, value):
+    """Translates internal_notes field."""
+    internal_notes = self.get("internal_notes", [])
+    note = value.get("a")
+    if note:
+        internal_notes.append({"note": note})
+    return internal_notes
+
+
 @model.over("custom_fields", "(^536__)")
 def funding(self, key, value):
     _custom_fields = self.get("custom_fields", {})
@@ -137,11 +147,19 @@ def journal(self, key, value):
     journal_fields = _custom_fields.get("journal:journal", {})
     year = StringValue(value.get("y", "")).parse()
     meeting_fields = ["p", "n", "v", "c"]
+
     is_journal_year = False
     for field in meeting_fields:
         if field in value:
             is_journal_year = True
             break
+
+    conference_cnum = value.get("w", "")
+    if conference_cnum:
+        # self["_is_conference"] = True
+        custom_meeting_fields = _custom_fields.get("meeting:meeting", {})
+        identifiers = custom_meeting_fields.get("identifiers", [])
+        identifiers.append({"scheme": "inspire", "identifier": conference_cnum})
 
     pub_date = self.get("publication_date")
     # if we only have 773 in the record and no other journal fields,
@@ -169,8 +187,8 @@ def internal_notes(self, key, value):
 @model.over("contributors", "^901__")
 @for_each_value
 def organisation(self, key, value):
-    contributor = value.get("u")
-    return {"person_or_org": {"type": "organizational", "name": contributor}}
+    contributor = value.get("u", "")
+    return {"person_or_org": {"type": "organizational", "name": contributor, "role": {"id": "hostinginstitution"}}}
 
 
 @model.over("related_identifiers", "^962_")
@@ -178,8 +196,13 @@ def organisation(self, key, value):
 def related_identifiers(self, key, value):
     """Translates related identifiers."""
     recid = value.get("b")
+    artid = value.get("k", "")
     try:
-        material = value.get("n", "").lower().strip()
+        conference = value.get("n", "").lower().strip()
+        meeting_fields = self.get("custom_fields", {}).get("meeting:meeting", {})
+        if not meeting_fields.get("title"):
+            meeting_fields["title"] = conference
+        self["custom_fields"]["meeting:meeting"] = meeting_fields
     except AttributeError:
         raise UnexpectedValue(
             "related identifiers have unexpected material format",
@@ -187,21 +210,19 @@ def related_identifiers(self, key, value):
             value=value,
         )
     rel_ids = self.get("related_identifiers", [])
-    res_type = None
-    if material and material == "book":
-        # if book we know that is published in a book,
-        res_type = "publication-book"
-    elif material:
-        #  otherwise it will be a conference reference
-        res_type = "event"
+
     new_id = {
         "identifier": f"https://cds.cern.ch/record/{recid}",
         "scheme": "url",
         "relation_type": {"id": "references"},
+        "resource_type": {"id": "event"}
     }
 
-    if res_type:
-        new_id.update({"resource_type": {"id": res_type}})
+    if artid:
+        artid_from_773 =  self.get("custom_fields", {}).get("journal:journal", {}).get("pages")
+        if artid_from_773 != artid:
+            res_type = "publication-other"
+            new_id.update({"resource_type": {"id": res_type}})
 
     if new_id not in rel_ids:
         return new_id

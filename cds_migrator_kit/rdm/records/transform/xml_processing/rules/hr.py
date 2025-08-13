@@ -16,10 +16,6 @@ from ...models.hr import hr_model as model
 def resource_type(self, key, value):
     """Translates resource_type."""
     value = value.get("a")
-    if value:
-        value = value.lower()
-        if value in ["internaldocument", "slides"]:
-            raise IgnoreKey("resource_type")
 
     map = {
         "preprint": {"id": "publication-preprint"},
@@ -34,7 +30,7 @@ def resource_type(self, key, value):
     try:
         return {"id": "other"}
     except KeyError:
-        raise UnexpectedValue("Unknown resource type", key=key, value=value)
+        raise UnexpectedValue("Unknown resource type", field=key, value=value)
 
 
 @model.over("internal_notes", "^562__")
@@ -50,7 +46,7 @@ def access(self, key, value):
     """Translates notes."""
     access = value.get("a")
     if access and access.lower() != "public":
-        raise UnexpectedValue("Access field other than public", key=key, value=value)
+        raise UnexpectedValue("Access field other than public", field=key, value=value)
     raise IgnoreKey("access")
 
 
