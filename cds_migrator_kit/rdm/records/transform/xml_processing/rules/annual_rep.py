@@ -16,7 +16,7 @@ def collection(self, key, value):
     """Translates collection field."""
     collection = value.get("a").strip().lower()
     if collection not in ["cern"]:
-        raise UnexpectedValue(subfield="a", key=key, value=value, field="690C_")
+        raise UnexpectedValue(subfield="a", field=key, value=value)
     raise IgnoreKey("collection")
 
 

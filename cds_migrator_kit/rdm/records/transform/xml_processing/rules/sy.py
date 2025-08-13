@@ -15,19 +15,19 @@ from ...models.sy import sy_model as model
 def collection(self, key, value):
     """Translates collection field."""
     collection = value.get("a").strip().lower()
-    if collection not in ["publsy", "intnote", "cern", "preprint"]:
-        raise UnexpectedValue(subfield="a", key=key, value=value, field="690C_")
+    if collection not in ["publsy",
+                          "intnote",
+                          "cern",
+                          "preprint",
+                          ]:
+        raise UnexpectedValue(subfield="a", field=key, value=value)
     raise IgnoreKey("collection")
 
 
 @model.over("resource_type", "^980__", override=True)
 def resource_type(self, key, value):
     """Translates resource_type."""
-    value = value.get("a")
-    if value:
-        value = value.lower()
-        if value in ["internaldocument", "slides"]:
-            raise IgnoreKey("resource_type")
+    value = value.get("a", "").lower()
 
     map = {
         "preprint": {"id": "publication-preprint"},
@@ -42,7 +42,7 @@ def resource_type(self, key, value):
     try:
         return map[value]
     except KeyError:
-        raise UnexpectedValue("Unknown resource type", key=key, value=value)
+        raise UnexpectedValue("Unknown resource type", field=key, value=value)
 
 
 @model.over("creators", "^100__", override=True)

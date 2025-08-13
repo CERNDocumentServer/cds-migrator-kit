@@ -62,7 +62,7 @@ def collection(self, key, value):
     if collection in IGNORED_THESIS_COLLECTIONS:
         raise IgnoreKey("collection")
     if collection not in ALLOWED_THESIS_COLLECTIONS:
-        raise UnexpectedValue(subfield="a", key=key, value=value, field="690C_")
+        raise UnexpectedValue(subfield="a", value=value, field=key)
     if collection == "yellow report":
         subjects = self.get("subjects", [])
         subjects.append(
@@ -274,3 +274,45 @@ def collection(self, key, value):
         subjects.append({"subject": f"collection:{colb.upper()}"})
         self["subjects"] = subjects
     raise IgnoreKey("collection")
+
+
+
+@model.over("related_identifiers", "^962_")
+@for_each_value
+def related_identifiers(self, key, value):
+    """Translates related identifiers."""
+    recid = value.get("b")
+    try:
+        material = value.get("n", "").lower().strip()
+    except AttributeError:
+        raise UnexpectedValue(
+            "related identifiers have unexpected material format",
+            field=key,
+            value=value,
+        )
+    rel_ids = self.get("related_identifiers", [])
+    res_type = None
+    if material and material == "book":
+        # if book we know that is published in a book,
+        res_type = "publication-book"
+    elif material:
+        #  otherwise it will be a conference reference
+        res_type = "event"
+    new_id = {
+        "identifier": f"https://cds.cern.ch/record/{recid}",
+        "scheme": "url",
+        "relation_type": {"id": "references"},
+    }
+
+    artid = value.get("k", "")
+    if artid:
+        artid_from_773 =  self.get("custom_fields", {}).get("journal:journal", {}).get("pages")
+        if artid_from_773 != artid:
+            raise UnexpectedValue(message="Ambiguous journal information - not equal with 773", field=key, value=artid, subfield="k")
+
+    if res_type:
+        new_id.update({"resource_type": {"id": res_type}})
+
+    if new_id not in rel_ids:
+        return new_id
+    raise IgnoreKey("related_identifiers")

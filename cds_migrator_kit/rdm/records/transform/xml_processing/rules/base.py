@@ -66,7 +66,7 @@ def created(self, key, value):
         # h = human catalogued
         # n = script catalogued or via submission
         if source not in ["n", "h", "m", "r"]:
-            raise UnexpectedValue(subfield="s", key=key, value=value)
+            raise UnexpectedValue(subfield="s", field=key, value=value)
     date_values = value.get("w")
     if not date_values or not date_values[0]:
         return datetime.date.today().isoformat()
@@ -210,38 +210,38 @@ def subjects(self, key, value):
 
 
 @model.over("custom_fields", "(^693__)")
+@for_each_value
 def custom_fields(self, key, value):
     """Translates custom fields."""
     _custom_fields = self.get("custom_fields", {})
-    experiments, accelerators, projects, facilities, studies, beams = (
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-    )
-    if key == "693__":
-        if "e" in value and value.get("e"):
-            experiments += [StringValue(v).parse() for v in force_list(value.get("e"))]
-        if "a" in value and value.get("a"):
-            accelerators += [StringValue(v).parse() for v in force_list(value.get("a"))]
-        if "p" in value and value.get("p"):
-            projects += [StringValue(v).parse() for v in force_list(value.get("p"))]
-        if "f" in value and value.get("f"):
-            facilities += [StringValue(v).parse() for v in force_list(value.get("f"))]
-        if "s" in value and value.get("s"):
-            studies += [StringValue(v).parse() for v in force_list(value.get("s"))]
-        if "b" in value and value.get("b"):
-            beams += [StringValue(v).parse() for v in force_list(value.get("b"))]
+    experiments = _custom_fields.get("cern:experiments", [])
+    accelerators = _custom_fields("cern:accelerators", [])
+    projects = _custom_fields("cern:projects", [])
+    facilities = _custom_fields("cern:facilities", [])
+    studies = _custom_fields("cern:studies", [])
+    beams = _custom_fields("cern:beams", [])
 
-        _custom_fields["cern:experiments"] = experiments
-        _custom_fields["cern:accelerators"] = accelerators
-        _custom_fields["cern:projects"] = projects
-        _custom_fields["cern:facilities"] = facilities
-        _custom_fields["cern:studies"] = studies
-        _custom_fields["cern:beams"] = beams
-    return _custom_fields
+    if "e" in value and value.get("e"):
+        experiments.append(value.get("e"))
+    if "a" in value and value.get("a"):
+        accelerators.append(value.get("a"))
+    if "p" in value and value.get("p"):
+        projects.append(value.get("p"))
+    if "f" in value and value.get("f"):
+        facilities.append(value.get("f"))
+    if "s" in value and value.get("s"):
+        studies.append(value.get("s"))
+    if "b" in value and value.get("b"):
+        beams.append(value.get("b"))
+
+    _custom_fields["cern:experiments"] = experiments
+    _custom_fields["cern:accelerators"] = accelerators
+    _custom_fields["cern:projects"] = projects
+    _custom_fields["cern:facilities"] = facilities
+    _custom_fields["cern:studies"] = studies
+    _custom_fields["cern:beams"] = beams
+    self["custom_fields"] = _custom_fields
+    raise IgnoreKey("custom_fields")
 
 
 @model.over("record_restriction", "^963__")
@@ -249,11 +249,11 @@ def record_restriction(self, key, value):
     """Translate record restriction field."""
     restr = value.get("a", "")
     parsed = StringValue(restr).parse()
-    if parsed == "PUBLIC":
+    if parsed.upper == "PUBLIC":
         return "public"
     else:
         raise UnexpectedValue(
-            field="963", subfield="a", message="Record restricted", priority="critical"
+            field=key, subfield="a", message="Record restricted", priority="critical"
         )
 
 
@@ -363,8 +363,13 @@ def identifiers(self, key, value):
     is_aleph_number = scheme.lower() == "cercer" or not scheme and "CERCER" in id_value
     if is_aleph_number:
         scheme = "aleph"
-    if id_value:
-        return {"scheme": scheme.lower(), "identifier": id_value}
+    _identifiers = self.get("identifiers", [])
+
+    new_id = {"scheme": scheme.lower(), "identifier": id_value}
+    if new_id in _identifiers:
+        raise IgnoreKey("identifiers")
+    elif id_value:
+        return new_id
 
 
 @model.over("_pids", "^0247_", override=True)

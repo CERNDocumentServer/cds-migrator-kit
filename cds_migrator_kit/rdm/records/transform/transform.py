@@ -168,7 +168,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 key = "DOI"
             if key.upper() == "DOI":
                 doi_identifier = deepcopy(identifier)
-                if identifier["identifier"].startswith(DATACITE_PREFIX):
+                if (identifier["identifier"].startswith(DATACITE_PREFIX) or
+                    identifier["identifier"].startswith("10.5170")):
                     if not json_entry.get("publisher"):
                         json_entry["publisher"] = "CERN"
                     doi_identifier["provider"] = "datacite"
@@ -575,6 +576,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             ),
             "imprint:imprint": json_entry.get("custom_fields", {}).get(
                 "imprint:imprint", {}
+            ),
+            "meeting:meeting": json_entry.get("custom_fields", {}).get(
+                "meeting:meeting", {}
             ),
         }
         try:

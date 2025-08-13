@@ -12,25 +12,18 @@ from ...models.it import it_model as model
 def resource_type(self, key, value):
     """Translates resource_type."""
     value = value.get("a")
-    if value:
-        value = value.lower()
-        if value in ["internaldocument", "slides"]:
-            raise IgnoreKey("resource_type")
-
     map = {
         "preprint": {"id": "publication-preprint"},
         "conferencepaper": {"id": "publication-conferencepaper"},
-        "intnotebepubl": {"id": "publication-technicalnote"},
-        "article": {"id": "publication"},
+        "article": {"id": "publication-article"},
         "itcerntalk": {"id": "presentation"},
         "intnoteitpubl": {"id": "publication-technicalnote"},
-        "bookchapter": {"id": "publication-bookchapter"},
-        # todo newsletter
+        # TODO newslatter
     }
     try:
         return map[value]
     except KeyError:
-        raise UnexpectedValue("Unknown resource type", key=key, value=value)
+        raise UnexpectedValue("Unknown resource type", field=key, value=value)
 
 
 @model.over("collection", "^690C_")
@@ -40,8 +33,6 @@ def collection(self, key, value):
     collection = value.get("a").strip().lower()
     if collection in ["article", "cern"]:
         raise IgnoreKey("collection")
-    # if collection not in ALLOWED_THESIS_COLLECTIONS:
-    #     raise UnexpectedValue(subfield="a", key=key, value=value, field="690C_")
     if collection == "yellow report":
         subjects = self.get("subjects", [])
         subjects.append(
