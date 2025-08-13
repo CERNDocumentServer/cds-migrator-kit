@@ -71,7 +71,6 @@ APP_ALLOWED_HOSTS = ["0.0.0.0", "localhost", "127.0.0.1", "localhost.cern.ch"]
 # ================
 # See https://flask-sqlalchemy.palletsprojects.com/en/2.x/config/
 
-# TODO: Set
 SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://cds-rdm:cds-rdm@localhost/cds-rdm"
 
 # Invenio-App
