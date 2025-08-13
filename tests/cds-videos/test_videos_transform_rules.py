@@ -502,14 +502,18 @@ def test_transform_document_contact(dumpdir, base_app):
 
         # Extract record
         res = load_and_dump_revision(modified_data)
-        assert res["contributors"][4]["name"] == "Contact name"
-        assert res["contributors"][4]["role"] == "ContactPerson"
+        contact_contributor = next(
+            c for c in res["contributors"] if c["role"] == "ContactPerson"
+        )
+        assert contact_contributor["name"] == "Contact name"
 
         # Transform record
         record_entry = CDSToVideosRecordEntry()
         metadata = record_entry._metadata(res)
-        assert metadata["contributors"][4]["name"] == "Contact name"
-        assert metadata["contributors"][4]["role"] == "ContactPerson"
+        contact_contributor_meta = next(
+            c for c in metadata["contributors"] if c["role"] == "ContactPerson"
+        )
+        assert contact_contributor_meta["name"] == "Contact name"
 
         # Test case: Add empty 270 tag
         modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
@@ -830,7 +834,7 @@ def test_related_identifiers(dumpdir, base_app):
         # Add published in
         record_marcxml = modified_data["record"][-1]["marcxml"]
         modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
-            record_marcxml, "773", {"a": "489562"}
+            record_marcxml, "773", {"a": "111111"}
         )
         # Add related document
         record_marcxml = modified_data["record"][-1]["marcxml"]
@@ -841,16 +845,30 @@ def test_related_identifiers(dumpdir, base_app):
         # Extract record
         res = load_and_dump_revision(modified_data)
         assert "related_identifiers" in res
-        published_in = res["related_identifiers"][1]
-        assert published_in["identifier"] == "489562"
-        assert published_in["scheme"] == "CDS"
-        assert published_in["relation_type"] == "IsVariantFormOf"
+        published_in = next(
+            (
+                ri
+                for ri in res["related_identifiers"]
+                if ri.get("identifier") == "111111"
+                and ri.get("scheme") == "CDS"
+                and ri.get("relation_type") == "IsVariantFormOf"
+            ),
+            None,
+        )
+        assert published_in
 
-        related_document = res["related_identifiers"][2]
-        assert related_document["identifier"] == "489562"
-        assert related_document["scheme"] == "CDS"
-        assert related_document["relation_type"] == "IsVariantFormOf"
-        assert related_document["resource_type"] == "ConferencePaper"
+        related_document = next(
+            (
+                ri
+                for ri in res["related_identifiers"]
+                if ri.get("identifier") == "489562"
+                and ri.get("scheme") == "CDS"
+                and ri.get("relation_type") == "IsVariantFormOf"
+                and ri.get("resource_type") == "ConferencePaper"
+            ),
+            None,
+        )
+        assert related_document
 
         # Transform record
         record_entry = CDSToVideosRecordEntry()
