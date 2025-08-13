@@ -217,8 +217,11 @@ class CDSRecordServiceLoad(Load):
             )
             # Validate subject existence
             is_local_dev = current_app.config["CDS_MIGRATOR_KIT_ENV"] == "local"
-            if not is_local_dev and not current_rdm_records_service.access._validate_grant_subject(
-                identity, grant
+            if (
+                not is_local_dev
+                and not current_rdm_records_service.access._validate_grant_subject(
+                    identity, grant
+                )
             ):
                 raise ManualImportRequired(
                     message="Verification of access subject failed (likely not existing entry)",

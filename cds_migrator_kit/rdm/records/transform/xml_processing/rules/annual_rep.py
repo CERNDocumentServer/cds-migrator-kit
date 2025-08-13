@@ -57,6 +57,7 @@ def related_identifiers_custom_fields(self, key, value):
     imprint_fields = _custom_fields.get("imprint:imprint", {})
     journal_fields["title"] = f"CERN Annual Report {year}"
     journal_fields["volume"] = value.get("s", "")
+    breakpoint()
     if self.get("title") in value.get("v", ""):  # It is a volume
         journal_fields["pages"] = StringValue(value.get("k", "")).parse()
     else:  # It is an article of the volume
