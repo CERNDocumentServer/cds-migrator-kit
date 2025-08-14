@@ -591,6 +591,8 @@ class CDSToVideosRecordTransform(RDMRecordTransform):
         throw=True,
         files_dump_dir=None,
         dry_run=False,
+        collection=None, # Not used but needed for runner
+        restricted=False, # Not used but needed for runner
     ):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()

@@ -52,6 +52,7 @@ class CDSVideosLoad(Load):
         tmp_dir,
         entries=None,
         dry_run=False,
+        collection=None, # Not used but needed for runner
     ):
         """Constructor."""
         self.dry_run = dry_run
@@ -249,12 +250,12 @@ class CDSVideosLoad(Load):
                 migration_logger.add_information(
                     recid, state={"message": "Record already migrated", "value": recid}
                 )
-                migration_logger.add_information(recid)
+                migration_logger.finalise_record(recid)
                 return
 
             try:
                 self.create_publish_single_video_record(entry)
-                migration_logger.add_information(recid)
+                migration_logger.finalise_record(recid)
             except (
                 UnexpectedValue,
                 ManualImportRequired,
