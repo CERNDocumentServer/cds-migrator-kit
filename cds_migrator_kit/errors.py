@@ -63,6 +63,12 @@ class ManualImportRequired(CDSMigrationException):
     description = "[MANUAL IMPORT REQUIRED]"
 
 
+class GrantCreationError(CDSMigrationException):
+    """Grant creation failed or produced invalid data."""
+
+    description = "[GRANT CREATION FAILED]"
+
+
 class RestrictedFileDetected(CDSMigrationException):
     """Record has restricted files record."""
 
