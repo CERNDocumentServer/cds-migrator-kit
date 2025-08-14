@@ -16,7 +16,7 @@ from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 from idutils.validators import is_doi, is_handle, is_urn
-
+from invenio_accounts.models import User
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.config import (
     CONTROLLED_SUBJECTS_SCHEMES,
@@ -886,3 +886,31 @@ def additional_titles(self, key, value):
         }
         return _additional_title
     raise IgnoreKey("additional_titles")
+
+
+@model.over("access_grants", "(^270__)|(^5061_)")
+@for_each_value
+def access_grants(self, key, value):
+    """Translates access permissions (by user email or group name)."""
+    subject_identifier = ""
+    email_regex = re.compile(r"[^@]+@[^@]+\.[^@]+")
+
+    if value.get("d"):  # Always expected to be a user email address
+        subject_identifier = StringValue(value.get("d")).parse()
+        if not (
+            email_regex.fullmatch(subject_identifier)
+            and User.query.filter_by(email=subject_identifier).one_or_none()
+        ):
+            raise UnexpectedValue(
+                f"Expected a valid user email, got :'{subject_identifier}'",
+                field=key,
+                value=value,
+                priority="critical",
+            )
+    else:  # Can be a user email address or a group id
+        subject_identifier = StringValue(value.get("m")).parse()
+
+    if subject_identifier:
+        permission_type = "manage" if key == "270__" else "view"
+        return {str(subject_identifier): permission_type}
+    raise IgnoreKey("access_grants")

@@ -8,8 +8,8 @@
 """CDS-RDM migration load module."""
 import datetime
 import json
-import re
 import os
+import re
 from copy import deepcopy
 
 import arrow
@@ -28,7 +28,11 @@ from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_records.systemfields.relations import InvalidRelationValue
 from marshmallow import ValidationError
 
-from cds_migrator_kit.errors import CDSMigrationException, ManualImportRequired
+from cds_migrator_kit.errors import (
+    CDSMigrationException,
+    ManualImportRequired,
+    GrantCreationError,
+)
 from cds_migrator_kit.reports.log import MigrationProgressLogger, RecordStateLogger
 
 
@@ -154,7 +158,6 @@ class CDSRecordServiceLoad(Load):
     def _load_parent_access(self, draft, entry):
         """Load access rights."""
         parent = draft._record.parent
-
         # Set parent access from entry data
         access = entry["parent"]["json"]["access"]
         parent.access = access
@@ -162,37 +165,92 @@ class CDSRecordServiceLoad(Load):
         parent.commit()
 
     def _load_parent_access_grants(self, draft, access_dict, entry):
-        """Load access grants from metadata."""
+        """Load access grants from metadata and record grants efficiently."""
+
+        def _normalize_group_name(subject):
+            if subject.endswith(" [CERN]"):
+                subject = subject.rsplit(" [CERN]", 1)[0]
+            return subject.strip()
+
         record = draft._record
         parent = record.parent
         identity = system_identity
 
         metadata = access_dict.get("meta", "")
-        permission = "view"  # Default permission for grants
+        default_permission = "view"
 
-        if not metadata:
-            return
-        elif metadata == "SSO":
-            groups = ["cern-personnel"]
-            emails = []
-        else:
-            # Warn about unexpected formats
-            if not any(
-                kw in metadata for kw in ("firerole: allow group", "allow email")
-            ):
-                raise ManualImportRequired(
-                    message="Unexpected permission format.",
-                    field="access",
-                    subfield="subject.id",
-                    stage="load",
-                    recid=entry["record"]["recid"],
-                    priority="critical",
+        groups = set()
+        emails = set()
+        grants_with_perms = {}
+        email_pattern = re.compile(r"[^@]+@[^@]+\.[^@]+")
+
+        # ----Parse file status metadata----#
+        if metadata:
+            if metadata == "SSO":
+                groups.add("cern-personnel")
+            else:
+                if not any(
+                    kw in metadata for kw in ("firerole: allow group", "allow email")
+                ):
+                    raise ManualImportRequired(
+                        message="Unexpected permission format.",
+                        field="access",
+                        subfield="subject.id",
+                        stage="load",
+                        recid=entry["record"]["recid"],
+                        priority="critical",
+                    )
+
+                meta_str = metadata.replace("\r\n", "\n")
+
+                # Parse groups
+                group_matches = re.search(
+                    r'allow group\s+((?:"[^"]+",?\s*)+)', meta_str
                 )
+                if group_matches:
+                    group_values = re.findall(r'"([^"]+)"', group_matches.group(1))
+                    for g in group_values:
+                        groups.add(_normalize_group_name(g))
 
-            groups, emails = CDSRecordServiceLoad._parse_access_metadata(metadata)
+                # Parse emails
+                email_matches = re.search(
+                    r'allow email\s+((?:"[^"]+",?\s*)+)', meta_str
+                )
+                if email_matches:
+                    email_values = re.findall(r'"([^"]+)"', email_matches.group(1))
+                    emails.update(email_values)
 
-        # Helper function for creating and validating grants
-        def _create_grant(subject_type, subject_id):
+        # ----Parse record access grants----#
+        record_grants = entry["record"]["json"].get("access_grants", [])
+        for grant_info in record_grants:
+            if not isinstance(grant_info, dict) or not grant_info:
+                continue
+
+            subject, permission = next(iter(grant_info.items()))
+            permission = permission or default_permission
+            grants_with_perms[subject] = permission
+
+            if email_pattern.match(subject):
+                emails.add(subject)
+            else:
+                groups.add(_normalize_group_name(subject))
+
+        existing_users = {
+            user.email: user.id
+            for user in User.query.filter(User.email.in_(emails)).all()
+        }
+        # raise error for missing user
+        missing_emails = emails - existing_users.keys()
+        if missing_emails:
+            raise GrantCreationError(
+                message=f"Users not found for emails: {', '.join(missing_emails)}",
+                stage="load",
+                recid=entry["record"]["recid"],
+                value=list(missing_emails),
+                priority="critical",
+            )
+
+        def _create_grant(subject_type, subject_id, permission):
             grant_data = {
                 "grants": [
                     {
@@ -201,22 +259,20 @@ class CDSRecordServiceLoad(Load):
                     }
                 ]
             }
-            # Validate the grant data against the schema
             current_rdm_records_service.access.schema_grants.load(
                 grant_data,
                 context={"identity": identity},
                 raise_errors=True,
             )
 
-            # Create the grant
             grant = parent.access.grants.create(
                 subject_type=subject_type,
                 subject_id=subject_id,
                 permission=permission,
                 origin="migrated",
             )
-            # Validate subject existence
-            is_local_dev = current_app.config["CDS_MIGRATOR_KIT_ENV"] == "local"
+
+            is_local_dev = current_app.config.get("CDS_MIGRATOR_KIT_ENV") == "local"
             if (
                 not is_local_dev
                 and not current_rdm_records_service.access._validate_grant_subject(
@@ -233,19 +289,21 @@ class CDSRecordServiceLoad(Load):
                     value=subject_id,
                 )
 
-        # Apply group-based grants
+        # Create grants for groups
         for group in groups:
-            _create_grant(subject_type="role", subject_id=group)
+            _create_grant(
+                subject_type="role",
+                subject_id=group,
+                permission=grants_with_perms.get(group, default_permission),
+            )
 
-        # Apply user-based grants
-        for email in emails:
-            user = User.query.filter_by(email=email).one_or_none()
-            if user:
-                _create_grant(subject_type="user", subject_id=user.id)
-            else:
-                self.migration_logger.add_log(
-                    f"User not found for email: {email}", record=record
-                )
+        # Create grants for users
+        for email, user_id in existing_users.items():
+            _create_grant(
+                subject_type="user",
+                subject_id=user_id,
+                permission=grants_with_perms.get(email, default_permission),
+            )
 
         parent.commit()
 
@@ -565,6 +623,8 @@ class CDSRecordServiceLoad(Load):
                 self.migration_logger.finalise_record(recid)
             except ManualImportRequired as e:
                 self.migration_logger.add_log(e, record=entry)
+            except GrantCreationError as e:
+                self.migration_logger.add_log(e, record=entry)
             except PIDAlreadyExists as e:
                 # TODO remove when there is a way of cleaning local environment from
                 # previous run of migration
@@ -606,28 +666,3 @@ class CDSRecordServiceLoad(Load):
                     f"Failed to redirect {legacy_src_pid} to {legacy_dest_pid}: {str(exc)}",
                     record={"recid": legacy_src_pid},
                 )
-
-    def _parse_access_metadata(metadata):
-        groups = []
-        emails = []
-
-        # Normalize newlines
-        metadata = metadata.replace("\r\n", "\n")
-
-        # Match group entries: all quoted values after 'allow group'
-        group_block = re.search(r'allow group\s+((?:"[^"]+",?\s*)+)', metadata)
-        if group_block:
-            group_values = re.findall(r'"([^"]+)"', group_block.group(1))
-            for g in group_values:
-                # Remove legacy '[CERN]' suffix if present
-                if g.endswith(" [CERN]"):
-                    g = g.rsplit(" [CERN]", 1)[0]
-                groups.append(g.strip())
-
-        # Match email entries: all quoted values after 'allow email'
-        email_block = re.search(r'allow email\s+((?:"[^"]+",?\s*)+)', metadata)
-        if email_block:
-            email_values = re.findall(r'"([^"]+)"', email_block.group(1))
-            emails.extend(email_values)
-
-        return groups, emails

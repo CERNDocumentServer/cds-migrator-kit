@@ -426,6 +426,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "submitter",
             "status_week_date",
             "record_restriction",
+            "access_grants",
             "custom_fields",
             "_pids",
             "internal_notes",
@@ -648,12 +649,15 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
         custom_fields = self._custom_fields(json_data, record_json_output)
         internal_notes = json_data.get("internal_notes")
+        access_grants = json_data.get("access_grants")
         if custom_fields:
             record_json_output.update({"custom_fields": custom_fields})
         if internal_notes:
             record_json_output.update(
                 {"internal_notes": json_data.get("internal_notes")}
             )
+        if access_grants:
+            record_json_output.update({"access_grants": access_grants})
         access = None
         try:
             access = self._access(json_data, record_dump)
