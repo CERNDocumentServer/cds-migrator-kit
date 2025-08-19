@@ -30,8 +30,8 @@ from marshmallow import ValidationError
 
 from cds_migrator_kit.errors import (
     CDSMigrationException,
-    ManualImportRequired,
     GrantCreationError,
+    ManualImportRequired,
 )
 from cds_migrator_kit.reports.log import MigrationProgressLogger, RecordStateLogger
 
@@ -172,11 +172,13 @@ class CDSRecordServiceLoad(Load):
                 subject = subject.rsplit(" [CERN]", 1)[0]
             return subject.strip()
 
-        record = draft._record
-        parent = record.parent
+        parent = draft._record.parent
         identity = system_identity
 
+        record_grants = entry["record"]["json"].get("access_grants", [])
         metadata = access_dict.get("meta", "")
+        if not metadata and not record_grants:
+            return
         default_permission = "view"
 
         groups = set()
@@ -221,7 +223,7 @@ class CDSRecordServiceLoad(Load):
                     emails.update(email_values)
 
         # ----Parse record access grants----#
-        record_grants = entry["record"]["json"].get("access_grants", [])
+
         for grant_info in record_grants:
             if not isinstance(grant_info, dict) or not grant_info:
                 continue
@@ -279,6 +281,7 @@ class CDSRecordServiceLoad(Load):
                     identity, grant
                 )
             ):
+
                 raise ManualImportRequired(
                     message="Verification of access subject failed (likely not existing entry)",
                     field="access",
@@ -405,6 +408,7 @@ class CDSRecordServiceLoad(Load):
                     identity, data=entry["record"]["json"]
                 )
             except Exception as e:
+
                 raise ManualImportRequired(message=str(e))
             if draft.errors:
                 raise ManualImportRequired(
@@ -639,7 +643,10 @@ class CDSRecordServiceLoad(Load):
                     subfield="PID",
                 )
                 self.migration_logger.add_log(exc, record=entry)
+            except GrantCreationError as e:
+                self.migration_logger.add_log(e, record=entry)
             except (CDSMigrationException, ValidationError, InvalidRelationValue) as e:
+
                 exc = ManualImportRequired(
                     message=str(e),
                     field="validation",

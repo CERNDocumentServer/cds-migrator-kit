@@ -26,6 +26,7 @@ class ITModel(CdsOverdo):
         "852__c",  # todo holdings
         "852__h",
         "300__a",
+        "500__a",  # todo
         "340__a",  # ignore, spreadsheet
         "8564_8",  # Files system field
         "8564_s",  # Files system field
