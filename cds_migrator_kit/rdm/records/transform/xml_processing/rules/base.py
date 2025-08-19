@@ -17,6 +17,7 @@ from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 from idutils.validators import is_doi, is_handle, is_urn
 from invenio_accounts.models import User
+
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.config import (
     CONTROLLED_SUBJECTS_SCHEMES,
@@ -888,7 +889,7 @@ def additional_titles(self, key, value):
     raise IgnoreKey("additional_titles")
 
 
-@model.over("access_grants", "(^270__)|(^5061_)")
+@model.over("access_grants", "(^270__)|(^506[1]_)")
 @for_each_value
 def access_grants(self, key, value):
     """Translates access permissions (by user email or group name)."""

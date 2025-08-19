@@ -279,19 +279,19 @@ def parent_access_fields(record):
     # For "status": "firerole: allow group \"it-dep\",\"hr-dep [CERN]\"\r\nallow email \"uploader@inveniosoftware.org\"",
     assert dict_rec["parent"]["access"]["grants"] == [
         {
-            "permission": "view",
-            "subject": {"id": "it-dep", "type": "role"},
             "origin": "migrated",
-        },
-        {
             "permission": "view",
             "subject": {"id": "hr-dep", "type": "role"},
-            "origin": "migrated",
         },
         {
+            "origin": "migrated",
+            "permission": "view",
+            "subject": {"id": "it-dep", "type": "role"},
+        },
+        {
+            "origin": "migrated",
             "permission": "view",
             "subject": {"id": "2", "type": "user"},
-            "origin": "migrated",
         },
     ]
 
