@@ -205,7 +205,7 @@ def subjects(self, key, value):
             raise IgnoreKey("subjects")
         else:
             raise UnexpectedValue(
-                "unrecognised Subject value and scheme.", field=key, value=value
+                "Unrecognised Subject value and scheme.", field=key, value=value
             )
 
 
@@ -282,6 +282,8 @@ def report_number(self, key, value):
             scheme = "cds_ref"
         if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
             scheme = scheme.lower()
+        if scheme.lower() == "inspire":
+            validate_inspire_identifier(id_value, key)
     if key == "037__" and "n" in value:
         # this means we have URN/HAL schema (only one record in thesis)
         if value.get("n", "") != "URN/HAL":
@@ -363,6 +365,10 @@ def identifiers(self, key, value):
     is_aleph_number = scheme.lower() == "cercer" or not scheme and "CERCER" in id_value
     if is_aleph_number:
         scheme = "aleph"
+    if scheme.lower() == "cds":
+        scheme = "lcds"
+    if scheme.lower() == "inspire":
+        validate_inspire_identifier(id_value, key)
     if id_value:
         return {"scheme": scheme.lower(), "identifier": id_value}
 
@@ -585,6 +591,9 @@ def urls(self, key, value):
     # sub_y = clean_val("y", value, str, default="")
     # Value of the url
     sub_u = clean_val("u", value, str, req=True)
+    if StringValue(value.get("x")).parse() == "icon":
+        # ignore icon urls
+        raise IgnoreKey("identifiers")
     if not sub_u:
         raise UnexpectedValue(
             "Unrecognised string format or link missing.",
@@ -915,3 +924,15 @@ def access_grants(self, key, value):
         permission_type = "manage" if key == "270__" else "view"
         return {str(subject_identifier): permission_type}
     raise IgnoreKey("access_grants")
+
+# Helper function to validate INSPIRE identifiers
+def validate_inspire_identifier(id_value, key):
+    """Validate that id_value is a proper INSPIRE identifier (digits only)."""
+    inspire_regexp = re.compile(r"\d+$", flags=re.I)
+    if not inspire_regexp.match(id_value):
+        raise UnexpectedValue(
+            "Invalid INSPIRE identifier",
+            field=key,
+            subfield="a",
+            stage="transform"
+        )

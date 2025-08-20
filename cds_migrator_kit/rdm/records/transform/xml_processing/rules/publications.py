@@ -170,7 +170,7 @@ def internal_notes(self, key, value):
 @for_each_value
 def organisation(self, key, value):
     contributor = value.get("u")
-    return {"person_or_org": {"type": "organizational", "name": contributor}}
+    return {"person_or_org": {"type": "organizational", "name": contributor}, 'role': {'id': 'hostinginstitution'}}
 
 
 @model.over("related_identifiers", "^962_")
