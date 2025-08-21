@@ -163,9 +163,11 @@ def test_migrate_record_all_fields(datadir, base_app):
                 {"subject": "BDF"},
             ],
             "custom_fields": {
-                "cern:experiments": [],
+                "cern:experiments": ["RP"],
                 "cern:accelerators": [],
-                "cern:projects": [],
+                "cern:projects": [
+                    "Beam Dump Facility",
+                ],
                 "cern:facilities": [],
                 "cern:studies": ["Physics Beyond Colliders"],
                 "cern:beams": [],

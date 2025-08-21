@@ -13,9 +13,19 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 
 
 class BulletinIssueModel(CdsOverdo):
-    """Translation model for MoUs."""
+    """Translation model for Bulletin Issue."""
 
-    __query__ = "980__:CERN_BULLETIN_ISSUE OR 980__:CERN_BULLETIN_ARTICLE"
+    __query__ = """980__:CERN_BULLETIN_ISSUE OR
+                   980__:CERN_BULLETIN_ARTICLE OR
+                   980__:BULLETINGENERAL OR
+                   980__:BULLETINEVENTS OR
+                   980__:BULLETINANNOUNCE OR
+                   980__:BULLETINBREAKING OR
+                   980__:BULLETINNEWS OR
+                   980__:BULLETINOFFICIAL OR
+                   980__:BULLETINPENSION OR
+                   980__:BULLETINTRAINING OR
+                   980__:BULLETINSOCIAL"""
 
     __ignore_keys__ = {
         "0248_a",
@@ -23,22 +33,26 @@ class BulletinIssueModel(CdsOverdo):
         "0248_q",
         "100__m",  # email of contributor
         "110__a",  # corporate author, always CERN, safe to ignore
-        # "246_1a",
         "300__a",  # number of pages
-        "520__b",  # en value, redundant with language
         "590__b",  # staff association? value, redundant with language
-        # "690C_a",
+        "594__a",  # specifies if the related articles menu has a separator or not (display feature)
+        "650172",  # scheme of subjects
+        "6531_9",  # scheme of keywords
+        "691__a",  # draft/online values, redundant
         "700__m",  # email of contributor
-        # "773__c",
-        # "773__n",
         "773__p",  # title of the "CERN Bulletin" series
+        "773__t",  # CERN Bulletin value, redundant
         "773__y",  # year, duplicate of 260
+        "773__u",  # broken links on record 44920
         "787__i",  # one referenced record (video in 1755835, 1754359)
+        "859__a",  # empty value
+        "856__q",  # 619830 broken link
         "8560_f",  # contact email
         "8564_8",  # file id
         "8564_s",  # bibdoc id
         "8564_x",  # icon thumbnails sizes
         "8564_y",  # file description - done by files dump
+        "906__m",  # edit rights, will be granted by the community
         "937__c",  # last modified by
         "937__s",  # last modification date
         "960__a",  # base number
@@ -48,6 +62,9 @@ class BulletinIssueModel(CdsOverdo):
         "961__x",  # CDS modification tag # TODO
         "980__a",  # same collection tag for everything
         "981__a",  # duplicate record id
+        "980__b",
+        # "246_1a",
+        # "690C_a",
     }
 
     _default_fields = {

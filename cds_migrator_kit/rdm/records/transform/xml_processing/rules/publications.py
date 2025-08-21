@@ -7,7 +7,7 @@ from edtf import EDTFParseException, parse_edtf, text_to_edtf
 from idutils.normalizers import normalize_isbn, normalize_issn
 from isbnlib import NotValidISBNError
 
-from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.errors import UnexpectedValue, ManualImportRequired
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     filter_list_values,
     for_each_value,
@@ -97,6 +97,7 @@ def udc(self, key, value):
 
 @model.over("internal_notes", "(^500__)")
 def internal_notes(self, key, value):
+    # TODO change to normal notes
     """Translates internal_notes field."""
     internal_notes = self.get("internal_notes", [])
     note = value.get("a")
@@ -110,6 +111,10 @@ def funding(self, key, value):
     _custom_fields = self.get("custom_fields", {})
     programme = value.get("a")
     _access_info = value.get("r", "").strip().lower()
+    if _access_info:
+        raise ManualImportRequired(
+            "Open access field detected", field=key, value=value, priority="critical"
+        )
     if _access_info and _access_info not in ["openaccess", "open access"]:
         raise UnexpectedValue(
             "Access information has unexpected value", field=key, value=value
@@ -117,11 +122,12 @@ def funding(self, key, value):
     # https://cerneu.web.cern.ch/fp7-projects
     is_fp7_programme = programme and programme.strip().lower() == "fp7"
 
-    if programme and not is_fp7_programme:
-        # if not fp7, then it is cern programme
-        _custom_fields["cern:programmes"] = programme
-        return _custom_fields
-    elif "f" in value or "c" in value:
+    # TODO check if this applies to other publications not only thesis
+    # if programme and not is_fp7_programme:
+    #     # if not fp7, then it is cern programme
+    #     _custom_fields["cern:programmes"] = programme
+    #     return _custom_fields
+    if programme and "f" in value or "c" in value:
         awards = self.get("funding", [])
         # this one is reliable, I checked the DB
         try:
@@ -138,6 +144,8 @@ def funding(self, key, value):
         if award not in awards:
             awards.append(award)
         self["funding"] = awards
+    else:
+        raise UnexpectedValue("Unexpected grant value", field=key, value=value)
     raise IgnoreKey("custom_fields")
 
 
@@ -156,7 +164,6 @@ def journal(self, key, value):
 
     conference_cnum = value.get("w", "")
     if conference_cnum:
-        # self["_is_conference"] = True
         custom_meeting_fields = _custom_fields.get("meeting:meeting", {})
         identifiers = custom_meeting_fields.get("identifiers", [])
         identifiers.append({"scheme": "inspire", "identifier": conference_cnum})

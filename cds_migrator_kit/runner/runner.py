@@ -31,20 +31,18 @@ class Runner:
         with open(filepath) as f:
             return yaml.safe_load(f)
 
-    def __init__(
-        self, stream_definitions, config_filepath, dry_run, collection, restricted=False
-    ):
+    def __init__(self, stream_definitions, config_filepath, dry_run, collection):
         """Constructor."""
         config = self._read_config(config_filepath)
         self.collection = collection
         self.db_uri = config.get("db_uri")
-        self.restricted = restricted
         # start parsing streams
         self.streams = []
         for definition in stream_definitions:
             if definition.name in config:
                 stream_config = config.get(definition.name) or {}
                 self.data_dir = Path(stream_config[collection].get("data_dir"))
+                self.restricted = stream_config[collection].get("restricted", False)
                 self.data_dir.mkdir(parents=True, exist_ok=True)
 
                 self.tmp_dir = Path(stream_config[collection].get("tmp_dir"))

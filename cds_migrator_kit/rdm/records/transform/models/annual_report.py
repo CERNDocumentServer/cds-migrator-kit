@@ -20,6 +20,7 @@ class AnnualReportModel(CdsOverdo):
     )
 
     __ignore_keys__ = {
+        "000tjt",  # seems like a hidden field, not expressed in MARC 1952785
         "0248_a",
         "0248_p",
         "0248_q",

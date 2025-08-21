@@ -276,7 +276,6 @@ def collection(self, key, value):
     raise IgnoreKey("collection")
 
 
-
 @model.over("related_identifiers", "^962_")
 @for_each_value
 def related_identifiers(self, key, value):
@@ -306,9 +305,16 @@ def related_identifiers(self, key, value):
 
     artid = value.get("k", "")
     if artid:
-        artid_from_773 =  self.get("custom_fields", {}).get("journal:journal", {}).get("pages")
+        artid_from_773 = (
+            self.get("custom_fields", {}).get("journal:journal", {}).get("pages")
+        )
         if artid_from_773 != artid:
-            raise UnexpectedValue(message="Ambiguous journal information - not equal with 773", field=key, value=artid, subfield="k")
+            raise UnexpectedValue(
+                message="Ambiguous journal information - not equal with 773",
+                field=key,
+                value=artid,
+                subfield="k",
+            )
 
     if res_type:
         new_id.update({"resource_type": {"id": res_type}})

@@ -15,7 +15,16 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 class HrModel(CdsOverdo):
     """Translation model for MoUs."""
 
-    __query__ = "(980__:INTNOTEHRPUBL AND NOT 6531: security) OR 980__:STAFFRULES OR 980__:STAFFRULESVD OR 980__:ADMINCIRCULAR OR 980__:OPERCIRCULAR OR 980__:ANNUALSTATS OR 980__:CHISBULLETIN OR 980__:CCP OR 980__:CERN-ADMIN-E-GUIDE"
+    __query__ = """980__:INTNOTEHRPUBL OR
+                   980__:STAFFRULES OR
+                   980__:STAFFRULESVD OR
+                   980__:ADMINCIRCULAR OR
+                   980__:OPERCIRCULAR OR
+                   980__:ANNUALSTATS OR
+                   980__:CHISBULLETIN OR
+                   980__:CCP OR
+                   980__:CERN-ADMIN-E-GUIDE OR
+                   980__:HR-SMC"""
 
     __ignore_keys__ = {
         "0248_a",
@@ -23,11 +32,15 @@ class HrModel(CdsOverdo):
         "0248_q",
         "100__m",
         "270__m",
+        "300__a",  # number of pages
         "700__m",
+        "710__b",  # TODO discuss the group/section field
+        "7870_r",  # detailed description of record relation (2862345)
         "8564_8",
         "8564_s",
         "8564_x",
         "8564_y",  # file description - done by files dump
+        "8564_z",
         "937__c",
         "937__s",
         "960__a",  # base number
@@ -41,7 +54,7 @@ class HrModel(CdsOverdo):
     _default_fields = {
         "resource_type": {"id": "publication-other"},
         "custom_fields": {},
-        "creators": [{"person_or_org": {"type": "organizational", "name": "CERN"}}],
+        "creators": [{"person_or_org": {"type": "organizational", "name": "HR"}}],
     }
 
 

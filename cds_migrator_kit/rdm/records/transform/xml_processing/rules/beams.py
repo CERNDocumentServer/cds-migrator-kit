@@ -53,6 +53,7 @@ def resource_type(self, key, value):
 
 @model.over("internal_notes", "(^500__)")
 def internal_notes(self, key, value):
+    # TODO change to normal notes
     """Translates internal_notes field."""
     internal_notes = self.get("internal_notes", [])
     internal_notes.append({"note": value.get("a")})
