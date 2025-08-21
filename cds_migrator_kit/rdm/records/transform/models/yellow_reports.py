@@ -6,6 +6,9 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM Yellow report model."""
+from cds_migrator_kit.rdm.records.transform.models.base_publication_record import (
+    rdm_base_publication_model,
+)
 from cds_migrator_kit.rdm.records.transform.models.base_record import (
     rdm_base_record_model,
 )
@@ -16,7 +19,7 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 class YellowRepModel(CdsOverdo):
     """Translation model for MoUs."""
 
-    __query__ = '690C_:YELLOWREPORT OR 690C_:"CERN Yellow Report" OR 690C_:YELLOW REPORT OR 690C_:Yellow Report -980__:BOOK'
+    __query__ = '690C_:YELLOWREPORT OR 690C_:"CERN Yellow Report" OR 690C_:"YELLOW REPORT" OR 690C_:Yellow Report OR 690C_:YELLOWREPCONTRIB'
 
     __ignore_keys__ = {
         "0248_a",
@@ -62,6 +65,6 @@ class YellowRepModel(CdsOverdo):
 
 
 yellow_issue_model = YellowRepModel(
-    bases=(thesis_model,),
+    bases=(rdm_base_publication_model,),
     entry_point_group="cds_migrator_kit.migrator.rules.yellow_report",
 )

@@ -9,7 +9,8 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/thesis/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
+      communities_ids:
+        - c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/thesis/duplicated_pids.json
   mous:
@@ -21,7 +22,8 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/mous/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: 3488e719-a1c6-4084-8e0c-4a72c3a08ab1
+      communities_ids:
+        - 3488e719-a1c6-4084-8e0c-4a72c3a08ab1
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/mous/duplicated_pids.json
   bulletin_issue:
@@ -33,7 +35,8 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/bulletin_issue/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: 8c3db554-0a3c-4ba7-a011-b266c4de8352
+      communities_ids:
+        - 8c3db554-0a3c-4ba7-a011-b266c4de8352
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_issue/duplicated_pids.json
   bulletin_art:
@@ -45,7 +48,8 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/bulletin_art/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: 8c3db554-0a3c-4ba7-a011-b266c4de8352
+      communities_ids:
+        - 8c3db554-0a3c-4ba7-a011-b266c4de8352
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
   yellow_report_issues:
@@ -57,7 +61,8 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/yellow_report_issues/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
+      communities_ids:
+        - c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
   yellow_report_contrib:
@@ -69,7 +74,8 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/yellow_reports_contrib/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
+      communities_ids:
+        - c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
   annual_reports:
@@ -81,7 +87,8 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/annual_reports/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
+      communities_ids:
+        - c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
   books:
@@ -93,7 +100,8 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/books/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
+      communities_ids:
+        - c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
   courier:
@@ -105,7 +113,8 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/courier/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: 35699521-ba4f-4214-bf47-da5df659af16
+      communities_ids:
+        - 35699521-ba4f-4214-bf47-da5df659af16
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
   beams:
@@ -117,7 +126,8 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/beams/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: "9d208c63-a1e8-448f-955f-babe692f408e"
+      communities_ids:
+        - "9d208c63-a1e8-448f-955f-babe692f408e"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
   it:
@@ -129,7 +139,8 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/it_dep/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: "42da91cf-d476-4d09-9193-7841e03e271c"
+      communities_ids:
+        - "42da91cf-d476-4d09-9193-7841e03e271c"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
   it_meetings:
@@ -141,7 +152,8 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/it_dep/it_meetings/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: "42da91cf-d476-4d09-9193-7841e03e271c"
+      communities_ids:
+        - "42da91cf-d476-4d09-9193-7841e03e271c"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
   hr:
@@ -153,9 +165,138 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/hr/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: "77617386-632c-4b86-8dd2-68de77ae0018"
+      communities_ids:
+        - "77617386-632c-4b86-8dd2-68de77ae0018"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  ccp:
+    data_dir: cds_migrator_kit/rdm/data/ccp
+    tmp_dir: cds_migrator_kit/rdm/tmp/ccp
+    log_dir: cds_migrator_kit/rdm/log/ccp
+    restricted: "True"
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hr/ccp/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hr/ccp/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "748cbfa2-e159-42a9-9eaa-83a47d5f0e08"
+        - "77617386-632c-4b86-8dd2-68de77ae0018"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  chis_bull:
+    data_dir: cds_migrator_kit/rdm/data/chis_bull
+    tmp_dir: cds_migrator_kit/rdm/tmp/chis_bull
+    log_dir: cds_migrator_kit/rdm/log/chis_bull
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hr/chis_bull/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hr/chis_bull/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "c94b82d6-fafe-41ba-a596-2b01f9401cf5"
+        - "77617386-632c-4b86-8dd2-68de77ae0018"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  stats:
+    data_dir: cds_migrator_kit/rdm/data/stats
+    tmp_dir: cds_migrator_kit/rdm/tmp/stats
+    log_dir: cds_migrator_kit/rdm/log/stats
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hr/stats/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hr/stats/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "3fa51ad9-77b5-43e3-8828-8d4bb2c753c5"
+        - "77617386-632c-4b86-8dd2-68de77ae0018"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  oper_circular:
+    data_dir: cds_migrator_kit/rdm/data/oper_circular
+    tmp_dir: cds_migrator_kit/rdm/tmp/oper_circular
+    log_dir: cds_migrator_kit/rdm/log/oper_circular
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hr/oper_circular/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hr/oper_circular/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "7f2482b4-3fbd-4fe9-abbc-30a8d30b7911"
+        - "77617386-632c-4b86-8dd2-68de77ae0018"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  admin_circular:
+    data_dir: cds_migrator_kit/rdm/data/admin_circular
+    tmp_dir: cds_migrator_kit/rdm/tmp/admin_circular
+    log_dir: cds_migrator_kit/rdm/log/admin_circular
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hr/admin_circular/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hr/admin_circular/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "7f2482b4-3fbd-4fe9-abbc-30a8d30b7911"
+        - "77617386-632c-4b86-8dd2-68de77ae0018"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  staff_rules:
+    data_dir: cds_migrator_kit/rdm/data/staff_rules
+    tmp_dir: cds_migrator_kit/rdm/tmp/staff_rules
+    log_dir: cds_migrator_kit/rdm/log/staff_rules
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hr/staff_rules/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hr/staff_rules/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "4c031386-5ea1-416f-8a3c-80de1c7272d0"
+        - "77617386-632c-4b86-8dd2-68de77ae0018"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  e-guide:
+    data_dir: cds_migrator_kit/rdm/data/e-guide
+    tmp_dir: cds_migrator_kit/rdm/tmp/e-guide
+    log_dir: cds_migrator_kit/rdm/log/e-guide
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hr/e-guide/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hr/e-guide/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "76b2a0b7-3b82-45b5-a3d3-67dfec5a7ab4"
+        - "77617386-632c-4b86-8dd2-68de77ae0018"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  e-guide-restr:
+    data_dir: cds_migrator_kit/rdm/data/e-guide-restr
+    tmp_dir: cds_migrator_kit/rdm/tmp/e-guide-restr
+    log_dir: cds_migrator_kit/rdm/log/e-guide-restr
+    restricted: "True"
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hr/e-guide-restr/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hr/e-guide-restr/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "76b2a0b7-3b82-45b5-a3d3-67dfec5a7ab4"
+        - "77617386-632c-4b86-8dd2-68de77ae0018"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  hr_restr:
+    data_dir: cds_migrator_kit/rdm/data/hr_restricted
+    tmp_dir: cds_migrator_kit/rdm/tmp/hr_restricted
+    log_dir: cds_migrator_kit/rdm/log/hr_restricted
+    restricted: "True"
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hr/hr_restricted/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hr_restricted/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "77617386-632c-4b86-8dd2-68de77ae0018"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hr/duplicated_pids.json
   sy:
     data_dir: cds_migrator_kit/rdm/data/sy
     tmp_dir: cds_migrator_kit/rdm/tmp/sy
@@ -165,7 +306,8 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/sy/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: "47606600-5bf0-4527-b370-3a2d4fd582b2"
+      communities_ids:
+        - "47606600-5bf0-4527-b370-3a2d4fd582b2"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
   te:
@@ -177,7 +319,8 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/te/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: "c1a5abb2-0aaf-4765-8d57-210b68c6e695"
+      communities_ids:
+        - "c1a5abb2-0aaf-4765-8d57-210b68c6e695"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
   en:
@@ -189,6 +332,7 @@ records:
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/en/files/
       missing_users: cds_migrator_kit/rdm/data/users
-      community_id: "5ec66c01-1fb9-4193-a2af-e19074281657"
+      communities_ids:
+        - "5ec66c01-1fb9-4193-a2af-e19074281657"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json

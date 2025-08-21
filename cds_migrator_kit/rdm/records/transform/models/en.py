@@ -59,4 +59,3 @@ en_model = ENModel(
     bases=(rdm_base_publication_model,),
     entry_point_group="cds_migrator_kit.migrator.rules.en",
 )
-

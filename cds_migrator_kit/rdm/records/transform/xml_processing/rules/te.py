@@ -14,9 +14,21 @@ from ...models.te import te_model as model
 def resource_type(self, key, value):
     """Translates resource_type."""
     value = value.get("a")
-    priority = {v: i for i, v in
-                enumerate(["intnotetepubl", "intnotetspubl", "clinot", "note", "preprint", "bookchapter",
-                           "conferencepaper", "article"])}
+    priority = {
+        v: i
+        for i, v in enumerate(
+            [
+                "intnotetepubl",
+                "intnotetspubl",
+                "clinot",
+                "note",
+                "preprint",
+                "bookchapter",
+                "conferencepaper",
+                "article",
+            ]
+        )
+    }
     current = self.get("resource_type")
     if value:
         value = value.lower()
@@ -40,7 +52,9 @@ def resource_type(self, key, value):
             try:
                 return map[value]
             except KeyError:
-                raise UnexpectedValue("Unknown resource type (TE)", value=value, field=key)
+                raise UnexpectedValue(
+                    "Unknown resource type (TE)", value=value, field=key
+                )
         else:
             raise IgnoreKey("resource_type")
     else:

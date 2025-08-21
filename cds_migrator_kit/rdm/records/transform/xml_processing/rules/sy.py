@@ -15,11 +15,12 @@ from ...models.sy import sy_model as model
 def collection(self, key, value):
     """Translates collection field."""
     collection = value.get("a").strip().lower()
-    if collection not in ["publsy",
-                          "intnote",
-                          "cern",
-                          "preprint",
-                          ]:
+    if collection not in [
+        "publsy",
+        "intnote",
+        "cern",
+        "preprint",
+    ]:
         raise UnexpectedValue(subfield="a", field=key, value=value)
     raise IgnoreKey("collection")
 

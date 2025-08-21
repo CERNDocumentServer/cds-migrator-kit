@@ -16,7 +16,7 @@ class BookModel(CdsOverdo):
     """Translation model for MoUs."""
 
     __query__ = (
-        "980__:BOOK OR 980__:BOOk 690C_:BOOK -690C:BOOKSUGGESTION -980__c:MIGRATED"
+        "980__:BOOK OR 980__:BOOk 690C_:BOOK -690C:BOOKSUGGESTION -980__c:MIGRATED -690C_:\"YELLOW REPORT\" -690C_:\"Yellow Report\""
     )
 
     __ignore_keys__ = {

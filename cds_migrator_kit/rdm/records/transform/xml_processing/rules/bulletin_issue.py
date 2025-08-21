@@ -1,20 +1,89 @@
+import re
+from urllib.parse import urlparse, ParseResult
+
 from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
 
 from cds_migrator_kit.errors import UnexpectedValue
-from cds_migrator_kit.transform.xml_processing.quality.decorators import for_each_value
+from cds_migrator_kit.transform.xml_processing.quality.decorators import (
+    for_each_value,
+    require,
+)
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
-from .base import created
+from cds_migrator_kit.transform.xml_processing.rules.base import process_contributors
+from cds_rdm.schemes import is_legacy_cds
+from .base import created, additional_titles, urls, subjects
 
 from ...models.bulletin_issue import bull_issue_model as model
 
 
-@model.over("collection", "^690C_")
+@model.over("creators", "^100__", override=True)
+@for_each_value
+@require(["a"])
+def creators(self, key, value):
+    """Translates the creators field."""
+    if not value.get("a"):
+        ## many empty values inside the bulletin
+        raise IgnoreKey("creators")
+    return process_contributors(key, value)
+
+
+@model.over("additional_titles", "(^246_[1_])", override=True)
+@for_each_value
+@require(["a"])
+def additional_titles_bulletin(self, key, value):
+    """Translate additional titles."""
+
+    # many records are missing main title, reuse the 246 field if missing
+    title = value.get("a")
+    if title and "title" not in self:
+        self["title"] = value.get("a")
+
+    # run the original rule
+    additional_titles(self, key, value)
+    raise IgnoreKey("additional_titles")
+
+
+@model.over("description", "^520__", override=True)
+def description(self, key, value):
+    """Translates description."""
+
+    description_text = value.get("a", "")
+    description_text_b = value.get("b", "")
+    description_text = description_text.replace("<!--HTML-->", "").strip()
+    description_text_b = description_text_b.replace("<!--HTML-->", "").strip()
+
+    if len(description_text) > 3 or len(description_text_b) > 3:
+        description_text = f"<h2>{description_text}</h2><p>{description_text_b}</p>"
+        return description_text
+    else:
+        raise IgnoreKey("description")
+
+
+@model.over("collection", "^690C_", override=True)
 @for_each_value
 def collection(self, key, value):
     """Translates collection field."""
-    collection = value.get("a").strip().lower()
-    if collection not in ["cern", "cern bulletin printable version"]:
+    collection_a = value.get("a", "").strip().lower()
+    collection_b = value.get("b", "").strip().lower()
+    if collection_b and collection_b in [
+        "eucard2",
+        "aida-2020",
+        "eucard2pre",
+        "aida-2020pre",
+    ]:
+        subjects = self.get("subjects", [])
+        subjects.append({"subject": "collection:EuCARD2"})
+        self["subjects"] = subjects
+    elif collection_b and collection_b not in ["cern", "reviewed"]:
+        raise UnexpectedValue(subfield="b", key=key, value=value, field="690C_")
+
+    if collection_a in ["aida-2020", "eucard2", "eucard2pre", "aida-2020pre"]:
+        subjects = self.get("subjects", [])
+        subjects.append({"subject": f"collection:{collection_a}"})
+        self["subjects"] = subjects
+        raise IgnoreKey("collection")
+    if collection_a not in ["cern", "cern bulletin printable version", "reviewed"]:
         raise UnexpectedValue(subfield="a", key=key, value=value, field="690C_")
     raise IgnoreKey("collection")
 
@@ -63,6 +132,83 @@ def journal(self, key, value):
     return _custom_fields
 
 
+@model.over("additional_descriptions", "(^500__)")
+@for_each_value
+def additional_descriptions(self, key, value):
+    value = value.get("a", "").strip()
+    if len(value) < 3:
+        raise IgnoreKey("additional_descriptions")
+    if value:
+        return {"description": value, "type": {"id": "technical-info"}}
+    raise IgnoreKey("additional_descriptions")
+
+
+@model.over("additional_descriptions", "(^590__)")
+@for_each_value
+def translated_description(self, key, value):
+    description_text = value.get("a", "")
+    description_text_b = value.get("b", "")
+    description_text = description_text.replace("<!--HTML-->", "").strip()
+    description_text_b = description_text_b.replace("<!--HTML-->", "").strip()
+
+    if len(description_text) > 3 or len(description_text_b) > 3:
+        description_text = f"<h2>{description_text}</h2><p>{description_text_b}</p>"
+    if description_text:
+        _additional_description = {
+            "description": description_text,
+            "type": {
+                "id": "other",  # what's with the lang
+            },
+            "lang": {"id": "fra"},
+        }
+        return _additional_description
+    raise IgnoreKey("additional_descriptions")
+
+
+@model.over("subjects", "(^650[12_][7_])|(^6531_)", override=True)
+@for_each_value
+def subjects_bulletin(self, key, value):
+    subject = value.get("a", "").strip()
+    scheme = value.get("2", "").strip()
+    if scheme == "EuCARD2":
+        subjects(self, key, value)
+    else:
+        return {"subject": subject}
+
+
+@model.over("url_identifiers", "^8564_", override=True)
+@for_each_value
+def urls_bulletin(self, key, value):
+    content_type = value.get("x", "")
+
+    if content_type == "icon":
+        # ignore icons
+        url_q = value.get("q", "")
+        raise IgnoreKey("url_identifiers")
+
+    url_q = value.get("q", "").strip()
+    identifiers = self.get("identifiers", [])
+
+    if "q" not in value:
+        _urls = urls(self, key, value)
+        _urls.extend(identifiers)
+        identifiers += _urls
+    else:
+        p = urlparse(url_q, "http")
+        netloc = p.netloc or p.path
+        path = p.path if p.netloc else ""
+        if not netloc.startswith("www."):
+            netloc = "www." + netloc
+
+        p = ParseResult("http", netloc, path, *p[3:])
+        new_id = {"identifier": p.geturl(), "scheme": "url"}
+        if new_id not in identifiers:
+            identifiers.append(new_id)
+
+    self["identifiers"] = identifiers
+    raise IgnoreKey("url_identifiers")
+
+
 @model.over("custom_fields_journal", "(^916__)", override=True)
 def issue_number(self, key, value):
     _custom_fields = self.get("custom_fields", {})
@@ -70,7 +216,8 @@ def issue_number(self, key, value):
     issue = value.get("z")
 
     journal_fields = _custom_fields.get("journal:journal", {})
-    journal_fields["issue"] = issue
+    if issue is not None:
+        journal_fields["issue"] = issue
 
     _custom_fields["journal:journal"] = journal_fields
     # because we override 916
@@ -78,6 +225,7 @@ def issue_number(self, key, value):
 
     self["custom_fields"] = _custom_fields
     raise IgnoreKey("custom_fields_journal")
+
 
 @model.over("custom_fields", "(^925__)")
 def issue_number(self, key, value):
@@ -92,3 +240,67 @@ def issue_number(self, key, value):
 
     _custom_fields["journal:journal"] = journal_fields
     return _custom_fields
+
+
+@model.over("related_identifiers", "^941__")
+@for_each_value
+def related_identifiers(self, key, value):
+    id = value.get("a")
+    resource_type = value.get("t", "other")
+    scheme = "other"
+
+    res_type_map = {"photo": {"id": "image-photo"}, "other": {"id": "other"}}
+
+    is_cds_recid = is_legacy_cds(id)
+    if is_cds_recid:
+        scheme = "lcds"
+
+    new_id = {
+        "identifier": id,
+        "scheme": scheme,
+        "resource_type": res_type_map[resource_type.lower()],
+        "relation_type": {"id": "references"},
+    }
+
+    rel_ids = self.get("related_identifiers", [])
+    if new_id not in rel_ids:
+        return new_id
+    raise IgnoreKey("related_identifiers")
+
+
+@model.over("related_identifiers", "(^962__)")
+@for_each_value
+def rel_identifiers(self, key, value):
+    """Old aleph identifier pointing to MMD repository."""
+    identifier = value.get("b", "")
+    scheme = value.get("l", "")
+    report_number = value.get("t", "").lower()
+
+    if "pho" in scheme.lower():
+        res_type = "photo"
+    else:
+        res_type = "other"
+    if report_number in ["cern-videoclip-yyyy-xx"]:
+        raise IgnoreKey("related_identifiers")
+    res_type_map = {"photo": {"id": "image-photo"}, "other": {"id": "other"}}
+
+    photo_regex = re.compile(r"^CERN-[A-Z]+-\d+$", flags=re.I)
+    is_cern_report_number = photo_regex.match(report_number)
+
+    identifier = identifier.replace("Photo", "").strip()
+    if is_cern_report_number:
+        scheme = "cds_ref"
+    else:
+        scheme = "other"
+
+    new_id = {
+        "identifier": f"{identifier}",
+        "scheme": scheme,
+        "resource_type": res_type_map[res_type.lower()],
+        "relation_type": {"id": "references"},
+    }
+
+    identifiers = self.get("related_identifiers", [])
+    if new_id not in identifiers:
+        return new_id
+    raise IgnoreKey("related_identifiers")

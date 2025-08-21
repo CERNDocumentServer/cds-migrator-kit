@@ -21,16 +21,20 @@ def collection(self, key, value):
         subjects.append({"subject": "collection:YELLOWREPCONTRIB"})
         self["subjects"] = subjects
         raise IgnoreKey("collection")
-    if collection not in ["cern", "preprint", "article", "intnote", "publen",
-                          "en department head documents",
-                          "eucard",
-                          "eucardpub",
-                          "publts", # to be checked
-                          "publats", # to be checked, via claiming
-                          "lhcf_papers",
-                          "lhcf_proc"
-
-]:
+    if collection not in [
+        "cern",
+        "preprint",
+        "article",
+        "intnote",
+        "publen",
+        "en department head documents",
+        "eucard",
+        "eucardpub",
+        "publts",  # to be checked
+        "publats",  # to be checked, via claiming
+        "lhcf_papers",
+        "lhcf_proc",
+    ]:
         raise UnexpectedValue(subfield="a", value=value, field=key)
     raise IgnoreKey("collection")
 
@@ -39,9 +43,20 @@ def collection(self, key, value):
 def resource_type(self, key, value):
     """Translates resource_type."""
     value = value.get("a")
-    priority = {v: i for i, v in
-                enumerate(["intnoteenpubl", "intnotetspubl", "note", "preprint", "bookchapter",
-                           "conferencepaper", "article"])}
+    priority = {
+        v: i
+        for i, v in enumerate(
+            [
+                "intnoteenpubl",
+                "intnotetspubl",
+                "note",
+                "preprint",
+                "bookchapter",
+                "conferencepaper",
+                "article",
+            ]
+        )
+    }
     current = self.get("resource_type")
     if value:
         value = value.lower()
@@ -65,7 +80,9 @@ def resource_type(self, key, value):
             try:
                 return map[value]
             except KeyError:
-                raise UnexpectedValue("Unknown resource type (EN)", value=value, field=key)
+                raise UnexpectedValue(
+                    "Unknown resource type (EN)", value=value, field=key
+                )
         else:
             raise IgnoreKey("resource_type")
     else:

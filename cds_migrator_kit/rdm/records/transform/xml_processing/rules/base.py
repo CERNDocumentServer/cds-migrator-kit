@@ -215,11 +215,11 @@ def custom_fields(self, key, value):
     """Translates custom fields."""
     _custom_fields = self.get("custom_fields", {})
     experiments = _custom_fields.get("cern:experiments", [])
-    accelerators = _custom_fields("cern:accelerators", [])
-    projects = _custom_fields("cern:projects", [])
-    facilities = _custom_fields("cern:facilities", [])
-    studies = _custom_fields("cern:studies", [])
-    beams = _custom_fields("cern:beams", [])
+    accelerators = _custom_fields.get("cern:accelerators", [])
+    projects = _custom_fields.get("cern:projects", [])
+    facilities = _custom_fields.get("cern:facilities", [])
+    studies = _custom_fields.get("cern:studies", [])
+    beams = _custom_fields.get("cern:beams", [])
 
     if "e" in value and value.get("e"):
         experiments.append(value.get("e"))
@@ -249,7 +249,7 @@ def record_restriction(self, key, value):
     """Translate record restriction field."""
     restr = value.get("a", "")
     parsed = StringValue(restr).parse()
-    if parsed.upper == "PUBLIC":
+    if parsed.upper() == "PUBLIC":
         return "public"
     else:
         raise UnexpectedValue(
@@ -360,12 +360,15 @@ def identifiers(self, key, value):
         related_works.append(new_id)
         self["related_identifiers"] = related_works
         raise IgnoreKey("identifiers")
+
     is_aleph_number = scheme.lower() == "cercer" or not scheme and "CERCER" in id_value
     if is_aleph_number:
         scheme = "aleph"
     _identifiers = self.get("identifiers", [])
 
     new_id = {"scheme": scheme.lower(), "identifier": id_value}
+    if scheme.lower() == "admbul":
+        new_id = {"scheme": "other", "identifier": f"{scheme}_{id_value}"}
     if new_id in _identifiers:
         raise IgnoreKey("identifiers")
     elif id_value:
@@ -456,6 +459,7 @@ def corporate_author(self, key, value):
             departments.append(department)
         self["custom_fields"]["cern:departments"] = departments
         raise IgnoreKey("contributors")
+
     raise IgnoreKey("contributors")
 
 

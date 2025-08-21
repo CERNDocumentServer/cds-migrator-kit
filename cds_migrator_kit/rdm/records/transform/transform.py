@@ -19,6 +19,7 @@ from idutils.validators import is_doi, is_ror
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User, UserIdentity
 from invenio_db import db
+from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
@@ -61,7 +62,7 @@ def search_vocabulary(term, vocab_type):
         term = f'"{term}"'
     try:
         vocabulary_result = service.search(
-            system_identity, type=vocab_type, q=f"{term}"
+            system_identity, type=vocab_type, q=f"\"{term}\""
         ).to_dict()
         return vocabulary_result
     except RequestError:
@@ -608,7 +609,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         # filter out null values
         return {k: v for k, v in custom_fields.items() if v}
 
-    def _verify_creation_date(self, entry, json_data):
+    def _verify_publication_date(self, entry, json_data):
         """Verify creation date.
 
         If the record has no files (file creation date will be used as record
@@ -618,10 +619,10 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             json_data.get("status_week_date") or json_data.get("publication_date")
         ):
             raise ManualImportRequired(
-                message="Record missing creation date",
+                message="Record missing publication date",
                 field="validation",
                 stage="transform",
-                description="Record has no files and no creation date",
+                description="Record has no files and no publication date",
                 recid=entry["recid"],
                 priority="warning",
                 value=None,
@@ -637,7 +638,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         record_dump.prepare_revisions()
         timestamp, json_data = record_dump.latest_revision
 
-        self._verify_creation_date(entry, json_data)
+        self._verify_publication_date(entry, json_data)
 
         self.record_state_logger.add_record(json_data)
 
@@ -695,7 +696,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         throw=True,
         files_dump_dir=None,
         missing_users=None,
-        community_id=None,
+        communities_ids=None,
         dry_run=False,
         collection=None,
         restricted=False,
@@ -703,7 +704,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
         self.missing_users_dir = Path(missing_users).absolute().as_posix()
-        self.community_id = community_id
+        self.communities_ids = communities_ids
         self.dry_run = dry_run
         self.collection = collection
         self.restricted = restricted
@@ -712,11 +713,11 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         self.db_state = {"affiliations": CDSMigrationAffiliationMapping}
         super().__init__(workers, throw)
 
-    def _community_id(self, entry, record):
+    def _communities_ids(self, entry, record):
         communities = record.get("communities", [])
-        communities = [self.community_id] + [slug for slug in communities]
+        communities = self.communities_ids + [slug for slug in communities]
         if communities:
-            return {"ids": communities, "default": self.community_id}
+            return {"ids": communities, "default": self.communities_ids}
         return {}
 
     def _parent(self, entry, record):
@@ -738,7 +739,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 "access": {
                     "owned_by": {"user": owner},
                 },
-                "communities": self._community_id(entry, record),
+                "communities": self._communities_ids(entry, record),
             },
         }
 
@@ -858,7 +859,10 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                         / full_path.relative_to(legacy_path_root),
                         "id_bibdoc": file["bibdocid"],
                         "key": file["full_name"],
-                        "metadata": {"description": file["description"]},
+                        "metadata": {"description": file["description"],
+                                     "name": file["name"],
+                                     "status": file["status"],
+                                     },
                         "mimetype": file["mime"],
                         "checksum": file["checksum"],
                         "version": file["version"],
@@ -921,9 +925,29 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         # TO implement if we decide not to go via draft publish
         return []
 
+    def should_skip(self, entry):
+        pid = PersistentIdentifier.query.filter_by(
+            pid_type="lrecid",
+            pid_value=str(entry["recid"]),
+            status=PIDStatus.REGISTERED,
+        ).one_or_none()
+        return pid is not None
+
     def run(self, entries):
         """Run transformation step."""
-        return super().run(entries)
+        if self._workers is None:
+            for entry in entries:
+                if self.should_skip(entry):
+                    continue
+                try:
+                    yield self._transform(entry)
+                except Exception:
+                    self.logger.exception(entry, exc_info=True)
+                    if self._throw:
+                        raise
+                    continue
+        else:
+            yield from self._multiprocess_transform(entries)
 
     #
     #
