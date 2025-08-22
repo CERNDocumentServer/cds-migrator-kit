@@ -15,13 +15,8 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     strip_output,
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
-from cds_migrator_kit.transform.xml_processing.rules.base import process_contributors
 
 from ...config import (
-    ALLOWED_DOCUMENT_TAGS,
-    ALLOWED_THESIS_COLLECTIONS,
-    FORMER_COLLECTION_TAGS_TO_KEEP,
-    IGNORED_THESIS_COLLECTIONS,
     udc_pattern,
 )
 from ...models.base_publication_record import rdm_base_publication_model as model
@@ -95,6 +90,38 @@ def udc(self, key, value):
     )
 
 
+@model.over("publication_date", "(^260__)", override=True)
+def imprint_info(self, key, value):
+    """Translates imprint - WARNING - also publisher and publication_date.
+
+    In case of summer student notes this field contains only date
+    but it needs to be reimplemented for the base set of rules -
+    it will contain also imprint place
+    """
+    _custom_fields = self.get("custom_fields", {})
+    imprint = _custom_fields.get("imprint:imprint", {})
+
+    publication_date_str = value.get("c")
+    _publisher = value.get("b")
+    place = value.get("a")
+    if _publisher and not self.get("publisher"):
+        self["publisher"] = _publisher
+    if place:
+        imprint["place"] = place
+    self["custom_fields"]["imprint:imprint"] = imprint
+    if publication_date_str:
+        try:
+            date_obj = parse(publication_date_str)
+            return date_obj.strftime("%Y-%m-%d")
+        except (ParserError, TypeError) as e:
+            raise UnexpectedValue(
+                field=key,
+                value=value,
+                message=f"Can't parse provided publication date. Value: {publication_date_str}",
+            )
+    raise IgnoreKey("publication_date")
+
+
 @model.over("internal_notes", "(^500__)")
 def internal_notes(self, key, value):
     # TODO change to normal notes
@@ -106,7 +133,7 @@ def internal_notes(self, key, value):
     return internal_notes
 
 
-@model.over("custom_fields", "(^536__)")
+@model.over("funding", "(^536__)")
 def funding(self, key, value):
     _custom_fields = self.get("custom_fields", {})
     programme = value.get("a")
@@ -126,7 +153,7 @@ def funding(self, key, value):
     # if programme and not is_fp7_programme:
     #     # if not fp7, then it is cern programme
     #     _custom_fields["cern:programmes"] = programme
-    #     return _custom_fields
+    #     self["custom_fields"] = _custom_fields
     if programme and "f" in value or "c" in value:
         awards = self.get("funding", [])
         # this one is reliable, I checked the DB
@@ -146,7 +173,7 @@ def funding(self, key, value):
         self["funding"] = awards
     else:
         raise UnexpectedValue("Unexpected grant value", field=key, value=value)
-    raise IgnoreKey("custom_fields")
+    raise IgnoreKey("funding")
 
 
 @model.over("custom_fields", "(^773__)")
@@ -195,7 +222,13 @@ def internal_notes(self, key, value):
 @for_each_value
 def organisation(self, key, value):
     contributor = value.get("u", "")
-    return {"person_or_org": {"type": "organizational", "name": contributor, "role": {"id": "hostinginstitution"}}}
+    return {
+        "person_or_org": {
+            "type": "organizational",
+            "name": contributor,
+            "role": {"id": "hostinginstitution"},
+        }
+    }
 
 
 @model.over("related_identifiers", "^962_")
@@ -222,11 +255,13 @@ def related_identifiers(self, key, value):
         "identifier": f"https://cds.cern.ch/record/{recid}",
         "scheme": "url",
         "relation_type": {"id": "references"},
-        "resource_type": {"id": "event"}
+        "resource_type": {"id": "event"},
     }
 
     if artid:
-        artid_from_773 =  self.get("custom_fields", {}).get("journal:journal", {}).get("pages")
+        artid_from_773 = (
+            self.get("custom_fields", {}).get("journal:journal", {}).get("pages")
+        )
         if artid_from_773 != artid:
             res_type = "publication-other"
             new_id.update({"resource_type": {"id": res_type}})

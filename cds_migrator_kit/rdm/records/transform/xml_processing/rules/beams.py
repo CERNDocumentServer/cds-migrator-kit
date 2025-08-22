@@ -48,7 +48,7 @@ def resource_type(self, key, value):
     try:
         return map[value]
     except KeyError:
-        raise UnexpectedValue("Unknown resource type", field=key, value=value)
+        raise UnexpectedValue("Unknown resource type (BE)", field=key, value=value)
 
 
 @model.over("internal_notes", "(^500__)")

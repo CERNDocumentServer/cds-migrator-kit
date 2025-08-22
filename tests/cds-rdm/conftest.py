@@ -639,6 +639,28 @@ def resource_type_v(app, resource_type_type):
         },
     )
 
+    vocabulary_service.create(
+        system_identity,
+        {
+            "id": "publication-article",
+            "icon": "table",
+            "props": {
+                "csl": "dataset",
+                "datacite_general": "dataset",
+                "datacite_type": "",
+                "openaire_resourceType": "21",
+                "openaire_type": "dataset",
+                "eurepo": "info:eu-repo/semantics/other",
+                "schema.org": "https://schema.org/Dataset",
+                "subtype": "",
+                "type": "dataset",
+            },
+            "title": {"en": "Dataset"},
+            "tags": ["depositable", "linkable"],
+            "type": "resourcetypes",
+        },
+    )
+
     Vocabulary.index.refresh()
 
     return vocab
@@ -846,6 +868,36 @@ def accelerators_v(app, acc_type):
             "id": "CERN AD",
             "title": {
                 "en": "CERN AD",
+            },
+            "type": "accelerators",
+        },
+    )
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "CERN LHC",
+            "title": {
+                "en": "CERN LHC",
+            },
+            "type": "accelerators",
+        },
+    )
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "CERN SPS",
+            "title": {
+                "en": "CERN SPS",
+            },
+            "type": "accelerators",
+        },
+    )
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "CERN HL-LHC",
+            "title": {
+                "en": "CERN HL-LHC",
             },
             "type": "accelerators",
         },

@@ -214,32 +214,22 @@ def subjects(self, key, value):
 def custom_fields(self, key, value):
     """Translates custom fields."""
     _custom_fields = self.get("custom_fields", {})
-    experiments = _custom_fields.get("cern:experiments", [])
-    accelerators = _custom_fields.get("cern:accelerators", [])
-    projects = _custom_fields.get("cern:projects", [])
-    facilities = _custom_fields.get("cern:facilities", [])
-    studies = _custom_fields.get("cern:studies", [])
-    beams = _custom_fields.get("cern:beams", [])
 
-    if "e" in value and value.get("e"):
-        experiments.append(value.get("e"))
-    if "a" in value and value.get("a"):
-        accelerators.append(value.get("a"))
-    if "p" in value and value.get("p"):
-        projects.append(value.get("p"))
-    if "f" in value and value.get("f"):
-        facilities.append(value.get("f"))
-    if "s" in value and value.get("s"):
-        studies.append(value.get("s"))
-    if "b" in value and value.get("b"):
-        beams.append(value.get("b"))
+    fields_map = {
+        "cern:experiments": "e",
+        "cern:accelerators": "a",
+        "cern:projects": "p",
+        "cern:facilities": "f",
+        "cern:studies": "s",
+        "cern:beams": "b",
+    }
 
-    _custom_fields["cern:experiments"] = experiments
-    _custom_fields["cern:accelerators"] = accelerators
-    _custom_fields["cern:projects"] = projects
-    _custom_fields["cern:facilities"] = facilities
-    _custom_fields["cern:studies"] = studies
-    _custom_fields["cern:beams"] = beams
+    for custom_field_name, subfield in fields_map.items():
+        custom_field = _custom_fields.get(custom_field_name, [])
+        new_values = [v for v in force_list(value.get(subfield, "")) if v]
+        custom_field += new_values
+        _custom_fields[custom_field_name] = custom_field
+
     self["custom_fields"] = _custom_fields
     raise IgnoreKey("custom_fields")
 

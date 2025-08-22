@@ -43,7 +43,7 @@ def resource_type(self, key, value):
     try:
         return map[value]
     except KeyError:
-        raise UnexpectedValue("Unknown resource type", field=key, value=value)
+        raise UnexpectedValue("Unknown resource type (SY)", field=key, value=value)
 
 
 @model.over("creators", "^100__", override=True)

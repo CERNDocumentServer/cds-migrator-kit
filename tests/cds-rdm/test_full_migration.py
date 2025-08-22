@@ -55,8 +55,8 @@ def suite_multi_field(record):
     assert dict_rec["files"]["total_bytes"] == 13264
     assert "TN_T6SamplesGammaSpecBenchmark.pdf" in dict_rec["files"]["entries"]
     assert dict_rec["custom_fields"] == {
-        "cern:departments": [{"id": "HSE", "title": {"en": "HSE"}}],
         "cern:studies": ["Physics Beyond Colliders"],
+        "cern:projects": ["Beam Dump Facility"],
         "imprint:imprint": {
             "place": "Geneva",
         },
@@ -87,6 +87,7 @@ def suite_multi_field(record):
         {"subject": "FLUKA benchmark"},
         {"subject": "ActiWiz benchmark"},
         {"subject": "BDF"},
+        {"subject": "RP"},
     ]
     assert dict_rec["metadata"]["contributors"] == [
         {
@@ -245,7 +246,6 @@ def multiple_custom_fields(record):
     assert dict_rec["custom_fields"] == {
         "cern:accelerators": [
             {"id": "CERN AD", "title": {"en": "CERN AD"}},
-            {"id": "CERN AD", "title": {"en": "CERN AD"}},
         ],
         "imprint:imprint": {"place": "Geneva"},
     }
@@ -277,12 +277,8 @@ def parent_access_fields(record):
     """2783104."""
     dict_rec = record.to_dict()
     # For "status": "firerole: allow group \"it-dep\",\"hr-dep [CERN]\"\r\nallow email \"uploader@inveniosoftware.org\"",
-    assert dict_rec["parent"]["access"]["grants"] == [
-        {
-            "origin": "migrated",
-            "permission": "view",
-            "subject": {"id": "hr-dep", "type": "role"},
-        },
+
+    expectation = [
         {
             "origin": "migrated",
             "permission": "view",
@@ -291,9 +287,20 @@ def parent_access_fields(record):
         {
             "origin": "migrated",
             "permission": "view",
+            "subject": {"id": "hr-dep", "type": "role"},
+        },
+        {
+            "origin": "migrated",
+            "permission": "view",
             "subject": {"id": "2", "type": "user"},
         },
     ]
+
+    reality = dict_rec["parent"]["access"]["grants"]
+
+    normalize = lambda d: json.dumps(d, sort_keys=True)
+
+    assert sorted(expectation, key=normalize) == sorted(reality, key=normalize)
 
 
 def irregular_exp_field(record):
@@ -302,7 +309,7 @@ def irregular_exp_field(record):
     assert "custom_fields" in dict_rec
     assert dict_rec["custom_fields"] == {
         "cern:accelerators": [
-            {"id": "CERN AD", "title": {"en": "CERN AD"}},
+            {"id": "CERN SPS", "title": {"en": "CERN SPS"}},
         ],
         "imprint:imprint": {"place": "Geneva"},
     }

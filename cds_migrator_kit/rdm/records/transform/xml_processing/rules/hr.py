@@ -96,7 +96,7 @@ def resource_type(self, key, value):
     try:
         return {"id": "other"}
     except KeyError:
-        raise UnexpectedValue("Unknown resource type", field=key, value=value)
+        raise UnexpectedValue("Unknown resource type (HR)", field=key, value=value)
 
 
 @model.over("internal_notes", "^562__")

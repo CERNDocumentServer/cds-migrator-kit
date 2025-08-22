@@ -15,7 +15,7 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 class SYModel(CdsOverdo):
     """Translation model for MoUs."""
 
-    __query__ = "(980__:PREPRINT OR 980__:ARTICLE OR 980__:ConferencePaper AND 710__.5:SY) OR 980__:INTNOTESYPUBL"
+    __query__ = "(980__:PREPRINT OR 980__:ARTICLE OR 980__:ConferencePaper AND 710__.5:SY) OR 980__:INTNOTESYPUBL -980__:THESIS"
 
     __ignore_keys__ = {
         "0248_a",

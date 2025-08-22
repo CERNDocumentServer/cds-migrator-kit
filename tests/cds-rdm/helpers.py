@@ -53,7 +53,7 @@ def config(mocker, community, orcid_name_data):
                         "communities_ids": [f"{str(community.id)}"],
                     },
                     "load": {
-                        "legacy_pids_to_redirect": "cds_migrator_kit/rdm/data/summer_student_reports/duplicated_pids.json"
+                        "legacy_pids_to_redirect": "tests/cds-rdm/data/it/duplicated_pids.json"
                     },
                 },
                 "thesis": {
@@ -68,6 +68,21 @@ def config(mocker, community, orcid_name_data):
                     },
                     "load": {
                         "legacy_pids_to_redirect": "tests/cds-rdm/data/thesis/duplicated_pids.json"
+                    },
+                },
+                "sspn_restr": {
+                    "data_dir": "tests/cds-rdm/data/sspn",
+                    "tmp_dir": "tests/cds-rdm/data/sspn",
+                    "log_dir": "tests/cds-rdm/data/log/sspn",
+                    "extract": {"dirpath": "tests/cds-rdm/data/sspn/dumps/"},
+                    "restricted": "True",
+                    "transform": {
+                        "files_dump_dir": "tests/cds-rdm/data/sspn/files/",
+                        "missing_users": "tests/cds-rdm/data/users",
+                        "communities_ids": [f"{str(community.id)}"],
+                    },
+                    "load": {
+                        "legacy_pids_to_redirect": "cds_migrator_kit/rdm/data/summer_student_reports/duplicated_pids.json"
                     },
                 },
             },

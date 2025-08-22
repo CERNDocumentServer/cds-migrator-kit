@@ -15,7 +15,7 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 class TEModel(CdsOverdo):
     """Translation model for MoUs."""
 
-    __query__ = "980__:INTNOTETEPUBL OR 710__.5:TE -980__:BOOK -710__.5:EN -690C_:YELLOWREPORT -690C_:YELLOW REPORT"
+    __query__ = "980__:INTNOTETEPUBL OR 710__.5:TE -980__:BOOK -710__.5:EN -690C_:YELLOWREPORT -690C_:YELLOW REPORT -980__:THESIS"
 
     __ignore_keys__ = {
         "0248_a",

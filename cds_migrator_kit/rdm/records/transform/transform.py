@@ -62,7 +62,7 @@ def search_vocabulary(term, vocab_type):
         term = f'"{term}"'
     try:
         vocabulary_result = service.search(
-            system_identity, type=vocab_type, q=f"\"{term}\""
+            system_identity, type=vocab_type, q=f'"{term}"'
         ).to_dict()
         return vocabulary_result
     except RequestError:
@@ -169,8 +169,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 key = "DOI"
             if key.upper() == "DOI":
                 doi_identifier = deepcopy(identifier)
-                if (identifier["identifier"].startswith(DATACITE_PREFIX) or
-                    identifier["identifier"].startswith("10.5170")):
+                if identifier["identifier"].startswith(DATACITE_PREFIX) or identifier[
+                    "identifier"
+                ].startswith("10.5170"):
                     if not json_entry.get("publisher"):
                         json_entry["publisher"] = "CERN"
                     doi_identifier["provider"] = "datacite"
@@ -399,6 +400,18 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         value=item,
                     )
             return identifiers
+
+        def table_of_contents(json_entry):
+            toc = json_entry.get("table_of_content", [])
+            additional_desc = json_entry.get("additional_descriptions", [])
+            if toc:
+                additional_desc.append(
+                    {"description": toc, "type": {"id": "table-of-contents"}}
+                )
+                json_entry["additional_descriptions"] = additional_desc
+                json_entry.pop("table_of_content")
+
+        table_of_contents(json_entry)
 
         metadata = {
             "creators": creators(json_entry),
@@ -859,10 +872,11 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                         / full_path.relative_to(legacy_path_root),
                         "id_bibdoc": file["bibdocid"],
                         "key": file["full_name"],
-                        "metadata": {"description": file["description"],
-                                     "name": file["name"],
-                                     "status": file["status"],
-                                     },
+                        "metadata": {
+                            "description": file["description"],
+                            "name": file["name"],
+                            "status": file["status"],
+                        },
                         "mimetype": file["mime"],
                         "checksum": file["checksum"],
                         "version": file["version"],
