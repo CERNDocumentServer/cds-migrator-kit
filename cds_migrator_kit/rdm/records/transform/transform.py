@@ -573,6 +573,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "journal:journal": json_entry.get("custom_fields", {}).get(
                 "journal:journal", {}
             ),
+            "meeting:meeting": json_entry.get("custom_fields", {}).get(
+                "meeting:meeting", {}
+            ),
             "imprint:imprint": json_entry.get("custom_fields", {}).get(
                 "imprint:imprint", {}
             ),
@@ -746,6 +749,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         migration_logger = self.migration_logger
         try:
             record = self._record(entry)
+
             original_dump = record.pop("_original_dump", {})
             clc_sync = record.pop("_clc_sync", {})
 

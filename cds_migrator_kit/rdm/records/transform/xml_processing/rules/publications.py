@@ -54,7 +54,6 @@ def isbn(self, key, value):
                 "relation_type": {"id": "isversionof"},
             }
         ids = self.get(destination, [])
-
         if new_id not in ids:
             ids.append(new_id)
         self[destination] = ids
@@ -170,13 +169,17 @@ def internal_notes(self, key, value):
 @for_each_value
 def organisation(self, key, value):
     contributor = value.get("u")
-    return {"person_or_org": {"type": "organizational", "name": contributor}}
+    return {
+        "person_or_org": {"type": "organizational", "name": contributor},
+        "role": {"id": "hostinginstitution"},
+    }
 
 
 @model.over("related_identifiers", "^962_")
 @for_each_value
 def related_identifiers(self, key, value):
     """Translates related identifiers."""
+
     recid = value.get("b")
     try:
         material = value.get("n", "").lower().strip()
