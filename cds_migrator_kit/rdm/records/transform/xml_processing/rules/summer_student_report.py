@@ -75,7 +75,7 @@ def note(self, key, value):
     return {"note": StringValue(value.get("c")).parse()}
 
 
-@model.over("custom_fields", "^690C_")
+@model.over("department", "^690C_")
 def department(self, key, value):
     """Translates department."""
     values = force_list(value.get("a"))
@@ -87,7 +87,7 @@ def department(self, key, value):
                 departments.append(department)
 
             self["custom_fields"]["cern:departments"] = departments
-    raise IgnoreKey("custom_fields")
+    raise IgnoreKey("department")
 
 
 @model.over("publication_date", "^269__")

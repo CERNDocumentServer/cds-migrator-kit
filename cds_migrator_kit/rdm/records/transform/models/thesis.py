@@ -25,7 +25,7 @@ from .base_publication_record import rdm_base_publication_model
 
 
 class ThesisModel(CdsOverdo):
-    """Translation Index for CERN Summer Student Project Notes."""
+    """Translation Index for Thesis."""
 
     __query__ = (
         "(980__:THESIS OR 980__:Thesis OR 980__:thesis) -980__:DUMMY -980__.c:HIDDEN"

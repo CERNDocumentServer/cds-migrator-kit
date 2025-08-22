@@ -145,7 +145,7 @@ def defense_date(self, key, value):
     raise IgnoreKey("custom_fields")
 
 
-@model.over("custom_fields", "(^502__)")
+@model.over("thesis_custom_fields", "(^502__)")
 def thesis(self, key, value):
     """Translates custom thesis fields."""
     _custom_fields = self.get("custom_fields", {})
@@ -190,7 +190,8 @@ def thesis(self, key, value):
                 )
 
     _custom_fields["thesis:thesis"] = thesis_fields
-    return _custom_fields
+    self["custom_fields"] = _custom_fields
+    raise IgnoreKey("thesis_custom_fields")
 
 
 @model.over("dates", "(^500__)")
@@ -237,6 +238,46 @@ def dates(self, key, value):
 
     # warning, values are assigned implicitly to self
     raise IgnoreKey("dates")
+
+
+@model.over("funding", "(^536__)", override=True)
+def funding(self, key, value):
+    _custom_fields = self.get("custom_fields", {})
+    programme = value.get("a")
+    _access_info = value.get("r", "").strip().lower()
+
+    if _access_info and _access_info not in ["openaccess", "open access"]:
+        raise UnexpectedValue(
+            "Access information has unexpected value", field=key, value=value
+        )
+    # https://cerneu.web.cern.ch/fp7-projects
+    is_fp7_programme = programme and programme.strip().lower() == "fp7"
+
+    if programme and not is_fp7_programme:
+        # if not fp7, then it is cern programme
+        _custom_fields["cern:programmes"] = programme
+        self["custom_fields"] = _custom_fields
+        raise IgnoreKey("funding")
+    if programme and "f" in value or "c" in value:
+        awards = self.get("funding", [])
+        # this one is reliable, I checked the DB
+        try:
+            _funding = value.get("f", "").strip().lower()
+            _grant_number = value.get("c", "").strip().lower()
+        except AttributeError as e:
+            raise UnexpectedValue(
+                "Multiple grant numbers must be in separate tag", field=key, value=value
+            )
+        award = {
+            "award": {"id": f"00k4n6c32::{_grant_number}"},
+            "funder": {"id": "00k4n6c32"},
+        }
+        if award not in awards:
+            awards.append(award)
+        self["funding"] = awards
+    else:
+        raise UnexpectedValue("Unexpected grant value", field=key, value=value)
+    raise IgnoreKey("funding")
 
 
 @model.over("affiliations", "^901__")

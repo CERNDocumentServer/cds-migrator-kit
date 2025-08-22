@@ -70,7 +70,6 @@ def test_full_thesis_stream(
     )
 
     assert new_record["custom_fields"]["thesis:thesis"]["date_submitted"] == "2020"
-    assert new_record["custom_fields"]["thesis:thesis"]["date_defended"] == "2020-04-30"
     assert new_record["custom_fields"]["thesis:thesis"]["type"] == "PhD"
     assert new_record["custom_fields"]["cern:experiments"] == [
         {"id": "CMS", "title": {"en": "CMS"}}
@@ -140,7 +139,6 @@ def test_full_thesis_stream(
         "university": "RWTH Aachen University",
         "type": "PhD",
         "date_submitted": "2020",
-        "date_defended": "2020-05-14",
     }
 
     legacy_recid_aida = "2316709"

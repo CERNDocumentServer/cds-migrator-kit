@@ -65,12 +65,13 @@ def test_restricted_migration(
         stream_definitions=[RecordStreamDefinition],
         config_filepath=Path(stream_config).absolute(),
         dry_run=False,
-        collection="sspn",
-        restricted=True,
+        collection="sspn_restr",
     )
     runner.run()
 
-    with open("tests/cds-rdm/tmp/logs/sspn/rdm_records_state.json", "r") as state_logs:
+    with open(
+        "tests/cds-rdm/tmp/logs/sspn_restr/rdm_records_state.json", "r"
+    ) as state_logs:
         records = json.load(state_logs)
 
     for record in records:

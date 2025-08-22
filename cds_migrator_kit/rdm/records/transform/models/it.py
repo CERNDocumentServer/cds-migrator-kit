@@ -9,14 +9,23 @@
 from cds_migrator_kit.rdm.records.transform.models.base_publication_record import (
     rdm_base_publication_model,
 )
-from cds_migrator_kit.rdm.records.transform.models.thesis import thesis_model
 from cds_migrator_kit.transform.overdo import CdsOverdo
 
 
 class ITModel(CdsOverdo):
     """Translation model for IT."""
 
-    __query__ = '(980__:PERI 65017.a:"Computing and Computers") OR 710__.5:IT OR 710__.5:DD OR 710__.5:CN OR 710__.5:AS OR 710__.5:STS OR 980__:INTNOTEITPUBL OR 980__:INTNOTEASPUBL OR (980__:INTNOTEMISPUBL AND 690C_:INTNOTE) OR 980__:PUBLARDA OR 690C_:CERNITBROCHURE OR 980__:ITCERNTALK OR 980__:ITUDSPUBSOURCEARCHIVE OR 980__b:INDICO_IT-DEP -980__:CERNITArchive -980__:INTNOTECMSPUBL -980__:BOOK -690C_:YELLOWREPORT -690C_:YELLOW REPORT'
+    __query__ = """(980__:PERI AND 65017.a:"Computing and Computers")
+                    OR 710__.5:IT OR 710__.5:DD OR 710__.5:CN OR 710__.5:AS OR 710__.5:STS
+                    OR 980__:INTNOTEITPUBL OR 980__:INTNOTEASPUBL
+                    OR (980__:INTNOTEMISPUBL AND 690C_:INTNOTE)
+                    OR 980__:PUBLARDA
+                    OR 690C_:CERNITBROCHURE OR 980__:ITCERNTALK
+                    OR 980__:ITUDSPUBSOURCEARCHIVE
+                    OR 980__.b:INDICO_IT-DEP
+                    -980__:CERNITArchive -980__:INTNOTECMSPUBL
+                    -980__:BOOK -690C_:YELLOWREPORT
+                    -690C_:"YELLOW REPORT" -980__:THESIS"""
 
     __ignore_keys__ = {
         "0248_a",
