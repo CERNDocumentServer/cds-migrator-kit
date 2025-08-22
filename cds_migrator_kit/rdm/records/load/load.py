@@ -188,8 +188,11 @@ class CDSRecordServiceLoad(Load):
 
         # ----Parse file status metadata----#
         if metadata:
-            if metadata == "SSO":
-                groups.add("cern-personnel")
+            group_mappings = current_app.config.get("CDS_ACCESS_GROUP_MAPPINGS", {})
+            if metadata in group_mappings:
+                groups.add(group_mappings[metadata])
+            elif metadata == "restricted":
+                pass 
             else:
                 if not any(
                     kw in metadata for kw in ("firerole: allow group", "allow email")
