@@ -70,3 +70,5 @@ COLLECTION_MAPPING = {
     "Restricted_CMS_Talks": "Lectures::Restricted CMS Talks",
     "VIDEOARC": "",  # omit
 }
+
+CAS_LECTURES_ACCESS = []
