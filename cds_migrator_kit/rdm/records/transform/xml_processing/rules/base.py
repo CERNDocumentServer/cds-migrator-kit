@@ -307,6 +307,7 @@ def report_number(self, key, value):
             raise IgnoreKey("identifiers")
         else:
             raise UnexpectedValue("Missing ID value", field=key, value=value)
+
     new_id = {"scheme": scheme, "identifier": identifier}
     if new_id in existing_ids:
         raise IgnoreKey("identifiers")
@@ -345,6 +346,7 @@ def identifiers(self, key, value):
     if id_value.startswith("oai:inspirehep.net"):
         raise IgnoreKey("identifiers")
     if scheme.lower() == "cern annual report":
+
         additional_descriptions = self.get("additional_descriptions", [])
         new_desc = {
             "description": f"{scheme} {id_value}",
@@ -369,8 +371,10 @@ def identifiers(self, key, value):
         scheme = "lcds"
     if scheme.lower() == "inspire":
         validate_inspire_identifier(id_value, key)
-    if id_value:
-        return {"scheme": scheme.lower(), "identifier": id_value}
+    rel_id = {"scheme": scheme.lower(), "identifier": id_value}
+    if id_value and rel_id not in self.get("identifiers", []):
+        return rel_id
+    raise IgnoreKey("identifiers")
 
 
 @model.over("_pids", "^0247_", override=True)
@@ -381,7 +385,6 @@ def _pids(self, key, value):
     scheme = value.get("2", "").lower()
     qualifier = value.get("q", "").lower().strip()
     identifier = value.get("a")
-
     if not scheme:
         scheme = value.get("9", "").lower()
     if not scheme:
@@ -591,9 +594,6 @@ def urls(self, key, value):
     # sub_y = clean_val("y", value, str, default="")
     # Value of the url
     sub_u = clean_val("u", value, str, req=True)
-    if StringValue(value.get("x")).parse() == "icon":
-        # ignore icon urls
-        raise IgnoreKey("identifiers")
     if not sub_u:
         raise UnexpectedValue(
             "Unrecognised string format or link missing.",
@@ -925,14 +925,12 @@ def access_grants(self, key, value):
         return {str(subject_identifier): permission_type}
     raise IgnoreKey("access_grants")
 
+
 # Helper function to validate INSPIRE identifiers
 def validate_inspire_identifier(id_value, key):
     """Validate that id_value is a proper INSPIRE identifier (digits only)."""
     inspire_regexp = re.compile(r"\d+$", flags=re.I)
     if not inspire_regexp.match(id_value):
         raise UnexpectedValue(
-            "Invalid INSPIRE identifier",
-            field=key,
-            subfield="a",
-            stage="transform"
+            "Invalid INSPIRE identifier", field=key, subfield="a", stage="transform"
         )
