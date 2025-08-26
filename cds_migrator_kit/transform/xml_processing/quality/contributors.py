@@ -154,8 +154,12 @@ def extract_json_contributor_ids(info, orcid_subfield="k"):
     for author_id in author_ids:
         match = regex.match(author_id)
         if match:
-            identifier = match.group(3)
-            ids.append({"identifier": identifier, "scheme": SOURCES[match.group(1)]})
+            identifier = {
+                "identifier": match.group(3),
+                "scheme": SOURCES[match.group(1)],
+            }
+            if identifier not in ids:
+                ids.append(identifier)
 
     author_orcid = info.get(orcid_subfield)
     if author_orcid:

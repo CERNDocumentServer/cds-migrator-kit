@@ -450,7 +450,4 @@ CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(
 CDS_MIGRATOR_KIT_ENV = "local"
 
 
-CDS_ACCESS_GROUP_MAPPINGS = {  
-    "SSO": "cern-personnel",
-    "ITDepRestrFile": "it-dep"
-}
+CDS_ACCESS_GROUP_MAPPINGS = {"SSO": "cern-personnel", "ITDepRestrFile": "it-dep"}
