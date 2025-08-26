@@ -192,7 +192,7 @@ class CDSRecordServiceLoad(Load):
             if metadata in group_mappings:
                 groups.add(group_mappings[metadata])
             elif metadata == "restricted":
-                pass 
+                pass
             else:
                 if not any(
                     kw in metadata for kw in ("firerole: allow group", "allow email")
