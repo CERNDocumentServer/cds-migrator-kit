@@ -33,17 +33,33 @@ class ITModel(CdsOverdo):
         "0248_a",
         "0248_p",
         "0248_q",
-        "037__c",  # arxiv subject
-        "852__c",  # todo holdings
-        "852__h",
+        "037__c",  # arXiv subject https://cds.cern.ch/record/1562050/export/hm
+        "100__m",  # Author's email
         "300__a",
-        "500__a",  # todo
-        "340__a",  # ignore, spreadsheet
+        "300__b",  # Physical medium description
+        "260__b",  # CERN
+        "340__a",  # Physical medium
+        "500__9",  # arXiv
+        "540__3",  # Material of copyright
+        "541__e",  # Original source poster https://cds.cern.ch/record/1034295/export/hm
+        "542__3",  # Copyright materials
+        "595__i",  # INSPEC number
+        "6531_9",  # Keyword provenance
+        "700__m",  # Author's email
+        "773__u",  # Duplicate meeting url
+        "710__b",  # Group name, TBD https://cds.cern.ch/record/2258345/export/hm?ln=en
+        "720__a",  # Author's duplicate
+        "773__a",  # Duplicate DOI
+        "852__a",  # Physical Location https://cds.cern.ch/record/307939/export/hm?ln=en
+        "852__c",  # Physical Location https://cds.cern.ch/record/134892/export/hm?ln=en
+        "852__h",  # Physical Location https://cds.cern.ch/record/134892/export/hm?ln=en
         "8564_8",  # Files system field
         "8564_s",  # Files system field
-        "8564_x",  # Files system field
+        "8564_x",  # Files system field - Icon
+        "8564_q",  # Files system field - Link
         "8564_y",  # Files / URLS label
         "916__y",  # year
+        "923__r",  # Author's email
         "937__c",  # last modified
         "937__s",  # last modified
         "960__a",  # collection id? usually value 14, to confirm if we ignore
@@ -80,7 +96,7 @@ class ITModel(CdsOverdo):
     _default_fields = {
         # "resource_type": {"id": "publication-report"},
         "custom_fields": {},
-        # "creators": [{"person_or_org":  {"type": "organizational", "name": "CERN"}}]
+        "creators": [{"person_or_org": {"type": "organizational", "name": "CERN"}}],
     }
 
 
