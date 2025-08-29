@@ -147,6 +147,7 @@ records:
     data_dir: cds_migrator_kit/rdm/data/it_dep/it_meetings
     tmp_dir: cds_migrator_kit/rdm/tmp/it_dep/it_meetings
     log_dir: cds_migrator_kit/rdm/log/it_dep/it_meetings
+    restricted: "True"
     extract:
       dirpath: cds_migrator_kit/rdm/data/it_dep/it_meetings/dump/
     transform:
