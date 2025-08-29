@@ -367,6 +367,11 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {
             "validator": schemes.is_legacy_cds,
             "datacite": "CDS",
         },
+        "indico": {
+            "label": _("Indico"),
+            "validator": schemes.is_indico,
+            "datacite": "INDICO",
+        },
     },
 }
 

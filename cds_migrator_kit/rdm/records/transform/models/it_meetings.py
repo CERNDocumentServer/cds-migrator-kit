@@ -5,23 +5,25 @@
 # CDS-RDM is free software; you can redistribute it and/or modify it under
 # the terms of the MIT License; see LICENSE file for more details.
 
-"""CDS-RDM Meetings report model."""
-from cds_migrator_kit.rdm.records.transform.models.it import (
-    rdm_base_publication_model,
+"""CDS-RDM IT Meetings report model."""
+from cds_migrator_kit.rdm.records.transform.models.base_record import (
+    rdm_base_record_model,
 )
-from cds_migrator_kit.rdm.records.transform.models.thesis import thesis_model
 from cds_migrator_kit.transform.overdo import CdsOverdo
 
 
 class ITMeetingsModel(CdsOverdo):
     """Translation model for IT."""
 
-    __query__ = '(980__.a:EVENTSFROMINDICO AND 980__.b:INDICO_IT-DEP) OR (980__.a:CONTRIBUTIONSFROMINDICO AND 980__.b:INDICO_IT-DEP)'
+    __query__ = "(980__.a:EVENTSFROMINDICO AND 980__.b:INDICO_IT-DEP) OR (980__.a:CONTRIBUTIONSFROMINDICO AND 980__.b:INDICO_IT-DEP)"
 
     __ignore_keys__ = {
         "0248_a",
         "0248_p",
         "0248_q",
+        "111__z",  # Meeting date duplicate
+        "111__d",  # Meeting date duplicate
+        "270__m",  # Author email
         "300__a",
         "8564_8",  # Files system field
         "8564_s",  # Files system field
@@ -35,6 +37,7 @@ class ITMeetingsModel(CdsOverdo):
         "961__h",  # CDS modification tag
         "961__l",  # CDS modification tag
         "961__x",  # CDS modification tag
+        "962__n",  # Duplicate Indico identifier
         "981__a",  # duplicated record marker
         "999C50",  # https://cds.cern.ch/record/2284609/export/hm?ln=en CMS contributions
         "999C52",  # https://cds.cern.ch/record/2640188/export/hm?ln=en
@@ -63,12 +66,12 @@ class ITMeetingsModel(CdsOverdo):
 
     _default_fields = {
         # "resource_type": {"id": "publication-report"},
-        "custom_fields": {},
-        # "creators": [{"person_or_org":  {"type": "organizational", "name": "CERN"}}]
+        "custom_fields": {"cern:departments": ["IT"]},
+        "creators": [{"person_or_org": {"type": "organizational", "name": "CERN"}}],
     }
 
 
 it_meetings_model = ITMeetingsModel(
-    bases=(rdm_base_publication_model,),
+    bases=(rdm_base_record_model,),
     entry_point_group="cds_migrator_kit.migrator.rules.it_meetings",
 )
