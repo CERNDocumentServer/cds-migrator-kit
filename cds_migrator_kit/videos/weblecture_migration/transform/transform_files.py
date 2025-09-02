@@ -320,6 +320,11 @@ class TransformFiles:
             self._get_highest_and_subformats_from_datajson(data)
         )
 
+        # Extract frame list in data.v2.json and sort by time
+        frames_list = sorted(
+            data.get("frameList", []), key=lambda frame: frame.get("time", 0)
+        )
+
         # Use the composite, composite exists
         if self.use_composite:
             # Find and set the all composite files in the folder: (Master, subformats, frames)
@@ -347,11 +352,6 @@ class TransformFiles:
             )
 
             # ~~~~FRAMES~~~~
-            # Extract frame list and sort by time
-            frames_list = sorted(
-                data.get("frameList", []), key=lambda frame: frame.get("time", 0)
-            )
-
             # Check missing or extra frames
             if self._frames_exists(frames_list):
                 self._add_files_to_file_json(
@@ -361,6 +361,10 @@ class TransformFiles:
                         frame["url"].strip("/") for frame in frames_list
                     ],  # Get the paths
                 )
+
+        # ~~~~Chapters~~~~
+        chapters = [frame["time"] for frame in frames_list if "time" in frame]
+        self.transformed_files_json["chapters"] = chapters
 
         # ~~~~SUBTITLES~~~~
         # Get subtitles from data.v2.json
@@ -393,6 +397,7 @@ class TransformFiles:
             "additional_files": [],
             "frames": [],
             "subformats": [],
+            "chapters": [],
         }
 
         # Get master path from the record

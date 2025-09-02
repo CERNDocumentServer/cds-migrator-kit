@@ -13,6 +13,7 @@ import os
 import shutil
 import tempfile
 from pathlib import Path
+from datetime import timedelta
 
 from cds.modules.deposit.api import Project, Video, deposit_video_resolver
 from cds.modules.deposit.ext import _create_tags
@@ -146,12 +147,21 @@ def create_project(project_metadata, submitter):
         raise ManualImportRequired(f"Project creation failed! {e}", stage="load")
 
 
-def create_video(project_deposit, video_metadata, video_file_path, submitter):
+def create_video(project_deposit, video_metadata, media_files, submitter):
     """
     Create a video in project with metadata and master video file.
 
     Returns video_deposit and master_object.
-    """
+    """    
+    video_file_path = media_files["master_video"]
+    chapters = media_files["chapters"]
+    if chapters:
+        chapters_txt = format_chapters(chapters)
+        video_metadata["description"] = (
+            video_metadata["description"]
+            + ".<br />\n<br />\n"
+            + chapters_txt
+        )
     try:
         # Create video_deposit
         video_metadata["_project_id"] = project_deposit["_deposit"]["id"]
@@ -461,3 +471,16 @@ def copy_additional_files(bucket_id, additional_files):
         # Add tags to the additional file
         ObjectVersionTag.create_or_update(obj, "context_type", "additional_file")
         _create_tags(obj)
+
+
+def format_chapters(chapters):
+    lines = []
+    for i, chapter in enumerate(chapters, start=1):
+        seconds = int(chapter)
+        # Convert seconds to hh:mm:ss
+        t = str(timedelta(seconds=seconds))
+        if len(t.split(":")) == 2:  # timedelta omits hours if < 1h
+            t = "00:" + t
+        lines.append(f"{t} Slide {i}")
+    # Join with <br />\n
+    return "<br />\n".join(lines)

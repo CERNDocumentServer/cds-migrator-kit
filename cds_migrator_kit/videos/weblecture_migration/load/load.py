@@ -163,7 +163,7 @@ class CDSVideosLoad(Load):
 
             # Create video
             video_deposit, master_object = create_video(
-                project_deposit, metadata, media_files["master_video"], submitter
+                project_deposit, metadata, media_files, submitter
             )
 
             # Get the deposit_id and bucket_id
