@@ -367,6 +367,11 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {
             "validator": schemes.is_legacy_cds,
             "datacite": "CDS",
         },
+        "indico": {
+            "label": _("Indico"),
+            "validator": schemes.is_indico,
+            "datacite": "INDICO",
+        },
     },
 }
 
@@ -443,3 +448,6 @@ CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(
 """Config for record statistics migration."""
 
 CDS_MIGRATOR_KIT_ENV = "local"
+
+
+CDS_ACCESS_GROUP_MAPPINGS = {"SSO": "cern-personnel", "ITDepRestrFile": "it-dep"}

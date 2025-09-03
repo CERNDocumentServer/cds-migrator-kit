@@ -7,7 +7,7 @@ from edtf import EDTFParseException, parse_edtf, text_to_edtf
 from idutils.normalizers import normalize_isbn, normalize_issn
 from isbnlib import NotValidISBNError
 
-from cds_migrator_kit.errors import UnexpectedValue, ManualImportRequired
+from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     filter_list_values,
     for_each_value,
@@ -226,8 +226,8 @@ def organisation(self, key, value):
         "person_or_org": {
             "type": "organizational",
             "name": contributor,
-            "role": {"id": "hostinginstitution"},
-        }
+        },
+        "role": {"id": "hostinginstitution"},
     }
 
 
