@@ -24,6 +24,8 @@ class ITModel(CdsOverdo):
                     OR 980__:ITUDSPUBSOURCEARCHIVE
                     OR 980__.b:INDICO_IT-DEP
                     -980__:CERNITArchive -980__:INTNOTECMSPUBL
+                    -980__.a:EVENTSFROMINDICO 
+                    -980__.a:CONTRIBUTIONSFROMINDICO
                     -980__:BOOK -690C_:YELLOWREPORT
                     -690C_:"YELLOW REPORT" -980__:THESIS"""
 
