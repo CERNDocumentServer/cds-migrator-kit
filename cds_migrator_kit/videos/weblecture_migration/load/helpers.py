@@ -217,7 +217,7 @@ def publish_video_record(deposit_id):
         # Fetch record
         video_deposit = deposit_video_resolver(str(deposit_id))
         # Publish record
-        video_published = video_deposit.publish()
+        video_published = video_deposit.publish(extract_chapters=False)
         video_published.commit()
 
         # Send signal to trigger after_publish actions
