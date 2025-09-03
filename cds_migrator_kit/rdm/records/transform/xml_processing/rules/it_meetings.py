@@ -46,7 +46,7 @@ def resource_type(self, key, value):
 @for_each_value
 def collection(self, key, value):
     """Translates collection field."""
-    collection = value.get("a").strip().lower()
+    collection = value.get("a", "").strip().lower()
     if collection not in ["conference", "announcement"]:
         raise UnexpectedValue(subfield="a", field=key, value=value)
     subjects = self.get("subjects", [])
@@ -62,7 +62,7 @@ def collection(self, key, value):
 @model.over("related_identifiers", "^962__", override=True)
 @for_each_value
 def related_identifiers(self, key, value):
-    """Translate 962 fields into related identifiers (LCDS/Indico)."""
+    """Translate 962 fields into related identifiers (LCDS)."""
     recid = value.get("b")
 
     self.setdefault("related_identifiers", []).append(
@@ -192,7 +192,7 @@ def indico_information(self, key, value):
 
     if value.get("u", ""):
         identifier = {
-            "identifier": f"https://indico.cern.ch/event/{indico_id}",
+            "identifier": indico_id,
             "scheme": "indico",
         }
         meeting_fields.setdefault("identifiers", []).append(identifier)
@@ -210,8 +210,6 @@ def contact_person(self, key, value):
     """Translates contact person."""
     contributors = self.get("contributors", [])
     name = StringValue(value.get("p")).parse()
-    if not name:
-        name = "Corinne Pralavorio"  # for missing name in a few records as all correspond to this person
     contributor = {
         "person_or_org": {
             "type": "personal",
@@ -225,7 +223,7 @@ def contact_person(self, key, value):
     raise IgnoreKey("access_grants")
 
 
-@model.over("related_workds", "^035__", override=True)
+@model.over("related_works", "^035__", override=True)
 @for_each_value
 def identifiers(self, key, value):
     """Translates identifiers into related_identifiers with Indico support."""
@@ -258,7 +256,7 @@ def identifiers(self, key, value):
     )
     self["related_identifiers"] = related_works
 
-    raise IgnoreKey("related_workds")
+    raise IgnoreKey("related_works")
 
 
 # Load once so we don’t reload pickle each call
