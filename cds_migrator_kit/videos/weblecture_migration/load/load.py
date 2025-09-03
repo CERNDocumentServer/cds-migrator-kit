@@ -16,6 +16,7 @@ from cds.modules.flows.files import init_object_version
 from cds.modules.legacy.minters import legacy_recid_minter
 from cds.modules.legacy.models import CDSMigrationLegacyRecord
 from cds.modules.records.providers import CDSReportNumberProvider
+from cds.modules.flows.tasks import ExtractChapterFramesTask
 from invenio_db import db
 from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_pidstore.models import PersistentIdentifier
@@ -206,6 +207,9 @@ class CDSVideosLoad(Load):
 
         # Publish video
         published_video = publish_video_record(deposit_id=video_deposit_id)
+
+        # Run ExtractChapterFramesTask
+        ExtractChapterFramesTask().s(**payload).apply_async()
 
         # Run after publish fixes
         self._after_publish(published_video, entry)
