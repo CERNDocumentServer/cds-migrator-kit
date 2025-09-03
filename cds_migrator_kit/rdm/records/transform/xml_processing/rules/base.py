@@ -41,6 +41,9 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import (
     clean_str,
     clean_val,
 )
+from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.identifiers import (
+    get_new_indico_id,
+)
 
 cli_logger = logging.getLogger("migrator")
 
@@ -363,6 +366,9 @@ def identifiers(self, key, value):
     rel_id = {"scheme": scheme.lower(), "identifier": id_value}
     if scheme.lower() == "admbul":
         rel_id = {"scheme": "other", "identifier": f"{scheme}_{id_value}"}
+    if scheme.lower() == "agendamaker":
+        indico_id = get_new_indico_id(id_value)
+        rel_id = {"scheme": "indico", "identifier": str(indico_id)}
     if id_value and rel_id not in self.get("identifiers", []):
         return rel_id
     raise IgnoreKey("identifiers")

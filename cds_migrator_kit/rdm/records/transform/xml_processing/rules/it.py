@@ -13,8 +13,13 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValu
 
 from ...config import IGNORED_THESIS_COLLECTIONS
 from ...models.it import it_model as model
+from .base import note as base_internal_notes
+from .base import related_identifiers as base_related_identifiers
 from .base import subjects as base_subjects
-from .base import urls
+from .base import (
+    urls,
+)
+from .base import yellow_reports as base_yellow_reports
 from .publications import journal as base_journal
 from .publications import related_identifiers as base_related_identifiers
 
@@ -23,6 +28,9 @@ from .publications import related_identifiers as base_related_identifiers
 def resource_type(self, key, value):
     """Translates resource_type."""
     value_a = value.get("a")
+    if value_a and value_a.lower() in ["publarda"]:
+        raise IgnoreKey("resource_type")
+
     value_b = value.get("b")
 
     priority = {
@@ -61,8 +69,11 @@ def resource_type(self, key, value):
         "preprint": {"id": "publication-preprint"},
         "conferencepaper": {"id": "publication-conferencepaper"},
         "article": {"id": "publication"},
+        "note": {"id": "publication-technicalnote"},
+        "brochure": {"id": "other"},
         "itcerntalk": {"id": "presentation"},
         "intnoteitpubl": {"id": "publication-technicalnote"},
+        "intnotetspubl": {"id": "publication-technicalnote"},
         "bookchapter": {"id": "publication-section"},
         "cnlissue": {"id": "publication-article"},
         "report": {"id": "publication-report"},
@@ -141,36 +152,13 @@ def collection(self, key, value):
             }
         )
         self["subjects"] = subjects
+    if collection == "publarda":
+        _custom_fields = self.get("custom_fields", {})
+        projects = _custom_fields.get("cern:projects", [])
+        projects.append("ARDA")
+        _custom_fields["cern:projects"] = list(set(projects))
+        self["custom_fields"] = _custom_fields
     raise IgnoreKey("collection")
-
-
-@model.over("related_works", "^7870_", override=True)
-@for_each_value
-def related_works(self, key, value):
-    """Handles related identifiers from 7870_ with deduplication."""
-
-    related_identifiers = self.get("related_identifiers", [])
-    description = value.get("i")
-
-    def add_identifier(identifier_value, scheme):
-        if not identifier_value:
-            return
-        new_entry = {
-            "identifier": identifier_value,
-            "scheme": scheme,
-            "relation_type": {"id": "references"},
-        }
-        if new_entry not in related_identifiers:
-            related_identifiers.append(new_entry)
-
-    # Add 'w' field as LCDS
-    add_identifier(value.get("w"), "lcds")
-
-    # Add 'r' field as CDS reference
-    add_identifier(value.get("r"), "cds_ref")
-
-    self["related_identifiers"] = related_identifiers
-    raise IgnoreKey("related_works")
 
 
 @model.over("contributors", "^110__")
@@ -197,25 +185,18 @@ def corporate_author(self, key, value):
 @for_each_value
 def meeting(self, key, value):
     """Translates additional description."""
-    _custom_fields = self.get("custom_fields", {})
+    _custom_fields = self.setdefault("custom_fields", {})
     meeting_fields = _custom_fields.get("meeting:meeting", {})
     if value.get("t"):
         meeting_fields["place"] = StringValue(value.get("t", "")).parse()
         _custom_fields["meeting:meeting"] = meeting_fields
-    if value.get("w"):
-        cnum = value.get("w", "")
-        cnum_regexp = re.compile(r"(?:\d+$|[A-Z]\d{2}-\d{2}-\d{2}\.\d+)", flags=re.I)
-        if cnum_regexp.match(cnum):
-            identifier = {
-                "identifier": StringValue(value.get("w", "")).parse(),
-                "scheme": "url",
-            }
-            meeting_fields.setdefault("identifiers", []).append(identifier)
+    _custom_fields["meeting:meeting"] = meeting_fields
 
     journal_info = (base_journal(self, key, value)).get("journal:journal", {})
     existing_journal = _custom_fields.get("journal:journal", {})
     existing_journal.update(journal_info)
     _custom_fields["journal:journal"] = existing_journal
+    self["custom_fields"] = _custom_fields
 
     raise IgnoreKey("meeting")
 
@@ -253,7 +234,9 @@ def notes(self, key, value):
 
 
 @model.over(
-    "subjects", "(^6931_)|(^650[12_][7_])|(^653[12_]_)|(^695__)|(^694__)", override=True
+    "subjects",
+    "(^6931_)|(^650[12_][7_])|(^653[12_]_)|(^695__)|(^694__)|(^69531_)",
+    override=True,
 )
 @require(["a"])
 @for_each_value
@@ -326,51 +309,106 @@ def supervisor(self, key, value):
 def imprint_dates(self, key, value):
     """Translates imprint - WARNING - also publisher and publication_date."""
 
-    def format_date(date_str, date_obj):
-        parts = date_str.strip().split()
-        if len(parts) == 1:  # Only year
-            return date_obj.strftime("%Y")
-        elif len(parts) == 2:  # Month + year
-            return date_obj.strftime("%Y-%m")
-        else:  # Full date
-            return date_obj.strftime("%Y-%m-%d")
+    def normalize(date_str):
+        date_str = date_str.strip()
+        if re.fullmatch(r"\d{4}", date_str):
+            return date_str
+        if re.fullmatch(r"\d{4}[-/]\d{2}", date_str):
+            return parse(date_str).strftime("%Y-%m")
+        return parse(date_str).strftime("%Y-%m-%d")
 
-    _custom_fields = self.setdefault("custom_fields", {})
-    imprint = _custom_fields.setdefault("imprint:imprint", {})
+    _cf = self.setdefault("custom_fields", {})
+    imprint = _cf.setdefault("imprint:imprint", {})
 
-    publication_date_str = value.get("c")
-    _publisher = value.get("b")
-    place = value.get("a")
+    if value.get("b") and not self.get("publisher"):
+        self["publisher"] = value["b"]
+    if value.get("a"):
+        imprint["place"] = value["a"]
+    _cf["imprint:imprint"] = imprint
 
-    if _publisher and not self.get("publisher"):
-        self["publisher"] = _publisher
-    if place:
-        imprint["place"] = place
+    pub = value.get("c")
+    if not pub:
+        raise IgnoreKey("dates")
 
-    _custom_fields["imprint:imprint"] = imprint
-    self["custom_fields"] = _custom_fields
-
-    if publication_date_str:
-        try:
-            if "?" in publication_date_str:
-                # Strip '?' and record as indeterminate
-                cleaned_date = publication_date_str.replace("?", "").strip()
-                date_obj = parse(cleaned_date)
-                date = {
+    try:
+        # Indeterminate
+        if "?" in pub:
+            cleaned = pub.replace("?", "").strip()
+            date_obj = parse(cleaned)
+            self.setdefault("dates", []).append(
+                {
                     "description": "The publication date is indeterminate.",
-                    "date": format_date(cleaned_date, date_obj),
+                    "date": normalize(cleaned),
                     "type": {"id": "other"},
                 }
-                self.setdefault("dates", []).append(date)
-                self["publication_date"] = str(date_obj.year)
-            else:
-                date_obj = parse(publication_date_str)
-                self["publication_date"] = date_obj.strftime("%Y-%m-%d")
-        except (ParserError, TypeError) as e:
-            raise UnexpectedValue(
-                field=key,
-                value=value,
-                message=f"Can't parse provided publication date. Value: {publication_date_str}",
             )
+            self["publication_date"] = str(date_obj.year)
+            raise IgnoreKey("dates")
+
+        # Interval (comma or slash)
+        sep = "/" if "/" in pub else ("," if "," in pub else None)
+        if sep:
+            parts = [p.strip() for p in pub.split(sep) if p.strip()]
+            if len(parts) == 2:
+                start, end = parts
+                start_obj = parse(start)
+                interval = f"{normalize(start)}/{normalize(end)}"
+                self.setdefault("dates", []).append(
+                    {"date": interval, "type": {"id": "other"}}
+                )
+                self["publication_date"] = str(start_obj.year)
+                raise IgnoreKey("dates")
+
+        # Simple date
+        self["publication_date"] = normalize(pub)
+
+    except (ParserError, TypeError):
+        raise UnexpectedValue(
+            field=key,
+            value=value,
+            message=f"Can't parse provided publication date. Value: {pub}",
+        )
 
     raise IgnoreKey("dates")
+
+
+@model.over("conference_title_and_note", "^595__", override=True)
+@for_each_value
+def conference_title(self, key, value):
+    """Translates notes and conference meeting."""
+
+    # --- MEETING FIELD ---
+    conference_title = StringValue(value.get("d")).parse()
+    if conference_title:
+        _custom_fields = self.get("custom_fields", {})
+        meeting = _custom_fields.get("meeting:meeting", {})
+        meeting["title"] = conference_title
+        _custom_fields["meeting:meeting"] = meeting
+
+        self["custom_fields"] = _custom_fields
+
+    # --- NOTES FIELD ---
+    base_internal_notes(self, key, value)
+    raise IgnoreKey("conference_title_and_note")
+
+
+@model.over("additional_descriptions", "(^590__)")
+@for_each_value
+def translated_description(self, key, value):
+    description_text = value.get("a", "")
+    description_text_b = value.get("b", "")
+    description_text = description_text.replace("<!--HTML-->", "").strip()
+    description_text_b = description_text_b.replace("<!--HTML-->", "").strip()
+
+    if len(description_text) > 3 or len(description_text_b) > 3:
+        description_text = f"<h2>{description_text}</h2><p>{description_text_b}</p>"
+    if description_text:
+        _additional_description = {
+            "description": description_text,
+            "type": {
+                "id": "other",
+            },
+            "lang": {"id": "fra"},
+        }
+        return _additional_description
+    raise IgnoreKey("additional_descriptions")
