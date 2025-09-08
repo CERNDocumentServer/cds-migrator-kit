@@ -164,7 +164,33 @@ class CDSRecordServiceLoad(Load):
 
         parent.commit()
 
-    def _load_parent_access_grants(self, draft, access_dict, entry):
+    def _load_record_access(self, draft, access_dict):
+        record = draft._record
+
+        record.access = access_dict["access_obj"]
+        record.commit()
+
+    def _load_communities(self, draft, entry):
+        parent = draft._record.parent
+        communities = entry["parent"]["json"]["communities"]["ids"]
+        for community in communities:
+            parent.communities.add(community)
+        parent.communities.default = entry["parent"]["json"]["communities"]["default"]
+        parent.commit()
+
+    def _after_publish_update_dois(self, identity, record, entry):
+        """Update migrated DOIs post publish."""
+        migrated_pids = entry["record"]["json"]["pids"]
+        for pid_type, identifier in migrated_pids.items():
+            if pid_type == "doi":
+                # If a DOI was already minted from legacy then on publish the datacite
+                # will return a warning that "This DOI has already been taken"
+                # In that case, we edit and republish to force an update of the doi with
+                # the new published metadata as in the new system we have more information available
+                _draft = current_rdm_records_service.edit(identity, record["id"])
+                current_rdm_records_service.publish(identity, _draft["id"])
+
+    def _after_publish_load_parent_access_grants(self, draft, access_dict, entry):
         """Load access grants from metadata and record grants efficiently."""
 
         def _normalize_group_name(subject):
@@ -252,7 +278,7 @@ class CDSRecordServiceLoad(Load):
                 stage="load",
                 recid=entry["record"]["recid"],
                 value=list(missing_emails),
-                priority="critical",
+                priority="warning",
             )
 
         def _create_grant(subject_type, subject_id, permission):
@@ -313,32 +339,6 @@ class CDSRecordServiceLoad(Load):
 
         parent.commit()
 
-    def _load_record_access(self, draft, access_dict):
-        record = draft._record
-
-        record.access = access_dict["access_obj"]
-        record.commit()
-
-    def _load_communities(self, draft, entry):
-        parent = draft._record.parent
-        communities = entry["parent"]["json"]["communities"]["ids"]
-        for community in communities:
-            parent.communities.add(community)
-        parent.communities.default = entry["parent"]["json"]["communities"]["default"]
-        parent.commit()
-
-    def _after_publish_update_dois(self, identity, record, entry):
-        """Update migrated DOIs post publish."""
-        migrated_pids = entry["record"]["json"]["pids"]
-        for pid_type, identifier in migrated_pids.items():
-            if pid_type == "doi":
-                # If a DOI was already minted from legacy then on publish the datacite
-                # will return a warning that "This DOI has already been taken"
-                # In that case, we edit and republish to force an update of the doi with
-                # the new published metadata as in the new system we have more information available
-                _draft = current_rdm_records_service.edit(identity, record["id"])
-                current_rdm_records_service.publish(identity, _draft["id"])
-
     def _after_publish_update_created(self, record, entry, version):
         """Update created timestamp post publish.
 
@@ -393,6 +393,8 @@ class CDSRecordServiceLoad(Load):
         self._after_publish_update_created(published_record, entry, version)
         self._after_publish_mint_recid(published_record, entry, version)
         self._after_publish_update_files_created(published_record, entry, version)
+        access = entry["versions"][version]["access"]
+        self._after_publish_load_parent_access_grants(published_record, access, entry)
         db.session.commit()
 
     def _pre_publish(self, identity, entry, version, draft):
@@ -425,7 +427,6 @@ class CDSRecordServiceLoad(Load):
                 )
             # TODO we can use unit of work when it is moved to invenio-db module
             self._load_parent_access(draft, entry)
-            self._load_parent_access_grants(draft, access, entry)
             self._load_communities(draft, entry)
             db.session.commit()
         else:

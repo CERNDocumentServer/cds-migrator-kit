@@ -169,14 +169,16 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 key = "DOI"
             if key.upper() == "DOI":
                 doi_identifier = deepcopy(identifier)
-                if identifier["identifier"].startswith(DATACITE_PREFIX) or identifier[
-                    "identifier"
-                ].startswith("10.5170"):
-                    if not json_entry.get("publisher"):
-                        json_entry["publisher"] = "CERN"
+                doi = identifier["identifier"]
+
+                if doi.startswith(DATACITE_PREFIX):
                     doi_identifier["provider"] = "datacite"
                 else:
                     doi_identifier["provider"] = "external"
+
+                if doi.startswith(DATACITE_PREFIX) or doi.startswith("10.5170"):
+                    if not json_entry.get("publisher"):
+                        json_entry["publisher"] = "CERN"
                 output_pids["doi"] = doi_identifier
         if output_pids:
             return output_pids
