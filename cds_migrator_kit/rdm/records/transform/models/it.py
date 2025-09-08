@@ -22,7 +22,9 @@ class ITModel(CdsOverdo):
                     OR 980__:PUBLARDA
                     OR 690C_:CERNITBROCHURE OR 980__:ITCERNTALK
                     OR 980__:ITUDSPUBSOURCEARCHIVE
-                    - 980__.b:INDICO_IT-DEP
+                    OR 980__.b:INDICO_IT-DEP
+                    -980__.a:EVENTSFROMINDICO 
+                    -980__.a:CONTRIBUTIONSFROMINDICO
                     -980__:CERNITArchive -980__:INTNOTECMSPUBL
                     -980__.a:EVENTSFROMINDICO 
                     -980__.a:CONTRIBUTIONSFROMINDICO
@@ -30,9 +32,12 @@ class ITModel(CdsOverdo):
                     -690C_:"YELLOW REPORT" -980__:THESIS"""
 
     __ignore_keys__ = {
+        "021__a",  # Physical Location https://cds.cern.ch/record/181665/export/hm?ln=en
+        "0247_9",  # source of pid
         "0248_a",
         "0248_p",
         "0248_q",
+        "030__a",  # https://cds.cern.ch/record/409840/export/hm
         "037__c",  # arXiv subject https://cds.cern.ch/record/1562050/export/hm
         "100__m",  # Author's email
         "300__a",
@@ -40,16 +45,20 @@ class ITModel(CdsOverdo):
         "260__b",  # CERN
         "340__a",  # Physical medium
         "500__9",  # arXiv
+        "520__9",  # arxiv
         "540__3",  # Material of copyright
         "541__e",  # Original source poster https://cds.cern.ch/record/1034295/export/hm
         "542__3",  # Copyright materials
+        "594__a",  # document type
         "595__i",  # INSPEC number
         "6531_9",  # Keyword provenance
         "700__m",  # Author's email
-        "773__u",  # Duplicate meeting url
         "710__b",  # Group name, TBD https://cds.cern.ch/record/2258345/export/hm?ln=en
         "720__a",  # Author's duplicate
         "773__a",  # Duplicate DOI
+        "773__o",  # Duplicate meeting title
+        "773__u",  # Duplicate meeting url
+        "7870_r",  # detailed description of record relation
         "852__a",  # Physical Location https://cds.cern.ch/record/307939/export/hm?ln=en
         "852__c",  # Physical Location https://cds.cern.ch/record/134892/export/hm?ln=en
         "852__h",  # Physical Location https://cds.cern.ch/record/134892/export/hm?ln=en
@@ -58,7 +67,12 @@ class ITModel(CdsOverdo):
         "8564_x",  # Files system field - Icon
         "8564_q",  # Files system field - Link
         "8564_y",  # Files / URLS label
+        "913__t",  # Citation field
+        "913__y",  # Citation field
+        "913__v",  # Citation field
+        "913__c",  # Citation field
         "916__y",  # year
+        "916__a",  # year
         "923__r",  # Author's email
         "937__c",  # last modified
         "937__s",  # last modified
@@ -67,6 +81,7 @@ class ITModel(CdsOverdo):
         "961__h",  # CDS modification tag
         "961__l",  # CDS modification tag
         "961__x",  # CDS modification tag
+        "964__a",  # Item usualy 0001?
         "981__a",  # duplicated record marker
         "999C50",  # https://cds.cern.ch/record/2284609/export/hm?ln=en CMS contributions
         "999C52",  # https://cds.cern.ch/record/2640188/export/hm?ln=en
@@ -94,8 +109,7 @@ class ITModel(CdsOverdo):
     }
 
     _default_fields = {
-        # "resource_type": {"id": "publication-report"},
-        "custom_fields": {},
+        "custom_fields": {"cern:departments": ["IT"]},
         "creators": [{"person_or_org": {"type": "organizational", "name": "CERN"}}],
     }
 

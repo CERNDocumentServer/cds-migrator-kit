@@ -19,7 +19,7 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 class YellowRepModel(CdsOverdo):
     """Translation model for MoUs."""
 
-    __query__ = '690C_:YELLOWREPORT OR 690C_:"CERN Yellow Report" OR 690C_:"YELLOW REPORT" OR 690C_:Yellow Report OR 690C_:YELLOWREPCONTRIB -980__:THESIS'
+    __query__ = '690C_:YELLOWREPORT OR 690C_:"CERN Yellow Report" OR 690C_:"YELLOW REPORT" OR 690C_:Yellow Report -690C_:YELLOWREPCONTRIB -980__:THESIS'
 
     __ignore_keys__ = {
         "0248_a",
