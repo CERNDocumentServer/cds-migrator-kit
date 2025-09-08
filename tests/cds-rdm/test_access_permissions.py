@@ -41,6 +41,14 @@ def grant_access_permissions(record):
     ]
 
 
+def file_restricted(record):
+    """2872569."""
+    dict_rec = record.to_dict()
+    assert "access" in dict_rec
+    assert dict_rec["access"]["record"] == "public"
+    assert dict_rec["access"]["files"] == "restricted"
+
+
 def check_log_for_error(record_id, target_error):
     """Checks if the log contains the specified error for the specified record ID."""
     with open("tests/cds-rdm/tmp/logs/it/rdm_migration_errors.csv", "r") as file:
@@ -77,9 +85,8 @@ def test_access_permissions(
     )
     runner.run()
 
-    assert CDSMigrationLegacyRecord.query.count() == 1
+    assert CDSMigrationLegacyRecord.query.count() == 3
 
-    assert check_log_for_error("2872551", "UnexpectedValue")  # Group in 506__d
     assert check_log_for_error("2872550", "GrantCreationError")  # User doesn't exist
     assert check_log_for_error(
         "126154", "ManualImportRequired"
@@ -94,3 +101,5 @@ def test_access_permissions(
         )
         if record["legacy_recid"] == "2872558":
             grant_access_permissions(loaded_rec)
+        if record["legacy_recid"] == "2872569":
+            file_restricted(loaded_rec)

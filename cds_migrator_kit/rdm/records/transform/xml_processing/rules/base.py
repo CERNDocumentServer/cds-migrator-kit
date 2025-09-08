@@ -41,6 +41,9 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import (
     clean_str,
     clean_val,
 )
+from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.identifiers import (
+    get_new_indico_id,
+)
 
 cli_logger = logging.getLogger("migrator")
 
@@ -363,6 +366,11 @@ def identifiers(self, key, value):
     rel_id = {"scheme": scheme.lower(), "identifier": id_value}
     if scheme.lower() == "admbul":
         rel_id = {"scheme": "other", "identifier": f"{scheme}_{id_value}"}
+    if scheme.lower() == "agendamaker":
+        indico_id = get_new_indico_id(id_value)
+        rel_id = {"scheme": "indico", "identifier": str(indico_id)}
+    if scheme.lower() == "zentralblatt math":
+        rel_id = {"scheme": "url", "identifier": f"https://zbmath.org/?q=an:{id_value}"}
     if id_value and rel_id not in self.get("identifiers", []):
         return rel_id
     raise IgnoreKey("identifiers")
@@ -894,28 +902,13 @@ def additional_titles(self, key, value):
 @for_each_value
 def access_grants(self, key, value):
     """Translates access permissions (by user email or group name)."""
-    subject_identifier = ""
-    email_regex = re.compile(r"[^@]+@[^@]+\.[^@]+")
+    raw_identifier = value.get("d") or value.get("m")
+    subject_identifier = StringValue(raw_identifier).parse()
+    if not subject_identifier:
+        raise IgnoreKey("access_grants")
 
-    if value.get("d"):  # Always expected to be a user email address
-        subject_identifier = StringValue(value.get("d")).parse()
-        if not (
-            email_regex.fullmatch(subject_identifier)
-            and User.query.filter_by(email=subject_identifier).one_or_none()
-        ):
-            raise UnexpectedValue(
-                f"Expected a valid user email, got :'{subject_identifier}'",
-                field=key,
-                value=value,
-                priority="critical",
-            )
-    else:  # Can be a user email address or a group id
-        subject_identifier = StringValue(value.get("m")).parse()
-
-    if subject_identifier:
-        permission_type = "manage" if key == "270__" else "view"
-        return {str(subject_identifier): permission_type}
-    raise IgnoreKey("access_grants")
+    permission_type = "manage" if key.startswith("270__") else "view"
+    return {str(subject_identifier): permission_type}
 
 
 # Helper function to validate INSPIRE identifiers
