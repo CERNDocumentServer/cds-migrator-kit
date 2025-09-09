@@ -33,6 +33,8 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
 
+from .base import normalize
+
 
 @model.over("contributors", "^270__")
 @for_each_value
@@ -105,8 +107,8 @@ def imprint_info(self, key, value):
         self["publisher"] = _publisher
 
     try:
-        date_obj = parse(publication_date_str)
-        return date_obj.strftime("%Y-%m-%d")
+        publication_date = normalize(publication_date_str)
+        return publication_date
     except ParserError:
         raise UnexpectedValue(
             field=key,

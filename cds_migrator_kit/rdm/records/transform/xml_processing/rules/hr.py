@@ -7,9 +7,9 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     require,
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
-from .base import subjects
 
 from ...models.hr import hr_model as model
+from .base import subjects
 
 
 @model.over("subjects", "(^6931_)|(^650[12_][7_])|(^653[12_]_)|(^695__)|(^694__)")

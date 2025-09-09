@@ -1,6 +1,7 @@
 import re
-from urllib.parse import urlparse, ParseResult
+from urllib.parse import ParseResult, urlparse
 
+from cds_rdm.schemes import is_legacy_cds
 from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
 
@@ -11,10 +12,9 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
 from cds_migrator_kit.transform.xml_processing.rules.base import process_contributors
-from cds_rdm.schemes import is_legacy_cds
-from .base import created, additional_titles, urls, subjects
 
 from ...models.bulletin_issue import bull_issue_model as model
+from .base import additional_titles, created, normalize, subjects, urls
 
 
 @model.over("creators", "^100__", override=True)
@@ -109,8 +109,8 @@ def imprint_info(self, key, value):
     self["custom_fields"]["imprint:imprint"] = imprint
     if publication_date_str:
         try:
-            date_obj = parse(publication_date_str)
-            return date_obj.strftime("%Y-%m-%d")
+            publication_date = normalize(publication_date_str)
+            return publication_date
         except (ParserError, TypeError) as e:
             raise UnexpectedValue(
                 field=key,

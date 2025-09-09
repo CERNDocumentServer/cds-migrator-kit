@@ -41,6 +41,9 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import (
     clean_str,
     clean_val,
 )
+from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.identifiers import (
+    get_new_indico_id,
+)
 
 cli_logger = logging.getLogger("migrator")
 
@@ -295,6 +298,7 @@ def report_number(self, key, value):
             raise IgnoreKey("identifiers")
         else:
             raise UnexpectedValue("Missing ID value", field=key, value=value)
+
     new_id = {"scheme": scheme, "identifier": identifier}
     if new_id in existing_ids:
         raise IgnoreKey("identifiers")
@@ -333,6 +337,7 @@ def identifiers(self, key, value):
     if id_value.startswith("oai:inspirehep.net"):
         raise IgnoreKey("identifiers")
     if scheme.lower() == "cern annual report":
+
         additional_descriptions = self.get("additional_descriptions", [])
         new_desc = {
             "description": f"{scheme} {id_value}",
@@ -354,15 +359,21 @@ def identifiers(self, key, value):
     is_aleph_number = scheme.lower() == "cercer" or not scheme and "CERCER" in id_value
     if is_aleph_number:
         scheme = "aleph"
-    _identifiers = self.get("identifiers", [])
-
-    new_id = {"scheme": scheme.lower(), "identifier": id_value}
+    if scheme.lower() == "cds":
+        scheme = "lcds"
+    if scheme.lower() == "inspire":
+        validate_inspire_identifier(id_value, key)
+    rel_id = {"scheme": scheme.lower(), "identifier": id_value}
     if scheme.lower() == "admbul":
-        new_id = {"scheme": "other", "identifier": f"{scheme}_{id_value}"}
-    if new_id in _identifiers:
-        raise IgnoreKey("identifiers")
-    elif id_value:
-        return new_id
+        rel_id = {"scheme": "other", "identifier": f"{scheme}_{id_value}"}
+    if scheme.lower() == "agendamaker":
+        indico_id = get_new_indico_id(id_value)
+        rel_id = {"scheme": "indico", "identifier": str(indico_id)}
+    if scheme.lower() == "zentralblatt math":
+        rel_id = {"scheme": "url", "identifier": f"https://zbmath.org/?q=an:{id_value}"}
+    if id_value and rel_id not in self.get("identifiers", []):
+        return rel_id
+    raise IgnoreKey("identifiers")
 
 
 @model.over("_pids", "^0247_", override=True)
@@ -373,7 +384,6 @@ def _pids(self, key, value):
     scheme = value.get("2", "").lower()
     qualifier = value.get("q", "").lower().strip()
     identifier = value.get("a")
-
     if not scheme:
         scheme = value.get("9", "").lower()
     if not scheme:
@@ -744,12 +754,12 @@ def sync(self, key, value):
 @model.over("publication_date", "(^260__)", override=True)
 def imprint_info(self, key, value):
     """Translates publication_date field."""
-
     publication_date_str = value.get("c")
     if publication_date_str:
         try:
-            date_obj = parse(publication_date_str)
-            return date_obj.strftime("%Y-%m-%d")
+            publication_date = normalize(publication_date_str)
+
+            return publication_date
         except (ParserError, TypeError) as e:
             raise UnexpectedValue(
                 field=key,
@@ -780,8 +790,9 @@ def imprint_info(self, key, value):
     self["custom_fields"]["imprint:imprint"] = imprint
     if publication_date_str:
         try:
-            date_obj = parse(publication_date_str)
-            self["publication_date"] = date_obj.strftime("%Y-%m-%d")
+            publication_date = normalize(publication_date_str)
+
+            self["publication_date"] = publication_date
         except (ParserError, TypeError) as e:
             raise UnexpectedValue(
                 field=key,
@@ -892,25 +903,39 @@ def additional_titles(self, key, value):
 @for_each_value
 def access_grants(self, key, value):
     """Translates access permissions (by user email or group name)."""
-    subject_identifier = ""
-    email_regex = re.compile(r"[^@]+@[^@]+\.[^@]+")
+    raw_identifier = value.get("d") or value.get("m")
+    subject_identifier = StringValue(raw_identifier).parse()
+    if not subject_identifier:
+        raise IgnoreKey("access_grants")
 
-    if value.get("d"):  # Always expected to be a user email address
-        subject_identifier = StringValue(value.get("d")).parse()
-        if not (
-            email_regex.fullmatch(subject_identifier)
-            and User.query.filter_by(email=subject_identifier).one_or_none()
-        ):
-            raise UnexpectedValue(
-                f"Expected a valid user email, got :'{subject_identifier}'",
-                field=key,
-                value=value,
-                priority="critical",
-            )
-    else:  # Can be a user email address or a group id
-        subject_identifier = StringValue(value.get("m")).parse()
+    permission_type = "manage" if key.startswith("270__") else "view"
+    return {str(subject_identifier): permission_type}
 
-    if subject_identifier:
-        permission_type = "manage" if key == "270__" else "view"
-        return {str(subject_identifier): permission_type}
-    raise IgnoreKey("access_grants")
+
+# Helper function to validate INSPIRE identifiers
+def validate_inspire_identifier(id_value, key):
+    """Validate that id_value is a proper INSPIRE identifier (digits only)."""
+    inspire_regexp = re.compile(r"\d+$", flags=re.I)
+    if not inspire_regexp.match(id_value):
+        raise UnexpectedValue(
+            "Invalid INSPIRE identifier", field=key, subfield="a", stage="transform"
+        )
+
+
+# Helper function
+def normalize(date_str):
+    date_str = date_str.strip()
+
+    if "/" in date_str:  # Intervals
+        return date_str
+    if re.fullmatch(r"\d{4}", date_str):  # YYYY
+        return date_str
+    if re.fullmatch(r"\d{4}[-/]\d{2}", date_str):  # YYYY-MM
+        return date_str
+    if re.fullmatch(r"\d{4}[-/]\d{2}[-/]\d{2}", date_str):  # YYYY-MM-DD
+        return parse(date_str).strftime("%Y-%m-%d")
+
+    dt = parse(date_str)
+    if dt.day != 1:
+        return dt.strftime("%Y-%m-%d")
+    return dt.strftime("%Y-%m")

@@ -7,7 +7,7 @@ from edtf import EDTFParseException, parse_edtf, text_to_edtf
 from idutils.normalizers import normalize_isbn, normalize_issn
 from isbnlib import NotValidISBNError
 
-from cds_migrator_kit.errors import UnexpectedValue, ManualImportRequired
+from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     filter_list_values,
     for_each_value,
@@ -20,6 +20,7 @@ from ...config import (
     udc_pattern,
 )
 from ...models.base_publication_record import rdm_base_publication_model as model
+from .base import normalize
 
 
 @model.over("custom_fields", "(^020__)")
@@ -111,8 +112,8 @@ def imprint_info(self, key, value):
     self["custom_fields"]["imprint:imprint"] = imprint
     if publication_date_str:
         try:
-            date_obj = parse(publication_date_str)
-            return date_obj.strftime("%Y-%m-%d")
+            publication_date = normalize(publication_date_str)
+            return publication_date
         except (ParserError, TypeError) as e:
             raise UnexpectedValue(
                 field=key,
@@ -226,8 +227,8 @@ def organisation(self, key, value):
         "person_or_org": {
             "type": "organizational",
             "name": contributor,
-            "role": {"id": "hostinginstitution"},
-        }
+        },
+        "role": {"id": "hostinginstitution"},
     }
 
 
