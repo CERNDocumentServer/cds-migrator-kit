@@ -13,6 +13,9 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValu
 
 from ...config import IGNORED_THESIS_COLLECTIONS
 from ...models.it import it_model as model
+from .base import (
+    normalize,
+)
 from .base import note as base_internal_notes
 from .base import related_identifiers as base_related_identifiers
 from .base import subjects as base_subjects
@@ -309,37 +312,7 @@ def supervisor(self, key, value):
 def imprint_dates(self, key, value):
     """Translates imprint - WARNING - also publisher and publication_date."""
 
-    def normalize(date_str):
-        date_str = date_str.strip()
-
-        # Year only
-        if re.fullmatch(r"\d{4}", date_str):
-            return date_str, "year"
-
-        # Year-month
-        if re.fullmatch(r"\d{4}[-/]\d{2}", date_str):
-            return parse(date_str).strftime("%Y-%m"), "year-month"
-
-        # Year-month-day
-        if re.fullmatch(r"\d{4}[-/]\d{2}[-/]\d{2}", date_str):
-            return parse(date_str).strftime("%Y-%m-%d"), "full"
-
-        # Indeterminate day (e.g. 1980-09-?)
-        if re.fullmatch(r"\d{4}-\d{2}-\?", date_str):
-            return date_str[:-2], "indeterminate-day"
-
-        # Indeterminate year/month (e.g. 1980?, 1980-?, 1980-??)
-        if "?" in date_str:
-            cleaned = date_str.replace("?", "").strip()
-            try:
-                parsed = parse(cleaned)
-                return parsed.strftime("%Y"), "indeterminate"
-            except ParserError:
-                return cleaned, "indeterminate"
-
-        # Fallback: let dateutil parse it
-        return parse(date_str).strftime("%Y-%m-%d"), "full"
-
+    # --- imprint metadata ---
     _cf = self.setdefault("custom_fields", {})
     imprint = _cf.setdefault("imprint:imprint", {})
 
@@ -354,43 +327,16 @@ def imprint_dates(self, key, value):
         raise IgnoreKey("dates")
 
     try:
-        # Interval (comma or slash)
-        sep = "/" if "/" in pub else ("," if "," in pub else None)
-        if sep:
-            parts = [p.strip() for p in pub.split(sep) if p.strip()]
-            if len(parts) == 2:
-                start, end = parts
-                start_norm, _ = normalize(start)
-                end_norm, _ = normalize(end)
-                interval = f"{start_norm}/{end_norm}"
-                self.setdefault("dates", []).append(
-                    {"date": interval, "type": {"id": "other"}}
-                )
-                self["publication_date"] = start_norm[:4]  # year only
-                raise IgnoreKey("dates")
-
-        # Single date
-        normalized, kind = normalize(pub)
-
-        if kind == "indeterminate-day":
-            self.setdefault("dates", []).append(
-                {
-                    "description": "Day of publication is indeterminate.",
-                    "date": normalized,
-                    "type": {"id": "other"},
-                }
-            )
-        elif kind == "indeterminate":
+        if "?" in pub:
+            pub = pub.replace("?", "").rstrip("-").strip()
             self.setdefault("dates", []).append(
                 {
                     "description": "The publication date is indeterminate.",
-                    "date": normalized,
-                    "type": {"id": "other"},
+                    "date": normalize(pub),
+                    "type": {"id": "created"},
                 }
             )
-
-        self["publication_date"] = normalized
-
+        self["publication_date"] = normalize(pub)
     except (ParserError, TypeError):
         raise UnexpectedValue(
             field=key,
