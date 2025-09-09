@@ -371,7 +371,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     pub_date = entry["status_week_date"]
                 elif files:
                     pub_date = files[0]["creation_date"]
-            return arrow.get(pub_date).date().isoformat()
+            return pub_date
 
         def _identifiers(json_entry):
             identifiers = json_entry.get("identifiers", [])
@@ -921,14 +921,13 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         for version in versions.keys():
             versioned_files |= versions.get(version, {}).get("files")
             versions[version]["files"] = versioned_files
+        publication_date = record["json"]["metadata"]["publication_date"]
 
         if not versioned_files:
             # Record has no files. Add metadata-only record as single version
             versions[1] = {
                 "files": {},
-                "publication_date": arrow.get(
-                    record["json"]["metadata"]["publication_date"]
-                ),
+                "publication_date": publication_date,
                 "access": compute_access(
                     None, record_access
                 ),  # public metadata and files

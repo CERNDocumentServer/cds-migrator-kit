@@ -44,6 +44,7 @@ from ...config import (
     IGNORED_THESIS_COLLECTIONS,
     udc_pattern,
 )
+from .base import normalize
 
 
 @model.over("contributors", "^701__")
@@ -101,8 +102,8 @@ def imprint_info(self, key, value):
         self["custom_fields"]["imprint:imprint"] = imprint
         if publication_date_str:
             try:
-                date_obj = parse(publication_date_str)
-                return date_obj.strftime("%Y-%m-%d")
+                publication_date = normalize(publication_date_str)
+                return publication_date
             except (ParserError, TypeError) as e:
                 raise UnexpectedValue(
                     field=key,

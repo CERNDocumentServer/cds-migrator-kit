@@ -4,6 +4,7 @@ from dojson.errors import IgnoreKey
 from cds_migrator_kit.errors import UnexpectedValue
 
 from ...models.courier import courier_issue_model as model
+from .base import normalize
 
 
 @model.over("editor", "^856", override=True)
@@ -40,8 +41,8 @@ def imprint_info(self, key, value):
     self["custom_fields"]["imprint:imprint"] = imprint
     if publication_date_str:
         try:
-            date_obj = parse(publication_date_str)
-            return date_obj.strftime("%Y-%m-%d")
+            publication_date = normalize(publication_date_str)
+            return publication_date
         except (ParserError, TypeError) as e:
             raise UnexpectedValue(
                 field=key,
