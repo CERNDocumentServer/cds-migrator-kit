@@ -754,12 +754,12 @@ def sync(self, key, value):
 @model.over("publication_date", "(^260__)", override=True)
 def imprint_info(self, key, value):
     """Translates publication_date field."""
-
     publication_date_str = value.get("c")
     if publication_date_str:
         try:
-            date_obj = parse(publication_date_str)
-            return date_obj.strftime("%Y-%m-%d")
+            publication_date = normalize(publication_date_str)
+
+            return publication_date
         except (ParserError, TypeError) as e:
             raise UnexpectedValue(
                 field=key,
@@ -790,8 +790,9 @@ def imprint_info(self, key, value):
     self["custom_fields"]["imprint:imprint"] = imprint
     if publication_date_str:
         try:
-            date_obj = parse(publication_date_str)
-            self["publication_date"] = date_obj.strftime("%Y-%m-%d")
+            publication_date = normalize(publication_date_str)
+
+            self["publication_date"] = publication_date
         except (ParserError, TypeError) as e:
             raise UnexpectedValue(
                 field=key,
@@ -919,3 +920,22 @@ def validate_inspire_identifier(id_value, key):
         raise UnexpectedValue(
             "Invalid INSPIRE identifier", field=key, subfield="a", stage="transform"
         )
+
+
+# Helper function
+def normalize(date_str):
+    date_str = date_str.strip()
+
+    if "/" in date_str:  # Intervals
+        return date_str
+    if re.fullmatch(r"\d{4}", date_str):  # YYYY
+        return date_str
+    if re.fullmatch(r"\d{4}[-/]\d{2}", date_str):  # YYYY-MM
+        return date_str
+    if re.fullmatch(r"\d{4}[-/]\d{2}[-/]\d{2}", date_str):  # YYYY-MM-DD
+        return parse(date_str).strftime("%Y-%m-%d")
+
+    dt = parse(date_str)
+    if dt.day != 1:
+        return dt.strftime("%Y-%m-%d")
+    return dt.strftime("%Y-%m")
