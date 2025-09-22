@@ -22,7 +22,7 @@ class ITModel(CdsOverdo):
                     OR 980__:PUBLARDA
                     OR 690C_:CERNITBROCHURE OR 980__:ITCERNTALK
                     OR 980__:ITUDSPUBSOURCEARCHIVE
-                    OR 980__.b:INDICO_IT-DEP
+                    - 980__.b:INDICO_IT-DEP
                     -980__:CERNITArchive -980__:INTNOTECMSPUBL
                     -980__.a:EVENTSFROMINDICO 
                     -980__.a:CONTRIBUTIONSFROMINDICO
