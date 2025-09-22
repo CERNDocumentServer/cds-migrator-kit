@@ -65,7 +65,6 @@ class ITMeetingsModel(CdsOverdo):
     }
 
     _default_fields = {
-        # "resource_type": {"id": "publication-report"},
         "custom_fields": {"cern:departments": ["IT"]},
         "creators": [{"person_or_org": {"type": "organizational", "name": "CERN"}}],
     }
