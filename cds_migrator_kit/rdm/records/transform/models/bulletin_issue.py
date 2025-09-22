@@ -34,6 +34,24 @@ class BulletinIssueModel(CdsOverdo):
         "100__m",  # email of contributor
         "110__a",  # corporate author, always CERN, safe to ignore
         "300__a",  # number of pages
+        "336__a",  # DM metadata
+        "506__m",  # 2120833, ignored with confirmation from IR-ECO-CO
+        "5831_2",  # DM tags 1054836
+        "5831_5",  # DM tags
+        "5831_a",  # DM tags
+        "5831_c",  # DM tags
+        "5831_f",  # DM tags
+        "5831_i",  # DM tags
+        "5831_k",  # DM tags
+        "5831_u",  # DM tags
+        "5831_3",  # DM tags
+        "5831_6",  # DM tags
+        "5831_n",  # DM tags
+        "5831_b",  # DM tags
+        "5831_o",  # DM tags
+        "583__a",  # DM tags
+        "583__c",  # DM tags
+        "583__z",  # DM tags
         "590__b",  # staff association? value, redundant with language
         "594__a",  # specifies if the related articles menu has a separator or not (display feature)
         "650172",  # scheme of subjects
@@ -52,10 +70,20 @@ class BulletinIssueModel(CdsOverdo):
         "8564_s",  # bibdoc id
         "8564_x",  # icon thumbnails sizes
         "8564_y",  # file description - done by files dump
+        "8564_2",  # DM metadata
+        "8564_q",  # DM metadata
+        "8564_w",  # DM metadata
+        "8564_z",  # DM metadata
+        "8567_2",  # DM tags
+        "8567_q",  # DM tags
+        "8567_w",  # DM tags
+        "8567_d",  # DM tags
         "906__m",  # edit rights, will be granted by the community
         "937__c",  # last modified by
         "937__s",  # last modification date
         "960__a",  # base number
+        "961__a",  # CDS modification tag # TODO
+        "961__b",  # CDS modification tag # TODO
         "961__c",  # CDS modification tag # TODO
         "961__h",  # CDS modification tag # TODO
         "961__l",  # CDS modification tag # TODO

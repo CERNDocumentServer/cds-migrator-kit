@@ -588,17 +588,17 @@ def copyrights(self, key, value):
 
 @model.over("identifiers", "^8564_")
 @for_each_value
-def urls(self, key, value):
+def urls(self, key, value, subfield="u"):
     """Translates urls field."""
     # Contains description and restriction of the url
     # sub_y = clean_val("y", value, str, default="")
     # Value of the url
-    sub_u = clean_val("u", value, str, req=True)
+    sub_u = clean_val(subfield, value, str, req=True)
     if not sub_u:
         raise UnexpectedValue(
             "Unrecognised string format or link missing.",
             field=key,
-            subfield="u",
+            subfield=subfield,
             value=value,
         )
     is_cds_file = False
@@ -719,8 +719,17 @@ def related_identifiers(self, key, value):
         "scheme": "url",
         "relation_type": {"id": "references"},
     }
+
+    report_number = value.get("r")
+    if report_number:
+        report_id = {"identifier": report_number, "scheme": "cds_ref",
+                     "relation_type": {"id": "references"}}
+        if report_id not in rel_ids:
+            rel_ids.append(report_id)
+            self["related_identifiers"] = rel_ids
     if new_id not in rel_ids:
         return new_id
+
     raise IgnoreKey("related_identifiers")
 
 

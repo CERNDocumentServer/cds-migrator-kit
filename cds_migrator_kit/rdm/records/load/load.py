@@ -367,7 +367,7 @@ class CDSRecordServiceLoad(Load):
     def _after_publish_mint_recid(self, record, entry, version):
         """Mint legacy ids for redirections assigned to the parent."""
         legacy_recid = entry["record"]["recid"]
-        if version == 1:
+        if record._record.versions.index == 1:
             # it seems more intuitive if we mint the lrecid for parent
             # but then we get a double redirection
             legacy_recid_minter(legacy_recid, record._record.parent.model.id)

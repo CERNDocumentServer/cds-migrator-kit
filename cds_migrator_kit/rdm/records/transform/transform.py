@@ -715,6 +715,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         dry_run=False,
         collection=None,
         restricted=False,
+        plots=False,
     ):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
@@ -723,6 +724,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         self.dry_run = dry_run
         self.collection = collection
         self.restricted = restricted
+        self.plots = plots
         self.migration_logger = MigrationProgressLogger(collection=collection)
         self.record_state_logger = RecordStateLogger(collection=collection)
         self.db_state = {"affiliations": CDSMigrationAffiliationMapping}
@@ -847,8 +849,8 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 )
                 return
 
-            if file["type"] == "Plot":
-                # skip figures
+            if not self.plots and file["type"] == "Plot":
+                # skip figures if configuration says so
                 self.migration_logger.add_information(
                     str(file["recid"]),
                     {
