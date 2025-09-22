@@ -135,11 +135,14 @@ def journal(self, key, value):
 @model.over("additional_descriptions", "(^500__)")
 @for_each_value
 def additional_descriptions(self, key, value):
-    value = value.get("a", "").strip()
-    if len(value) < 3:
+    description = value.get("a", "").strip()
+    curated_dm = value.get("9", "").strip()
+    if "curated" in curated_dm:
         raise IgnoreKey("additional_descriptions")
-    if value:
-        return {"description": value, "type": {"id": "technical-info"}}
+    if len(description) < 3:
+        raise IgnoreKey("additional_descriptions")
+    if description:
+        return {"description": description, "type": {"id": "technical-info"}}
     raise IgnoreKey("additional_descriptions")
 
 
@@ -170,40 +173,31 @@ def translated_description(self, key, value):
 def subjects_bulletin(self, key, value):
     subject = value.get("a", "").strip()
     scheme = value.get("2", "").strip()
-    if scheme == "EuCARD2":
+    if scheme in ["EuCARD2", "AIDA-2020"]:
         subjects(self, key, value)
     else:
         return {"subject": subject}
 
 
-@model.over("url_identifiers", "^8564_", override=True)
+@model.over("url_identifiers", "^856[4_]_", override=True)
 @for_each_value
 def urls_bulletin(self, key, value):
     content_type = value.get("x", "")
 
     if content_type == "icon":
-        # ignore icons
+        # ignore icon urls (conditionally ignoring by accessing the value
         url_q = value.get("q", "")
+        url_u = value.get("u", "")
         raise IgnoreKey("url_identifiers")
 
-    url_q = value.get("q", "").strip()
     identifiers = self.get("identifiers", [])
 
     if "q" not in value:
         _urls = urls(self, key, value)
-        _urls.extend(identifiers)
         identifiers += _urls
     else:
-        p = urlparse(url_q, "http")
-        netloc = p.netloc or p.path
-        path = p.path if p.netloc else ""
-        if not netloc.startswith("www."):
-            netloc = "www." + netloc
-
-        p = ParseResult("http", netloc, path, *p[3:])
-        new_id = {"identifier": p.geturl(), "scheme": "url"}
-        if new_id not in identifiers:
-            identifiers.append(new_id)
+        _urls = urls(self, key, value, subfield="q")
+        identifiers += _urls
 
     self["identifiers"] = identifiers
     raise IgnoreKey("url_identifiers")
@@ -275,6 +269,9 @@ def rel_identifiers(self, key, value):
     identifier = value.get("b", "")
     scheme = value.get("l", "")
     report_number = value.get("t", "").lower()
+
+    if not identifier:
+        raise IgnoreKey("related_identifiers")
 
     if "pho" in scheme.lower():
         res_type = "photo"

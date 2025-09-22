@@ -21,36 +21,37 @@ class BookModel(CdsOverdo):
         "0248_a",
         "0248_p",
         "0248_q",
-        "037__c",  # arxiv subject
-        "852__c",  # todo holdings
+        "035__d",  # oai harvest tag
+        "035__h",  # oai harvest tag # todo confirm
+        "035__m",  # oai harvest tag
+        "035__t",  # oai harvest tag
+        "035__u",  # oai harvest tag
+        "035__z",  # oai harvest tag
+        "852__c",  # holdings will be taken separately
         "852__h",
-        "300__a",
-        "340__a",  # ignore, spreadsheet
-        "8564_8",  # Files system field
-        "8564_s",  # Files system field
-        "8564_x",  # Files system field
-        "8564_y",  # Files / URLS label
-        "916__y",  # year
-        "960__a",  # collection id? usually value 14, to confirm if we ignore
-        "961__c",  # CDS modification tag
-        "961__h",  # CDS modification tag
-        "961__l",  # CDS modification tag
-        "961__x",  # CDS modification tag
-        "964__a",  # TODO
-        "981__a",  # duplicated record marker
-        # "110__a",
-        # "246_1a",
-        # "690C_a",
-        # "520__b",
-        # "773__y",
-        # "773__n",
-        # "773__p",
-        # "773__c",
-        # "0248_q",
-        # "8564_8",
-        # "8564_s",
-        # "8564_x",
-        # "980__a",
+        "037__c",  # arxiv subject
+        "100__m",  # email of contributor
+        "300__a",  # number of pages
+        "700__m",  # email of contributor
+        "7870_r",  # relation free text label
+        "8564_8",  # file id
+        "8564_s",  # bibdoc id
+        "8564_x",  # icon thumbnails sizes
+        "8564_y",  # file description - done by files dump
+        "916__y",  # year, redundant value
+        "937__c",  # last modified by
+        "937__s",  # last modification date
+        "960__a",  # base number
+        "961__c",  # CDS modification tag # TODO
+        "961__h",  # CDS modification tag # TODO
+        "961__l",  # CDS modification tag # TODO
+        "961__x",  # CDS modification tag # TODO
+        "964__a",  # number of physical copies
+        "981__a",  # duplicate record id
+        # To be verified
+        "020__u",
+        "020__b",
+        "340__a",
     }
 
     _default_fields = {
@@ -62,5 +63,5 @@ class BookModel(CdsOverdo):
 
 book_model = BookModel(
     bases=(rdm_base_publication_model,),
-    entry_point_group="cds_migrator_kit.migrator.rules.book",
+    entry_point_group="cds_migrator_kit.migrator.rules.books",
 )

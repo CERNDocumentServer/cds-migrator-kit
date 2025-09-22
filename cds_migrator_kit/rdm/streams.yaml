@@ -108,6 +108,7 @@ records:
     data_dir: cds_migrator_kit/rdm/data/courier
     tmp_dir: cds_migrator_kit/rdm/tmp/courier
     log_dir: cds_migrator_kit/rdm/log/courier
+    plots: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/courier/dump/
     transform:
