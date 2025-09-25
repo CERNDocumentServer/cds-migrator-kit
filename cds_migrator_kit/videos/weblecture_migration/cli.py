@@ -18,11 +18,15 @@ from sqlalchemy.exc import NoResultFound
 
 from cds_migrator_kit.runner.runner import Runner
 from cds_migrator_kit.videos.weblecture_migration.logger import VideosJsonLogger
-from cds_migrator_kit.videos.weblecture_migration.streams import RecordStreamDefinition
+from cds_migrator_kit.videos.weblecture_migration.streams import (
+    FoldersStreamDefinition,
+    RecordStreamDefinition,
+)
 from cds_migrator_kit.videos.weblecture_migration.users.api import (
     CDSVideosMigrationUserAPI,
 )
 from cds_migrator_kit.videos.weblecture_migration.users.runner import (
+    GenerateFilesFoldersRunner,
     VideosSubmitterRunner,
 )
 from cds_migrator_kit.videos.weblecture_migration.users.streams import (
@@ -60,6 +64,18 @@ def run(dry_run=False):
         collection="weblectures",
     )
     VideosJsonLogger.initialize(runner.log_dir)
+    runner.run()
+
+
+@weblectures.command()
+@with_appcontext
+def extract_files_paths():
+    """Create master file folders txt needed for migration."""
+    stream_config = current_app.config["CDS_MIGRATOR_KIT_VIDEOS_STREAM_CONFIG"]
+    runner = GenerateFilesFoldersRunner(
+        stream_definition=FoldersStreamDefinition,
+        config_filepath=Path(stream_config).absolute(),
+    )
     runner.run()
 
 

@@ -26,6 +26,8 @@ For the files, modify the `migration_config.py` file located at `cds_migrator_ki
 - Composite videos will always be named as `<id-composite-...p-quality.mp4>`, and frames of the composite will be stored in `MOUNTED_MEDIA_CEPH_PATH/frames`.
 - If no composite exists (i.e., the master contains only one video), subformats and frames will be obtained using `data.v2.json`.
 
+For copying files, see [How to copy CEPH media files](#how-to-copy-ceph-media-files).
+
 ## Record Files
 
 Some records contain additional AFS files besides the lecturemedia files. These AFS files should be copied to EOS before migration. Make sure to update the `records/weblectures/transform/files_dump_dir` in `cds_migrator_kit/videos/weblecture_migration/streams.yaml` with EOS path where your AFS files are stored.
@@ -201,4 +203,100 @@ cds fixtures licenses
 ```bash
 cds index reindex -t od_lic --yes-i-know
 cds index run
+```
+
+## How to copy CEPH media files
+
+### Step 1: Generate media files list
+
+Change `folders/extract/dirpath` in your steams.yaml file. It should be the folder of your dumps.
+
+You can generate the needed media files list with this command:
+
+```bash
+invenio migration videos weblectures create-folders-txt
+```
+
+This will create a txt file with all needed folder paths at: `cds_migrator_kit/videos/master_folders.txt`
+
+Alternatively, you can use the pre-generated txt file here: 
+[all_media_files.txt](https://cernbox.cern.ch/files/spaces/eos/project/d/digital-repositories/Services/CDS/CDS%20Videos/Projects/Weblectures%20migration/master_folders.txt)
+
+### Step 2: Copy the file to the target machine
+
+Copy the created file to `cds-test-wn-21/tmp`
+
+### Step 3: Connect and prepare the environment
+
+To be more safe, connect your VM and in your VM:
+
+1. Connect to machine: `cds-test-wn-21`
+2. Mount CEPH, check [here](https://gitlab.cern.ch/cds-team/cds-videos-openshift/-/issues/13)
+3. Mount EOS if needed:
+   ```bash
+   kinit videoseostest
+   ```
+
+### Step 4: Run the copy script
+
+Create a shell script file and paste the following content:
+
+```bash
+#!/bin/bash
+
+SOURCE_ROOT="/mnt/cephfs"
+DEST_ROOT="/eos/media/cds-videos/dev/stage"
+TXT_FILE="/tmp/master_folders.txt"
+
+# Read each line from the txt file
+while IFS= read -r line; do
+    # Expected format: "<recid>--<path>"
+    record_id="${line%%--*}"
+    relative_path="${line#*--}"
+
+    # Validation
+    if [[ "$line" != *"--"* ]] || [ -z "$record_id" ] || [ -z "$relative_path" ]; then
+        echo "Warning: Malformed line: $line"
+        continue
+    fi
+
+    # Full source and destination paths
+    full_source_path="$SOURCE_ROOT$relative_path"
+    full_dest_path="$DEST_ROOT$relative_path"
+
+    # Check if the source folder exists
+    if [ -d "$full_source_path" ]; then
+        # Skip if destination already exists
+        if [ -d "$full_dest_path" ]; then
+            echo "Skipped (already exists): $full_dest_path"
+            continue
+        fi
+
+        # Create the destination directory
+        mkdir -p "$full_dest_path"
+
+        # Copy the contents
+        cp -a "$full_source_path/." "$full_dest_path/"
+        echo "Copied: $full_source_path -> $full_dest_path"
+    else
+        echo "Warning: Source folder does not exist: $full_source_path"
+    fi
+done < "$TXT_FILE"
+
+echo "Done."
+```
+
+Make your shell file executable and run it:
+
+```bash
+chmod +x your_script.sh
+./your_script.sh
+```
+
+### Alternative: Copy files within EOS
+
+If you want to copy files from EOS to EOS within `cds-test-wn-21`, you can run:
+
+```bash
+rsync -av --ignore-existing /eos/media/cds-videos/dev/acad/media_data/ /eos/media/cds-videos/dev/stage/media_data/
 ```

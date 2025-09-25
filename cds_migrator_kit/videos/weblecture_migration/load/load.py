@@ -13,10 +13,10 @@ from pathlib import Path
 
 from cds.modules.flows.deposit import index_deposit_project
 from cds.modules.flows.files import init_object_version
+from cds.modules.flows.tasks import ExtractChapterFramesTask
 from cds.modules.legacy.minters import legacy_recid_minter
 from cds.modules.legacy.models import CDSMigrationLegacyRecord
 from cds.modules.records.providers import CDSReportNumberProvider
-from cds.modules.flows.tasks import ExtractChapterFramesTask
 from invenio_db import db
 from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_pidstore.models import PersistentIdentifier
@@ -53,7 +53,7 @@ class CDSVideosLoad(Load):
         tmp_dir,
         entries=None,
         dry_run=False,
-        collection=None, # Not used but needed for runner
+        collection=None,  # Not used but needed for runner
     ):
         """Constructor."""
         self.dry_run = dry_run
@@ -269,4 +269,21 @@ class CDSVideosLoad(Load):
 
     def _cleanup(self, *args, **kwargs):
         """Cleanup the entries."""
+        pass
+
+
+class DummyLoad(Load):
+    """Dummy load class."""
+
+    def __init__(
+        self,
+    ):
+        """Constructor."""
+
+    def _load(self, entry):
+        """Load."""
+        pass
+
+    def _cleanup(self):
+        """Cleanup data after loading."""
         pass

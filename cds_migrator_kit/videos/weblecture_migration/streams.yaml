@@ -14,3 +14,8 @@ submitters:
     log_dir: cds_migrator_kit/videos/weblecture_migration/log/users
     extract:
       dirpath: cds_migrator_kit/videos/weblecture_migration/data/weblectures/dump/
+folders:
+  data_dir: cds_migrator_kit/videos
+  log_dir: cds_migrator_kit/videos/weblecture_migration/log/folders
+  extract:
+    dirpath: cds_migrator_kit/videos/weblecture_migration/data/weblectures/dump/

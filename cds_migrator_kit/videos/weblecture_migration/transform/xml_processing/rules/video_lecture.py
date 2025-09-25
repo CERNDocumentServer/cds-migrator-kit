@@ -224,52 +224,6 @@ def notes(self, key, value):
     return note
 
 
-@model.over("files", "^8567_")
-@for_each_value
-def files(self, key, value):
-    """Detects files."""
-    source = value.get("2")
-    if source and source.strip() != "MediaArchive":
-        # Check if anything else stored
-        raise UnexpectedValue(field=key, subfield="2", value=source)
-
-    file = {}
-
-    # Master path
-    master_path = value.get("d", "").strip()
-    if master_path:
-        if master_path.startswith("/mnt/master_share"):
-            file["master_path"] = master_path
-            file_type = value.get("x", "").strip()
-            if file_type and file_type != "Absolute master path":
-                # Check if anything else stored
-                raise UnexpectedValue(field=key, subfield="x", value=file_type)
-        else:
-            # Raise error if anything else stored
-            raise UnexpectedValue(field=key, subfield="d", value=master_path)
-
-    # File with url/path
-    url = value.get("u", "").strip()
-    if url:
-        if url.startswith("/"):
-            file["path"] = url  # Relative path
-        elif url.startswith("https://lecturemedia.cern.ch"):
-            file["url"] = url
-            file["path"] = url.replace("https://lecturemedia.cern.ch", "")
-        else:
-            # Check if anything else stored
-            raise UnexpectedValue(field=key, subfield="u", value=url)
-        file_type = value.get("x")
-        if file_type:
-            file["type"] = file_type.strip()
-
-        description = value.get("y")
-        if description:
-            file["description"] = description.strip()
-
-    return file
-
-
 @model.over("lecture_created", "^961__")
 def creation_date(self, key, value):
     """Translate record creation date.

@@ -9,7 +9,13 @@
 from invenio_rdm_migrator.streams import StreamDefinition
 
 from cds_migrator_kit.extract.extract import LegacyExtract
-from cds_migrator_kit.videos.weblecture_migration.load.load import CDSVideosLoad
+from cds_migrator_kit.videos.weblecture_migration.load.load import (
+    CDSVideosLoad,
+    DummyLoad,
+)
+from cds_migrator_kit.videos.weblecture_migration.transform.folders_transform import (
+    GenerateFilesFoldersTransform,
+)
 from cds_migrator_kit.videos.weblecture_migration.transform.transform import (
     CDSToVideosRecordTransform,
 )
@@ -21,3 +27,11 @@ RecordStreamDefinition = StreamDefinition(
     load_cls=CDSVideosLoad,
 )
 """ETL stream for CDS to CDS Videos records."""
+
+
+FoldersStreamDefinition = StreamDefinition(
+    name="folders",
+    extract_cls=LegacyExtract,
+    transform_cls=GenerateFilesFoldersTransform,
+    load_cls=DummyLoad,
+)
