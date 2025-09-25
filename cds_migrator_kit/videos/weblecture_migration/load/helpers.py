@@ -12,8 +12,8 @@ import logging
 import os
 import shutil
 import tempfile
-from pathlib import Path
 from datetime import timedelta
+from pathlib import Path
 
 from cds.modules.deposit.api import Project, Video, deposit_video_resolver
 from cds.modules.deposit.ext import _create_tags
@@ -152,15 +152,13 @@ def create_video(project_deposit, video_metadata, media_files, submitter):
     Create a video in project with metadata and master video file.
 
     Returns video_deposit and master_object.
-    """    
+    """
     video_file_path = media_files["master_video"]
     chapters = media_files["chapters"]
     if chapters:
         chapters_txt = format_chapters(chapters)
         video_metadata["description"] = (
-            video_metadata["description"]
-            + ".<br />\n<br />\n"
-            + chapters_txt
+            video_metadata["description"] + ".<br />\n<br />\n" + chapters_txt
         )
     try:
         # Create video_deposit

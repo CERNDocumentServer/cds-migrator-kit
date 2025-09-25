@@ -14,6 +14,9 @@ import yaml
 from invenio_rdm_migrator.streams import Stream
 
 from cds_migrator_kit.videos.weblecture_migration.logger import SubmitterLogger
+from cds_migrator_kit.videos.weblecture_migration.users.transform.xml_processing.models.submitter import (
+    videos_submitter_model,
+)
 
 from .api import CDSVideosMigrationUserAPI
 from .transform import users_migrator_marc21
@@ -52,6 +55,45 @@ class VideosSubmitterRunner:
                 logger=logging.getLogger("submitters"),
                 user_api_cls=CDSVideosMigrationUserAPI,
             ),
+        )
+
+    def run(self):
+        """Run stream."""
+        self.stream.run()
+
+
+class GenerateFilesFoldersRunner:
+    """Runner dedicated to create video files folders txt."""
+
+    def _read_config(self, filepath):
+        """Read config from file."""
+        with open(filepath) as f:
+            return yaml.safe_load(f)
+
+    def __init__(self, stream_definition, config_filepath):
+        """Constructor."""
+        config = self._read_config(config_filepath)
+        stream_config = config.get(stream_definition.name) or {}
+        self.log_dir = Path(stream_config.get("log_dir"))
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+
+        self.data_dir = Path(stream_config.get("data_dir"))
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create new output file
+        output_path = self.data_dir / "master_folders.txt"
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("w"):
+            pass
+
+        self.stream = Stream(
+            stream_definition.name,
+            extract=stream_definition.extract_cls(**stream_config.get("extract", {})),
+            transform=stream_definition.transform_cls(
+                dojson_model=videos_submitter_model,
+                output_path=output_path,
+            ),
+            load=stream_definition.load_cls(),
         )
 
     def run(self):

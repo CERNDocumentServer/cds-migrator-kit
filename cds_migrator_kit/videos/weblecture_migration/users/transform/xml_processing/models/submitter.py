@@ -21,8 +21,7 @@ class VideosSubmitterModel(CdsOverdo):
         ""
     )
 
-    __ignore_keys__ = {
-        "003",
+    __ignore_keys__ = base_model.__ignore_keys__ | {
         # 340: Drop streaming video, anything else we copy over to curation field.
         "340__a",  # Physical medium -> curation field
         "340__d",  # Physical medium/recording technique -> curation field
@@ -30,12 +29,7 @@ class VideosSubmitterModel(CdsOverdo):
         "340__k",  # Physical medium/ -> curation field
         "340__j",  # Physical medium/ -> curation field
         "340__8",  # Physical medium/id? -> curation field https://cds.cern.ch/record/2234827
-        "961__h",  # Hour?
-        "961__l",  # Library?
-        "961__a",  # ?
-        "961__b",  # ?
         "964__a",  # Item owner
-        "916__d",  # Status week?
         "901__u",  # Affiliation at Conversion?
         "583__a",  # Action note / curation
         "583__c",  # Action note / curation
@@ -43,13 +37,8 @@ class VideosSubmitterModel(CdsOverdo):
         "916__n",  # Status week
         "916__s",  # Status week
         "916__w",  # Status week
-        "916__y",  # Status week
-        "916__a",  # Status week
-        "916__e",  # Status week
         "306__a",  # ?
         "336__a",  # ?
-        "981__a",  # duplicate record id
-        "960__a",  # Base?
         # Category, Collection, Series, Keywords
         "980__a",  # collection tag
         "980__b",  # Secondary collection indicator
@@ -65,10 +54,7 @@ class VideosSubmitterModel(CdsOverdo):
         "111__a",  # Title (indico)
         "111__9",  # Start date (indico)
         "111__g",  # Event id (indico)
-        "111__z",  # End date (indico)
         "111__c",  # Video location (indico location)
-        "084__a",  # Indico?
-        "084__2",  # Indico?
         "518__r",  # Video/meeting location
         "518__g",  # Lectures: conference identification
         "970__a",  # alternative identifier, indico id?
@@ -132,23 +118,6 @@ class VideosSubmitterModel(CdsOverdo):
         "693__e",  # experiments
         "693__p",  # project
         "693__s",  # study
-        # OAI
-        "0248_a",  # oai identifier
-        "0248_p",  # oai identifier
-        "0248_q",
-        "518__h",  # Lectures: Starting time
-        "300__2",  # Imprint
-        "300__b",  # Imprint
-        "300__8",  # Imprint
-        "300__a",  # Number of pages / duration
-        "250__a",  # Edition
-        "518__l",  # Lectures: length of speech
-        "100__0",  # Author id (eg: AUTHOR|(CDS)2067852)
-        "240__a",  # Decided to drop, (Streaming Video)
-        "337__a",  # Decided to drop, (Video)
-        "963__a",  # values: PUBLIC/RESTRICTED
-        "8564_8",  # File: bibdoc id
-        "8564_s",  # File: file size
         "520__a",  # Note (-> description.type = abstract
         "001",
         "041__a",  # languages
@@ -157,7 +126,6 @@ class VideosSubmitterModel(CdsOverdo):
         "100__a",
         "100__u",  # Author affiliation
         "700__e",  # Contributor/Speaker role
-        "700__0",  # Contributors (cds author id)
         "700__9",  # #BEARD# tag
         "700__a",  # Contributors (full name)
         "700__u",  # Contributors (affiliation)
@@ -170,12 +138,7 @@ class VideosSubmitterModel(CdsOverdo):
         "511__u",  # Contributor Affiliation
         "511__a",  # Contributor
         "511__e",  # Contributor role
-        "8567_u",  # File url
-        "8567_y",  # File description
-        "8567_2",  # File system? 'MediaArchive'
         "8564_q",  # File type (digitized)
-        "8564_8",  # Files system field
-        "8564_s",  # Files system field
         "8564_u",  # Files
         "8564_x",  # Files system field
         "8564_y",  # Files
@@ -184,11 +147,33 @@ class VideosSubmitterModel(CdsOverdo):
         "8564_z",
         "961__x",  # Creation Date
         "961__c",  # modification Date
-        "8567_x",
-        "8567_d",
+        "595__s",
+        "0247_a",
+        "0247_2",
+        "7870_i",
+        "7870_r",
+        "7870_w",
+        "590__a",
+        "773__u",
+        "773__p",
+        "773__r",
+        "773__a",
+        "583__8",
+        "650272",
         # Submitter
         # "859__f",  # email
         # "8560_f",  # email
+        # "8567_u",  # File url
+        # "8567_y",  # File description
+        # "8567_2",  # File system? 'MediaArchive'
+        # "8567_x",
+        # "8567_d",
+    }
+
+    _default_fields = {
+        "contributors": [],
+        "additional_languages": [],
+        "keywords": [],
     }
 
 
