@@ -31,11 +31,14 @@ class Runner:
         with open(filepath) as f:
             return yaml.safe_load(f)
 
-    def __init__(self, stream_definitions, config_filepath, dry_run, collection):
+    def __init__(
+        self, stream_definitions, config_filepath, dry_run, collection, keep_logs
+    ):
         """Constructor."""
         config = self._read_config(config_filepath)
         self.collection = collection
         self.db_uri = config.get("db_uri")
+        self.keep_logs = keep_logs
         # start parsing streams
         self.streams = []
         for definition in stream_definitions:
@@ -70,6 +73,7 @@ class Runner:
                     transform = definition.transform_cls(
                         dry_run=dry_run,
                         collection=collection,
+                        keep_logs=keep_logs,
                         **stream_config[collection].get("transform", {}),
                         restricted=self.restricted,
                     )
@@ -85,6 +89,7 @@ class Runner:
                             tmp_dir=tmp_dir,
                             dry_run=dry_run,
                             collection=collection,
+                            keep_logs=keep_logs,
                             **stream_config[collection].get("load", {}),
                         ),
                     )
@@ -92,8 +97,11 @@ class Runner:
 
     def run(self):
         """Run ETL streams."""
-        migration_logger = MigrationProgressLogger(collection=self.collection)
-        record_state_logger = RecordStateLogger(collection=self.collection)
+        migration_logger = MigrationProgressLogger(
+            collection=self.collection, keep_logs=self.keep_logs
+        )
+
+        record_state_logger = RecordStateLogger(collection=self.collection, keep_logs=self.keep_logs)
 
         migration_logger.start_log()
         record_state_logger.start_log()

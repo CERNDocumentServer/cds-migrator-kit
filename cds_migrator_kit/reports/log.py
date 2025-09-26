@@ -68,21 +68,24 @@ class MigrationProgressLogger:
     def __init__(
         self,
         collection,
+        keep_logs,
         log_progress_filename="rdm_migration_errors.csv",
     ):
         """Constructor."""
         self._logs_path = os.path.join(
             current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"], collection
         )
+        breakpoint()
         self.PROGRESS_LOG_FILEPATH = os.path.join(
             self._logs_path, log_progress_filename
         )
         self.collection = collection
+        self.keep_logs = keep_logs
 
         if not os.path.exists(self._logs_path):
             os.makedirs(self._logs_path)
 
-        self.error_file = open(self.PROGRESS_LOG_FILEPATH, "a")
+        self.error_file = open(self.PROGRESS_LOG_FILEPATH, "a+")
         columns = [
             "recid",
             "stage",
@@ -99,11 +102,15 @@ class MigrationProgressLogger:
 
     def start_log(self):
         """Initialize logging file descriptors."""
-        # init log files
-
-        self.error_file.truncate(0)
-        self.log_writer.writeheader()
-        self.error_file.flush()
+        if not self.keep_logs:
+            self.error_file.truncate(0)
+            self.log_writer.writeheader()
+            self.error_file.flush()
+        else:
+            # Only write header if file is empty
+            if os.stat(self.PROGRESS_LOG_FILEPATH).st_size == 0:
+                self.log_writer.writeheader()
+                self.error_file.flush()
 
     def read_log(self):
         """Read error log file."""
@@ -163,6 +170,7 @@ class RecordStateLogger:
     def __init__(
         self,
         collection,
+        keep_logs,
         records_dump_filename="rdm_records_dump.json",
         records_state_filename="rdm_records_state.json",
     ):
@@ -175,22 +183,31 @@ class RecordStateLogger:
             self._logs_path, records_state_filename
         )
         self.collection = collection
+        self.keep_logs = keep_logs
 
         if not os.path.exists(self._logs_path):
             os.makedirs(self._logs_path)
 
-        self.record_dump_file = open(self.RECORD_DUMP_FILEPATH, "a")
-        self.record_state_file = open(self.RECORD_STATE_FILEPATH, "a")
+        self.record_dump_file = open(self.RECORD_DUMP_FILEPATH, "a+")
+        self.record_state_file = open(self.RECORD_STATE_FILEPATH, "a+")
 
     def start_log(self):
         """Initialize logging file descriptors."""
-        # init log files
-        with open(self.RECORD_DUMP_FILEPATH, "w") as temp_dump_file:
-            temp_dump_file.truncate(0)
-            temp_dump_file.write("{\n")
-        with open(self.RECORD_STATE_FILEPATH, "w") as temp_state_file:
-            temp_state_file.truncate(0)
-            temp_state_file.write("[\n")
+        if not self.keep_logs:
+            with open(self.RECORD_DUMP_FILEPATH, "w") as temp_dump_file:
+                temp_dump_file.truncate(0)
+                temp_dump_file.write("{\n")
+            with open(self.RECORD_STATE_FILEPATH, "w") as temp_state_file:
+                temp_state_file.truncate(0)
+                temp_state_file.write("[\n")
+        else:
+            # Append mode: only add opening structure if files are empty
+            if os.stat(self.RECORD_DUMP_FILEPATH).st_size == 0:
+                with open(self.RECORD_DUMP_FILEPATH, "a") as temp_dump_file:
+                    temp_dump_file.write("{\n")
+            if os.stat(self.RECORD_STATE_FILEPATH).st_size == 0:
+                with open(self.RECORD_STATE_FILEPATH, "a") as temp_state_file:
+                    temp_state_file.write("[\n")
 
     def add_record(self, record, **kwargs):
         """Add record to list of collected records."""
@@ -199,14 +216,27 @@ class RecordStateLogger:
         self.record_dump_file.flush()
 
     def add_record_state(self, record_state, **kwargs):
-        """Add record state."""
-        self.record_state_file.write(f"{json.dumps(record_state)},\n")
+        """Add record state correctly to JSON array."""
+        # Move to end and remove closing bracket if present
+        self.record_state_file.seek(0, os.SEEK_END)
+        if self.record_state_file.tell() == 0:
+            self.record_state_file.write("[\n")
+        else:
+            self.record_state_file.seek(self.record_state_file.tell() - 2)
+            last_chars = self.record_state_file.read()
+            if last_chars.strip().endswith("]"):
+                self.record_state_file.seek(self.record_state_file.tell() - 1)
+                self.record_state_file.truncate()
+                self.record_state_file.write(",\n")
+
+        self.record_state_file.write(json.dumps(record_state) + "\n")
         self.record_state_file.flush()
 
     def load_record_dumps(self):
         """Load stats from file as json."""
         with open(self.RECORD_DUMP_FILEPATH, "r") as record_dump_file:
             return json.load(record_dump_file)
+        
 
     def finalise(self):
         """Finalise logging files."""
