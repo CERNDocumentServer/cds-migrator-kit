@@ -935,7 +935,10 @@ def normalize(date_str):
     if re.fullmatch(r"\d{4}[-/]\d{2}[-/]\d{2}", date_str):  # YYYY-MM-DD
         return parse(date_str).strftime("%Y-%m-%d")
 
-    dt = parse(date_str)
-    if dt.day != 1:
+    dt = parse(date_str, default=datetime.datetime(1, 1, 1))
+
+    # If the user explicitly provided a day, keep the full date because the parse() adds day if not present
+    if re.search(r"\b\d{1,2}(?:st|nd|rd|th)?\b", date_str, re.IGNORECASE):
         return dt.strftime("%Y-%m-%d")
+
     return dt.strftime("%Y-%m")

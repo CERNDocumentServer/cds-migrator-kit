@@ -246,6 +246,7 @@ def notes(self, key, value):
 def subjects(self, key, value):
     """Translates subjects fields."""
     val_a = value.get("a", "")
+    val_9 = value.get("9", "")
     scheme = value.get("2", "")
     _subjects = self.get("subjects", [])
 
@@ -256,6 +257,10 @@ def subjects(self, key, value):
         raise IgnoreKey("subjects")
 
     if (key.startswith(("694_", "695_"))) and value.get("9") == "DESY":
+        raise IgnoreKey("subjects")
+
+    if key.startswith("695_") and val_9 == "JACoW":
+        self["subjects"].extend([{"subject": val_a}, {"subject": val_9}])
         raise IgnoreKey("subjects")
 
     if val_a == "XX":
