@@ -342,7 +342,7 @@ CDS_MIGRATOR_KIT_STREAM_CONFIG = "cds_migrator_kit/rdm/streams.yaml"
 RDM_RECORDS_IDENTIFIERS_SCHEMES = {
     **RDM_RECORDS_IDENTIFIERS_SCHEMES,
     **{
-        "cds_ref": {
+        "cdsrn": {
             "label": _("CDS Reference"),
             "validator": always_valid,
             "datacite": "CDS",

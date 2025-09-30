@@ -286,7 +286,7 @@ def rel_identifiers(self, key, value):
 
     identifier = identifier.replace("Photo", "").strip()
     if is_cern_report_number:
-        scheme = "cds_ref"
+        scheme = "cdsrn"
     else:
         scheme = "other"
 
