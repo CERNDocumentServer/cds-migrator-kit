@@ -29,7 +29,7 @@ from cds_migrator_kit.errors import (
     MissingRequiredField,
     UnexpectedValue,
 )
-from cds_migrator_kit.reports.log import MigrationProgressLogger
+from cds_migrator_kit.reports.log import MigrationProgressLogger, RecordStateLogger
 
 from .helpers import (
     copy_additional_files,
@@ -53,10 +53,18 @@ class CDSVideosLoad(Load):
         tmp_dir,
         entries=None,
         dry_run=False,
-        collection=None,  # Not used but needed for runner
+        collection=None,  # weblectures
+        migration_logger=None,
+        record_state_logger=None,
     ):
         """Constructor."""
         self.dry_run = dry_run
+        self.migration_logger = migration_logger or MigrationProgressLogger(
+            collection="weblectures"
+        )
+        self.record_state_logger = record_state_logger or RecordStateLogger(
+            collection="weblectures"
+        )
 
     def _prepare(self, entry):
         """Prepare the record."""
@@ -115,6 +123,7 @@ class CDSVideosLoad(Load):
                 "additional_files": [
                     "tests/cds-videos/data/files/media_data/2025/1/1_en.vtt"
                 ],
+                "chapters": [],
             }
 
         json_data = entry.get("record", {}).get("json", {})
@@ -245,27 +254,26 @@ class CDSVideosLoad(Load):
 
     def _load(self, entry):
         """Use the services to load the entries."""
-        migration_logger = MigrationProgressLogger(collection="weblectures")
 
         if entry:
             recid = entry.get("record", {}).get("recid", {})
 
             if self._should_skip_recid(recid):
-                migration_logger.add_information(
+                self.migration_logger.add_information(
                     recid, state={"message": "Record already migrated", "value": recid}
                 )
-                migration_logger.finalise_record(recid)
+                self.migration_logger.finalise_record(recid)
                 return
 
             try:
                 self.create_publish_single_video_record(entry)
-                migration_logger.finalise_record(recid)
+                self.migration_logger.finalise_record(recid)
             except (
                 UnexpectedValue,
                 ManualImportRequired,
                 MissingRequiredField,
             ) as e:
-                migration_logger.add_log(e, record=entry)
+                self.migration_logger.add_log(e, record=entry)
 
     def _cleanup(self, *args, **kwargs):
         """Cleanup the entries."""

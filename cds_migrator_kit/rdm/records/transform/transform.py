@@ -87,6 +87,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         dry_run=False,
         collection=None,
         restricted=False,
+        migration_logger=None,
+        record_state_logger=None,
     ):
         """Constructor."""
         self.missing_users_dir = missing_users_dir
@@ -95,8 +97,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         self.dry_run = dry_run
         self.collection = collection
         self.restricted = restricted
-        self.migration_logger = MigrationProgressLogger(collection=collection)
-        self.record_state_logger = RecordStateLogger(collection=collection)
+        self.migration_logger = migration_logger
+        self.record_state_logger = record_state_logger
         super().__init__(partial)
 
     def _created(self, entry):
@@ -716,6 +718,8 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         collection=None,
         restricted=False,
         plots=False,
+        migration_logger=None,
+        record_state_logger=None,
     ):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
@@ -725,8 +729,8 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         self.collection = collection
         self.restricted = restricted
         self.plots = plots
-        self.migration_logger = MigrationProgressLogger(collection=collection)
-        self.record_state_logger = RecordStateLogger(collection=collection)
+        self.migration_logger = migration_logger
+        self.record_state_logger = record_state_logger
         self.db_state = {"affiliations": CDSMigrationAffiliationMapping}
         super().__init__(workers, throw)
 
@@ -797,6 +801,8 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             dry_run=self.dry_run,
             collection=self.collection,
             restricted=self.restricted,
+            migration_logger=self.migration_logger,
+            record_state_logger=self.record_state_logger,
         ).transform(entry)
 
     def _draft(self, entry):

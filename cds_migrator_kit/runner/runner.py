@@ -36,6 +36,8 @@ class Runner:
         config = self._read_config(config_filepath)
         self.collection = collection
         self.db_uri = config.get("db_uri")
+        self.migration_logger = MigrationProgressLogger(collection=self.collection)
+        self.record_state_logger = RecordStateLogger(collection=self.collection)
         # start parsing streams
         self.streams = []
         for definition in stream_definitions:
@@ -72,6 +74,8 @@ class Runner:
                         collection=collection,
                         **stream_config[collection].get("transform", {}),
                         restricted=self.restricted,
+                        migration_logger=self.migration_logger,
+                        record_state_logger=self.record_state_logger,
                     )
 
                 self.streams.append(
@@ -85,6 +89,8 @@ class Runner:
                             tmp_dir=tmp_dir,
                             dry_run=dry_run,
                             collection=collection,
+                            migration_logger=self.migration_logger,
+                            record_state_logger=self.record_state_logger,
                             **stream_config[collection].get("load", {}),
                         ),
                     )
@@ -92,11 +98,8 @@ class Runner:
 
     def run(self):
         """Run ETL streams."""
-        migration_logger = MigrationProgressLogger(collection=self.collection)
-        record_state_logger = RecordStateLogger(collection=self.collection)
-
-        migration_logger.start_log()
-        record_state_logger.start_log()
+        self.migration_logger.start_log()
+        self.record_state_logger.start_log()
         for stream in self.streams:
             try:
                 stream.run(cleanup=True)
@@ -104,8 +107,8 @@ class Runner:
                 Logger.get_logger().exception(
                     f"Stream {stream.name} failed.", exc_info=1
                 )
-                migration_logger.add_log(e)
+                self.migration_logger.add_log(e)
                 raise e
             finally:
-                migration_logger.finalise()
-                record_state_logger.finalise()
+                self.migration_logger.finalise()
+                self.record_state_logger.finalise()
