@@ -33,7 +33,6 @@ from cds_migrator_kit.errors import (
     GrantCreationError,
     ManualImportRequired,
 )
-from cds_migrator_kit.reports.log import MigrationProgressLogger, RecordStateLogger
 
 
 def import_legacy_files(filepath):
@@ -59,14 +58,16 @@ class CDSRecordServiceLoad(Load):
         dry_run=False,
         legacy_pids_to_redirect=None,
         collection=None,
+        migration_logger=None,
+        record_state_logger=None,
     ):
         """Constructor."""
         self.dry_run = dry_run
         self.legacy_pids_to_redirect = {}
         self.clc_sync = False
         self.collection = collection
-        self.migration_logger = MigrationProgressLogger(collection=collection)
-        self.record_state_logger = RecordStateLogger(collection=collection)
+        self.migration_logger = migration_logger
+        self.record_state_logger = record_state_logger
         if legacy_pids_to_redirect is not None:
             with open(legacy_pids_to_redirect, "r") as fp:
                 self.legacy_pids_to_redirect = json.load(fp)

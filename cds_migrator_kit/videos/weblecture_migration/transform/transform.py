@@ -51,10 +51,18 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         partial=False,
         dry_run=False,
         files_dump_dir=None,
+        migration_logger=None,
+        record_state_logger=None,
     ):
         """Constructor."""
         self.dry_run = dry_run
         self.files_dump_dir = files_dump_dir
+        self.migration_logger = migration_logger or MigrationProgressLogger(
+            collection="weblectures"
+        )
+        self.record_state_logger = record_state_logger or RecordStateLogger(
+            collection="weblectures"
+        )
         super().__init__(partial)
 
     def _schema(self, entry):
@@ -288,9 +296,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                     )
                 affiliations = speakers[0].get("affiliations", [])
                 if affiliation not in affiliations:
-                    migration_logger = MigrationProgressLogger(collection="weblectures")
-
-                    migration_logger.add_information(
+                    self.migration_logger.add_information(
                         json_data["legacy_recid"],
                         state={"message": "Affiliation added", "value": affiliation},
                     )
@@ -409,7 +415,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                     stage="transform",
                 )
             else:
-                MigrationProgressLogger(collection="weblectures").add_information(
+                self.migration_logger.add_information(
                     json_data["recid"],
                     {"message": "Indico ID is missing!", "value": "indico"},
                 )
@@ -557,12 +563,11 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
     def transform(self, entry):
         """Transform a record single entry."""
         record_dump = CDSRecordDump(data=entry, dojson_model=videos_migrator_marc21)
-        record_state_logger = RecordStateLogger(collection="weblectures")
 
         record_dump.prepare_revisions()
         timestamp, json_data = record_dump.latest_revision
 
-        record_state_logger.add_record(json_data)
+        self.record_state_logger.add_record(json_data)
         record_json_output = {
             "metadata": self._metadata(json_data),
             "created": self._created(json_data),
@@ -591,12 +596,20 @@ class CDSToVideosRecordTransform(RDMRecordTransform):
         throw=True,
         files_dump_dir=None,
         dry_run=False,
-        collection=None, # Not used but needed for runner
-        restricted=False, # Not used but needed for runner
+        collection=None,  # weblectures
+        restricted=False,  # Not used but needed for runner
+        migration_logger=None,
+        record_state_logger=None,
     ):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
         self.dry_run = dry_run
+        self.migration_logger = migration_logger or MigrationProgressLogger(
+            collection="weblectures"
+        )
+        self.record_state_logger = record_state_logger or RecordStateLogger(
+            collection="weblectures"
+        )
         super().__init__(workers, throw)
 
     def _parent(self, entry, record):
@@ -606,6 +619,8 @@ class CDSToVideosRecordTransform(RDMRecordTransform):
         return CDSToVideosRecordEntry(
             dry_run=self.dry_run,
             files_dump_dir=self.files_dump_dir,
+            migration_logger=self.migration_logger,
+            record_state_logger=self.record_state_logger,
         ).transform(entry)
 
     def _draft(self, entry):
@@ -614,7 +629,6 @@ class CDSToVideosRecordTransform(RDMRecordTransform):
     def _transform(self, entry):
         """Transform a single entry."""
         # creates the output structure for load step
-        migration_logger = MigrationProgressLogger(collection="weblectures")
 
         try:
             record = self._record(entry)
@@ -631,7 +645,7 @@ class CDSToVideosRecordTransform(RDMRecordTransform):
             ManualImportRequired,
             MissingRequiredField,
         ) as e:
-            migration_logger.add_log(e, record=entry)
+            self.migration_logger.add_log(e, record=entry)
 
     def run(self, entries):
         """Run transformation step."""
