@@ -69,8 +69,7 @@ def imprint_info(self, key, value):
     if publication_date_str:
         dates = self.get("dates", [])
         try:
-            date_obj = parse(publication_date_str)
-            date = date_obj.strftime("%Y-%m-%d")
+            date = normalize(publication_date_str)
             dates.append({"date": date, "type": {"id": "issued"}})
             self["dates"] = dates
         except (ParserError, TypeError) as e:
@@ -262,8 +261,9 @@ def internal_notes(self, key, value):
     """Translates private notes field."""
     _internal_notes = self.get('internal_notes', [])
     for v in force_list(value):
-        internal_note = {'value': clean_val('d', v, str, req=True)}
-        internal_note = {'value': clean_val('s', v, str, req=True)}
+        note = clean_val('d', v, str, req=True)
+        note += clean_val('s', v, str)
+        internal_note = {'value': note}
         if internal_note not in _internal_notes:
             _internal_notes.append(internal_note)
     return _internal_notes
