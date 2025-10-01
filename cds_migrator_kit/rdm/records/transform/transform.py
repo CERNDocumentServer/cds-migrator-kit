@@ -85,6 +85,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         missing_users_filename="people.csv",
         affiliations_mapping=None,
         dry_run=False,
+        keep_logs=False,
         collection=None,
         restricted=False,
     ):
@@ -93,10 +94,12 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         self.missing_users_filename = missing_users_filename
         self.affiliations_mapping = affiliations_mapping
         self.dry_run = dry_run
+        self.keep_logs = keep_logs
         self.collection = collection
         self.restricted = restricted
-        self.migration_logger = MigrationProgressLogger(collection=collection)
-        self.record_state_logger = RecordStateLogger(collection=collection)
+        breakpoint()
+        self.migration_logger = MigrationProgressLogger(collection=collection, keep_logs=keep_logs)
+        self.record_state_logger = RecordStateLogger(collection=collection, keep_logs=keep_logs)
         super().__init__(partial)
 
     def _created(self, entry):
@@ -715,16 +718,18 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         dry_run=False,
         collection=None,
         restricted=False,
+        keep_logs=False,
     ):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
         self.missing_users_dir = Path(missing_users).absolute().as_posix()
         self.communities_ids = communities_ids
         self.dry_run = dry_run
+        self.keep_logs = keep_logs
         self.collection = collection
         self.restricted = restricted
-        self.migration_logger = MigrationProgressLogger(collection=collection)
-        self.record_state_logger = RecordStateLogger(collection=collection)
+        self.migration_logger = MigrationProgressLogger(collection=collection, keep_logs=keep_logs)
+        self.record_state_logger = RecordStateLogger(collection=collection, keep_logs=keep_logs)
         self.db_state = {"affiliations": CDSMigrationAffiliationMapping}
         super().__init__(workers, throw)
 
@@ -793,6 +798,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             missing_users_dir=self.missing_users_dir,
             affiliations_mapping=self.db_state["affiliations"],
             dry_run=self.dry_run,
+            keep_logs=self.keep_logs,
             collection=self.collection,
             restricted=self.restricted,
         ).transform(entry)

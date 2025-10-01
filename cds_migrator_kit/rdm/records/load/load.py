@@ -57,16 +57,18 @@ class CDSRecordServiceLoad(Load):
         tmp_dir,
         entries=None,
         dry_run=False,
+        keep_logs=False,
         legacy_pids_to_redirect=None,
         collection=None,
     ):
         """Constructor."""
         self.dry_run = dry_run
+        self.keep_logs = keep_logs
         self.legacy_pids_to_redirect = {}
         self.clc_sync = False
         self.collection = collection
-        self.migration_logger = MigrationProgressLogger(collection=collection)
-        self.record_state_logger = RecordStateLogger(collection=collection)
+        self.migration_logger = MigrationProgressLogger(collection=collection, keep_logs=keep_logs)
+        self.record_state_logger = RecordStateLogger(collection=collection, keep_logs=keep_logs)
         if legacy_pids_to_redirect is not None:
             with open(legacy_pids_to_redirect, "r") as fp:
                 self.legacy_pids_to_redirect = json.load(fp)
