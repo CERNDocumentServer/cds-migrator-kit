@@ -232,10 +232,10 @@ def organisation(self, key, value):
     }
 
 
-@model.over("related_identifiers", "^962_")
+@model.over("identifiers", "^962_")
 @for_each_value
-def related_identifiers(self, key, value):
-    """Translates related identifiers."""
+def identifiers(self, key, value):
+    """Translates identifiers."""
     recid = value.get("b")
     artid = value.get("k", "")
     try:
@@ -250,23 +250,13 @@ def related_identifiers(self, key, value):
             field=key,
             value=value,
         )
-    rel_ids = self.get("related_identifiers", [])
+    identifiers = self.get("identifiers", [])
 
     new_id = {
-        "identifier": f"https://cds.cern.ch/record/{recid}",
-        "scheme": "url",
-        "relation_type": {"id": "references"},
-        "resource_type": {"id": "event"},
+        "identifier": recid,
+        "scheme": "lcds",
     }
 
-    if artid:
-        artid_from_773 = (
-            self.get("custom_fields", {}).get("journal:journal", {}).get("pages")
-        )
-        if artid_from_773 != artid:
-            res_type = "publication-other"
-            new_id.update({"resource_type": {"id": res_type}})
-
-    if new_id not in rel_ids:
+    if new_id not in identifiers:
         return new_id
-    raise IgnoreKey("related_identifiers")
+    raise IgnoreKey("identifiers")

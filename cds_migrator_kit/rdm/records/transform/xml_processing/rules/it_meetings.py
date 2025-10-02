@@ -59,21 +59,21 @@ def collection(self, key, value):
     raise IgnoreKey("collection")
 
 
-@model.over("related_identifiers", "^962__", override=True)
+@model.over("identifiers", "^962__", override=True)
 @for_each_value
 def related_identifiers(self, key, value):
     """Translate 962 fields into related identifiers (LCDS)."""
     recid = value.get("b")
+    new_id = {
+        "identifier": recid,
+        "scheme": "lcds",
+    }
+    identifiers = self.get("identifiers", [])
+    if new_id not in identifiers:
+        identifiers.append(new_id)
+        self["identifiers"] = identifiers
 
-    self.setdefault("related_identifiers", []).append(
-        {
-            "identifier": recid,
-            "scheme": "lcds",
-            "relation_type": {"id": "ispartof"},
-        }
-    )
-
-    raise IgnoreKey("related_identifiers")
+    raise IgnoreKey("identifiers")
 
 
 @model.over("conference_dates", "^925__")

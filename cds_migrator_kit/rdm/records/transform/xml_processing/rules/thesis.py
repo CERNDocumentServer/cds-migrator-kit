@@ -318,31 +318,23 @@ def collection(self, key, value):
     raise IgnoreKey("collection")
 
 
-@model.over("related_identifiers", "^962_")
+@model.over("identifiers", "^962_")
 @for_each_value
-def related_identifiers(self, key, value):
-    """Translates related identifiers."""
+def identifiers(self, key, value):
+    """Translates identifiers."""
     recid = value.get("b")
     try:
         material = value.get("n", "").lower().strip()
     except AttributeError:
         raise UnexpectedValue(
-            "related identifiers have unexpected material format",
+            "identifiers have unexpected material format",
             field=key,
             value=value,
         )
-    rel_ids = self.get("related_identifiers", [])
-    res_type = None
-    if material and material == "book":
-        # if book we know that is published in a book,
-        res_type = "publication-book"
-    elif material:
-        #  otherwise it will be a conference reference
-        res_type = "event"
+    alt_ids = self.get("identifiers", [])
     new_id = {
-        "identifier": f"https://cds.cern.ch/record/{recid}",
-        "scheme": "url",
-        "relation_type": {"id": "references"},
+        "identifier": recid,
+        "scheme": "lcds",
     }
 
     artid = value.get("k", "")
@@ -358,9 +350,6 @@ def related_identifiers(self, key, value):
                 subfield="k",
             )
 
-    if res_type:
-        new_id.update({"resource_type": {"id": res_type}})
-
-    if new_id not in rel_ids:
+    if new_id not in alt_ids:
         return new_id
-    raise IgnoreKey("related_identifiers")
+    raise IgnoreKey("identifiers")

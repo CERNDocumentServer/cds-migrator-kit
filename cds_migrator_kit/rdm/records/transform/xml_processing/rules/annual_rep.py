@@ -25,28 +25,26 @@ def subjects(self, key, value):
     raise IgnoreKey("subjects")
 
 
-@model.over("related_identifiers_custom_fields", "^962_", override=True)
+@model.over("identifiers_custom_fields", "^962_", override=True)
 @for_each_value
-def related_identifiers_custom_fields(self, key, value):
-    """Handles both custom fields and related identifiers from 962_."""
+def identifiers_custom_fields(self, key, value):
+    """Handles both custom fields and identifiers from 962_."""
 
     # ------------------------------
     # Related Identifiers
     # ------------------------------
     recid = value.get("b")
     year = "".join(filter(str.isdigit, value.get("n", "")))[:4]
-    related_works = self.get("related_identifiers", [])
+    related_works = self.get("identifiers", [])
 
     new_id = {
         "identifier": recid,
         "scheme": "lcds",
-        "relation_type": {"id": "ispartof"},
-        "resource_type": {"id": "publication-report"},
     }
 
     if new_id not in related_works:
         related_works.append(new_id)
-        self["related_identifiers"] = related_works
+        self["identifiers"] = related_works
 
     # ------------------------------
     # Journal & Imprint
