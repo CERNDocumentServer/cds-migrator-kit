@@ -53,24 +53,19 @@ def date(self, key, value):
     event_id = value.get("g", "").strip()
     location = value.get("r", "").strip()
 
-    # Try to convert new id
-    new_id = get_new_indico_id(event_id)
-    if new_id:
-        event_id = str(new_id)
-
     lecture_info = {
         k: v for k, v in {"event_id": event_id, "location": location}.items() if v
     }
-    if lecture_info:
-        self["lecture_infos"].append(lecture_info)
 
     # Date: 518 'd' subfield
     parsed_date = parse_date(value.get("d", "").strip())
+    if not parsed_date:
+        # 518 'a' subfield (e.g., 'CERN, Geneva, 23 - 27 Nov 1998')
+        parsed_date = parse_date(value.get("a", "").split(",")[-1])
     if parsed_date:
-        return parsed_date
-    # 518 'a' subfield (e.g., 'CERN, Geneva, 23 - 27 Nov 1998')
-    parsed_date = parse_date(value.get("a", "").split(",")[-1])
-    if parsed_date:
+        if "event_id" in lecture_info:
+            lecture_info["date"] = parsed_date
+            self["lecture_infos"].append(lecture_info)
         return parsed_date
 
 
@@ -167,9 +162,6 @@ def url_files(self, key, value):
         }
     elif "indico" in url or "agenda" in url:
         indico_link = {}
-        url = transform_legacy_urls(url, type="indico")
-        if url:
-            indico_link["url"] = url
 
         # Try to get event id
         match_id = re.search(r"(?:ida=|confId=|event/)([\w\d]+)", url)
@@ -177,6 +169,10 @@ def url_files(self, key, value):
             event_id = match_id.group(1)
             if event_id:
                 indico_link["event_id"] = event_id
+
+        url = transform_legacy_urls(url, type="indico")
+        if url:
+            indico_link["url"] = url
 
         # Try to get the date from text
         text = value.get("y", "")
@@ -264,12 +260,7 @@ def indico_information(self, key, value):
     start_date = value.get("9", "").strip()
     parsed_date = parse_date(start_date)
 
-    # Try to convert new id
     event_id = re.split(r"[cs]", event_id, 1)[0]
-    new_id = get_new_indico_id(event_id)
-    if new_id:
-        event_id = str(new_id)
-
     return {
         k: v
         for k, v in {
@@ -643,10 +634,6 @@ def related_document(self, key, value):
         # Extract indico id without contribution
         raw_id = system_number.split(".", 1)[1]
         indico_id = re.split(r"[cs]", raw_id, 1)[0]
-        # Try to convert new id
-        new_id = get_new_indico_id(indico_id)
-        if new_id:
-            indico_id = str(new_id)
         return indico_id
     else:
         raise UnexpectedValue(field=key, subfield="a")

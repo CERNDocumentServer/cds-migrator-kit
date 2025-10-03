@@ -29,7 +29,10 @@ from cds_migrator_kit.errors import (
     MissingRequiredField,
     UnexpectedValue,
 )
-from cds_migrator_kit.reports.log import MigrationProgressLogger, RecordStateLogger
+from cds_migrator_kit.reports.log import MigrationProgressLogger, RecordStateLogger, RecordStateLogger
+from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.identifiers import (
+    transform_legacy_urls,
+)
 
 from .helpers import (
     copy_additional_files,
@@ -38,6 +41,7 @@ from .helpers import (
     create_project,
     create_video,
     extract_metadata,
+    publish_project,
     publish_video_record,
     transcode_task,
 )
@@ -82,17 +86,18 @@ class CDSVideosLoad(Load):
         legacy_recid = entry["record"]["recid"]
         legacy_recid_minter(legacy_recid, record_uuid)
 
-    def _after_publish(self, published_record, entry):
+    def _after_publish(self, published_record, entry, is_multiple_video_record=False):
         """Run fixes after record publish."""
         # Get published record uuid
         recid_pid, _ = published_record.fetch_published()
         record_uuid = str(recid_pid.object_uuid)
         # Update creation date
         self._after_publish_update_created(record_uuid, entry)
-        # Mint legacy recid
-        self._after_publish_mint_legacy_recid(record_uuid, entry)
-        # Save the original marcxml
-        self._save_original_dumped_record(record_uuid, entry)
+        if not is_multiple_video_record:
+            # Mint legacy recid
+            self._after_publish_mint_legacy_recid(record_uuid, entry)
+            # Save the original marcxml
+            self._save_original_dumped_record(record_uuid, entry)
 
     def _get_submitter(self, entry):
         """Get the user id of the submitter."""
@@ -101,7 +106,7 @@ class CDSVideosLoad(Load):
             raise ManualImportRequired(f"No submitter found", stage="load")
         return submitter
 
-    def _get_files(self, entry):
+    def _get_files(self, media_files, afs_files):
         """Get lecturemedia files."""
         if self.dry_run:
             # Use dummy files for loading; existence is already checked in the transform stage.
@@ -126,9 +131,8 @@ class CDSVideosLoad(Load):
                 "chapters": [],
             }
 
-        json_data = entry.get("record", {}).get("json", {})
-        media_files = json_data.get("media_files", {})
-        afs_files = json_data.get("files", [])
+        media_files = media_files.get("media_files", {})
+        afs_files = afs_files.get("files", [])
 
         media_files.setdefault("additional_files", []).extend(afs_files)
 
@@ -150,27 +154,16 @@ class CDSVideosLoad(Load):
                 f"Report number reserve failed! {report_number} already exists!"
             )
 
-    def create_publish_single_video_record(self, entry):
-        """Create and publish project and video for single video record."""
-        # Get transformed metadata
-        metadata = entry.get("record", {}).get("json", {}).get("metadata")
-        # Get report_number
-        report_number = metadata.get("report_number", None)
-        # Get transformed media files
-        media_files = self._get_files(entry)
+    def _create_video_with_flow(
+        self, project_deposit, metadata, media_files, submitter
+    ):
+        """
+        Create a video deposit and initialize its flow/payload.
 
-        # Owner
-        submitter = self._get_submitter(entry)
-
-        project_metadata = {
-            "category": "LECTURES",
-            "type": "VIDEO",
-            "_access": metadata["_access"],
-        }
+        Returns:
+            tuple: (video_deposit, video_deposit_id, bucket_id, payload)
+        """
         try:
-            # Create project
-            project_deposit = create_project(project_metadata, submitter)
-
             # Create video
             video_deposit, master_object = create_video(
                 project_deposit, metadata, media_files, submitter
@@ -191,12 +184,27 @@ class CDSVideosLoad(Load):
             # Extract metadata
             extract_metadata(payload)
 
+            return video_deposit, video_deposit_id, bucket_id, payload
+
         except ManualImportRequired:
             db.session.rollback()
             # TODO if `copy_file_to_bucket` method failes it's deleting the file
             # but if anything else fails, should we try to delete all the files?
             raise
 
+    def _finalize_video_publication(
+        self,
+        video_deposit,
+        video_deposit_id,
+        bucket_id,
+        payload,
+        media_files,
+        report_number,
+    ):
+        """
+        Handle frames, subformats, additional files, indexing, report number,
+        publishing, and chapters for a video.
+        """
         # Just log if something goes wrong: Frames, Subformats, Additional Files
         frame_paths = media_files["frames"]
         copy_frames(payload=payload, frame_paths=frame_paths)
@@ -220,8 +228,135 @@ class CDSVideosLoad(Load):
         # Run ExtractChapterFramesTask
         ExtractChapterFramesTask().s(**payload).apply_async()
 
+        return published_video
+
+    def create_publish_single_video_record(self, entry):
+        """Create and publish project and video for single video record."""
+        # Get transformed metadata
+        metadata = entry.get("record", {}).get("json", {}).get("metadata")
+        # Get report_number
+        report_number = metadata.get("report_number", None)
+        # Get transformed media files
+        ceph_files = entry.get("record", {}).get("json", {}).get("media_files")
+        afs_files = entry.get("record", {}).get("json", {}).get("files")
+        media_files = self._get_files(ceph_files, afs_files)
+
+        # Owner
+        submitter = self._get_submitter(entry)
+
+        project_metadata = {
+            "category": "LECTURES",
+            "type": "VIDEO",
+            "_access": metadata["_access"],
+        }
+        # Create project
+        project_deposit = create_project(project_metadata, submitter)
+
+        # Step 1: Video + flow creation
+        video_deposit, video_deposit_id, bucket_id, payload = (
+            self._create_video_with_flow(
+                project_deposit, metadata, media_files, submitter
+            )
+        )
+
+        # Step 2: Finalize publication
+        published_video = self._finalize_video_publication(
+            video_deposit,
+            video_deposit_id,
+            bucket_id,
+            payload,
+            media_files,
+            report_number,
+        )
+
         # Run after publish fixes
         self._after_publish(published_video, entry)
+
+    def create_publish_multiple_video_record(self, entry):
+        """Create and publish project and video for single video record."""
+        json_data = entry.get("record", {}).get("json", {})
+        # Get transformed metadata
+        common_metadata = json_data.get("metadata")
+        # Dont mint report number for multiple video record
+        report_number = None
+
+        # Owner
+        submitter = self._get_submitter(entry)
+
+        project_metadata = {
+            "category": "LECTURES",
+            "type": "VIDEO",
+            "_access": common_metadata["_access"],
+            "title": common_metadata["title"],
+            "description": common_metadata["description"],
+            "contributors": common_metadata["contributors"],
+        }
+        # Create project
+        project_deposit = create_project(project_metadata, submitter)
+        project_deposit_id = project_deposit["_deposit"]["id"]
+
+        multiple_video_record = json_data.get("multiple_video_record")
+
+        for record in multiple_video_record:
+            # project_deposit = deposit_project_resolver(project_deposit_id)
+            # Combine ceph and afs files
+            media_files = self._get_files(record["files"], json_data.get("files"))
+
+            # Use the correct metadata for each record
+            event_id = record["event_id"]
+            url = record["url"]
+            date = record["date"]
+            location = record.get("location")
+
+            metadata = common_metadata.copy()
+            related_identifiers = list(metadata.get("related_identifiers", []))
+            # Insert event_id at the beginning
+            related_identifiers.insert(
+                0,
+                {
+                    "scheme": "Indico",
+                    "identifier": str(event_id),
+                    "relation_type": "IsPartOf",
+                },
+            )
+            url = transform_legacy_urls(url, type="indico")
+            url_identifier = {
+                "scheme": "URL",
+                "identifier": url,
+                "relation_type": "IsPartOf",
+            }
+            if url_identifier not in related_identifiers:
+                related_identifiers.append(url_identifier)
+
+            metadata["related_identifiers"] = related_identifiers
+            metadata["date"] = date
+            if location:
+                metadata["location"] = location
+
+            # Step 1: Video + flow creation
+            video_deposit, video_deposit_id, bucket_id, payload = (
+                self._create_video_with_flow(
+                    project_deposit, metadata, media_files, submitter
+                )
+            )
+
+            # Step 2: Finalize publication
+            published_video = self._finalize_video_publication(
+                video_deposit,
+                video_deposit_id,
+                bucket_id,
+                payload,
+                media_files,
+                report_number,
+            )
+
+            # Run after publish fixes
+            self._after_publish(published_video, entry, is_multiple_video_record=True)
+
+        # Publish project
+        published_project = publish_project(deposit_id=project_deposit_id)
+        # Mint legacy recid to project
+        self._after_publish(published_project, entry)
 
     def _save_original_dumped_record(self, record_uuid, entry):
         """Save the original dumped record.
@@ -264,10 +399,16 @@ class CDSVideosLoad(Load):
                 )
                 self.migration_logger.finalise_record(recid)
                 return
-
+            is_multiple_video_record = (
+                entry.get("record", {}).get("json", {}).get("is_multiple_video_record")
+            )
             try:
-                self.create_publish_single_video_record(entry)
-                self.migration_logger.finalise_record(recid)
+                if not is_multiple_video_record:
+                    self.create_publish_single_video_record(entry)
+                elif is_multiple_video_record:
+                    self.create_publish_multiple_video_record(entry)
+
+                self.self.migration_logger.finalise_record(recid)
             except (
                 UnexpectedValue,
                 ManualImportRequired,
