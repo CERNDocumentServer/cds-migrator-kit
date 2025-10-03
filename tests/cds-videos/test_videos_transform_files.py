@@ -106,15 +106,18 @@ def test_transform_afs_files(base_app):
         # Check if afs files are transformed correctly
         assert len(afs_files) == 1
         assert afs_files[0].endswith(
-            "tests/cds-videos/data/files/afs/g2/25389/AT00000495.pdf"
+            "tests/cds-videos/data/files/afs/g2/25389/AT00000495.pdf;1"
         )
 
         # Load entry
         load_entry = CDSVideosLoad(db_uri="", data_dir="", tmp_dir="")
-        files = load_entry._get_files(transform_entry)
-
+        media_files = (
+            transform_entry.get("record", {}).get("json", {}).get("media_files", {})
+        )
+        afs_files = transform_entry.get("record", {}).get("json", {}).get("files", [])
+        files = load_entry._get_files(media_files, afs_files)
         # Check if afs files are added as additional files
         additional_files = files.get("additional_files", [])
         assert additional_files[-1].endswith(
-            "tests/cds-videos/data/files/afs/g2/25389/AT00000495.pdf"
+            "tests/cds-videos/data/files/afs/g2/25389/AT00000495.pdf;1"
         )

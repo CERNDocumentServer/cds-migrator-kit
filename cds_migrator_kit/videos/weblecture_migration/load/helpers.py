@@ -15,7 +15,12 @@ import tempfile
 from datetime import timedelta
 from pathlib import Path
 
-from cds.modules.deposit.api import Project, Video, deposit_video_resolver
+from cds.modules.deposit.api import (
+    Project,
+    Video,
+    deposit_project_resolver,
+    deposit_video_resolver,
+)
 from cds.modules.deposit.ext import _create_tags
 from cds.modules.flows.api import AVCFlowCeleryTasks, FlowService
 from cds.modules.flows.models import FlowMetadata, FlowTaskStatus
@@ -230,6 +235,28 @@ def publish_video_record(deposit_id):
     except Exception as e:
         raise ManualImportRequired(
             f"Deposit:{deposit_id} Publish failed: {e}", stage="load"
+        )
+
+
+def publish_project(deposit_id):
+    """Publish project."""
+    try:
+        project_deposit = deposit_project_resolver(str(deposit_id))
+        project_published = project_deposit.publish()
+        project_published.commit()
+
+        # Send signal to trigger after_publish actions
+        post_action.send(
+            current_app._get_current_object(),
+            action="publish",
+            deposit=project_published,
+        )
+
+        db.session.commit()
+        return project_published
+    except Exception as e:
+        raise ManualImportRequired(
+            f"Project:{deposit_id} Publish failed: {e}", stage="load"
         )
 
 
