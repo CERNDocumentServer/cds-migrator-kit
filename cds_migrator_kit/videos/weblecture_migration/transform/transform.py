@@ -305,10 +305,20 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 return entries[0]
             if not entries:
                 return None
-            raise UnexpectedValue(
-                f"More than one accelerator_experiment field found in record: {json_data.get('recid')} values: {entries}.",
-                stage="transform",
-            )
+            # concatenate the values
+            result = {}
+            for entry in entries:
+                for key, value in entry.items():
+                    if not value:
+                        continue
+                    if key not in result:
+                        result[key] = value
+                    else:
+                        # add only if not already present
+                        values = [v.strip() for v in result[key].split(",")]
+                        if value not in values:
+                            result[key] = result[key] + ", " + value
+            return result
 
         def location(json_data):
             """Get the location."""
