@@ -335,8 +335,10 @@ def report_number(self, key, value):
     identifier = StringValue(identifier).parse()
     provenance = value.get("9", "")
     z_value = value.get("z", "")
-    if z_value and z_value != "1/1":
-        raise UnexpectedValue(field=key, subfield="z", value=z_value)
+    if z_value:
+        # Add it to curation
+        append_transformed_subfields(self, key, value, "legacy_marc_fields", "088")
+        return None
     if identifier and provenance:
         raise UnexpectedValue(
             message="Report number: two values!", field=key, value=value
@@ -531,19 +533,27 @@ def copyright(self, key, value):
 def presented_at(self, key, value):
     """Translates related identifiers."""
     recid = value.get("b")
-    material = value.get("n", "").lower().strip()  # drop
+    material = value.get("n", "").lower().strip()  # drop if recid exists
     rel_ids = self.get("related_identifiers", [])
     res_type = "Event"
     if material and material.lower() == "book":
         res_type = "Book"
     if not recid:
-        raise UnexpectedValue(message="Identifier is missing!", field=key)
-    new_id = {
-        "identifier": recid,
-        "scheme": "CDS",
-        "relation_type": "IsPartOf",
-        "resource_type": res_type,
-    }
+        if not material:
+            raise UnexpectedValue(message="Identifier is missing!", field=key)
+        search_url = f"https://cds.cern.ch/search?f=111__g&p={material}"
+        new_id = {
+            "identifier": search_url,
+            "scheme": "URL",
+            "relation_type": "IsPartOf",
+        }
+    else:
+        new_id = {
+            "identifier": recid,
+            "scheme": "CDS",
+            "relation_type": "IsPartOf",
+            "resource_type": res_type,
+        }
 
     if new_id not in rel_ids:
         return new_id
@@ -601,7 +611,7 @@ def related_document(self, key, value):
     if relation:
         if relation.lower() == "conference paper":
             res_type = "ConferencePaper"
-        elif relation.lower() == "yellow report":
+        elif relation.lower() == "yellow report" or relation.lower() == "report":
             res_type = "Report"
         else:
             raise UnexpectedValue(message="Unknown relation!", field=key)
@@ -791,11 +801,14 @@ def series(self, key, value):
     return {"description": description, "type": "SeriesInformation"}
 
 
-@model.over("affiliation", "^901__")
+@model.over("contributors", "^901__")
+@for_each_value
 def affiliation(self, key, value):
-    """Translates affiliation."""
+    """Translates affiliation to contributor with role Producer."""
     affiliation = value.get("u", "").strip()
-    return affiliation
+    if affiliation:
+        return {"name": affiliation, "role": "Producer"}
+    return None
 
 
 @model.over("restriction", "^5061_")
@@ -836,9 +849,15 @@ def restriction(self, key, value):
                 )
     elif restriction_type == "email":
         emails = restriction_entries
-    else:
-        raise UnexpectedValue(
-            field=key, value=restriction_type, message="Unknown restriction type!"
-        )
-
+    else:  # try to convert unknown restriction type entries
+        for entry in restriction_entries:
+            if entry.endswith("[CERN]"):
+                group_name = entry.replace("[CERN]", "").strip()
+                emails.append(f"{group_name}@cern.ch")
+            elif "@" in entry:
+                emails.append(entry)
+            else:
+                raise UnexpectedValue(
+                    field=key, message=f"Unknown restriction entry: {entry}"
+                )
     return emails
