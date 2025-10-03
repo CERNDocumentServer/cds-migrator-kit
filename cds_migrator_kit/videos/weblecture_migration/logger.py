@@ -34,6 +34,27 @@ class VideosJsonLogger:
         fh.setFormatter(formatter)
         logger_flows.addHandler(fh)
 
+        # Add a new json file for multi video records redirections
+        cls.json_path = log_dir / "multi_video_redirections.json"
+        if not os.path.exists(cls.json_path):
+            with open(cls.json_path, "w") as json_file:
+                json.dump([], json_file)
+
+    @classmethod
+    def log_multi_video_redirection(cls, legacy_id, legacy_anchor_id, cds_videos_id):
+        """Log multi video record redirection to a json file."""
+        entry = {
+            "legacy_id": legacy_id,
+            "legacy_anchor_id": legacy_anchor_id,
+            "cds_videos_id": cds_videos_id,
+        }
+        if os.path.exists(cls.json_path):
+            with open(cls.json_path, "r+") as json_file:
+                data = json.load(json_file)
+                data.append(entry)
+                json_file.seek(0)
+                json.dump(data, json_file, indent=4)
+
 
 class SubmitterLogger:
     """Log submitters migration."""

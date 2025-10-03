@@ -10,19 +10,23 @@
 
 import copy
 from os.path import dirname, join
+from pathlib import Path
 
 import pytest
+import yaml
 
 from cds_migrator_kit.errors import (
     MissingRequiredField,
     UnexpectedValue,
 )
+from cds_migrator_kit.reports.log import MigrationProgressLogger, StandardLogger
 from cds_migrator_kit.transform.dumper import CDSRecordDump
 from cds_migrator_kit.videos.weblecture_migration.transform import (
     videos_migrator_marc21,
 )
 from cds_migrator_kit.videos.weblecture_migration.transform.transform import (
     CDSToVideosRecordEntry,
+    CDSToVideosRecordTransform,
 )
 from tests.helpers import add_tag_to_marcxml, load_json, remove_tag_from_marcxml
 
@@ -131,7 +135,7 @@ def test_transform_date(dumpdir, base_app):
         # Load test data
         data = load_json(dumpdir, "lecture.json")
 
-        # Test case: Fail due to multiple dates
+        # Test case: Multiple dates
         modified_data = data[0]
         record_marcxml = modified_data["record"][-1]["marcxml"]
         modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
@@ -141,8 +145,9 @@ def test_transform_date(dumpdir, base_app):
 
         # Transform record
         record_entry = CDSToVideosRecordEntry()
-        with pytest.raises(UnexpectedValue):
-            record_entry._metadata(res)
+        metadata = record_entry._metadata(res)
+        assert metadata["date"] is not None
+        assert len(metadata["_curation"]["legacy_dates"]) >= 1
 
         # Test case: Fail due to missing dates
         record_marcxml = modified_data["record"][-1]["marcxml"]
@@ -1300,3 +1305,42 @@ def test_transform_affiliation(dumpdir, base_app):
         metadata = record_entry._metadata(res)
         contributors = metadata["contributors"]
         assert {"name": "Affiliation", "role": "Producer"} in contributors
+
+
+def test_transform_multi_video_record(dumpdir, base_app):
+    """Test multiple video record correctly transformed."""
+    with base_app.app_context():
+        with open(base_app.config["CDS_MIGRATOR_KIT_STREAM_CONFIG"]) as f:
+            stream_config = yaml.safe_load(f)
+        files_dump_dir = stream_config["records"]["weblectures"]["transform"][
+            "files_dump_dir"
+        ]
+        dumpdir = stream_config["records"]["weblectures"]["extract"]["dirpath"]
+        log_dir = Path(stream_config["records"]["weblectures"]["log_dir"])
+        log_dir.mkdir(parents=True, exist_ok=True)
+
+        # Load test data
+        data = load_json(dumpdir, "lecture.json")
+
+        # Transform
+        transform = CDSToVideosRecordTransform(files_dump_dir=files_dump_dir)
+
+        # Test case: multi video record with indico ids
+        transform_entry = transform._transform(data[3])
+        is_multiple_video_record = (
+            transform_entry.get("record", {})
+            .get("json", {})
+            .get("is_multiple_video_record")
+        )
+        assert is_multiple_video_record
+        multiple_video_record = (
+            transform_entry.get("record", {})
+            .get("json", {})
+            .get("multiple_video_record")
+        )
+        assert len(multiple_video_record) == 3
+        for video in multiple_video_record:
+            assert "event_id" in video
+            assert "url" in video
+            assert "files" in video
+            assert "date" in video
