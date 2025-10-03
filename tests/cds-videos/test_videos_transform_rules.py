@@ -389,18 +389,35 @@ def test_transform_accelerator_experiment(dumpdir, base_app):
         assert accelerator_experiment["experiment"] == "experiment_test"
         assert accelerator_experiment["facility"] == "facility_test"
 
-        # Test case: Fail due to multiple 693(accelerator_experiment) tags
+        # Test case: Multiple 693 tags -> concatenate
         record_marcxml = modified_data["record"][-1]["marcxml"]
         modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
-            record_marcxml, "693", {"a": "accelerator"}
+            record_marcxml,
+            "693",
+            {
+                "a": "accelerator_test",
+                "e": "experiment_test2",
+                "p": "project_test2",
+                "s": "study_test",
+            },
         )
 
         # Extract record
         res = load_and_dump_revision(modified_data)
+
         # Transform record
         record_entry = CDSToVideosRecordEntry()
-        with pytest.raises(UnexpectedValue):
-            record_entry._metadata(res)
+        metadata = record_entry._metadata(res)
+        accelerator_experiment = metadata["accelerator_experiment"]
+
+        # Should contain concatenated values
+        assert accelerator_experiment["accelerator"] == "accelerator_test"
+        assert (
+            accelerator_experiment["experiment"] == "experiment_test, experiment_test2"
+        )
+        assert accelerator_experiment["project"] == "project_test, project_test2"
+        assert accelerator_experiment["study"] == "study_test"
+        assert accelerator_experiment["facility"] == "facility_test"
 
         # Test case: remove the 693 tags and add another
         record_marcxml = modified_data["record"][-1]["marcxml"]
