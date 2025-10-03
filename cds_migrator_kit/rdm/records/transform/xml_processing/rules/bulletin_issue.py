@@ -241,20 +241,26 @@ def issue_number(self, key, value):
 def related_identifiers(self, key, value):
     id = value.get("a")
     resource_type = value.get("t", "other")
-    scheme = "other"
 
     res_type_map = {"photo": {"id": "image-photo"}, "other": {"id": "other"}}
 
     is_cds_recid = is_legacy_cds(id)
-    if is_cds_recid:
-        scheme = "lcds"
+    new_id = {"identifier": id}
 
-    new_id = {
-        "identifier": id,
-        "scheme": scheme,
-        "resource_type": res_type_map[resource_type.lower()],
-        "relation_type": {"id": "references"},
-    }
+    if is_cds_recid:
+        new_id["scheme"] = "lcds"
+        identifiers = self.get("identifiers", [])
+        if new_id not in identifiers:
+            identifiers.append(new_id)
+            self["identifiers"] = identifiers
+    else:
+        new_id.update(
+            {
+                "scheme": "other",
+                "resource_type": res_type_map[resource_type.lower()],
+                "relation_type": {"id": "references"},
+            }
+        )
 
     rel_ids = self.get("related_identifiers", [])
     if new_id not in rel_ids:
@@ -285,19 +291,23 @@ def rel_identifiers(self, key, value):
     is_cern_report_number = photo_regex.match(report_number)
 
     identifier = identifier.replace("Photo", "").strip()
+    new_id = {"identifier": identifier}
+
     if is_cern_report_number:
-        scheme = "cds_ref"
+        new_id["scheme"] = "cdsrn"
+        identifiers = self.get("identifiers", [])
+        if new_id not in identifiers:
+            identifiers.append(new_id)
+            self["identifiers"] = identifiers
     else:
-        scheme = "other"
-
-    new_id = {
-        "identifier": f"{identifier}",
-        "scheme": scheme,
-        "resource_type": res_type_map[res_type.lower()],
-        "relation_type": {"id": "references"},
-    }
-
-    identifiers = self.get("related_identifiers", [])
-    if new_id not in identifiers:
-        return new_id
+        new_id.update(
+            {
+                "scheme": "other",
+                "resource_type": res_type_map[res_type.lower()],
+                "relation_type": {"id": "references"},
+            }
+        )
+        related_identifiers = self.get("related_identifiers", [])
+        if new_id not in related_identifiers:
+            return new_id
     raise IgnoreKey("related_identifiers")

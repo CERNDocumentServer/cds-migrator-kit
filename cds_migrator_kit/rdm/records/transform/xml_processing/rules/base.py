@@ -19,6 +19,10 @@ from idutils.validators import is_doi, is_handle, is_urn
 from invenio_accounts.models import User
 
 from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.rdm.migration_config import (
+    RDM_RECORDS_IDENTIFIERS_SCHEMES,
+    RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES,
+)
 from cds_migrator_kit.rdm.records.transform.config import (
     CONTROLLED_SUBJECTS_SCHEMES,
     KEYWORD_SCHEMES_TO_DROP,
@@ -272,7 +276,7 @@ def report_number(self, key, value):
         if scheme.lower() == "hdl":
             scheme = "handle"
         if scheme == "arXiv:reportnumber":
-            scheme = "cds_ref"
+            scheme = "cdsrn"
         if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
             scheme = scheme.lower()
     if key == "037__" and "n" in value:
@@ -282,7 +286,7 @@ def report_number(self, key, value):
         scheme = "handle"
     if (key == "037__" and not scheme) or (identifier and key == "088__"):
         # if there is no scheme, it means report number
-        scheme = "cds_ref"
+        scheme = "cdsrn"
 
     # if there is no identifier it means something else was stored in __9
     if not identifier:
@@ -332,7 +336,7 @@ def identifiers(self, key, value):
     """
     id_value = StringValue(value.get("a", "")).parse()
     scheme = StringValue(value.get("9", "")).parse()
-
+    related_works = self.get("related_identifiers", [])
     # drop oai harvest info
     if id_value.startswith("oai:inspirehep.net"):
         raise IgnoreKey("identifiers")
@@ -345,7 +349,6 @@ def identifiers(self, key, value):
         }
         additional_descriptions.append(new_desc)
         self["additional_descriptions"] = additional_descriptions
-        related_works = self.get("related_identifiers", [])
         new_id = {
             "identifier": f"cern-annual-report:{id_value}",
             "scheme": "other",
@@ -371,8 +374,19 @@ def identifiers(self, key, value):
         rel_id = {"scheme": "indico", "identifier": str(indico_id)}
     if scheme.lower() == "zentralblatt math":
         rel_id = {"scheme": "url", "identifier": f"https://zbmath.org/?q=an:{id_value}"}
-    if id_value and rel_id not in self.get("identifiers", []):
-        return rel_id
+    if id_value:
+        if scheme.lower() in RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES:
+            rel_id.update(
+                {
+                    "relation_type": {"id": "isreferencedby"},
+                }
+            )
+            related_works.append(rel_id)
+            self["related_identifiers"] = related_works
+            raise IgnoreKey("identifiers")
+
+        elif rel_id not in self.get("identifiers", []):
+            return rel_id
     raise IgnoreKey("identifiers")
 
 
@@ -403,15 +417,22 @@ def _pids(self, key, value):
         if qualifier == "thesis":
             qualifier = "publication-thesis"
         related_works = self.get("related_identifiers", [])
-        new_id = {
-            "identifier": identifier,
-            "scheme": scheme,
-            "relation_type": {"id": "isversionof"},
-            "resource_type": {"id": qualifier},
-        }
-        if new_id not in related_works:
-            related_works.append(new_id)
-        self["related_identifiers"] = related_works
+        new_id = {"identifier": identifier, "scheme": scheme}
+        if scheme.lower() in RDM_RECORDS_IDENTIFIERS_SCHEMES:
+            identifiers = self.get("identifiers", [])
+            if new_id not in identifiers:
+                identifiers.append(new_id)
+                self["identifiers"] = identifiers
+        else:
+            new_id.update(
+                {
+                    "relation_type": {"id": "isversionof"},
+                    "resource_type": {"id": qualifier},
+                }
+            )
+            if new_id not in related_works:
+                related_works.append(new_id)
+            self["related_identifiers"] = related_works
         raise IgnoreKey("_pids")
 
     if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
@@ -682,21 +703,14 @@ def yellow_reports(self, key, value):
     if provenance.lower() == "pacs":
         raise IgnoreKey("related_identifiers")
 
-    if scheme and scheme.lower() == "cern yellow report":
+    if (
+        scheme
+        and scheme.lower() == "cern yellow report"
+        or (not scheme and identifier.startswith("CERN-"))
+    ):
         new_id = {
             "identifier": identifier,
-            "scheme": "cds_ref",
-            "relation_type": {"id": "ispublishedin"},
-            "resource_type": {"id": "publication-report"},
-        }
-        return new_id
-    if scheme.lower() == "pacs":
-        raise IgnoreKey("related_identifiers")
-    if not scheme and identifier.startswith("CERN-"):
-        # report number
-        new_id = {
-            "identifier": identifier,
-            "scheme": "cds_ref",
+            "scheme": "cdsrn",
         }
         identifiers = self.get("identifiers", [])
         if new_id not in identifiers:
@@ -704,51 +718,43 @@ def yellow_reports(self, key, value):
             self["identifiers"] = identifiers
         raise IgnoreKey("related_identifiers")
 
+    if scheme.lower() == "pacs":
+        raise IgnoreKey("related_identifiers")
+
     raise UnexpectedValue("Unknown value found.", field=key, value=value)
 
 
-@model.over("related_identifiers", "^787[0_]_")
+@model.over("identifiers", "^787[0_]_")
 @for_each_value
-def related_identifiers(self, key, value):
-    """Translates related identifiers."""
+def identifiers(self, key, value):
+    """Translates identifiers."""
     description = value.get("i")
     recid = value.get("w")
-    rel_ids = self.get("related_identifiers", [])
+    identifiers = self.get("identifiers", [])
     new_id = {
-        "identifier": f"https://cds.cern.ch/record/{recid}",
-        "scheme": "url",
-        "relation_type": {"id": "references"},
+        "identifier": recid,
+        "scheme": "lcds",
     }
-
-    report_number = value.get("r")
-    if report_number:
-        report_id = {"identifier": report_number, "scheme": "cds_ref",
-                     "relation_type": {"id": "references"}}
-        if report_id not in rel_ids:
-            rel_ids.append(report_id)
-            self["related_identifiers"] = rel_ids
-    if new_id not in rel_ids:
+    if new_id not in identifiers:
         return new_id
+    raise IgnoreKey("identifiers")
 
-    raise IgnoreKey("related_identifiers")
 
-
-@model.over("related_identifiers", "^775_")
+@model.over("identifiers", "^775_")
 @for_each_value
-def related_identifiers(self, key, value):
-    """Translates related identifiers."""
+def identifiers(self, key, value):
+    """Translates identifiers."""
     description = value.get("b")
     year = value.get("c")
     recid = value.get("w")
-    rel_ids = self.get("related_identifiers", [])
+    alt_ids = self.get("identifiers", [])
     new_id = {
-        "identifier": f"https://cds.cern.ch/record/{recid}",
-        "scheme": "url",
-        "relation_type": {"id": "references"},
+        "identifier": recid,
+        "scheme": "lcds",
     }
-    if new_id not in rel_ids:
+    if new_id not in alt_ids:
         return new_id
-    raise IgnoreKey("related_identifiers")
+    raise IgnoreKey("identifiers")
 
 
 @model.over("_clc_sync", "^599__")
