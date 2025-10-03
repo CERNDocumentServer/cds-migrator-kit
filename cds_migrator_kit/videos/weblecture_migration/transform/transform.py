@@ -9,6 +9,7 @@
 import datetime
 import logging
 import os
+import re
 from pathlib import Path
 
 import arrow
@@ -39,6 +40,14 @@ from cds_migrator_kit.videos.weblecture_migration.transform.transform_files impo
 from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.collections import (
     append_collection_hierarchy,
 )
+from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.identifiers import (
+    get_new_indico_id,
+    transform_legacy_urls,
+)
+from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.multiple_video import (
+    is_multiple_video_record,
+    map_multiple_video_record,
+)
 
 cli_logger = logging.getLogger("migrator")
 
@@ -57,6 +66,13 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         """Constructor."""
         self.dry_run = dry_run
         self.files_dump_dir = files_dump_dir
+        self.is_multiple_video_record = False
+        self.multiple_video_record = {
+            "dates": [],  # get it from lecture_infos
+            "indico_links": [],  # get it from url_files
+            "indico_ids": [],  # get it from related_identifiers
+            "files": [],  # get it from transform_files
+        }
         self.migration_logger = migration_logger or MigrationProgressLogger(
             collection="weblectures"
         )
@@ -116,7 +132,8 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             # Get the latest version
             file = files[k][-1]
             full_path = file.get("full_path")
-            path = full_path.replace(";1", "").replace(";2", "")
+            # TODO replace if it's local migration
+            # path = full_path.replace(";1", "").replace(";2", "")
             path = path.replace("/opt/cdsweb/var/data/files", self.files_dump_dir)
             if not os.path.exists(path):
                 raise ManualImportRequired(
@@ -169,13 +186,27 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             file_info_json = transform_files.transform()
             return file_info_json
         elif len(master_paths) > 1:
-            # TODO group them to have different file transform to create multiple records
-            raise UnexpectedValue(
-                message="Multiple master folders! Multiple records should be created.",
-                stage="transform",
-                value="master_path",
-                priority="critical",
-            )
+            self.is_multiple_video_record = True
+            files = entry.get("files")
+
+            for master_path in master_paths:
+                # master paths always has indico id
+                indico_id = master_path.split("/")[-1]
+                # get the files that has the indico id in the path
+                files_list = [
+                    file
+                    for file in files
+                    if "path" in file and indico_id in file["path"]
+                ]
+                files_list.append({"master_path": master_path})
+
+                transform_files = TransformFiles(
+                    recid=entry["legacy_recid"], entry_files=files_list
+                )
+                file_info_json = transform_files.transform()
+
+                self.multiple_video_record["files"].append(file_info_json)
+
         else:
             raise UnexpectedValue(
                 message="Master folder does not exists!",
@@ -232,17 +263,20 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 or guess_dates(json_data, "url_files", subkey="indico")
                 | guess_dates(json_data, "notes")
             )
+            # Check  if it's multi video record multiple video record from lecture_infos or url_files
+            lecture_infos = [
+                item
+                for item in json_data.get("lecture_infos", [])
+                if "date" in item and "event_id" in item
+            ]
 
-            # Return the valid date if only one is found
-            if len(dates_set) == 1:
-                return next(iter(dates_set))
+            # Return the valid date
+            if len(dates_set) >= 1 and not self.is_multiple_video_record:
+                return list(dates_set)
 
-            # Multiple dates (Must have different indico event videos?)
-            if len(dates_set) > 1:
-                raise UnexpectedValue(
-                    f"More than one date found in record: {json_data.get('recid')} dates: {dates_set}.",
-                    stage="transform",
-                )
+            elif self.is_multiple_video_record:
+                self.multiple_video_record["dates"] = lecture_infos
+                return None
 
             raise MissingRequiredField(
                 f"No valid date found in record: {json_data.get('recid')}.",
@@ -335,6 +369,9 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             if len(locations) == 1:
                 return next(iter(locations))
             elif len(locations) > 1:
+                # multiple_video_record["dates"] should be set if it's multiple video record
+                if self.is_multiple_video_record:
+                    return None
                 raise UnexpectedValue(
                     f"More than one location found in record: {json_data.get('recid')} values: {locations}.",
                     stage="transform",
@@ -379,6 +416,14 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             event_ids = {
                 item["event_id"] for item in url_files if item and "event_id" in item
             }
+            # Get event id from tag 518: lectures_infos
+            event_ids.update(
+                {
+                    item["event_id"]
+                    for item in json_data.get("lecture_infos", [])
+                    if "event_id" in item
+                }
+            )
             # Get event id's from indico_information(111) and tag 970
             event_ids.update(
                 filter(
@@ -389,20 +434,38 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                     ],
                 )
             )
-            if len(event_ids) == 1:
-                identifier = next(iter(event_ids))
-                rel = {
-                    "scheme": "Indico",
-                    "identifier": identifier,
-                    "relation_type": "IsPartOf",
-                }
-                if rel not in related_identifiers:
-                    related_identifiers.append(rel)
-            elif len(event_ids) > 1:
-                raise UnexpectedValue(
-                    f"Multiple Indico IDs found: {event_ids}",
-                    stage="transform",
-                )
+            if len(event_ids) >= 1 and not self.is_multiple_video_record:
+                # We should add all of them and without contribution
+                for event_id in event_ids:
+                    event_id = re.split(r"[cs]", event_id, 1)[0]
+                    new_id = get_new_indico_id(event_id)
+                    if new_id:
+                        event_id = new_id
+                    rel = {
+                        "scheme": "Indico",
+                        "identifier": event_id,
+                        "relation_type": "IsPartOf",
+                    }
+                    if rel not in related_identifiers:
+                        related_identifiers.append(rel)
+            elif self.is_multiple_video_record:
+                # some records have old and new together. remove the new one, because master path has old id
+                ids_to_remove = set()
+                for id in event_ids:
+                    new_id = get_new_indico_id(id)
+                    if new_id and str(new_id) in event_ids:
+                        ids_to_remove.add(str(new_id))
+                # Remove the new IDs after iteration is complete
+                event_ids = event_ids - ids_to_remove
+                self.multiple_video_record["indico_ids"] = event_ids
+                self.multiple_video_record["indico_links"] = [
+                    item["indico"]
+                    for item in json_data.get("url_files", [])
+                    if item
+                    and "indico" in item
+                    and "event_id" in item["indico"]
+                    and "url" in item["indico"]
+                ]
             else:
                 self.migration_logger.add_information(
                     json_data["recid"],
@@ -412,10 +475,17 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             for item in url_files:
                 if not item or "url" not in item:
                     continue
+                url = item["url"]
+                # Transform legacy urls
+                if "indico" in url or "agenda" in url:
+                    url = transform_legacy_urls(url, type="indico")
+                    # If it's multiple video record, indico links will be added later
+                    if self.is_multiple_video_record:
+                        continue
 
                 rel = {
                     "scheme": "URL",
-                    "identifier": item["url"],
+                    "identifier": url,
                     "relation_type": "IsPartOf",
                 }
                 if rel not in related_identifiers:
@@ -492,7 +562,9 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 access["read"] = all_emails
             return access
 
-        record_date = reformat_date(entry)
+        record_dates = reformat_date(entry)
+        # Date will be None if it's multiple video record
+        record_date = record_dates[0] if not self.is_multiple_video_record else None
         metadata = {
             "title": entry["title"],
             "description": description(entry),
@@ -521,10 +593,13 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         # Report_number is a list with one value
         report_number, is_curation = get_report_number(entry)
         if report_number:
-            if is_curation:
+            # Don't mint report number for multiple video record
+            if is_curation or self.is_multiple_video_record:
                 _curation["legacy_report_number"] = report_number
             else:
                 metadata["report_number"] = report_number
+        if not self.is_multiple_video_record and len(record_dates) > 1:
+            _curation["legacy_dates"] = record_dates
         metadata["_curation"] = _curation
 
         # Add Restricted General Talks to collections
@@ -556,14 +631,94 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         record_dump.prepare_revisions()
         timestamp, json_data = record_dump.latest_revision
 
-        self.record_state_logger.add_record(json_data)
+        self.self.record_state_logger.add_record(json_data)
+        # Generate media files before metadata, it'll set if it's multiple video record
+        media_files = self._media_files(json_data)
         record_json_output = {
             "metadata": self._metadata(json_data),
             "created": self._created(record_dump),
             "updated": self._updated(record_dump),
-            "media_files": self._media_files(json_data),
+            "media_files": media_files,
             "files": self._files(record_dump),
+            "is_multiple_video_record": False,
         }
+        if is_multiple_video_record(
+            self.is_multiple_video_record, self.multiple_video_record
+        ):
+            record_json_output["is_multiple_video_record"] = True
+            mapped_multiple_video_record, common = map_multiple_video_record(
+                self.multiple_video_record
+            )
+            for record in mapped_multiple_video_record:
+                # raise if any date, event_id, or files is missing
+                if (
+                    not record.get("date")
+                    or not record.get("event_id")
+                    or not record.get("files")
+                    or not record.get("url")
+                ):
+                    raise ManualImportRequired(
+                        message="Multiple video record needs curation. Date, event_id, or files is missing",
+                        stage="transform",
+                        priority="critical",
+                    )
+
+            if len(mapped_multiple_video_record) > 10:
+                self.migration_logger.add_information(
+                    json_data["recid"],
+                    {
+                        "message": "Multiple video record, more than 10 records!",
+                        "value": len(mapped_multiple_video_record),
+                    },
+                )
+
+            # Add the common ones to metadata
+            metadata = record_json_output["metadata"]
+            related_identifiers = metadata.get("related_identifiers", [])
+            # first remove the all indico related identifiers, it has also wrong ones
+            related_identifiers = [
+                rel for rel in related_identifiers if rel["scheme"] != "Indico"
+            ]
+            if common:
+                dates = common.get("dates", [])
+                links = common.get("links", [])
+                indico_ids = common.get("indico_ids", [])
+                if dates:
+                    curation = metadata.get("_curation", {})
+                    legacy_dates = curation.get("legacy_dates", [])
+                    for date in dates:
+                        if date not in legacy_dates:
+                            legacy_dates.append(date)
+                    curation["legacy_dates"] = legacy_dates
+                    metadata["_curation"] = curation
+                if links:
+                    for link in links:
+                        # transform legacy urls
+                        link = transform_legacy_urls(link, type="indico")
+                        rel = {
+                            "scheme": "URL",
+                            "identifier": link,
+                            "relation_type": "IsPartOf",
+                        }
+                        if rel not in related_identifiers:
+                            related_identifiers.append(rel)
+                if indico_ids:
+                    for indico_id in indico_ids:
+                        # remove contribution
+                        indico_id = re.split(r"[cs]", indico_id, 1)[0]
+                        new_indico_id = get_new_indico_id(indico_id)
+                        if new_indico_id:
+                            indico_id = new_indico_id
+                        rel = {
+                            "scheme": "Indico",
+                            "identifier": str(indico_id),
+                            "relation_type": "IsPartOf",
+                        }
+                        if rel not in related_identifiers:
+                            related_identifiers.append(rel)
+                metadata["related_identifiers"] = related_identifiers
+                record_json_output["metadata"] = metadata
+            record_json_output["multiple_video_record"] = mapped_multiple_video_record
 
         return {
             "created": self._created(record_dump),
