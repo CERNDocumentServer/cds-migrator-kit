@@ -69,13 +69,9 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         """Return JSONSchema of the record."""
         return
 
-    def _created(self, json_entry):
+    def _created(self, record_dump):
         """Returns the creation date of the record."""
-        # Try to get '_created' tag: 916, if not found then 'lecture_created' tag: 961
-        created_date = json_entry.get("_created") or json_entry.get("lecture_created")
-        if created_date:
-            return arrow.get(created_date)
-        return datetime.date.today().isoformat()
+        return arrow.get(record_dump.first_created)
 
     def _updated(self, record_dump):
         """Returns the modification date of the record."""
@@ -276,32 +272,15 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             if not contributors:
                 # TODO do we need another logger?
                 logger_migrator = logging.getLogger("users")
+                recid = json_data["recid"]
+                self.migration_logger.add_information(
+                    recid, state={"message": "Missing contributors", "value": recid}
+                )
                 logger_migrator.warning(
                     f"Missing contributors in record:{json_data['recid']}! Using:`Unknown`"
                 )
 
                 contributors = [{"name": "Unknown, Unknown"}]
-
-            affiliation = json_data.get("affiliation", "")
-            if affiliation:
-                # Get only speakers
-                speakers = [
-                    contributor
-                    for contributor in contributors
-                    if contributor.get("role") == "Speaker"
-                ]
-                if len(speakers) != 1:
-                    raise UnexpectedValue(
-                        "Multiple/missing speakers with one affiliation!"
-                    )
-                affiliations = speakers[0].get("affiliations", [])
-                if affiliation not in affiliations:
-                    self.migration_logger.add_information(
-                        json_data["legacy_recid"],
-                        state={"message": "Affiliation added", "value": affiliation},
-                    )
-                    affiliations.append(affiliation)
-                    speakers[0]["affiliations"] = affiliations
 
             return contributors
 
@@ -353,7 +332,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
         def get_report_number(json_data):
             """Return the report number."""
-            report_numbers = json_data.get("report_number", [])
+            report_numbers = get_values_in_json(json_data, "report_number", type=list)
             if len(report_numbers) > 1:
                 # If report number exists put it in curation
                 report_number = report_numbers[0]
@@ -570,14 +549,14 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         self.record_state_logger.add_record(json_data)
         record_json_output = {
             "metadata": self._metadata(json_data),
-            "created": self._created(json_data),
+            "created": self._created(record_dump),
             "updated": self._updated(record_dump),
             "media_files": self._media_files(json_data),
             "files": self._files(record_dump),
         }
 
         return {
-            "created": self._created(json_data),
+            "created": self._created(record_dump),
             "updated": self._updated(record_dump),
             "recid": self._recid(record_dump),
             "json": record_json_output,

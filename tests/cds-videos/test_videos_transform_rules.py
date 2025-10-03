@@ -841,6 +841,11 @@ def test_related_identifiers(dumpdir, base_app):
         modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
             record_marcxml, "787", {"w": "489562", "i": "Conference paper"}, ind1="0"
         )
+        # Add 962 with only material
+        record_marcxml = modified_data["record"][-1]["marcxml"]
+        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
+            record_marcxml, "962", {"n": "number123456"}
+        )
 
         # Extract record
         res = load_and_dump_revision(modified_data)
@@ -870,12 +875,24 @@ def test_related_identifiers(dumpdir, base_app):
         )
         assert related_document
 
+        presented_at = next(
+            (
+                ri
+                for ri in res["related_identifiers"]
+                if ri.get("identifier")
+                == "https://cds.cern.ch/search?f=111__g&p=number123456"
+                and ri.get("scheme") == "URL"
+            ),
+            None,
+        )
+        assert presented_at
+
         # Transform record
         record_entry = CDSToVideosRecordEntry()
         metadata = record_entry._metadata(res)
         assert "related_identifiers" in metadata
         # During transform `URL` added as related identifier
-        assert len(metadata["related_identifiers"]) == 4
+        assert len(metadata["related_identifiers"]) == 5
 
 
 def test_legacy_indico_id_transform(dumpdir, base_app):
@@ -1261,32 +1278,8 @@ def test_transform_affiliation(dumpdir, base_app):
 
         # Extract record
         res = load_and_dump_revision(modified_data)
-        # Transform and fail multiple speakers with one affiliation
-        record_entry = CDSToVideosRecordEntry()
-        with pytest.raises(UnexpectedValue):
-            record_entry._metadata(res)
-
-        # Test case: Only one speaker with affiliation
-        record_marcxml = modified_data["record"][-1]["marcxml"]
-        record_marcxml = remove_tag_from_marcxml(record_marcxml, "700")
-        record_marcxml = remove_tag_from_marcxml(record_marcxml, "906")
-        modified_data["record"][-1]["marcxml"] = add_tag_to_marcxml(
-            record_marcxml,
-            "700",
-            {"a": "test name"},
-        )
-        # Extract and transform record
-        res = load_and_dump_revision(modified_data)
-        assert res.get("contributors")
+        # Transform and expect a Producer contributor from affiliation
         record_entry = CDSToVideosRecordEntry()
         metadata = record_entry._metadata(res)
-        assert metadata.get("contributors")
-        speakers = [
-            contributor
-            for contributor in metadata["contributors"]
-            if contributor["role"] == "Speaker"
-        ]
-        assert len(speakers) == 1
-        assert speakers[0]["name"] == "test name"
-        assert speakers[0]["role"] == "Speaker"
-        assert speakers[0]["affiliations"] == ["Affiliation"]
+        contributors = metadata["contributors"]
+        assert {"name": "Affiliation", "role": "Producer"} in contributors
