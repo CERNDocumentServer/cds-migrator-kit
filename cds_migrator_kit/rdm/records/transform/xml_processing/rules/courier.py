@@ -37,6 +37,7 @@ def imprint_info(self, key, value):
     if publication_date_str:
         try:
             publication_date = normalize(publication_date_str)
+
             return publication_date
         except (ParserError, TypeError) as e:
             raise UnexpectedValue(
@@ -69,6 +70,7 @@ def imprint_info(self, key, value):
     if publication_date_str:
         dates = self.get("dates", [])
         try:
+            date_obj = parse(publication_date_str)
             date = normalize(publication_date_str)
             dates.append({"date": date, "type": {"id": "issued"}})
             self["dates"] = dates
@@ -267,3 +269,21 @@ def internal_notes(self, key, value):
         if internal_note not in _internal_notes:
             _internal_notes.append(internal_note)
     return _internal_notes
+
+
+@model.over("resource_type", "^980__", override=True)
+def resource_type(self, key, value):
+    """Translates resource_type."""
+    value = value.get("a")
+    if value:
+        value = value.lower()
+    if value in ["article"]:
+        raise IgnoreKey("resource_type")
+    map = {
+        "cern_courier_issue": {"id": "publication-periodicalissue"},
+        "cern_courier_article": {"id": "publication-article"},
+    }
+    try:
+        return map[value]
+    except KeyError:
+        raise UnexpectedValue("Unknown resource type (Courier)", field=key, value=value)

@@ -12,6 +12,7 @@ from collections import OrderedDict
 from copy import deepcopy
 from pathlib import Path
 
+from dateutil.parser import ParserError, parse
 import arrow
 from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
 from idutils import normalize_ror
@@ -372,7 +373,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 if created:
                     pub_date = entry["status_week_date"]
                 elif files:
-                    pub_date = files[0]["creation_date"]
+                    pub_date = parse(files[0]["creation_date"]).date().isoformat()
             return pub_date
 
         def _identifiers(json_entry):

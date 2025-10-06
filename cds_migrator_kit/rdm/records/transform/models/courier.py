@@ -46,7 +46,6 @@ class CourierIssueModel(CdsOverdo):
         "8564_x",
         "8564_y", # file description
         "960__a", # 2265255
-        "980__a",
         "981__a",
     }
 

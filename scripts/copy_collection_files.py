@@ -7,9 +7,9 @@ import sys
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
-destination_prefix = "/eos/media/cds/cds-rdm/dev/migration/thesis/files"
-working_dir = "/eos/media/cds/cds-rdm/dev/migration/thesis"
-json_dump_dir = "/eos/media/cds/cds-rdm/dev/migration/thesis/dump"
+destination_prefix = "/eos/media/cds/cds-rdm/dev/migration/courier/files"
+working_dir = "/eos/media/cds/cds-rdm/dev/migration/courier"
+json_dump_dir = "/eos/media/cds/cds-rdm/dev/migration/courier/dump"
 
 
 def copy_collection_file(dump_files, destination_prefix, working_dir):
