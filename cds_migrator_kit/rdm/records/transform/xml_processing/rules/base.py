@@ -935,7 +935,7 @@ def validate_inspire_identifier(id_value, key):
 def normalize(date_str):
     date_str = date_str.strip()
 
-    if "/" in date_str:  # Intervals
+    if date_str.count("/") == 1: # Intervals
         return date_str
     if re.fullmatch(r"\d{4}", date_str):  # YYYY
         return date_str

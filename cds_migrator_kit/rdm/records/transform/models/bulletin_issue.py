@@ -88,7 +88,6 @@ class BulletinIssueModel(CdsOverdo):
         "961__h",  # CDS modification tag # TODO
         "961__l",  # CDS modification tag # TODO
         "961__x",  # CDS modification tag # TODO
-        "980__a",  # same collection tag for everything
         "981__a",  # duplicate record id
         "980__b",
         # "246_1a",
@@ -96,7 +95,6 @@ class BulletinIssueModel(CdsOverdo):
     }
 
     _default_fields = {
-        "resource_type": {"id": "publication-other"},
         "custom_fields": {"journal:journal": {"title": "CERN Bulletin"}},
         "creators": [{"person_or_org": {"type": "organizational", "name": "CERN"}}],
     }

@@ -179,11 +179,10 @@ def subjects_bulletin(self, key, value):
         return {"subject": subject}
 
 
-@model.over("url_identifiers", "^856[4_]_", override=True)
+@model.over("url_identifiers", "^8564_", override=True)
 @for_each_value
 def urls_bulletin(self, key, value):
     content_type = value.get("x", "")
-
     if content_type == "icon":
         # ignore icon urls (conditionally ignoring by accessing the value
         url_q = value.get("q", "")
@@ -201,6 +200,13 @@ def urls_bulletin(self, key, value):
 
     self["identifiers"] = identifiers
     raise IgnoreKey("url_identifiers")
+
+@model.over("urls_bulletin", "^856__")
+def urls_bulletin_bis(self, key, value):
+    """Translates 865 tags."""
+    # If not implemented this way, the override in the urls_bulletin does not work
+    urls_bulletin(self, key, value)
+    raise IgnoreKey("urls_bulletin")
 
 
 @model.over("custom_fields_journal", "(^916__)", override=True)
@@ -301,3 +307,31 @@ def rel_identifiers(self, key, value):
     if new_id not in identifiers:
         return new_id
     raise IgnoreKey("related_identifiers")
+
+
+@model.over("resource_type", "^980__", override=True)
+def resource_type(self, key, value):
+    """Translates resource_type."""
+    value = value.get("a")
+    if value:
+        value = value.lower()
+    if value in ["bulletin", "bulletinstaff", "eucard2"]:
+        raise IgnoreKey("resource_type")
+    map = {
+        "cern_bulletin_issue": {"id": "publication-periodicalissue"},
+        "cern_bulletin_article": {"id": "publication-article"},
+        "bulletingeneral": {"id": "publication-article"},
+        "bulletinevents": {"id": "publication-article"},
+        "bulletinannounce": {"id": "publication-article"},
+        "bulletinbreaking": {"id": "publication-article"},
+        "bulletinnews": {"id": "publication-article"},
+        "bulletinofficial": {"id": "publication-article"},
+        "bulletinpension": {"id": "publication-article"},
+        "bulletintraining": {"id": "publication-article"},
+        "bulletinsocial": {"id": "publication-article"},
+        # todo newsletter
+    }
+    try:
+        return map[value]
+    except KeyError:
+        raise UnexpectedValue("Unknown resource type (BULLETIN)", field=key, value=value)
