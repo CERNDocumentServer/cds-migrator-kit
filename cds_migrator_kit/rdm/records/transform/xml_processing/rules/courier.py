@@ -9,7 +9,7 @@ from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import for_each_value
 from cds_migrator_kit.transform.xml_processing.quality.parsers import clean_val
 from .base import urls
-from .publications import related_identifiers, journal
+from .publications import identifiers, journal
 
 from ...models.courier import courier_issue_model as model
 from .base import normalize
@@ -181,11 +181,11 @@ def translated_description(self, key, value):
     raise IgnoreKey("additional_descriptions")
 
 
-@model.over("related_identifiers", "^962_")
-def courier_related_identifiers(self, key, value):
+@model.over("identifiers", "^962_")
+def courier_identifiers(self, key, value):
     """Translates courier related identifiers."""
     # workaround for not importing all the publications rules
-    return related_identifiers(self, key, value)
+    return identifiers(self, key, value)
 
 
 @model.over("courier_custom_fields", "(^773__)")

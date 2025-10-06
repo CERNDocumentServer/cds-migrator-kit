@@ -136,7 +136,7 @@ def app_config(app_config):
     app_config["RDM_RECORDS_IDENTIFIERS_SCHEMES"] = {
         **RDM_RECORDS_IDENTIFIERS_SCHEMES,
         **{
-            "cds_ref": {
+            "cdsrn": {
                 "label": _("CDS Reference"),
                 "validator": always_valid,
                 "datacite": "CDS",
@@ -1226,6 +1226,16 @@ def relation_type_v(app, relation_type):
             "id": "cites",
             "props": {"datacite": "Cites"},
             "title": {"en": "Cites", "de": "Zitiert"},
+            "type": "relationtypes",
+        },
+    )
+
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "isreferencedby",
+            "props": {"datacite": "IsReferencedBy"},
+            "title": {"en": "Is referenced by", "de": "Wird referenziert von"},
             "type": "relationtypes",
         },
     )
