@@ -72,3 +72,4 @@ target/
 **/weblecture_migration/data/**
 
 **.DS_Store
+**/cds_migrator_kit/rdm/data/

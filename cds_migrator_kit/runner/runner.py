@@ -31,13 +31,14 @@ class Runner:
         with open(filepath) as f:
             return yaml.safe_load(f)
 
-    def __init__(self, stream_definitions, config_filepath, dry_run, collection):
+    def __init__(self, stream_definitions, config_filepath, dry_run, collection, keep_logs):
         """Constructor."""
         config = self._read_config(config_filepath)
         self.collection = collection
+        self.keep_logs = keep_logs
         self.db_uri = config.get("db_uri")
-        self.migration_logger = MigrationProgressLogger(collection=self.collection)
-        self.record_state_logger = RecordStateLogger(collection=self.collection)
+        self.migration_logger = MigrationProgressLogger(collection=self.collection, keep_logs=self.keep_logs)
+        self.record_state_logger = RecordStateLogger(collection=self.collection, keep_logs=self.keep_logs)
         # start parsing streams
         self.streams = []
         for definition in stream_definitions:

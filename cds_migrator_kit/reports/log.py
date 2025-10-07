@@ -68,6 +68,7 @@ class MigrationProgressLogger:
     def __init__(
         self,
         collection,
+        keep_logs=False,
         log_progress_filename="rdm_migration_errors.csv",
     ):
         """Constructor."""
@@ -78,11 +79,11 @@ class MigrationProgressLogger:
             self._logs_path, log_progress_filename
         )
         self.collection = collection
-
+        self.keep_logs = keep_logs
         if not os.path.exists(self._logs_path):
             os.makedirs(self._logs_path)
 
-        self.error_file = open(self.PROGRESS_LOG_FILEPATH, "a")
+        self.error_file = open(self.PROGRESS_LOG_FILEPATH, "a", newline="")
         columns = [
             "recid",
             "stage",
@@ -99,18 +100,27 @@ class MigrationProgressLogger:
 
     def start_log(self):
         """Initialize logging file descriptors."""
-        # init log files
-
-        self.error_file.truncate(0)
-        self.log_writer.writeheader()
+        if not self.keep_logs:
+            # clear existing file content
+            self.error_file.close()
+            self.error_file = open(self.PROGRESS_LOG_FILEPATH, "w", newline="")
+            self.log_writer = csv.DictWriter(
+                self.error_file, fieldnames=self.log_writer.fieldnames
+            )
+            self.log_writer.writeheader()
+        else:
+            # if appending, check if the file is empty and needs a header
+            self.error_file.seek(0, os.SEEK_END)
+            if self.error_file.tell() == 0:
+                self.log_writer.writeheader()
         self.error_file.flush()
 
     def read_log(self):
         """Read error log file."""
-        self.error_file = open(self.PROGRESS_LOG_FILEPATH, "r")
-        reader = csv.DictReader(self.error_file)
-        for row in reader:
-            yield row
+        with open(self.PROGRESS_LOG_FILEPATH, "r", newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                yield row
 
     def finalise(self):
         """Finalise logging files."""
@@ -156,6 +166,7 @@ class MigrationProgressLogger:
         """Log recid as success."""
         _state = self._temp_state_cache.pop(recid, {})
         self.log_writer.writerow({"recid": recid, "clean": True, **_state})
+        self.error_file.flush()
 
 
 class RecordStateLogger:
@@ -163,65 +174,80 @@ class RecordStateLogger:
     def __init__(
         self,
         collection,
+        keep_logs=False,
         records_dump_filename="rdm_records_dump.json",
         records_state_filename="rdm_records_state.json",
     ):
         """Constructor."""
-        self._logs_path = os.path.join(
-            current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"], collection
-        )
+        base_path = current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]
+        self._logs_path = os.path.join(base_path, collection)
+        os.makedirs(self._logs_path, exist_ok=True)
+
         self.RECORD_DUMP_FILEPATH = os.path.join(self._logs_path, records_dump_filename)
         self.RECORD_STATE_FILEPATH = os.path.join(
             self._logs_path, records_state_filename
         )
-        self.collection = collection
+        self.keep_logs = keep_logs
 
-        if not os.path.exists(self._logs_path):
-            os.makedirs(self._logs_path)
+        self._records = {}
+        self._record_states = []
+        self._existing_recids = set()
 
-        self.record_dump_file = open(self.RECORD_DUMP_FILEPATH, "a")
-        self.record_state_file = open(self.RECORD_STATE_FILEPATH, "a")
+    def _load_existing_logs(self):
+        """Load existing JSON data if keeping logs."""
+        if not self.keep_logs:
+            return
+
+        # Load records
+        if os.path.exists(self.RECORD_DUMP_FILEPATH):
+            try:
+                with open(self.RECORD_DUMP_FILEPATH, encoding="utf-8") as f:
+                    self._records = json.load(f)
+                self._existing_recids = set(self._records.keys())
+            except Exception:
+                self._records = {}
+                self._existing_recids = set()
+
+        # Load record states
+        if os.path.exists(self.RECORD_STATE_FILEPATH):
+            try:
+                with open(self.RECORD_STATE_FILEPATH, encoding="utf-8") as f:
+                    self._record_states = json.load(f)
+            except Exception:
+                self._record_states = []
 
     def start_log(self):
-        """Initialize logging file descriptors."""
-        # init log files
-        with open(self.RECORD_DUMP_FILEPATH, "w") as temp_dump_file:
-            temp_dump_file.truncate(0)
-            temp_dump_file.write("{\n")
-        with open(self.RECORD_STATE_FILEPATH, "w") as temp_state_file:
-            temp_state_file.truncate(0)
-            temp_state_file.write("[\n")
+        """Initialize logger."""
+        self._load_existing_logs()
 
     def add_record(self, record, **kwargs):
         """Add record to list of collected records."""
-        recid = record["legacy_recid"]
-        self.record_dump_file.write(f'"{recid}": {json.dumps(record)},\n')
-        self.record_dump_file.flush()
+        recid = str(record["legacy_recid"])
+        if recid not in self._existing_recids:
+            self._records[recid] = record
+            self._existing_recids.add(recid)
 
     def add_record_state(self, record_state, **kwargs):
         """Add record state."""
-        self.record_state_file.write(f"{json.dumps(record_state)},\n")
-        self.record_state_file.flush()
-
-    def load_record_dumps(self):
-        """Load stats from file as json."""
-        with open(self.RECORD_DUMP_FILEPATH, "r") as record_dump_file:
-            return json.load(record_dump_file)
+        self._record_states.append(record_state)
 
     def finalise(self):
         """Finalise logging files."""
-        # remove last comma and newline in the json dump
-        self.record_dump_file.close()
-        self.record_state_file.close()
+        # Write records
+        with open(self.RECORD_DUMP_FILEPATH, "w", encoding="utf-8") as f:
+            f.write("{\n")
+            items = list(self._records.items())
+            for i, (recid, record) in enumerate(items):
+                json_str = json.dumps(record, ensure_ascii=False, separators=(",", ":"))
+                comma = "," if i < len(items) - 1 else ""
+                f.write(f'"{recid}":{json_str}{comma}\n')
+            f.write("}")
 
-        with open(self.RECORD_DUMP_FILEPATH, "r+") as temp_dump_file:
-            temp_dump_file.seek(0, 2)
-            temp_dump_file.truncate(temp_dump_file.tell() - 2)
-            temp_dump_file.seek(0, 2)
-            temp_dump_file.write("}")
-
-        with open(self.RECORD_STATE_FILEPATH, "r+") as temp_state_file:
-            temp_state_file.seek(0, 2)
-            temp_state_file.truncate(temp_state_file.tell() - 2)
-            temp_state_file.seek(0, 2)
-            temp_state_file.write("]")
+        # Write record states
+        with open(self.RECORD_STATE_FILEPATH, "w", encoding="utf-8") as f:
+            f.write("[\n")
+            for i, state in enumerate(self._record_states):
+                json_str = json.dumps(state, ensure_ascii=False, separators=(",", ":"))
+                comma = "," if i < len(self._record_states) - 1 else ""
+                f.write(f"{json_str}{comma}\n")
+            f.write("]")

@@ -82,6 +82,7 @@ def test_access_permissions(
         config_filepath=Path(stream_config).absolute(),
         dry_run=False,
         collection="it",
+        keep_logs=False,
     )
     runner.run()
 
