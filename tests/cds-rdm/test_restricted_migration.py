@@ -66,6 +66,7 @@ def test_restricted_migration(
         config_filepath=Path(stream_config).absolute(),
         dry_run=False,
         collection="sspn_restr",
+        keep_logs=False,
     )
     runner.run()
 

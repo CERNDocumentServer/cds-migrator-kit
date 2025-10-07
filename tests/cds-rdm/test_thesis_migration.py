@@ -42,6 +42,7 @@ def test_full_thesis_stream(
         config_filepath=Path(stream_config).absolute(),
         dry_run=False,
         collection="thesis",
+        keep_logs=False,
     )
     runner.run()
 

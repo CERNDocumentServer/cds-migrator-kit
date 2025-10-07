@@ -440,6 +440,7 @@ def test_full_migration_stream(
         config_filepath=Path(stream_config).absolute(),
         dry_run=False,
         collection="sspn",
+        keep_logs=False,
     )
     runner.run()
 

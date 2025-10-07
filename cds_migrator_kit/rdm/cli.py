@@ -50,8 +50,12 @@ def migration():
     help="Collection name to be migrated",
     required=True,
 )
+@click.option(
+    "--keep-logs",
+    is_flag=True,
+)
 @with_appcontext
-def run(collection, dry_run=False):
+def run(collection, dry_run=False, keep_logs=False):
     """Run."""
     stream_config = current_app.config["CDS_MIGRATOR_KIT_STREAM_CONFIG"]
     runner = Runner(
@@ -60,6 +64,7 @@ def run(collection, dry_run=False):
         config_filepath=Path(stream_config).absolute(),
         dry_run=dry_run,
         collection=collection,
+        keep_logs=keep_logs,
     )
     runner.run()
 
