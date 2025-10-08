@@ -191,15 +191,20 @@ def urls_bulletin(self, key, value):
 
     identifiers = self.get("identifiers", [])
 
-    if "q" not in value:
-        _urls = urls(self, key, value)
-        identifiers += _urls
-    else:
+    if (
+        "q" in value
+        and (parsed := urlparse(value.get("q", ""))).scheme
+        and parsed.netloc
+    ):
         _urls = urls(self, key, value, subfield="q")
-        identifiers += _urls
+    else:
+        _urls = urls(self, key, value)
+
+    identifiers += _urls
 
     self["identifiers"] = identifiers
     raise IgnoreKey("url_identifiers")
+
 
 @model.over("urls_bulletin", "^856__")
 def urls_bulletin_bis(self, key, value):
@@ -312,10 +317,15 @@ def rel_identifiers(self, key, value):
 @model.over("resource_type", "^980__", override=True)
 def resource_type(self, key, value):
     """Translates resource_type."""
-    value = value.get("a")
+    value = value.get("a") if "a" in value else value.get("b")
     if value:
         value = value.lower()
-    if value in ["bulletin", "bulletinstaff", "eucard2"]:
+    if value in ["aida-2020", "eucard2"]:
+        subjects = self.get("subjects", [])
+        subjects.append({"subject": f"collection:{value}"})
+        self["subjects"] = subjects
+        raise IgnoreKey("resource_type")
+    if value in ["bulletin", "bulletinstaff"]:
         raise IgnoreKey("resource_type")
     map = {
         "cern_bulletin_issue": {"id": "publication-periodicalissue"},
@@ -334,4 +344,6 @@ def resource_type(self, key, value):
     try:
         return map[value]
     except KeyError:
-        raise UnexpectedValue("Unknown resource type (BULLETIN)", field=key, value=value)
+        raise UnexpectedValue(
+            "Unknown resource type (BULLETIN)", field=key, value=value
+        )
