@@ -1,0 +1,14 @@
+[
+  {
+    "files": [],
+    "collections": null,
+    "recid": 2234683,
+    "record": [
+      {
+        "marcxml": "<record>\n  <controlfield tag=\"001\">2234683</controlfield>\n  <controlfield tag=\"005\">20220323170811.0</controlfield>\n  <datafield tag=\"690\" ind1=\"C\" ind2=\" \">\n    <subfield code=\"a\">CERN Bulletin Printable Version</subfield>\n  </datafield>\n  <datafield tag=\"773\" ind1=\" \" ind2=\" \">\n    <subfield code=\"y\">2020</subfield>\n  </datafield>\n  <datafield tag=\"787\" ind1=\" \" ind2=\" \">\n    <subfield code=\"w\">1713049</subfield>\n <subfield code=\"i\">issue</subfield>\n </datafield>\n  <datafield tag=\"980\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">Bulletin</subfield>\n  </datafield>\n  <datafield tag=\"980\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">BULLETINEVENTS</subfield>\n  </datafield>\n  <datafield tag=\"925\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">5-</subfield>\n  </datafield>\n  <datafield tag=\"260\" ind1=\" \" ind2=\" \">\n    <subfield code=\"c\">2020</subfield>\n  </datafield>\n  <datafield tag=\"245\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">CERN Bulletin Issue No. 56</subfield>\n  </datafield>\n  <datafield tag=\"246\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">5-6/2020</subfield>\n  </datafield>\n  <datafield tag=\"916\" ind1=\" \" ind2=\" \">\n    <subfield code=\"z\">5-6</subfield>\n  </datafield>\n  <datafield tag=\"925\" ind1=\" \" ind2=\" \">\n    <subfield code=\"b\">-6</subfield>\n  </datafield>\n</record>",
+        "json": null,
+        "modification_datetime": "2022-03-23T16:08:11+00:00"
+      }
+    ]
+  }
+]

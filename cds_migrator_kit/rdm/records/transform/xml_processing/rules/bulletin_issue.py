@@ -6,6 +6,9 @@ from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
 
 from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
+    related_identifiers as base_related_identifiers,
+)
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
     require,
@@ -347,3 +350,33 @@ def resource_type(self, key, value):
         raise UnexpectedValue(
             "Unknown resource type (BULLETIN)", field=key, value=value
         )
+
+
+@model.over("related_identifiers", "^787[0_]_", override=True)
+@for_each_value
+def related_identifiers(self, key, value):
+    """Translates related identifiers."""
+    rel_ids = self.setdefault("related_identifiers", [])
+
+    description = value.get("i")
+    new_ids = []
+
+    if description == "issue":
+        recid = value.get("w")
+        if recid:
+            new_ids.append(
+                {
+                    "identifier": recid,
+                    "scheme": "lcds",
+                    "relation_type": {"id": "ispublishedin"},
+                }
+            )
+    else:
+        new_ids.extend(base_related_identifiers(self, key, value))
+
+    for new_id in new_ids:
+        if new_id not in rel_ids:
+            rel_ids.append(new_id)
+
+    self["related_identifiers"] = rel_ids
+    raise IgnoreKey("related_identifiers")
