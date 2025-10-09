@@ -578,6 +578,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "cern:experiments": [],
             "cern:departments": [],
             "cern:accelerators": [],
+            "cern:administrative_unit": json_entry.get("custom_fields", {}).get("cern:administrative_unit", []),
             "cern:projects": json_entry.get("custom_fields", {}).get(
                 "cern:projects", []
             ),
