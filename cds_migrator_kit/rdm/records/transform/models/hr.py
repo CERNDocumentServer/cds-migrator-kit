@@ -34,7 +34,7 @@ class HrModel(CdsOverdo):
         "270__m",
         "300__a",  # number of pages
         "700__m",
-        "710__b",  # TODO discuss the group/section field
+        # "710__b",  # TODO discuss the group/section field
         "7870_r",  # detailed description of record relation (2862345)
         "8564_8",
         "8564_s",
