@@ -34,20 +34,20 @@ class VideosJsonLogger:
         fh.setFormatter(formatter)
         logger_flows.addHandler(fh)
 
-        # Add a new json file for multi video records redirections
-        cls.json_path = log_dir / "multi_video_redirections.json"
-        if not os.path.exists(cls.json_path):
-            with open(cls.json_path, "w") as json_file:
-                json.dump([], json_file)
+        # Add a new json file for video records redirections
+        cls.json_path = log_dir / "record_redirections.json"
+        with open(cls.json_path, "w") as json_file:
+            json.dump([], json_file)
 
     @classmethod
-    def log_multi_video_redirection(cls, legacy_id, legacy_anchor_id, cds_videos_id):
+    def log_record_redirection(cls, legacy_id, cds_videos_id, legacy_anchor_id=None):
         """Log multi video record redirection to a json file."""
         entry = {
             "legacy_id": legacy_id,
-            "legacy_anchor_id": legacy_anchor_id,
             "cds_videos_id": cds_videos_id,
         }
+        if legacy_anchor_id:
+            entry["legacy_anchor_id"] = legacy_anchor_id
         if os.path.exists(cls.json_path):
             with open(cls.json_path, "r+") as json_file:
                 data = json.load(json_file)
