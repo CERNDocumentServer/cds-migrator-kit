@@ -268,6 +268,13 @@ class CDSVideosLoad(Load):
             report_number,
         )
 
+        legacy_recid = entry["record"]["recid"]
+        cds_videos_recid = str(published_video["recid"])
+        VideosJsonLogger.log_record_redirection(
+            legacy_id=legacy_recid,
+            cds_videos_id=cds_videos_recid,
+        )
+
         # Run after publish fixes
         self._after_publish(published_video, entry)
 
@@ -357,7 +364,7 @@ class CDSVideosLoad(Load):
             # Migration state with legacy recid, master file id and new recid
             legacy_recid = entry["record"]["recid"]
             cds_videos_recid = str(published_video["recid"])
-            VideosJsonLogger.log_multi_video_redirection(
+            VideosJsonLogger.log_record_redirection(
                 legacy_id=legacy_recid,
                 legacy_anchor_id=master_file_id,
                 cds_videos_id=cds_videos_recid,
@@ -389,6 +396,17 @@ class CDSVideosLoad(Load):
             pid_type="lrecid",
             pid_value=recid,
         ).one_or_none()
+        if pid:
+            # If it's migrated, log recids for redirection
+            record_pid = PersistentIdentifier.query.filter_by(
+                object_uuid=pid.object_uuid,
+                pid_type="recid"
+            ).one()
+            cds_videos_recid = record_pid.pid_value
+            VideosJsonLogger.log_record_redirection(
+                legacy_id=recid,
+                cds_videos_id=cds_videos_recid,
+            )
         return pid is not None
 
     def _should_skip_recid(self, recid):
