@@ -1,0 +1,26 @@
+{
+  "metadata": {
+    "duration": 4257,
+    "title": "Issues in Arms Control (1/5)",
+    "preview": "/2001/412092/real/slides/img006.JPG"
+  },
+  "streams": [
+    {
+      "sources": {
+        "mp4": [
+          {
+            "src": "/2001/412092/master.mp4",
+            "mimetype": "video/mp4",
+            "baudrate": "210000",
+            "res": {
+              "w": "640",
+              "h": "480"
+            }
+          }
+        ]
+      },
+      "preview": "/2001/412092/real/slides/img006.JPG",
+      "content": "presenter"
+    }
+  ]
+}

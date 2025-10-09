@@ -236,7 +236,7 @@ class TransformFiles:
             file_name = Path(path).name
             if file_name not in all_files:
                 raise ManualImportRequired(
-                    message="File not found in the media_data folder!",
+                    message=f"File not found in the media_data folder: {file_name}!",
                     stage="transform",
                     recid=self.recid,
                     value=path,
@@ -398,10 +398,12 @@ class TransformFiles:
             "frames": [],
             "subformats": [],
             "chapters": [],
+            "master_path": "",  # Master folder needed for multi video records
         }
 
         # Get master path from the record
         master_path = self._get_master_path()
+        self.transformed_files_json["master_path"] = master_path
 
         # Get the year and id eg: master_data/year/event_id
         path = master_path.split("master_data/", 1)[-1]

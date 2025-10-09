@@ -59,7 +59,5 @@ def get_contributor(key, value, contributor_role="", name=""):
         role = get_contributor_role("e", value.get("e", ""))
         contributor.update({"role": role})
     if not name:
-        raise UnexpectedValue(
-            field=key, subfield="a", message="Contributor name missing!"
-        )
+        return None
     return contributor
