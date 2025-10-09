@@ -7,7 +7,7 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     require,
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
-
+from .base import corporate_author
 from ...models.hr import hr_model as model
 from .base import subjects
 
@@ -82,19 +82,23 @@ def corpo_author(self, key, value):
 def resource_type(self, key, value):
     """Translates resource_type."""
     value = value.get("a")
+    if value:
+        value = value.strip().lower()
 
     map = {
-        "preprint": {"id": "publication-preprint"},
-        "conferencepaper": {"id": "publication-conferencepaper"},
-        "intnotebepubl": {"id": "publication-technicalnote"},
-        "article": {"id": "publication"},
-        "itcerntalk": {"id": "presentation"},
-        "intnoteitpubl": {"id": "publication-technicalnote"},
-        "bookchapter": {"id": "publication-bookchapter"},
-        # todo newsletter
+        "annualstats": {"id": "publication-article"},
+        "cern-admin-e-guide": {"id": "publication-article"},
+        "administrativenote": {"id": "publication-technicalnote"},
+        "intnotehrpubl": {"id": "publication-technicalnote"},
+        "chisbulletin": {"id": "publication-article"},
+        "bulletin": {"id": "publication-article"},
+        "admincircular": {"id": "administrative-circular"},
+        "opercircular": {"id": "administrative-operationalcircular"},
+        "staffrules": {"id": "administrative-regulation"},
+        "staffrulesvd": {"id": "administrative-regulation"},
     }
     try:
-        return {"id": "other"}
+        return map[value]
     except KeyError:
         raise UnexpectedValue("Unknown resource type (HR)", field=key, value=value)
 
@@ -155,3 +159,25 @@ def date(self, key, value):
         dates.append(date)
         self["dates"] = dates
     raise IgnoreKey("dates")
+
+@model.over("administrative_unit", "^710__", override=True)
+@for_each_value
+def custom_fields(self, key, value):
+    """Translates administrative_unit."""
+    unit = value.get("b")
+    if unit:
+        _custom_fields = self.get("custom_fields", {})
+        _custom_fields["cern:administrative_unit"] = unit
+        self["custom_fields"] = _custom_fields
+    else:
+        contributors = self.get("contributors", [])
+        try:
+            author = corporate_author(self, key, value)
+        except IgnoreKey:
+            author = None  
+        if author:
+            contributors.append(author[0])
+            self["contributors"] = contributors
+
+    raise IgnoreKey("administrative_unit")
+
