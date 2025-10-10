@@ -13,15 +13,11 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValu
 
 from ...config import IGNORED_THESIS_COLLECTIONS
 from ...models.it import it_model as model
-from .base import (
-    normalize,
-)
+from .base import normalize
 from .base import note as base_internal_notes
 from .base import related_identifiers as base_related_identifiers
 from .base import subjects as base_subjects
-from .base import (
-    urls,
-)
+from .base import urls
 from .base import yellow_reports as base_yellow_reports
 from .publications import journal as base_journal
 from .publications import related_identifiers as base_related_identifiers
