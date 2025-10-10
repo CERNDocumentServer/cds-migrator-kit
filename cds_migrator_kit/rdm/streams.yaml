@@ -157,7 +157,7 @@ records:
       communities_ids:
         - "42da91cf-d476-4d09-9193-7841e03e271c"
     load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/thesis/duplicated_pids.json
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/it_meetings/duplicated_pids.json
   hr:
     data_dir: cds_migrator_kit/rdm/data/hr
     tmp_dir: cds_migrator_kit/rdm/tmp/hr
@@ -170,7 +170,7 @@ records:
       communities_ids:
         - "77617386-632c-4b86-8dd2-68de77ae0018"
     load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hr/duplicated_pids.json
   ccp:
     data_dir: cds_migrator_kit/rdm/data/ccp
     tmp_dir: cds_migrator_kit/rdm/tmp/ccp
