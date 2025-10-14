@@ -201,6 +201,8 @@ RunningApp = namedtuple(
         "languages_v",
         "subjects_v",
         "experiments_v",
+        "title_type_v",
+        "date_type_v",
         "departments_v",
         "accelerators_v",
         "programmes_v",
@@ -225,6 +227,8 @@ def running_app(
     languages_v,
     subjects_v,
     experiments_v,
+    title_type_v,
+    date_type_v,
     departments_v,
     accelerators_v,
     programmes_v,
@@ -250,6 +254,8 @@ def running_app(
         languages_v,
         subjects_v,
         experiments_v,
+        title_type_v,
+        date_type_v,
         departments_v,
         accelerators_v,
         programmes_v,
@@ -661,6 +667,49 @@ def resource_type_v(app, resource_type_type):
         },
     )
 
+    vocabulary_service.create(
+        system_identity,
+        {
+            "id": "administrative-circular",
+            "icon": "file alternate",
+            "props": {
+                "csl": "regulation",
+                "datacite_general": "Text",
+                "datacite_type": "",
+                "openaire_resourceType": "0011",
+                "openaire_type": "publication",
+                "eurepo": "info:eu-repo/semantics/other",
+                "schema.org": "https://schema.org/DigitalDocument",
+                "subtype": "administrative-circular",
+                "type": "publication",
+            },
+            "title": {"en": "Administrative circular"},
+            "tags": ["depositable", "linkable"],
+            "type": "resourcetypes",
+        },
+    )
+    vocabulary_service.create(
+        system_identity,
+        {
+            "id": "administrative-regulation",
+            "icon": "file alternate",
+            "props": {
+                "csl": "regulation",
+                "datacite_general": "Text",
+                "datacite_type": "",
+                "openaire_resourceType": "0020",
+                "openaire_type": "publication",
+                "eurepo": "info:eu-repo/semantics/other",
+                "schema.org": "https://schema.org/Legislation",
+                "subtype": "administrative-regulation",
+                "type": "publication",
+            },
+            "title": {"en": "Regulation"},
+            "tags": ["depositable", "linkable"],
+            "type": "resourcetypes",
+        },
+    )
+
     Vocabulary.index.refresh()
 
     return vocab
@@ -696,6 +745,19 @@ def languages_v(app, languages_type):
             "title": {
                 "en": "English",
                 "da": "Engelsk",
+            },
+            "tags": ["individual", "living"],
+            "type": "languages",
+        },
+    )
+
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "fra",
+            "title": {
+                "en": "French",
+                "da": "Fransk",
             },
             "tags": ["individual", "living"],
             "type": "languages",
@@ -738,6 +800,60 @@ def experiments_v(app, exp_type):
             "type": "experiments",
         },
     )
+    return vocab
+
+
+@pytest.fixture(scope="module")
+def title_type(app):
+    """title vocabulary type."""
+    return vocabulary_service.create_type(system_identity, "titletypes", "ttyp")
+
+
+@pytest.fixture(scope="module")
+def title_type_v(app, title_type):
+    """Title Type vocabulary record."""
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "translated-title",
+            "props": {"datacite": "TranslatedTitle"},
+            "title": {"en": "Translated title"},
+            "type": "titletypes",
+        },
+    )
+
+    return vocab
+
+
+@pytest.fixture(scope="module")
+def date_type(app):
+    """Date vocabulary type."""
+    return vocabulary_service.create_type(system_identity, "datetypes", "dat")
+
+
+@pytest.fixture(scope="module")
+def date_type_v(app, date_type):
+    """Date Type vocabulary record."""
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "valid",
+            "props": {"datacite": "Valid"},
+            "title": {"en": "Valid"},
+            "type": "datetypes",
+        },
+    )
+
+    vocabulary_service.create(
+        system_identity,
+        {
+            "id": "withdrawn",
+            "props": {"datacite": "Withdrawn"},
+            "title": {"en": "Withdrawn"},
+            "type": "datetypes",
+        },
+    )
+
     return vocab
 
 
