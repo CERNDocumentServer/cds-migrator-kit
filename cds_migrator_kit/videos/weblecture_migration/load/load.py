@@ -15,6 +15,7 @@ from cds.modules.flows.tasks import ExtractChapterFramesTask
 from cds.modules.legacy.minters import legacy_recid_minter
 from cds.modules.legacy.models import CDSMigrationLegacyRecord
 from cds.modules.records.providers import CDSReportNumberProvider
+from flask import current_app
 from invenio_db import db
 from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_pidstore.models import PersistentIdentifier
@@ -46,6 +47,7 @@ from .helpers import (
     publish_project,
     publish_video_record,
     transcode_task,
+    upload_poster,
 )
 
 
@@ -132,11 +134,14 @@ class CDSVideosLoad(Load):
                 ],
                 "chapters": [],
                 "master_path": "/media_data/2025/1",
+                "duration": 0,
+                "master_quality": "720",
             }
         media_files.setdefault("additional_files", []).extend(afs_files)
         return media_files
 
     def reserve_report_number(self, video_deposit, report_number):
+        """Reserve the report number for video record."""
         try:
             # Reserve report number
             CDSReportNumberProvider.create(
@@ -154,8 +159,7 @@ class CDSVideosLoad(Load):
 
     def _create_video_and_flow(self, project_deposit, metadata, media_files, submitter):
         """
-        Create a video deposit and initialize its flow/payload.
-        Run the extract metadata task.
+        Create a video deposit and initialize its flow/payload. Run the extract metadata task.
 
         Returns:
             tuple: (video_deposit, video_deposit_id, bucket_id, payload)
@@ -179,7 +183,7 @@ class CDSVideosLoad(Load):
             init_object_version(flow.flow_metadata, has_remote_file_to_download=None)
 
             # Extract metadata
-            extract_metadata(payload)
+            extract_metadata(payload, media_files)
 
             return video_deposit, video_deposit_id, bucket_id, payload
 
@@ -199,14 +203,18 @@ class CDSVideosLoad(Load):
         report_number,
     ):
         """
-        Handle frames, subformats, additional files, indexing, report number,
-        publishing, and chapters tasks for a video record.
+        Handle frames, subformats, additional files, indexing, report number, publishing, and chapters tasks for a video record.
+
         Returns:
             The published video record.
         """
         # Just log if something goes wrong: Frames, Subformats, Additional Files
         frame_paths = media_files["frames"]
         copy_frames(payload=payload, frame_paths=frame_paths)
+
+        # Poster
+        poster_path = media_files.get("poster", None)
+        upload_poster(bucket_id, poster_path)
 
         subformat_paths = media_files["subformats"]
         transcode_task(payload=payload, subformats=subformat_paths)
@@ -224,8 +232,9 @@ class CDSVideosLoad(Load):
         # Publish video
         published_video = publish_video_record(deposit_id=video_deposit_id)
 
-        # Run ExtractChapterFramesTask
-        ExtractChapterFramesTask().s(**payload).apply_async()
+        if not current_app.config.get("FAIL_FILE_COPY_TASKS"):
+            # Run ExtractChapterFramesTask
+            ExtractChapterFramesTask().s(**payload).apply_async()
 
         return published_video
 
@@ -399,8 +408,7 @@ class CDSVideosLoad(Load):
         if pid:
             # If it's migrated, log recids for redirection
             record_pid = PersistentIdentifier.query.filter_by(
-                object_uuid=pid.object_uuid,
-                pid_type="recid"
+                object_uuid=pid.object_uuid, pid_type="recid"
             ).one()
             cds_videos_recid = record_pid.pid_value
             VideosJsonLogger.log_record_redirection(
@@ -417,7 +425,6 @@ class CDSVideosLoad(Load):
 
     def _load(self, entry):
         """Use the services to load the entries."""
-
         if entry:
             recid = entry.get("record", {}).get("recid", {})
 

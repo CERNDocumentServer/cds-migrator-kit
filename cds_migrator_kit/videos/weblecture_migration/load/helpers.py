@@ -28,6 +28,7 @@ from cds.modules.flows.tasks import (
     ExtractFramesTask,
     ExtractMetadataTask,
     TranscodeVideoTask,
+    update_record,
 )
 from cds.modules.invenio_deposit.signals import post_action
 from cds.modules.opencast.tasks import _get_opencast_subformat_info
@@ -44,6 +45,7 @@ from invenio_files_rest.models import (
     as_object_version,
 )
 from invenio_files_rest.storage import pyfs_storage_factory
+from invenio_pidstore.models import PersistentIdentifier
 from sqlalchemy.orm.attributes import flag_modified as db_flag_modified
 
 from cds_migrator_kit.errors import ManualImportRequired
@@ -160,6 +162,8 @@ def create_video(project_deposit, video_metadata, media_files, submitter):
     """
     video_file_path = media_files["master_video"]
     chapters = media_files["chapters"]
+    duration = media_files.get("duration", 0)
+    quality = media_files.get("master_quality")
     if chapters:
         chapters_txt = format_chapters(chapters)
         video_metadata["description"] = (
@@ -184,6 +188,8 @@ def create_video(project_deposit, video_metadata, media_files, submitter):
         bucket_id=bucket_id, file_path=video_file_path, is_master=True
     )
 
+    ObjectVersionTag.create_or_update(object_version, "duration", str(duration))
+    ObjectVersionTag.create_or_update(object_version, "height", str(quality))
     return video_deposit, object_version
 
 
@@ -260,8 +266,47 @@ def publish_project(deposit_id):
         )
 
 
-def extract_metadata(payload):
+def fail_extract_metadata_task(payload, media_files):
+    """Create the metadata extraction task and mark it as failure."""
+    duration = media_files.get("duration")
+    quality = media_files.get("master_quality")
+
+    object_version = as_object_version(payload["version_id"])
+    pid = PersistentIdentifier.get("depid", payload["deposit_id"])
+    recid = str(pid.object_uuid)
+    extract_metadata_payload = payload.copy()
+    extract_metadata_task, kwargs = AVCFlowCeleryTasks.create_task(
+        ExtractMetadataTask, extract_metadata_payload
+    )
+    extract_metadata_task.flow_id = extract_metadata_payload.get("flow_id")
+    flow_task_metadata = extract_metadata_task.get_or_create_flow_task()
+    extract_metadata_payload["task_id"] = str(flow_task_metadata.id)
+    flow_task_metadata.payload = extract_metadata_task.get_full_payload(
+        **extract_metadata_payload
+    )
+    flow_task_metadata.status = FlowTaskStatus.FAILURE
+    db.session.commit()
+    # Insert metadata into deposit's metadata
+    extracted_dict = {
+        "height": str(quality),
+        "duration": str(duration) if duration else "0",
+    }
+    patch = [
+        {
+            "op": "add",
+            "path": "/_cds/extracted_metadata",
+            "value": extracted_dict,
+        }
+    ]
+    validator = "cds.modules.records.validators.PartialDraft4Validator"
+    update_record.s(recid=recid, patch=patch, validator=validator).apply()
+
+
+def extract_metadata(payload, media_files):
     """Extract the metadata of the master video file."""
+    if current_app.config.get("FAIL_FILE_COPY_TASKS"):
+        fail_extract_metadata_task(payload, media_files)
+        return
     try:
         celery_task, kwargs = AVCFlowCeleryTasks.create_task(
             ExtractMetadataTask, payload, delete_copied=True
@@ -288,6 +333,22 @@ def run_frames_task(payload):
             logger_flows.error(
                 f"[ERROR] ExtractFramesTask failed! Deposit id: {payload['deposit_id']}, flow id: {payload['flow_id']}"
             )
+        pass
+
+
+def fail_frames_task(frames_payload):
+    """Create the frames task and mark it as failure."""
+    frames_task, kwargs = AVCFlowCeleryTasks.create_task(
+        ExtractFramesTask, frames_payload
+    )
+    frames_task.flow_id = frames_payload.get("flow_id")
+    # FramesTask Metadata
+    flow_task_metadata = frames_task.get_or_create_flow_task()
+    frames_payload["task_id"] = str(flow_task_metadata.id)
+    # Update the payload
+    flow_task_metadata.payload = frames_task.get_full_payload(**frames_payload)
+    flow_task_metadata.status = FlowTaskStatus.FAILURE
+    db.session.commit()
 
 
 def copy_frames(payload, frame_paths):
@@ -305,16 +366,19 @@ def copy_frames(payload, frame_paths):
     logger_files = logging.getLogger("files")
 
     frames_payload = payload.copy()
+    version_id = frames_payload["version_id"]
+    object_version = as_object_version(version_id)
+    duration = int(object_version.get_tags().get("duration", 0))
     if not len(frame_paths) == 10:
         logger_flows.warning(
             f"[WARNING] Deposit: {frames_payload['deposit_id']} frames are creating with celery task."
         )
-        # Missing/extra frames, don't use them, create with celery task
-        run_frames_task(frames_payload)
+        if current_app.config.get("FAIL_FILE_COPY_TASKS") or not duration:
+            fail_frames_task(frames_payload)
+        else:
+            # Missing/extra frames, don't use them, create with celery task
+            run_frames_task(frames_payload)
         return
-
-    version_id = frames_payload["version_id"]
-    object_version = as_object_version(version_id)
 
     frames_task, kwargs = AVCFlowCeleryTasks.create_task(
         ExtractFramesTask, frames_payload
@@ -491,7 +555,7 @@ def copy_additional_files(bucket_id, additional_files):
 
         # It'll log if copying fail
         if not obj:
-            continue
+            return
 
         # Add tags to the additional file
         ObjectVersionTag.create_or_update(obj, "context_type", "additional_file")
@@ -499,6 +563,7 @@ def copy_additional_files(bucket_id, additional_files):
 
 
 def format_chapters(chapters):
+    """Format chapters to be added to the description."""
     lines = []
     for i, chapter in enumerate(chapters, start=1):
         seconds = int(chapter)
@@ -509,3 +574,17 @@ def format_chapters(chapters):
         lines.append(f"{t} Slide {i}")
     # Join with <br />\n
     return "<br />\n".join(lines)
+
+
+def upload_poster(bucket_id, poster_path):
+    """Upload poster image to bucket."""
+    if not poster_path:
+        return
+
+    obj = move_file_to_bucket(bucket_id, poster_path)
+    if not obj:
+        return None
+
+    _create_tags(obj)
+    ObjectVersionTag.create_or_update(obj, "context_type", "poster")
+    ObjectVersionTag.create_or_update(obj, "media_type", "image")

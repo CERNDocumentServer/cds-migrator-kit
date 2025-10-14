@@ -35,7 +35,6 @@ def transform_multiple_video_record(multiple_video_record):
                 indico_ids: [...],
             }
     """
-
     dates = multiple_video_record["dates"]
     files = multiple_video_record["files"]
     links = multiple_video_record["indico_links"]
