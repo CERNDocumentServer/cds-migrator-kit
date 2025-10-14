@@ -117,7 +117,7 @@ def note(self, key, value):
 def record_restriction(self, key, value):
     """Translates notes."""
     access = value.get("a")
-    if access and access.lower() == "cern internal":
+    if access and access.lower() in ("cern internal", "restricted"):
         return "restricted"
     elif access and access.lower() != "public":
         raise UnexpectedValue("Access field other than public", field=key, value=value)
