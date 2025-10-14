@@ -51,4 +51,5 @@ class CDSVideosBase(CdsOverdo):
         "981__a",  # duplicate record id, checked with Jens
     }
 
+
 model = CDSVideosBase(bases=(), entry_point_group="cds_migrator_kit.videos.rules.base")

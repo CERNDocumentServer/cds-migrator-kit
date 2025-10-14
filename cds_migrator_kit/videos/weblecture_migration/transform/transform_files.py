@@ -133,10 +133,9 @@ class TransformFiles:
                 if resolution in required_resolutions:
                     composite_videos[resolution] = file
 
-        # Ensure 1080p is present
-        if 1080 not in composite_videos:
+        if not composite_videos:
             raise MissingRequiredField(
-                message="1080p composite file not found!",
+                message="Composite videos are missing!!",
                 stage="transform",
                 recid=self.recid,
                 value=self.record_media_data_folder,
@@ -150,14 +149,19 @@ class TransformFiles:
                 f"Folder:{self.record_media_data_folder} missing composite subformats: {sorted(missing_resolutions)}"
             )
 
-        # Get the highest quality composite (1080p)
-        highest_quality_composite = composite_videos[1080]
+        # Sort composite videos by resolution (descending order)
+        sorted_composites = sorted(
+            composite_videos.items(), key=lambda x: x[0], reverse=True
+        )
 
-        # Get the required subformats if they exist
+        # Get the highest quality
+        highest_quality_composite = sorted_composites[0][1]
+        self.transformed_files_json["master_quality"] = sorted_composites[0][0]
+
+        # The rest are the other composites sorted by resolution
         other_composites = [
-            {"path": composite_videos[res], "quality": f"{res}p"}
-            for res in [720, 480, 360]
-            if res in composite_videos
+            {"path": composite[1], "quality": f"{composite[0]}p"}
+            for composite in sorted_composites[1:]
         ]
 
         return highest_quality_composite, other_composites
@@ -226,6 +230,7 @@ class TransformFiles:
         if not all_files:
             raise ManualImportRequired(
                 message="No file found in the media_data folder!",
+                value=self.record_media_data_folder,
                 stage="transform",
                 recid=self.recid,
                 priority="critical",
@@ -264,6 +269,11 @@ class TransformFiles:
                     # TODO is there any better solution to migrate these records?
                     # Only one video — no need to sort
                     highest_quality_videos.append(subformats[0]["src"].strip("/"))
+                    if not self.use_composite:
+                        # If not composite, set the master quality from the only subformat
+                        self.transformed_files_json["master_quality"] = (
+                            subformats[0].get("res", {}).get("h")
+                        )
                     continue
 
                 sorted_subformats = sorted(
@@ -278,6 +288,11 @@ class TransformFiles:
                     res = file.get("res", {})
                     all_subformats.append(
                         {"path": file["src"].strip("/"), "quality": f"{res['h']}p"}
+                    )
+                if not self.use_composite:
+                    # If not composite, set the master quality from the highest subformat
+                    self.transformed_files_json["master_quality"] = (
+                        sorted_subformats[0].get("res", {}).get("h")
                     )
         except Exception as e:
             raise ManualImportRequired(
@@ -362,6 +377,11 @@ class TransformFiles:
                     ],  # Get the paths
                 )
 
+        # Duration
+        self.transformed_files_json["duration"] = data.get("metadata", {}).get(
+            "duration", 0
+        )
+
         # ~~~~Chapters~~~~
         chapters = [frame["time"] for frame in frames_list if "time" in frame]
         self.transformed_files_json["chapters"] = chapters
@@ -389,6 +409,25 @@ class TransformFiles:
             files_list=additional_files,
         )
 
+    def _set_poster_image(self):
+        """Set the poster image if exists."""
+        # Find the poster
+        poster_path = None
+        poster_entry = None
+        for entry in self.entry_files:
+            file_type = entry.get("type", "").lower()
+            if file_type and file_type == "pngthumbnail":
+                poster_path = entry.get("path", "").strip("/")
+                poster_entry = entry  # Store the entry to remove later
+                break
+        if poster_path:
+            poster_image = self.media_folder / poster_path
+            if poster_image.is_file():
+                self.transformed_files_json["poster"] = str(poster_image)
+                if poster_entry:
+                    # Remove the poster from entry_files to avoid duplication in additional_files
+                    self.entry_files.remove(poster_entry)
+
     def transform(self):
         """Transform the files for the record."""
         # Initialize the output json
@@ -399,6 +438,9 @@ class TransformFiles:
             "subformats": [],
             "chapters": [],
             "master_path": "",  # Master folder needed for multi video records
+            "poster": "",  # Poster image path if exists
+            "duration": 0,  # Duration in seconds (from data.v2.json)
+            "master_quality": "",
         }
 
         # Get master path from the record
@@ -413,11 +455,24 @@ class TransformFiles:
         # Check if the record_media_data folder has the composite video
         self.use_composite = self._check_composite_exists()
 
+        self._set_poster_image()
+
         # Get the paths of the files (comes from the record marcxml)
         path_files = [
             item["path"].strip("/") for item in self.entry_files if "path" in item
         ]
         # Check and set the media_files checking the
         self._set_media_files(path_files)
+
+        if not self.transformed_files_json["master_quality"]:
+            raise MissingRequiredField(
+                message="master_quality is missing!",
+                stage="transform",
+                recid=self.recid,
+                value=self.record_media_data_folder,
+                priority="critical",
+            )
+        if not self.transformed_files_json["duration"]:
+            self.transformed_files_json["duration"] = 0
 
         return self.transformed_files_json
