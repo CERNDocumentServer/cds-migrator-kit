@@ -48,13 +48,17 @@ def weblectures():
     pass
 
 
+@click.option(
+    "--keep-logs",
+    is_flag=True,
+)
 @weblectures.command()
 @click.option(
     "--dry-run",
     is_flag=True,
 )
 @with_appcontext
-def run(dry_run=False):
+def run(dry_run=False, keep_logs=False):
     """Run."""
     stream_config = current_app.config["CDS_MIGRATOR_KIT_VIDEOS_STREAM_CONFIG"]
     runner = Runner(
@@ -62,6 +66,7 @@ def run(dry_run=False):
         config_filepath=Path(stream_config).absolute(),
         dry_run=dry_run,
         collection="weblectures",
+        keep_logs=keep_logs,
     )
     VideosJsonLogger.initialize(runner.log_dir)
     runner.run()
