@@ -91,13 +91,15 @@ def resource_type(self, key, value):
         "annualstats": {"id": "publication-report"},
         "cern-admin-e-guide": {"id": "publication-article"},
         "administrativenote": {"id": "publication-technicalnote"},
-        "intnotehrpubl": {"id": "publication-technicalnote"},  # restricted
+        "intnotehrpubl": {"id": "publication-technicalnote"},
         "chisbulletin": {"id": "publication-periodicalissue"},
         "bulletin": {"id": "publication-periodicalissue"},
         "admincircular": {"id": "administrative-circular"},
         "opercircular": {"id": "administrative-operationalcircular"},
         "staffrules": {"id": "administrative-regulation"},
         "staffrulesvd": {"id": "administrative-regulation"},
+        "hr-smc": {"id": "administrative-regulation"},
+        "ccp": {"id": "other"},
     }
     try:
         return map[value]
@@ -159,7 +161,7 @@ def date(self, key, value):
             "type": {"id": "withdrawn"},
         }
         dates.append(date)
-        self["dates"] = dates
+    self["dates"] = dates
     raise IgnoreKey("dates")
 
 
