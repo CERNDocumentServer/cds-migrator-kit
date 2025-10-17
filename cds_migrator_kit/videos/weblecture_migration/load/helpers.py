@@ -164,6 +164,9 @@ def create_video(project_deposit, video_metadata, media_files, submitter):
     chapters = media_files["chapters"]
     duration = media_files.get("duration", 0)
     quality = media_files.get("master_quality")
+    if quality == "None":
+        raise ManualImportRequired(f"Master quality is invalid.", stage="load")
+
     if chapters:
         chapters_txt = format_chapters(chapters)
         video_metadata["description"] = (
