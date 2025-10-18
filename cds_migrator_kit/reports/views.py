@@ -11,7 +11,15 @@
 import json
 import logging
 
-from flask import Blueprint, abort, current_app, jsonify, render_template, request
+from flask import (
+    Blueprint,
+    abort,
+    current_app,
+    jsonify,
+    render_template,
+    request,
+    make_response,
+)
 
 from .log import MigrationProgressLogger, RecordStateLogger
 
@@ -101,3 +109,15 @@ def send_json(collection, recid):
     if recid not in records:
         abort(404)
     return jsonify(records[recid])
+
+
+@blueprint.route("/results/<collection>/download")
+def download_results(collection):
+    """Download the rendered results page as HTML."""
+    html = results(collection)
+    response = make_response(html)
+    response.headers["Content-Type"] = "text/html"
+    response.headers["Content-Disposition"] = (
+        f"attachment; filename={collection}_results.html"
+    )
+    return response

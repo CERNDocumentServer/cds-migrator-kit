@@ -11,7 +11,14 @@
   <h2>Records: {{ total }} | Migrated: {{ migrated }} | <a id="filter-error" href="#">Errored: {{ errored }} </a>
     <span id="filter-on" class="hidden">(displays only errors)</span>|
     Warning: {{ warning }} | Critical: {{ critical }} | Success
-    rate: {{ "%.2f" | format((migrated/total)*100) }}%</h2>
+    rate: {{ "%.2f" | format((migrated/total)*100) }}%  | 
+    <span>    
+      <a href="{{ url_for('cds_migrator_kit_records.download_results', collection=collection) }}"
+      class="btn btn-primary">
+        Download Page
+      </a>
+    </span>
+  </h2>
   <table class="table table-bordered">
     <thead class="thead-dark">
     <tr>
