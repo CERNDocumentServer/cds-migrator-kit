@@ -114,10 +114,10 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         return 1
 
     def _access(self, entry, record_dump):
-        restrictions = (
-            "restricted" if self.restricted else entry.get("record_restriction")
+        record_restriction = (
+            r[0] if isinstance(r := entry.get("record_restriction"), list) else r
         )
-
+        restrictions = "restricted" if self.restricted else record_restriction
         if not restrictions:
             raise RecordFlaggedCuration(
                 message="record restriction not found make sure the record should be public",
@@ -578,6 +578,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "cern:experiments": [],
             "cern:departments": [],
             "cern:accelerators": [],
+            "cern:administrative_unit": json_entry.get("custom_fields", {}).get(
+                "cern:administrative_unit", []
+            ),
             "cern:projects": json_entry.get("custom_fields", {}).get(
                 "cern:projects", []
             ),

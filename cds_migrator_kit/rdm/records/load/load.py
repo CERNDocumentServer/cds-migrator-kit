@@ -218,7 +218,7 @@ class CDSRecordServiceLoad(Load):
             group_mappings = current_app.config.get("CDS_ACCESS_GROUP_MAPPINGS", {})
             if metadata in group_mappings:
                 groups.add(group_mappings[metadata])
-            elif metadata == "restricted":
+            elif metadata in current_app.config.get("IGNORE_FILE_META_VALUES", []):
                 pass
             else:
                 if not any(
@@ -274,6 +274,7 @@ class CDSRecordServiceLoad(Load):
         # raise error for missing user
         missing_emails = emails - existing_users.keys()
         if missing_emails:
+
             raise GrantCreationError(
                 message=f"Users not found for emails: {', '.join(missing_emails)}",
                 stage="load",

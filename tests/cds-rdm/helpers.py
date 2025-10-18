@@ -56,6 +56,20 @@ def config(mocker, community, orcid_name_data):
                         "legacy_pids_to_redirect": "tests/cds-rdm/data/it/duplicated_pids.json"
                     },
                 },
+                "hr": {
+                    "data_dir": "tests/cds-rdm/data/hr",
+                    "tmp_dir": "tests/cds-rdm/data/hr",
+                    "log_dir": "tests/cds-rdm/data/log/hr",
+                    "extract": {"dirpath": "tests/cds-rdm/data/hr/dumps/"},
+                    "transform": {
+                        "files_dump_dir": "tests/cds-rdm/data/hr/files/",
+                        "missing_users": "tests/cds-rdm/data/users",
+                        "communities_ids": [f"{str(community.id)}"],
+                    },
+                    "load": {
+                        "legacy_pids_to_redirect": "tests/cds-rdm/data/hr/duplicated_pids.json"
+                    },
+                },
                 "thesis": {
                     "data_dir": "tests/cds-rdm/data/thesis",
                     "tmp_dir": "tests/cds-rdm/data/thesis",
