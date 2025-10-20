@@ -27,7 +27,7 @@ from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_records.systemfields.relations import InvalidRelationValue
 from marshmallow import ValidationError
-
+from cds_rdm.components import MintAlternateIdentifierComponent
 from cds_migrator_kit.errors import (
     CDSMigrationException,
     GrantCreationError,
@@ -190,6 +190,20 @@ class CDSRecordServiceLoad(Load):
                 # the new published metadata as in the new system we have more information available
                 _draft = current_rdm_records_service.edit(identity, record["id"])
                 current_rdm_records_service.publish(identity, _draft["id"])
+
+    def _after_publish_update_cdsrn(self, identity, record, entry):
+        """Update migrated CDS report number post publish."""
+        alternative_identifiers = entry["record"]["json"]["metadata"]["identifiers"]
+        for scheme, identifier in [
+            (a["scheme"], a["identifier"]) for a in alternative_identifiers
+        ]:
+            if scheme == "cdsrn":
+                alternate_identifier_component = MintAlternateIdentifierComponent(
+                    current_rdm_records_service
+                )
+                alternate_identifier_component.publish(
+                    system_identity, draft=record, record=record._record
+                )
 
     def _after_publish_load_parent_access_grants(self, draft, access_dict, entry):
         """Load access grants from metadata and record grants efficiently."""
@@ -397,6 +411,7 @@ class CDSRecordServiceLoad(Load):
         self._after_publish_update_dois(identity, published_record, entry)
         self._after_publish_update_created(published_record, entry, version)
         self._after_publish_mint_recid(published_record, entry, version)
+        self._after_publish_update_cdsrn(identity, published_record, entry)
         self._after_publish_update_files_created(published_record, entry, version)
         access = entry["versions"][version]["access"]
         self._after_publish_load_parent_access_grants(published_record, access, entry)

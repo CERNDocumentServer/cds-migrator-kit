@@ -136,7 +136,7 @@ def app_config(app_config):
     app_config["RDM_RECORDS_IDENTIFIERS_SCHEMES"] = {
         **RDM_RECORDS_IDENTIFIERS_SCHEMES,
         **{
-            "cds_ref": {
+            "cdsrn": {
                 "label": _("CDS Reference"),
                 "validator": always_valid,
                 "datacite": "CDS",
