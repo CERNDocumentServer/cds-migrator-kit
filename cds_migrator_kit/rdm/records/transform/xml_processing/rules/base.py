@@ -272,7 +272,7 @@ def report_number(self, key, value):
         if scheme.lower() == "hdl":
             scheme = "handle"
         if scheme == "arXiv:reportnumber":
-            scheme = "cds_ref"
+            scheme = "cdsrn"
         if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
             scheme = scheme.lower()
     if key == "037__" and "n" in value:
@@ -282,7 +282,7 @@ def report_number(self, key, value):
         scheme = "handle"
     if (key == "037__" and not scheme) or (identifier and key == "088__"):
         # if there is no scheme, it means report number
-        scheme = "cds_ref"
+        scheme = "cdsrn"
 
     # if there is no identifier it means something else was stored in __9
     if not identifier:
@@ -685,7 +685,7 @@ def yellow_reports(self, key, value):
     if scheme and scheme.lower() == "cern yellow report":
         new_id = {
             "identifier": identifier,
-            "scheme": "cds_ref",
+            "scheme": "cdsrn",
             "relation_type": {"id": "ispublishedin"},
             "resource_type": {"id": "publication-report"},
         }
@@ -696,7 +696,7 @@ def yellow_reports(self, key, value):
         # report number
         new_id = {
             "identifier": identifier,
-            "scheme": "cds_ref",
+            "scheme": "cdsrn",
         }
         identifiers = self.get("identifiers", [])
         if new_id not in identifiers:
@@ -722,8 +722,11 @@ def related_identifiers(self, key, value):
 
     report_number = value.get("r")
     if report_number:
-        report_id = {"identifier": report_number, "scheme": "cds_ref",
-                     "relation_type": {"id": "references"}}
+        report_id = {
+            "identifier": report_number,
+            "scheme": "cdsrn",
+            "relation_type": {"id": "references"},
+        }
         if report_id not in rel_ids:
             rel_ids.append(report_id)
             self["related_identifiers"] = rel_ids
@@ -935,7 +938,7 @@ def validate_inspire_identifier(id_value, key):
 def normalize(date_str):
     date_str = date_str.strip()
 
-    if date_str.count("/") == 1: # Intervals
+    if date_str.count("/") == 1:  # Intervals
         return date_str
     if re.fullmatch(r"\d{4}", date_str):  # YYYY
         return date_str

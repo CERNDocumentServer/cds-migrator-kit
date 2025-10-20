@@ -154,8 +154,8 @@ def suite_multi_field(record):
     ]
     assert dict_rec["metadata"]["identifiers"] == [
         {"identifier": "2684743", "scheme": "lcds"},
-        {"identifier": "CERN-STUDENTS-Note-2019-028", "scheme": "cds_ref"},
-        {"identifier": "CERN-PBC-Notes-2021-006", "scheme": "cds_ref"},
+        {"identifier": "CERN-STUDENTS-Note-2019-028", "scheme": "cdsrn"},
+        {"identifier": "CERN-PBC-Notes-2021-006", "scheme": "cdsrn"},
     ]
 
     assert dict_rec["metadata"]["additional_descriptions"] == [
@@ -343,7 +343,7 @@ def contains_aleph(record):
     assert "identifiers" in dict_rec["metadata"]
     assert dict_rec["metadata"]["identifiers"] == [
         {"identifier": "1597985", "scheme": "lcds"},
-        {"identifier": "CERN-STUDENTS-Note-2013-181", "scheme": "cds_ref"},
+        {"identifier": "CERN-STUDENTS-Note-2013-181", "scheme": "cdsrn"},
         {"identifier": "000733613CER", "scheme": "aleph"},
     ]
 
