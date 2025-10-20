@@ -10,8 +10,20 @@
 
 import json
 import logging
+import io
+import os
+import zipfile
 
-from flask import Blueprint, abort, current_app, jsonify, render_template, request
+from flask import (
+    Blueprint,
+    abort,
+    current_app,
+    jsonify,
+    render_template,
+    request,
+    make_response,
+    send_file,
+)
 
 from .log import MigrationProgressLogger, RecordStateLogger
 
@@ -101,3 +113,26 @@ def send_json(collection, recid):
     if recid not in records:
         abort(404)
     return jsonify(records[recid])
+
+
+@blueprint.route("/results/<collection>/download")
+def download_results(collection):
+    """Download rendered HTML and CSV as a single ZIP."""
+    html = results(collection)
+    csv_path = os.path.abspath("cds_migrator_kit/tmp/logs/it/rdm_migration_errors.csv")
+
+    mem_zip = io.BytesIO()
+    with zipfile.ZipFile(mem_zip, "w") as zf:
+        zf.writestr(f"{collection}_results.html", html)
+        if os.path.exists(csv_path):
+            zf.write(csv_path, arcname=f"{collection}_migration_errors.csv")
+        else:
+            zf.writestr("missing_file.txt", "CSV file not found.")
+
+    mem_zip.seek(0)
+    return send_file(
+        mem_zip,
+        mimetype="application/zip",
+        as_attachment=True,
+        download_name=f"{collection}_results_report.zip",
+    )
