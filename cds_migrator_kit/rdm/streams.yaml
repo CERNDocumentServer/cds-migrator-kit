@@ -256,35 +256,33 @@ records:
         - "77617386-632c-4b86-8dd2-68de77ae0018"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
-  e-guide:
-    data_dir: cds_migrator_kit/rdm/data/e-guide
-    tmp_dir: cds_migrator_kit/rdm/tmp/e-guide
-    log_dir: cds_migrator_kit/rdm/log/e-guide
+  e_guide:
+    data_dir: cds_migrator_kit/rdm/data/e_guide
+    tmp_dir: cds_migrator_kit/rdm/tmp/e_guide
+    log_dir: cds_migrator_kit/rdm/log/e_guide
     extract:
-      dirpath: cds_migrator_kit/rdm/data/hr/e-guide/dump/
+      dirpath: cds_migrator_kit/rdm/data/e_guide/dump/
     transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/hr/e-guide/files/
+      files_dump_dir: cds_migrator_kit/rdm/data/e_guide/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "76b2a0b7-3b82-45b5-a3d3-67dfec5a7ab4"
-        - "77617386-632c-4b86-8dd2-68de77ae0018"
     load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
-  e-guide-restr:
-    data_dir: cds_migrator_kit/rdm/data/e-guide-restr
-    tmp_dir: cds_migrator_kit/rdm/tmp/e-guide-restr
-    log_dir: cds_migrator_kit/rdm/log/e-guide-restr
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/e_guide/duplicated_pids.json
+  e_guide_restr:
+    data_dir: cds_migrator_kit/rdm/data/e_guide/restricted
+    tmp_dir: cds_migrator_kit/rdm/tmp/e_guide/restricted
+    log_dir: cds_migrator_kit/rdm/log/e_guide/restricted
     restricted: "True"
     extract:
-      dirpath: cds_migrator_kit/rdm/data/hr/e-guide-restr/dump/
+      dirpath: cds_migrator_kit/rdm/data//e_guide/restricted/dump/
     transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/hr/e-guide-restr/files/
+      files_dump_dir: cds_migrator_kit/rdm/data/e_guide/restricted/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "76b2a0b7-3b82-45b5-a3d3-67dfec5a7ab4"
-        - "77617386-632c-4b86-8dd2-68de77ae0018"
     load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/e_guide/duplicated_pids.json
   hr_restr:
     data_dir: cds_migrator_kit/rdm/data/hr_restricted
     tmp_dir: cds_migrator_kit/rdm/tmp/hr_restricted
