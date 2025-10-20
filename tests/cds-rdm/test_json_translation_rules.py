@@ -28,7 +28,7 @@ def test_migrate_sspn_record(datadir, base_app):
             "legacy_recid": 2285569,
             "identifiers": [
                 {"identifier": "2285569", "scheme": "lcds"},
-                {"scheme": "cds_ref", "identifier": "CERN-STUDENTS-Note-2017-222"},
+                {"scheme": "cdsrn", "identifier": "CERN-STUDENTS-Note-2017-222"},
             ],
             "languages": [{"id": "eng"}],
             "creators": [
@@ -125,8 +125,8 @@ def test_migrate_record_all_fields(datadir, base_app):
             "legacy_recid": 2684743,
             "identifiers": [
                 {"scheme": "lcds", "identifier": "2684743"},
-                {"scheme": "cds_ref", "identifier": "CERN-STUDENTS-Note-2019-028"},
-                {"scheme": "cds_ref", "identifier": "CERN-PBC-Notes-2021-006"},
+                {"scheme": "cdsrn", "identifier": "CERN-STUDENTS-Note-2019-028"},
+                {"scheme": "cdsrn", "identifier": "CERN-PBC-Notes-2021-006"},
             ],
             "languages": [{"id": "eng"}],
             "creators": [
