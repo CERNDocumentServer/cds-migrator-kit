@@ -70,6 +70,7 @@ def resource_type(self, key, value):
         "note": {"id": "publication-technicalnote"},
         "brochure": {"id": "other"},
         "itcerntalk": {"id": "presentation"},
+        "peri": {"id": "publication-periodicalissue"},
         "intnoteitpubl": {"id": "publication-technicalnote"},
         "intnotetspubl": {"id": "publication-technicalnote"},
         "bookchapter": {"id": "publication-section"},
