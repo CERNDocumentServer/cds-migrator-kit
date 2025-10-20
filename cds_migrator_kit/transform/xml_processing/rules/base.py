@@ -75,7 +75,17 @@ def languages(self, key, value):
     if lang:
         lang = lang.lower()
     try:
-        return {"id": pycountry.languages.lookup(lang).alpha_3.lower()}
+        # If it's a 2-letter code
+        if len(lang) == 2:
+            lang_obj = pycountry.languages.get(alpha_2=lang)
+        else:
+            lang_obj = pycountry.languages.get(alpha_3=lang)
+
+        if not lang_obj:
+            lang_obj = pycountry.languages.lookup(lang)
+
+        return {"id": lang_obj.alpha_3.lower()}
+
     except (KeyError, AttributeError, LookupError):
         raise UnexpectedValue(field=key, subfield="a")
 

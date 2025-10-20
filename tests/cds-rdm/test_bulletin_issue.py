@@ -56,6 +56,7 @@ def test_bulletin_issue(
         config_filepath=Path(stream_config).absolute(),
         dry_run=False,
         collection="bulletin_issue",
+        keep_logs=False,
     )
 
     runner.run()
