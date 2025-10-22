@@ -51,7 +51,10 @@ def get_contributor(key, value, contributor_role="", name=""):
     affiliation = value.get("u", "")
     contributor = {"name": name}
     if affiliation:
-        contributor.update({"affiliations": [affiliation]})
+        if isinstance(affiliation, (list, tuple)):
+            contributor["affiliations"] = list(affiliation)
+        elif isinstance(affiliation, str):
+            contributor["affiliations"] = [affiliation]
     if contributor_role:
         contributor.update({"role": contributor_role})
     else:
