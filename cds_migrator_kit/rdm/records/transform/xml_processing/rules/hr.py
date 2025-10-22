@@ -86,7 +86,10 @@ def resource_type(self, key, value):
     value = value.get("a")
     if value:
         value = value.strip().lower()
-
+    if value in ["hr-smc", "ccp"]:
+        subjects = self.get("subjects", [])
+        subjects.append({"subject": f"collection:{value}"})
+        self["subjects"] = subjects
     map = {
         "annualstats": {"id": "publication-report"},
         "cern-admin-e-guide": {"id": "publication-article"},

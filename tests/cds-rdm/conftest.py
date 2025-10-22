@@ -966,6 +966,16 @@ def departments_v(app, dep_type):
             "type": "departments",
         },
     )
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "IT",
+            "title": {
+                "en": "IT",
+            },
+            "type": "departments",
+        },
+    )
     return vocab
 
 
