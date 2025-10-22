@@ -411,7 +411,14 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 for keyword in keywords + subject_categories + subject_indicators
                 if keyword
             ]
-            return all_keywords
+            seen = set()
+            unique_keywords = []
+            for kw in all_keywords:
+                name = kw["name"]
+                if name not in seen:
+                    seen.add(name)
+                    unique_keywords.append(kw)
+            return unique_keywords
 
         def get_related_identifiers(json_data):
             """Return related_identifiers."""
