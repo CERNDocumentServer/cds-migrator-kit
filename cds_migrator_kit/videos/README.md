@@ -207,19 +207,23 @@ cds index run
 
 ## How to copy CEPH media files
 
-### Step 1: Generate media files list
+### Step 1: Generate media files
 
 Change `folders/extract/dirpath` in your steams.yaml file. It should be the folder of your dumps.
 
 You can generate the needed media files list with this command:
 
 ```bash
-invenio migration videos weblectures create-folders-txt
+invenio migration videos weblectures extract-files-paths
 ```
 
-This will create a txt file with all needed folder paths at: `cds_migrator_kit/videos/master_folders.txt`
+This will create a json file with all the files in the marc record.
 
-Alternatively, you can use the pre-generated txt file here: 
+Alternatively, you can use the pre-generated json file here: 
+[marc files](https://cernbox.cern.ch/files/spaces/eos/project/d/digital-repositories/Services/CDS/CDS%20Videos/Projects/Weblectures%20migration/weblecture_migration_marc_files.json)
+
+**If you want to copy the full media_data folder for the records:**
+You can use the pre-generated txt file here: 
 [all_media_files.txt](https://cernbox.cern.ch/files/spaces/eos/project/d/digital-repositories/Services/CDS/CDS%20Videos/Projects/Weblectures%20migration/master_folders.txt)
 
 ### Step 2: Copy the file to the target machine
@@ -238,6 +242,21 @@ To be more safe, connect your VM and in your VM:
    ```
 
 ### Step 4: Run the copy script
+
+#### Option 1: Copy only needed files and generate their EOS paths to use in migration
+
+1. Open an **IPython** shell.  
+2. Run the [`copy_files.py`](scripts/copy_files.py) script.  
+
+This script will:
+- Copy only the files needed for migration.  
+- Generate a **JSON file** containing all the corresponding EOS paths for the records.  
+
+After the script finishes, update your configuration:
+1. Open the streams.yaml file: `cds_migrator_kit/videos/weblecture_migration/streams.yaml`
+2. Update the following field with the EOS directory where your generated JSON files are stored: `records/weblectures/transform/eos_file_paths_dir: <path_to_your_generated_json_files>`
+
+#### Option 2: Copy directly the folder
 
 Create a shell script file and paste the following content:
 

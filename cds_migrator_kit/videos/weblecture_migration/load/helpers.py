@@ -50,10 +50,11 @@ from sqlalchemy.orm.attributes import flag_modified as db_flag_modified
 
 from cds_migrator_kit.errors import ManualImportRequired
 
+logger_files = logging.getLogger("files")
+
 
 def move_file_to_bucket(bucket_id, file_path, is_master=False):
     """Create a FileInstance, move the file to FileInstance storage, return the created object version."""
-    logger_files = logging.getLogger("files")
 
     def _cleanup_on_failure(error_msg):
         """Attempt to delete the file instance and log errors if copy fails."""
@@ -109,12 +110,11 @@ def move_file_to_bucket(bucket_id, file_path, is_master=False):
                 f"File copy failed: Size mismatch! "
                 f"Source: {file_path}, Destination: {full_path}"
             )
-            if is_master:
-                # Fail if it's master
-                _cleanup_on_failure(error_message)
-            else:
-                # Log if it's frames/subformats/additional
-                logger_files.warning(f"[WARNING]" + error_message)
+            # Log the error
+            logger_files.error(f"[ERROR]" + error_message)
+            # Fail if master
+            _cleanup_on_failure(error_message)
+            return
 
         # Update FileInstance
         file_checksum = file_storage.checksum(use_default_impl=True)
@@ -190,6 +190,10 @@ def create_video(project_deposit, video_metadata, media_files, submitter):
     object_version = move_file_to_bucket(
         bucket_id=bucket_id, file_path=video_file_path, is_master=True
     )
+    if not object_version:
+        raise ManualImportRequired(
+            f"Master video copy failed!", stage="load", value=video_file_path
+        )
 
     ObjectVersionTag.create_or_update(object_version, "duration", str(duration))
     ObjectVersionTag.create_or_update(object_version, "height", str(quality))
@@ -455,6 +459,11 @@ def _copy_subformat(payload, preset_quality, path, created_obj=None):
     """Copy the subformat file to bucket and add subformat tags."""
     if not created_obj:
         obj = move_file_to_bucket(payload["bucket_id"], path)
+        if not obj:
+            logger_files.error(
+                f"[ERROR] Subformat copy failed: {path} | Deposit ID: {payload['deposit_id']}"
+            )
+            return
     else:
         obj = created_obj
 

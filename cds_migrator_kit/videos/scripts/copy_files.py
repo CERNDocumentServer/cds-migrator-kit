@@ -5,27 +5,53 @@
 # CDS-Videos is free software; you can redistribute it and/or modify it under
 # the terms of the MIT License; see LICENSE file for more details.
 
-"""CDS-Videos transform module files helper."""
+"""CDS-Videos file copy script."""
+import datetime
+import io
 import json
 import logging
+import os
 import re
-from pathlib import Path
+import shutil
+import sys
 
-from flask import current_app
+from pathlib2 import Path
 
-from cds_migrator_kit.errors import (
-    ManualImportRequired,
-    MissingRequiredField,
-    RestrictedFileDetected,
-    UnexpectedValue,
-)
 
-logger_files = logging.getLogger("files")
+class CDSMigrationException(Exception):
+    """CDSDoJSONException class."""
+
+    description = None
+
+    def __init__(
+        self,
+        message=None,
+        field=None,
+        subfield=None,
+        value=None,
+        stage=None,
+        recid=None,
+        exc=None,
+        priority=None,
+        *args,
+        **kwargs
+    ):
+        """Constructor."""
+        self.subfield = subfield
+        self.field = field
+        self.value = value
+        self.stage = stage
+        self.recid = recid
+        self.type = str(self.__class__.__name__)
+        self.exc = exc
+        self.message = message
+        self.priority = priority
+        super(CDSMigrationException, self).__init__(*args)
 
 
 class TransformFiles:
     """
-    Transform lecturemedia links to file paths for video record.
+    Transform lecturemedia links to eos file paths for video record.
 
     Initialize the class and call the `transform` method.
     """
@@ -34,14 +60,16 @@ class TransformFiles:
         self,
         recid,
         entry_files,
+        logger_files,
         collection="weblectures",
         media_folder="",
     ):
         """Constructor."""
         self.recid = recid
         self.entry_files = entry_files
+        self.logger_files = logger_files
         self.collection = collection
-        self.media_folder = Path(current_app.config["MOUNTED_MEDIA_CEPH_PATH"])
+        self.media_folder = media_folder
         self.transformed_files_json = {}
         # composite str
         self.composite_str = "composite"
@@ -55,7 +83,7 @@ class TransformFiles:
         ]
         # It should have one master_path
         if len(master_paths) != 1:
-            raise UnexpectedValue(
+            raise CDSMigrationException(
                 message="Multiple/missing master files!",
                 stage="transform",
                 recid=self.recid,
@@ -73,9 +101,9 @@ class TransformFiles:
                 for f in Path(directory).iterdir()
                 if f.is_file() and not f.name.startswith(".")
             ]
-        except FileNotFoundError:
+        except (IOError, OSError):
             # No files are found, raise an error
-            raise ManualImportRequired(
+            raise CDSMigrationException(
                 message="Folder couldn't be found!",
                 stage="transform",
                 recid=self.recid,
@@ -134,7 +162,7 @@ class TransformFiles:
                     composite_videos[resolution] = file
 
         if not composite_videos:
-            raise MissingRequiredField(
+            raise CDSMigrationException(
                 message="Composite videos are missing!!",
                 stage="transform",
                 recid=self.recid,
@@ -145,8 +173,10 @@ class TransformFiles:
         # Log missing subformats
         missing_resolutions = required_resolutions - set(composite_videos.keys())
         if missing_resolutions:
-            logger_files.warning(
-                f"Folder:{self.record_media_data_folder} missing composite subformats: {sorted(missing_resolutions)}"
+            self.logger_files.warning(
+                "Folder:%s missing composite subformats: %s",
+                self.record_media_data_folder,
+                sorted(missing_resolutions),
             )
 
         # Sort composite videos by resolution (descending order)
@@ -160,7 +190,7 @@ class TransformFiles:
 
         # The rest are the other composites sorted by resolution
         other_composites = [
-            {"path": composite[1], "quality": f"{composite[0]}p"}
+            {"path": composite[1], "quality": "{0}p".format(composite[0])}
             for composite in sorted_composites[1:]
         ]
 
@@ -188,8 +218,10 @@ class TransformFiles:
 
         # Frame folder is missing! Log it
         if not frame_folder.is_dir():
-            logger_files.warning(
-                f"[WARNING] Record:{self.recid} frames folder for composite is missing:{frame_folder}"
+            self.logger_files.warning(
+                "Record:%s frames folder for composite is missing:%s",
+                self.recid,
+                frame_folder,
             )
             return
 
@@ -213,9 +245,10 @@ class TransformFiles:
         """
         # No path found in the record
         if not files_paths:
-            raise UnexpectedValue(
+            raise CDSMigrationException(
                 message="No media file found in the record!",
                 stage="transform",
+                value=self.record_media_data_folder,
                 recid=self.recid,
                 priority="critical",
             )
@@ -228,7 +261,7 @@ class TransformFiles:
         }
         # No file found in media_data folder
         if not all_files:
-            raise ManualImportRequired(
+            raise CDSMigrationException(
                 message="No file found in the media_data folder!",
                 value=self.record_media_data_folder,
                 stage="transform",
@@ -240,8 +273,8 @@ class TransformFiles:
         for path in files_paths:
             file_name = Path(path).name
             if file_name not in all_files:
-                logger_files.warning(
-                    f"[WARNING] Record:{self.recid} file:{path} found in the record but not in media_data folder!"
+                self.logger_files.error(
+                    "File not found in the media_data folder: {0}!".format(file_name)
                 )
         return all_files
 
@@ -252,14 +285,16 @@ class TransformFiles:
         streams = datajson.get("streams", [])
         # One video record should have 1 stream
         if not self.use_composite and len(streams) != 1:
-            raise UnexpectedValue(
+            raise CDSMigrationException(
                 "Missing presenter/presentation files for composite record!"
             )
         try:
             for stream in streams:
                 subformats = stream.get("sources", {}).get("mp4", [])
                 if not subformats:
-                    raise UnexpectedValue("Missing MP4 formats in one of the streams")
+                    raise CDSMigrationException(
+                        "Missing MP4 formats in one of the streams"
+                    )
 
                 if len(subformats) == 1:
                     # TODO is there any better solution to migrate these records?
@@ -283,7 +318,10 @@ class TransformFiles:
                 for file in sorted_subformats[1:]:
                     res = file.get("res", {})
                     all_subformats.append(
-                        {"path": file["src"].strip("/"), "quality": f"{res['h']}p"}
+                        {
+                            "path": file["src"].strip("/"),
+                            "quality": "{0}p".format(res["h"]),
+                        }
                     )
                 if not self.use_composite:
                     # If not composite, set the master quality from the highest subformat
@@ -291,10 +329,11 @@ class TransformFiles:
                         sorted_subformats[0].get("res", {}).get("h")
                     )
         except Exception as e:
-            raise ManualImportRequired(
+            raise CDSMigrationException(
                 message=(
-                    f"Subformat transform failed! Check data.v2.json: "
-                    f"{self.record_media_data_folder}. Error: {e}"
+                    "Subformat transform failed! Check data.v2.json: {0}. Error: {1}".format(
+                        self.record_media_data_folder, e
+                    )
                 ),
                 stage="transform",
                 priority="critical",
@@ -315,10 +354,10 @@ class TransformFiles:
         try:
             # Read "data.v2.json"
             data_v2_json = self.record_media_data_folder / "data.v2.json"
-            with open(data_v2_json, "r", encoding="utf-8") as file:
+            with io.open(str(data_v2_json), "r", encoding="utf-8") as file:
                 data = json.load(file)
-        except FileNotFoundError:
-            raise ManualImportRequired(
+        except (IOError, OSError):
+            raise CDSMigrationException(
                 message="data_v2_json file not found!",
                 stage="transform",
                 recid=self.recid,
@@ -352,7 +391,7 @@ class TransformFiles:
         else:
             # ~~~~MASTER & SUBFORMATS
             if len(highest_presenter_presentation) != 1:
-                raise ManualImportRequired("Master video file is missing!")
+                raise CDSMigrationException("Master video file is missing!")
             self.transformed_files_json["master_video"] = str(
                 self.media_folder / highest_presenter_presentation[0]
             )
@@ -440,37 +479,202 @@ class TransformFiles:
             "duration": 0,  # Duration in seconds (from data.v2.json)
             "master_quality": "",
         }
+        try:
+            # Get master path from the record
+            master_path = self._get_master_path()
+            self.transformed_files_json["master_path"] = master_path
 
-        # Get master path from the record
-        master_path = self._get_master_path()
-        self.transformed_files_json["master_path"] = master_path
+            # Get the year and id eg: master_data/year/event_id
+            path = master_path.split("master_data/", 1)[-1]
 
-        # Get the year and id eg: master_data/year/event_id
-        path = master_path.split("master_data/", 1)[-1]
+            self.record_media_data_folder = self.media_folder / path
 
-        self.record_media_data_folder = self.media_folder / path
+            # Check if the record_media_data folder has the composite video
+            self.use_composite = self._check_composite_exists()
 
-        # Check if the record_media_data folder has the composite video
-        self.use_composite = self._check_composite_exists()
+            self._set_poster_image()
 
-        self._set_poster_image()
+            # Get the paths of the files (comes from the record marcxml)
+            path_files = [
+                item["path"].strip("/") for item in self.entry_files if "path" in item
+            ]
+            # Check and set the media_files checking the
+            self._set_media_files(path_files)
 
-        # Get the paths of the files (comes from the record marcxml)
-        path_files = [
-            item["path"].strip("/") for item in self.entry_files if "path" in item
-        ]
-        # Check and set the media_files checking the
-        self._set_media_files(path_files)
-        master_quality = self.transformed_files_json["master_quality"]
-        if not master_quality or master_quality == "None":
-            raise MissingRequiredField(
-                message="master_quality is missing!",
-                stage="transform",
-                recid=self.recid,
-                value=self.record_media_data_folder,
-                priority="critical",
+            master_quality = self.transformed_files_json["master_quality"]
+            if not master_quality or master_quality == "None":
+                self.logger_files.error(
+                    "[ERROR] Recid:{0} master_quality is missing!".format(self.recid)
+                )
+
+            if not self.transformed_files_json["duration"]:
+                self.transformed_files_json["duration"] = 0
+
+            return self.transformed_files_json
+
+        except Exception as e:
+            # Try to extract message and value from custom exceptions
+            message = getattr(e, "message", str(e))
+            value = getattr(e, "value", None)
+
+            log_msg = "[ERROR] Transform failed for record {0}: {1}".format(
+                self.recid, message
             )
-        if not self.transformed_files_json["duration"]:
-            self.transformed_files_json["duration"] = 0
+            if value:
+                log_msg += " | value: {0}".format(value)
 
-        return self.transformed_files_json
+            self.logger_files.error(log_msg, exc_info=True)
+
+    def copy_needed_files(self, new_base):
+        """
+        Copy all needed files to new_base (e.g. /eos/media/cds-videos/dev/stage/media_data)
+        and return a transformed_files_json with updated destination paths.
+        """
+        transformed = self.transformed_files_json.copy()
+
+        def copy_and_update(src_path_str):
+            """Copy file if needed and return new dest path as string."""
+            if not src_path_str:
+                return ""
+
+            src_path = Path(src_path_str)
+            if not src_path.is_file():
+                self.logger_files.warning("Missing source: %s", src_path)
+                return src_path_str  # leave unchanged
+
+            try:
+                rel_path = src_path.relative_to(self.media_folder)
+            except ValueError:
+                self.logger_files.warning("[SKIP] Not under media_folder: %s", src_path)
+                return src_path_str  # leave unchanged
+
+            dest_path = new_base / rel_path
+            dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Check if file already copied and complete
+            if dest_path.exists():
+                try:
+                    src_size = src_path.stat().st_size
+                    dest_size = dest_path.stat().st_size
+                    if src_size == dest_size and dest_size > 0:
+                        self.logger_files.info("[SKIP] Already copied: %s", dest_path)
+                        return str(dest_path)
+                    else:
+                        self.logger_files.warning(
+                            "[REPLACE] Incomplete or mismatched size: %s (src=%s, dest=%s)",
+                            dest_path,
+                            src_size,
+                            dest_size,
+                        )
+                except Exception as e:
+                    self.logger_files.warning(
+                        "[REPLACE] Size check failed for %s: %s", dest_path, e
+                    )
+
+            # Copy the file
+            try:
+                shutil.copy2(str(src_path), str(dest_path))
+                self.logger_files.info("[COPIED] %s -> %s", src_path, dest_path)
+            except Exception as e:
+                self.logger_files.error(
+                    "[ERROR] Copy failed: %s -> %s (%s)", src_path, dest_path, e
+                )
+
+            return str(dest_path)
+
+        # --- Update each field ---
+        transformed["master_video"] = copy_and_update(
+            self.transformed_files_json["master_video"]
+        )
+        transformed["poster"] = copy_and_update(
+            self.transformed_files_json.get("poster")
+        )
+
+        # For list fields
+        def update_list_field(field):
+            updated = []
+            for item in self.transformed_files_json.get(field, []):
+                if isinstance(item, dict):
+                    new_path = copy_and_update(item.get("path", ""))
+                    updated.append({"path": new_path, "quality": item.get("quality")})
+                else:
+                    updated.append(copy_and_update(item))
+            transformed[field] = updated
+
+        for key in ["frames", "subformats", "additional_files"]:
+            update_list_field(key)
+
+        self.logger_files.info("Copy process finished for record %s", self.recid)
+        return transformed
+
+
+def load_json(json_file_path):
+    path = Path(json_file_path)
+    with io.open(str(path), "r", encoding="utf-8") as fp:
+        return json.load(fp)
+
+
+def main():
+    # Test access to media_data folder and eos
+    ceph_media_folder = Path("/mnt/cephfs/media_data/")
+    eos_media_folder = Path("/eos/media/cds-videos/dev/stage/media_data")
+
+    for folder in [ceph_media_folder, eos_media_folder]:
+        folder_str = str(folder)
+        if os.path.exists(folder_str) and os.access(folder_str, os.R_OK):
+            logger_files.info("Access OK: {0}".format(folder_str))
+        else:
+            logger_files.error("Cannot access folder: {0}".format(folder_str))
+            logger_files.error(
+                "Stopping execution — required folder missing or not readable."
+            )
+            sys.exit(1)
+
+    # TODO change with your actual marc files json
+    marc_files_path = "/tmp/marc_files_lectures_8.json"
+    # TODO change the output file
+    transformed_files_path = "/tmp/eos_files_lectures_8.json"
+
+    # Output
+    all_records_data = []
+
+    # === Setup logger ===
+    logger_files = logging.getLogger("folders")
+    logger_files.setLevel(logging.INFO)
+    ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+    log_file = "/tmp/files_copy_log_{0}.txt".format(ts)
+    handler = logging.FileHandler(log_file, mode="a")
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    handler.setFormatter(formatter)
+    logger_files.addHandler(handler)
+    logger_files.info("=== Starting Transform + Copy Process ===")
+
+    # Load the records and transform
+    records = load_json(marc_files_path)
+    total = len(records)
+    for idx, record in enumerate(records, 1):
+        recid = record["recid"]
+        logger_files.info(
+            "Processing record {0}/{1} (recid={2})".format(idx, total, record["recid"])
+        )
+        entry_files = record["files"]
+        transform_files = TransformFiles(
+            recid=recid,
+            entry_files=entry_files,
+            logger_files=logger_files,
+            media_folder=ceph_media_folder,
+        )
+        file_info_json = transform_files.transform()
+        if not file_info_json:
+            continue
+        # Destination
+        copied_file_info_json = transform_files.copy_needed_files(eos_media_folder)
+        all_records_data.append({"recid": recid, "files": copied_file_info_json})
+
+    # Save to a JSON file
+    with io.open(transformed_files_path, "w", encoding="utf-8") as f:
+        text = json.dumps(all_records_data, indent=4, ensure_ascii=False)
+        # In Python 2, json.dumps() may return a byte string instead of unicode
+        if not isinstance(text, unicode):
+            text = text.decode("utf-8")
+        f.write(text)

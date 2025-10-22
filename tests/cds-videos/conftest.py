@@ -75,6 +75,7 @@ def app_config(app_config):
             "CDS_MIGRATOR_KIT_STREAM_CONFIG": "tests/cds-videos/data/streams.yaml",
             "WEBLECTURES_MIGRATION_SYSTEM_USER": "weblecture-service@cern.ch",
             "CAS_LECTURES_ACCESS": [],
+            "USE_GENERATED_FILE_PATHS": False,
         }
     )
 
