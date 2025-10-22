@@ -15,23 +15,21 @@
     "files": [
       {
         "comment": null,
-        "status": "HRCircDocs",
+        "status": "restricted",
         "version": 1,
         "encoding": null,
         "creation_date": "2013-09-06T09:31:03+00:00",
         "bibdocid": 792187,
         "mime": "application/pdf",
-        "full_name": "Report on ALICE RPE Website.pdf",
+        "full_name": "July Report.pdf",
         "superformat": ".pdf",
-        "recids_doctype": [
-          [2364643, "DEPIN_FILE", "Report on ALICE RPE Website.pdf"]
-        ],
-        "path": "/opt/cdsweb/var/data/files/g79/792187/Report on ALICE RPE Website.pdf;1",
+        "recids_doctype": [[2364643, "DEPIN_FILE", "July Report.pdf"]],
+        "path": "/opt/cdsweb/var/data/files/g79/792187/July Report.pdf;1",
         "size": 1525703,
         "license": {},
         "modification_date": "2013-09-06T09:31:03+00:00",
         "copyright": {},
-        "url": "http://cds.cern.ch/record/2364643/files/Report on ALICE RPE Website.pdf",
+        "url": "http://cds.cern.ch/record/2364643/files/July Report.pdf",
         "checksum": "2942bfabb3d05332b66eb128e0842cff",
         "description": null,
         "format": ".pdf",
@@ -42,7 +40,7 @@
         "flags": [],
         "hidden": false,
         "type": "DEPIN_FILE",
-        "full_path": "/opt/cdsweb/var/data/files/g79/792187/Report on ALICE RPE Website.pdf;1"
+        "full_path": "/opt/cdsweb/var/data/files/g79/792187/July Report.pdf;1"
       }
     ],
     "collections": null,

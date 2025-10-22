@@ -449,11 +449,10 @@ CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(
 
 CDS_MIGRATOR_KIT_ENV = "local"
 
-CDS_ACCESS_GROUP_MAPPINGS = {"SSO": "cern-personnel", "ITDepRestrFile": "it-dep"}
-
-IGNORE_FILE_META_VALUES = [
-    "restricted",
-    "HrDepRestrFile",
-    "HRCircDocs",
-    "HRDepExtended",
-]
+CDS_ACCESS_GROUP_MAPPINGS = {
+    "SSO": ["cern-personnel"],
+    "ITDepRestrFile": ["it-dep"],
+    "HrDepRestrFile": ["hr-dep", "fap-dep-tpr-mi-staf"],
+    "HRCircDocs": ["hr-web-gacepa"],
+    "HRDepExtended": ["hr-dep", "hr-dep-cds-extended"],
+}

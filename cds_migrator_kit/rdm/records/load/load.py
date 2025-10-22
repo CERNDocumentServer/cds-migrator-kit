@@ -217,8 +217,8 @@ class CDSRecordServiceLoad(Load):
         if metadata:
             group_mappings = current_app.config.get("CDS_ACCESS_GROUP_MAPPINGS", {})
             if metadata in group_mappings:
-                groups.add(group_mappings[metadata])
-            elif metadata in current_app.config.get("IGNORE_FILE_META_VALUES", []):
+                groups.update(group_mappings[metadata])
+            elif metadata == "restricted":
                 pass
             else:
                 if not any(
@@ -267,22 +267,6 @@ class CDSRecordServiceLoad(Load):
             else:
                 groups.add(_normalize_group_name(subject))
 
-        existing_users = {
-            user.email: user.id
-            for user in User.query.filter(User.email.in_(emails)).all()
-        }
-        # raise error for missing user
-        missing_emails = emails - existing_users.keys()
-        if missing_emails:
-
-            raise GrantCreationError(
-                message=f"Users not found for emails: {', '.join(missing_emails)}",
-                stage="load",
-                recid=entry["record"]["recid"],
-                value=list(missing_emails),
-                priority="warning",
-            )
-
         def _create_grant(subject_type, subject_id, permission):
             grant_data = {
                 "grants": [
@@ -306,13 +290,15 @@ class CDSRecordServiceLoad(Load):
             )
 
             is_local_dev = current_app.config.get("CDS_MIGRATOR_KIT_ENV") == "local"
-            if (
-                not is_local_dev
-                and not current_rdm_records_service.access._validate_grant_subject(
-                    identity, grant
-                )
-            ):
+            print("VALIDATION CHECK:",
+                current_app.config.get("CDS_MIGRATOR_KIT_ENV"),
+                is_local_dev,
+                grant.subject_id,
+                current_rdm_records_service.access._validate_grant_subject(identity, grant))
 
+            if (
+                not is_local_dev and not current_rdm_records_service.access._validate_grant_subject(identity, grant)
+            ):
                 raise ManualImportRequired(
                     message="Verification of access subject failed (likely not existing entry)",
                     field="access",
@@ -329,6 +315,23 @@ class CDSRecordServiceLoad(Load):
                 subject_type="role",
                 subject_id=group,
                 permission=grants_with_perms.get(group, default_permission),
+            )
+
+        # Fetch existing users
+        existing_users = {
+            user.email: user.id
+            for user in User.query.filter(User.email.in_(emails)).all()
+        }
+        # raise error for missing user
+        missing_emails = emails - existing_users.keys()
+        if missing_emails:
+
+            raise GrantCreationError(
+                message=f"Users not found for emails: {', '.join(missing_emails)}",
+                stage="load",
+                recid=entry["record"]["recid"],
+                value=list(missing_emails),
+                priority="warning",
             )
 
         # Create grants for users
