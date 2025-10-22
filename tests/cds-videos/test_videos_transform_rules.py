@@ -1323,7 +1323,9 @@ def test_transform_multi_video_record(dumpdir, base_app):
         data = load_json(dumpdir, "lecture.json")
 
         # Transform
-        transform = CDSToVideosRecordTransform(files_dump_dir=files_dump_dir)
+        transform = CDSToVideosRecordTransform(
+            files_dump_dir=files_dump_dir, eos_file_paths_dir=""
+        )
 
         # Test case: multi video record with indico ids
         transform_entry = transform._transform(data[3])

@@ -22,22 +22,27 @@ class VideosJsonLogger:
     """Log videos record migration."""
 
     @classmethod
-    def initialize(cls, log_dir):
+    def initialize(cls, log_dir, keep_logs=False):
         """Initialize the videos logger."""
+        cls.keep_logs = keep_logs
+        # Determine file mode based on keep_logs flag
+        log_mode = "a" if keep_logs else "w"
+
         logger_files = logging.getLogger("files")
-        fh = logging.FileHandler(log_dir / "files.log")
+        fh = logging.FileHandler(log_dir / "files.log", mode=log_mode)
         fh.setFormatter(formatter)
         logger_files.addHandler(fh)
 
         logger_flows = logging.getLogger("flows")
-        fh = logging.FileHandler(log_dir / "flows.log")
+        fh = logging.FileHandler(log_dir / "flows.log", mode=log_mode)
         fh.setFormatter(formatter)
         logger_flows.addHandler(fh)
 
         # Add a new json file for video records redirections
         cls.json_path = log_dir / "record_redirections.json"
-        with open(cls.json_path, "w") as json_file:
-            json.dump([], json_file)
+        if not keep_logs or not cls.json_path.exists():
+            with open(cls.json_path, "w") as json_file:
+                json.dump([], json_file)
 
     @classmethod
     def log_record_redirection(cls, legacy_id, cds_videos_id, legacy_anchor_id=None):

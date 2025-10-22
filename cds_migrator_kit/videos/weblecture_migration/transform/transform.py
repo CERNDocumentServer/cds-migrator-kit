@@ -40,6 +40,9 @@ from cds_migrator_kit.videos.weblecture_migration.transform.transform_files impo
 from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.collections import (
     append_collection_hierarchy,
 )
+from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.files import (
+    get_files_by_recid,
+)
 from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.identifiers import (
     get_new_indico_id,
     transform_legacy_urls,
@@ -60,12 +63,14 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         partial=False,
         dry_run=False,
         files_dump_dir=None,
+        eos_file_paths_dir=None,
         migration_logger=None,
         record_state_logger=None,
     ):
         """Constructor."""
         self.dry_run = dry_run
         self.files_dump_dir = files_dump_dir
+        self.eos_file_paths_dir = eos_file_paths_dir
         self.has_multiple_master = False
         self.multiple_video_record_entries = {
             "dates": [],  # get it from lecture_infos
@@ -171,15 +176,28 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
     def _media_files(self, entry):
         """Transform the media files (lecturemedia files) of a record."""
+        recid = entry["legacy_recid"]
         # No need to check files if record is migrated (they'll be moved)
-        if self.check_pid_exists(str(entry["legacy_recid"])):
+        if self.check_pid_exists(str(recid)):
             return {}
+        use_generated = current_app.config.get("USE_GENERATED_FILE_PATHS", False)
 
         # Check if record has one master folder, or more
         master_paths = [
             item["master_path"] for item in entry.get("files") if "master_path" in item
         ]
         if len(master_paths) == 1:
+            if use_generated:
+                # Use pre-generated EOS JSON paths
+                files = get_files_by_recid(recid, self.eos_file_paths_dir)
+                if len(files) != 1:
+                    raise UnexpectedValue(
+                        message="Files are missing/extra in generated eos files! Check logs!",
+                        stage="transform",
+                        value="files",
+                        priority="critical",
+                    )
+                return files[0]
             transform_files = TransformFiles(
                 recid=entry["legacy_recid"], entry_files=entry.get("files")
             )
@@ -187,6 +205,32 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             return file_info_json
         elif len(master_paths) > 1:
             self.has_multiple_master = True
+            master_file_ids = [
+                master_path.split("/")[-1] for master_path in master_paths
+            ]
+            # Ensure unique master_file_ids
+            if len(master_file_ids) != len(set(master_file_ids)):
+                raise UnexpectedValue(
+                    message="Duplicate Indico IDs found in master paths!",
+                    stage="transform",
+                    value=master_file_ids,
+                    priority="critical",
+                )
+
+            # Use pre-generated EOS JSON paths
+            if use_generated:
+                files = get_files_by_recid(recid, self.eos_file_paths_dir)
+                if len(files) != len(master_paths):
+                    raise UnexpectedValue(
+                        message="Files are missing/extra in generated eos files! Check logs!",
+                        stage="transform",
+                        value="files",
+                        priority="critical",
+                    )
+                self.multiple_video_record_entries["files"].extend(files)
+                return
+
+            # Transform ceph paths to eos
             files = entry.get("files")
 
             for master_path in master_paths:
@@ -767,6 +811,7 @@ class CDSToVideosRecordTransform(RDMRecordTransform):
         workers=None,
         throw=True,
         files_dump_dir=None,
+        eos_file_paths_dir=None,
         dry_run=False,
         collection=None,  # weblectures
         restricted=False,  # Not used but needed for runner
@@ -774,6 +819,7 @@ class CDSToVideosRecordTransform(RDMRecordTransform):
         record_state_logger=None,
     ):
         """Constructor."""
+        self.eos_file_paths_dir = Path(eos_file_paths_dir).absolute().as_posix()
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
         self.dry_run = dry_run
         self.migration_logger = migration_logger or MigrationProgressLogger(
@@ -791,6 +837,7 @@ class CDSToVideosRecordTransform(RDMRecordTransform):
         return CDSToVideosRecordEntry(
             dry_run=self.dry_run,
             files_dump_dir=self.files_dump_dir,
+            eos_file_paths_dir=self.eos_file_paths_dir,
             migration_logger=self.migration_logger,
             record_state_logger=self.record_state_logger,
         ).transform(entry)

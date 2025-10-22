@@ -6,6 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-Videos command line module."""
+import json
 import logging
 import re
 from pathlib import Path
@@ -73,20 +74,37 @@ def run(collection, dry_run=False, keep_logs=False):
         collection=collection,
         keep_logs=keep_logs,
     )
-    VideosJsonLogger.initialize(runner.log_dir)
+    VideosJsonLogger.initialize(runner.log_dir, keep_logs)
     runner.run()
 
 
 @weblectures.command()
+@click.option(
+    "--filename",
+    "-f",
+    default="marc_files_lectures_dump.json",
+    help="Output JSON file name",
+    show_default=True,
+)
 @with_appcontext
-def extract_files_paths():
-    """Create master file folders txt needed for migration."""
+def extract_files_paths(filename):
+    """Create a json file with ceph file paths needed for migration."""
     stream_config = current_app.config["CDS_MIGRATOR_KIT_VIDEOS_STREAM_CONFIG"]
-    runner = GenerateFilesFoldersRunner(
-        stream_definition=FoldersStreamDefinition,
-        config_filepath=Path(stream_config).absolute(),
-    )
-    runner.run()
+    output_path = Path(filename)
+    # Open file and start JSON array
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("[\n")
+
+        runner = GenerateFilesFoldersRunner(
+            stream_definition=FoldersStreamDefinition,
+            config_filepath=Path(stream_config).absolute(),
+            output_file=f,  # Pass the open file
+        )
+        # Run the stream
+        runner.run()
+
+        # Close JSON array
+        f.write("\n]\n")
 
 
 @videos.group()

@@ -99,7 +99,9 @@ def test_transform_afs_files(base_app):
         data = load_json(dumpdir, "lecture.json")
 
         # Transform
-        transform = CDSToVideosRecordTransform(files_dump_dir=files_dump_dir)
+        transform = CDSToVideosRecordTransform(
+            files_dump_dir=files_dump_dir, eos_file_paths_dir=""
+        )
         transform_entry = transform._transform(data[2])
         afs_files = transform_entry.get("record", {}).get("json", {}).get("files", [])
 

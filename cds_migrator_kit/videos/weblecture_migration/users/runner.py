@@ -70,7 +70,7 @@ class GenerateFilesFoldersRunner:
         with open(filepath) as f:
             return yaml.safe_load(f)
 
-    def __init__(self, stream_definition, config_filepath):
+    def __init__(self, stream_definition, config_filepath, output_file):
         """Constructor."""
         config = self._read_config(config_filepath)
         stream_config = config.get(stream_definition.name) or {}
@@ -80,18 +80,12 @@ class GenerateFilesFoldersRunner:
         self.data_dir = Path(stream_config.get("data_dir"))
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
-        # Create new output file
-        output_path = self.data_dir / "master_folders.txt"
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with output_path.open("w"):
-            pass
-
         self.stream = Stream(
             stream_definition.name,
             extract=stream_definition.extract_cls(**stream_config.get("extract", {})),
             transform=stream_definition.transform_cls(
                 dojson_model=videos_submitter_model,
-                output_path=output_path,
+                output_file=output_file,
             ),
             load=stream_definition.load_cls(),
         )
