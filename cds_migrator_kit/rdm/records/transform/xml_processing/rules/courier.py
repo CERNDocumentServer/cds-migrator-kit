@@ -280,7 +280,7 @@ def resource_type(self, key, value):
         raise IgnoreKey("resource_type")
     map = {
         "cern_courier_issue": {"id": "publication-periodicalissue"},
-        "cern_courier_article": {"id": "publication-article"},
+        "cern_courier_article": {"id": "publication-periodicalarticle"},
     }
     try:
         return map[value]

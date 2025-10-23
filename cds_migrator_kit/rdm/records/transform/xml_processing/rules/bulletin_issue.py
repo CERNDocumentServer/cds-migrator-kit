@@ -334,16 +334,16 @@ def resource_type(self, key, value):
         raise IgnoreKey("resource_type")
     map = {
         "cern_bulletin_issue": {"id": "publication-periodicalissue"},
-        "cern_bulletin_article": {"id": "publication-article"},
-        "bulletingeneral": {"id": "publication-article"},
-        "bulletinevents": {"id": "publication-article"},
-        "bulletinannounce": {"id": "publication-article"},
-        "bulletinbreaking": {"id": "publication-article"},
-        "bulletinnews": {"id": "publication-article"},
-        "bulletinofficial": {"id": "publication-article"},
-        "bulletinpension": {"id": "publication-article"},
-        "bulletintraining": {"id": "publication-article"},
-        "bulletinsocial": {"id": "publication-article"},
+        "cern_bulletin_article": {"id": "publication-periodicalarticle"},
+        "bulletingeneral": {"id": "publication-periodicalarticle"},
+        "bulletinevents": {"id": "publication-periodicalarticle"},
+        "bulletinannounce": {"id": "publication-periodicalarticle"},
+        "bulletinbreaking": {"id": "publication-periodicalarticle"},
+        "bulletinnews": {"id": "publication-periodicalarticle"},
+        "bulletinofficial": {"id": "publication-periodicalarticle"},
+        "bulletinpension": {"id": "publication-periodicalarticle"},
+        "bulletintraining": {"id": "publication-periodicalarticle"},
+        "bulletinsocial": {"id": "publication-periodicalarticle"},
         # todo newsletter
     }
     try:
