@@ -342,7 +342,7 @@ CDS_MIGRATOR_KIT_STREAM_CONFIG = "cds_migrator_kit/rdm/streams.yaml"
 RDM_RECORDS_IDENTIFIERS_SCHEMES = {
     **RDM_RECORDS_IDENTIFIERS_SCHEMES,
     **{
-        "cds_ref": {
+        "cdsrn": {
             "label": _("CDS Reference"),
             "validator": always_valid,
             "datacite": "CDS",
@@ -451,3 +451,5 @@ CDS_MIGRATOR_KIT_ENV = "local"
 
 
 CDS_ACCESS_GROUP_MAPPINGS = {"SSO": "cern-personnel", "ITDepRestrFile": "it-dep"}
+
+CDS_CERN_MINT_ALTERNATE_IDS = {"cdsrn": "CDS Reference"}
