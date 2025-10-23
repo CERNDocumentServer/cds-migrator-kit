@@ -53,7 +53,7 @@ from cds_migrator_kit.errors import ManualImportRequired
 logger_files = logging.getLogger("files")
 
 
-def move_file_to_bucket(bucket_id, file_path, is_master=False):
+def move_file_to_bucket(bucket_id, file_path, is_master=False, file_name=None):
     """Create a FileInstance, move the file to FileInstance storage, return the created object version."""
 
     def _cleanup_on_failure(error_msg):
@@ -68,7 +68,7 @@ def move_file_to_bucket(bucket_id, file_path, is_master=False):
 
     try:
         video_bucket = Bucket.get(bucket_id)
-        video_name = os.path.basename(file_path)
+        video_name = file_name if file_name else os.path.basename(file_path)
         file = FileInstance.create()
 
         # Get the location for the file instance
@@ -562,8 +562,11 @@ def transcode_task(payload, subformats):
 def copy_additional_files(bucket_id, additional_files):
     """Load additional files for the master video file."""
     for path in additional_files:
+        # AFS files has ';' in file name (content.pdf;1)
+        file_name = os.path.basename(path)
+        file_name = file_name.split(";")[0]
         # Copy the file to FileInstance and create ObjectVersion
-        obj = move_file_to_bucket(bucket_id, path)
+        obj = move_file_to_bucket(bucket_id, path, file_name=file_name)
 
         # It'll log if copying fail
         if not obj:
