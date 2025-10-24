@@ -97,12 +97,11 @@ class TransformFiles:
                 # Handle str format (just the file path)
                 self.transformed_files_json[json_key].append(str(folder / file))
 
-    def _check_composite_exists(self):
+    def _check_composite_exists(self, file_paths, streams_length):
         """Check if the folder contains `composite` files."""
-        file_paths = self._get_all_files_in_folder(self.record_media_data_folder)
         for file_path in file_paths:
             file_name = Path(file_path).stem.lower()
-            if self.composite_str in file_name:
+            if self.composite_str in file_name and streams_length == 2:
                 return True
         return False
 
@@ -113,14 +112,12 @@ class TransformFiles:
         # Frames will be generated
         return False
 
-    def _get_highest_and_other_composites(self):
+    def _get_highest_and_other_composites(self, file_list):
         """
         Find and return the highest quality composite video (1080p) and subformats (720p, 480p, 360p).
 
         Composite videos will always be inside the media_data folder.
         """
-        # Get all the files in the folder
-        file_list = self._get_all_files_in_folder(self.record_media_data_folder)
 
         required_resolutions = {1080, 720, 480, 360}
         composite_videos = {}
@@ -169,7 +166,9 @@ class TransformFiles:
     def _set_composite_files(self, all_files):
         """Find all the composite files and add them to transformed file_info_json."""
         # Find the master and subformat composites
-        master_composite, subformats = self._get_highest_and_other_composites()
+        master_composite, subformats = self._get_highest_and_other_composites(
+            file_list=all_files
+        )
 
         # Add the master composite to file_info_json
         self.transformed_files_json["master_video"] = str(
@@ -216,6 +215,7 @@ class TransformFiles:
             raise UnexpectedValue(
                 message="No media file found in the record!",
                 stage="transform",
+                value=self.record_media_data_folder,
                 recid=self.recid,
                 priority="critical",
             )
@@ -325,6 +325,11 @@ class TransformFiles:
                 value=data_v2_json,
                 priority="critical",
             )
+
+        # Check if the record_media_data folder has the composite video
+        self.use_composite = self._check_composite_exists(
+            all_files, len(data.get("streams", []))
+        )
 
         # Get master and subformats in data.v2.json
         highest_presenter_presentation, subformats = (
@@ -449,9 +454,6 @@ class TransformFiles:
         path = master_path.split("master_data/", 1)[-1]
 
         self.record_media_data_folder = self.media_folder / path
-
-        # Check if the record_media_data folder has the composite video
-        self.use_composite = self._check_composite_exists()
 
         self._set_poster_image()
 

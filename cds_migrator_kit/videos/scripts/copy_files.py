@@ -13,7 +13,10 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
+from collections import defaultdict
+from multiprocessing.dummy import Pool as ThreadPool  # threads for I/O bound tasks
 
 from pathlib2 import Path
 
@@ -125,12 +128,11 @@ class TransformFiles:
                 # Handle str format (just the file path)
                 self.transformed_files_json[json_key].append(str(folder / file))
 
-    def _check_composite_exists(self):
+    def _check_composite_exists(self, file_paths, streams_length):
         """Check if the folder contains `composite` files."""
-        file_paths = self._get_all_files_in_folder(self.record_media_data_folder)
         for file_path in file_paths:
             file_name = Path(file_path).stem.lower()
-            if self.composite_str in file_name:
+            if self.composite_str in file_name and streams_length == 2:
                 return True
         return False
 
@@ -141,14 +143,12 @@ class TransformFiles:
         # Frames will be generated
         return False
 
-    def _get_highest_and_other_composites(self):
+    def _get_highest_and_other_composites(self, file_list):
         """
         Find and return the highest quality composite video (1080p) and subformats (720p, 480p, 360p).
 
         Composite videos will always be inside the media_data folder.
         """
-        # Get all the files in the folder
-        file_list = self._get_all_files_in_folder(self.record_media_data_folder)
 
         required_resolutions = {1080, 720, 480, 360}
         composite_videos = {}
@@ -199,7 +199,9 @@ class TransformFiles:
     def _set_composite_files(self, all_files):
         """Find all the composite files and add them to transformed file_info_json."""
         # Find the master and subformat composites
-        master_composite, subformats = self._get_highest_and_other_composites()
+        master_composite, subformats = self._get_highest_and_other_composites(
+            file_list=all_files
+        )
 
         # Add the master composite to file_info_json
         self.transformed_files_json["master_video"] = str(
@@ -364,6 +366,12 @@ class TransformFiles:
                 value=data_v2_json,
                 priority="critical",
             )
+        self.data_json = data_v2_json
+
+        # Check if the record_media_data folder has the composite video
+        self.use_composite = self._check_composite_exists(
+            all_files, len(data.get("streams", []))
+        )
 
         # Get master and subformats in data.v2.json
         highest_presenter_presentation, subformats = (
@@ -489,9 +497,6 @@ class TransformFiles:
 
             self.record_media_data_folder = self.media_folder / path
 
-            # Check if the record_media_data folder has the composite video
-            self.use_composite = self._check_composite_exists()
-
             self._set_poster_image()
 
             # Get the paths of the files (comes from the record marcxml)
@@ -554,32 +559,29 @@ class TransformFiles:
             # Check if file already copied and complete
             if dest_path.exists():
                 try:
-                    src_size = src_path.stat().st_size
-                    dest_size = dest_path.stat().st_size
-                    if src_size == dest_size and dest_size > 0:
-                        self.logger_files.info("[SKIP] Already copied: %s", dest_path)
-                        return str(dest_path)
-                    else:
-                        self.logger_files.warning(
-                            "[REPLACE] Incomplete or mismatched size: %s (src=%s, dest=%s)",
-                            dest_path,
-                            src_size,
-                            dest_size,
+                    src_stat = src_path.stat()
+                    dst_stat = dest_path.stat()
+                    if (
+                        src_stat.st_size == dst_stat.st_size
+                        and dst_stat.st_mtime >= src_stat.st_mtime
+                    ):
+                        self.logger_files.info(
+                            "[SKIP] Already identical: %s", dest_path
                         )
+                        return str(dest_path)
                 except Exception as e:
                     self.logger_files.warning(
-                        "[REPLACE] Size check failed for %s: %s", dest_path, e
+                        "[CHECK] Size/mtime failed for %s: %s", dest_path, e
                     )
 
-            # Copy the file
             try:
-                shutil.copy2(str(src_path), str(dest_path))
-                self.logger_files.info("[COPIED] %s -> %s", src_path, dest_path)
+                rsync_copy(src_path_str, str(dest_path), self.logger_files)
+            except subprocess.CalledProcessError as e:
+                self.logger_files.error("[ERROR] rsync failed: %s", e)
             except Exception as e:
                 self.logger_files.error(
                     "[ERROR] Copy failed: %s -> %s (%s)", src_path, dest_path, e
                 )
-
             return str(dest_path)
 
         # --- Update each field ---
@@ -604,6 +606,9 @@ class TransformFiles:
         for key in ["frames", "subformats", "additional_files"]:
             update_list_field(key)
 
+        # Copy the data.v2.json in case if needed during migration
+        copy_and_update(self.data_json)
+
         self.logger_files.info("Copy process finished for record %s", self.recid)
         return transformed
 
@@ -612,6 +617,20 @@ def load_json(json_file_path):
     path = Path(json_file_path)
     with io.open(str(path), "r", encoding="utf-8") as fp:
         return json.load(fp)
+
+
+def rsync_copy(src_path, dst_path, logger):
+    """
+    Copy using xrdcp from CephFS to EOS.
+    """
+    cmd = ["rsync", "-ah", "--progress", src_path, dst_path]
+    try:
+        subprocess.check_call(cmd)
+        logger.info("[OK] Copied %s", src_path)
+        return True
+    except subprocess.CalledProcessError as e:
+        logger.error("[FAIL] rsync failed: %s (%s)", src_path, e)
+        return False
 
 
 def main():
@@ -636,7 +655,7 @@ def main():
     transformed_files_path = "/tmp/eos_files_lectures_8.json"
 
     # Output
-    all_records_data = []
+    all_records_data = defaultdict(list)
 
     # === Setup logger ===
     logger_files = logging.getLogger("folders")
@@ -669,7 +688,7 @@ def main():
             continue
         # Destination
         copied_file_info_json = transform_files.copy_needed_files(eos_media_folder)
-        all_records_data.append({"recid": recid, "files": copied_file_info_json})
+        all_records_data[recid].append(copied_file_info_json)
 
     # Save to a JSON file
     with io.open(transformed_files_path, "w", encoding="utf-8") as f:

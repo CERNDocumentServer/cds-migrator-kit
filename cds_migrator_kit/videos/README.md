@@ -109,6 +109,26 @@ To create the system user (if it doesn't already exist), run:
 
 ## Running the Migration
 
+### Configure how to retrieve media files
+
+There are two ways to obtain the correct files during migration:
+
+#### 1. Use pre-generated JSON files with record IDs
+To generate these files, see [**Copy only needed files and generate their EOS paths to use in migration**](#option-1-copy-only-needed-files-and-generate-their-eos-paths-to-use-in-migration).  
+
+Set the configuration variable:  
+`USE_GENERATED_FILE_PATHS = True` (default)
+
+#### 2. Transform file paths during the migration process
+Ensure you have copied all the required files and the `data.v2.json` for each folder.  
+
+Set the configuration variable:  
+`USE_GENERATED_FILE_PATHS = False`
+
+File paths will then be transformed during the migration.
+
+### Run the migration
+
 Once you have the dump and files, you can proceed with the migration.
 
 To create records with actual files, run:
