@@ -195,9 +195,11 @@ cds queues declare
 ### 4. Create QA role and permissions
 
 ```bash
+cds roles create cern-user
 cds roles create cds-operators-qa
 cds access allow deposit-admin-access role cds-operators-qa
 cds access allow superuser-access role cds-operators-qa
+cds access allow videos-upload-access role cern-user
 
 cds roles add <user> cds-operators-qa
 ```
@@ -263,8 +265,6 @@ To be more safe, connect your VM and in your VM:
 
 ### Step 4: Run the copy script
 
-#### Option 1: Copy only needed files and generate their EOS paths to use in migration
-
 1. Open an **IPython** shell.  
 2. Run the [`copy_files.py`](scripts/copy_files.py) script.  
 
@@ -275,67 +275,3 @@ This script will:
 After the script finishes, update your configuration:
 1. Open the streams.yaml file: `cds_migrator_kit/videos/weblecture_migration/streams.yaml`
 2. Update the following field with the EOS directory where your generated JSON files are stored: `records/weblectures/transform/eos_file_paths_dir: <path_to_your_generated_json_files>`
-
-#### Option 2: Copy directly the folder
-
-Create a shell script file and paste the following content:
-
-```bash
-#!/bin/bash
-
-SOURCE_ROOT="/mnt/cephfs"
-DEST_ROOT="/eos/media/cds-videos/dev/stage"
-TXT_FILE="/tmp/master_folders.txt"
-
-# Read each line from the txt file
-while IFS= read -r line; do
-    # Expected format: "<recid>--<path>"
-    record_id="${line%%--*}"
-    relative_path="${line#*--}"
-
-    # Validation
-    if [[ "$line" != *"--"* ]] || [ -z "$record_id" ] || [ -z "$relative_path" ]; then
-        echo "Warning: Malformed line: $line"
-        continue
-    fi
-
-    # Full source and destination paths
-    full_source_path="$SOURCE_ROOT$relative_path"
-    full_dest_path="$DEST_ROOT$relative_path"
-
-    # Check if the source folder exists
-    if [ -d "$full_source_path" ]; then
-        # Skip if destination already exists
-        if [ -d "$full_dest_path" ]; then
-            echo "Skipped (already exists): $full_dest_path"
-            continue
-        fi
-
-        # Create the destination directory
-        mkdir -p "$full_dest_path"
-
-        # Copy the contents
-        cp -a "$full_source_path/." "$full_dest_path/"
-        echo "Copied: $full_source_path -> $full_dest_path"
-    else
-        echo "Warning: Source folder does not exist: $full_source_path"
-    fi
-done < "$TXT_FILE"
-
-echo "Done."
-```
-
-Make your shell file executable and run it:
-
-```bash
-chmod +x your_script.sh
-./your_script.sh
-```
-
-### Alternative: Copy files within EOS
-
-If you want to copy files from EOS to EOS within `cds-test-wn-21`, you can run:
-
-```bash
-rsync -av --ignore-existing /eos/media/cds-videos/dev/acad/media_data/ /eos/media/cds-videos/dev/stage/media_data/
-```
