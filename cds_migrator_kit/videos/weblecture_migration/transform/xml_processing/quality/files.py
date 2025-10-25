@@ -20,6 +20,7 @@ def get_files_by_recid(recid, directory):
     Return a list of all "files" dicts for that recid.
     Stop searching after the first file that contains it.
     """
+    recid = str(recid)
     # List all .json files in the directory
     json_files = sorted(
         [
@@ -43,3 +44,4 @@ def get_files_by_recid(recid, directory):
 
         if recid in data:
             return data[recid]  # return immediately, found
+    return []
