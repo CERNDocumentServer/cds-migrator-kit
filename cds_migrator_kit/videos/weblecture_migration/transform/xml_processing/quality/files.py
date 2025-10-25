@@ -42,4 +42,5 @@ def get_files_by_recid(recid, directory):
                 )
 
         if recid in data:
-            return data[recid]  # return immediately, found
+            return data[str(recid)]  # return immediately, found
+    return []
