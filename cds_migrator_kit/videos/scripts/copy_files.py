@@ -6,17 +6,16 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-Videos file copy script."""
+import argparse
 import datetime
 import io
 import json
 import logging
 import os
 import re
-import shutil
 import subprocess
 import sys
 from collections import defaultdict
-from multiprocessing.dummy import Pool as ThreadPool  # threads for I/O bound tasks
 
 from pathlib2 import Path
 
@@ -366,7 +365,7 @@ class TransformFiles:
                 value=data_v2_json,
                 priority="critical",
             )
-        self.data_json = data_v2_json
+        self.data_json = str(data_v2_json)
 
         # Check if the record_media_data folder has the composite video
         self.use_composite = self._check_composite_exists(
@@ -509,7 +508,7 @@ class TransformFiles:
             master_quality = self.transformed_files_json["master_quality"]
             if not master_quality or master_quality == "None":
                 self.logger_files.error(
-                    "[ERROR] Recid:{0} master_quality is missing!".format(self.recid)
+                    "Recid:{0} master_quality is missing!".format(self.recid)
                 )
 
             if not self.transformed_files_json["duration"]:
@@ -522,15 +521,13 @@ class TransformFiles:
             message = getattr(e, "message", str(e))
             value = getattr(e, "value", None)
 
-            log_msg = "[ERROR] Transform failed for record {0}: {1}".format(
-                self.recid, message
-            )
+            log_msg = "Transform failed for record {0}: {1}".format(self.recid, message)
             if value:
                 log_msg += " | value: {0}".format(value)
 
             self.logger_files.error(log_msg, exc_info=True)
 
-    def copy_needed_files(self, new_base):
+    def copy_needed_files(self, new_base, is_master=False):
         """
         Copy all needed files to new_base (e.g. /eos/media/cds-videos/dev/stage/media_data)
         and return a transformed_files_json with updated destination paths.
@@ -544,14 +541,17 @@ class TransformFiles:
 
             src_path = Path(src_path_str)
             if not src_path.is_file():
-                self.logger_files.warning("Missing source: %s", src_path)
-                return src_path_str  # leave unchanged
+                if is_master:
+                    self.logger_files.error("Master video missing: %s", src_path)
+                else:
+                    self.logger_files.error("Missing source: %s", src_path)
+                return None
 
             try:
                 rel_path = src_path.relative_to(self.media_folder)
             except ValueError:
-                self.logger_files.warning("[SKIP] Not under media_folder: %s", src_path)
-                return src_path_str  # leave unchanged
+                self.logger_files.error("[SKIP] Not under media_folder: %s", src_path)
+                return None
 
             dest_path = new_base / rel_path
             dest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -577,10 +577,10 @@ class TransformFiles:
             try:
                 rsync_copy(src_path_str, str(dest_path), self.logger_files)
             except subprocess.CalledProcessError as e:
-                self.logger_files.error("[ERROR] rsync failed: %s", e)
+                self.logger_files.error("rsync failed: %s", e)
             except Exception as e:
                 self.logger_files.error(
-                    "[ERROR] Copy failed: %s -> %s (%s)", src_path, dest_path, e
+                    "Copy failed: %s -> %s (%s)", src_path, dest_path, e
                 )
             return str(dest_path)
 
@@ -598,9 +598,14 @@ class TransformFiles:
             for item in self.transformed_files_json.get(field, []):
                 if isinstance(item, dict):
                     new_path = copy_and_update(item.get("path", ""))
-                    updated.append({"path": new_path, "quality": item.get("quality")})
+                    if new_path:
+                        updated.append(
+                            {"path": new_path, "quality": item.get("quality")}
+                        )
                 else:
-                    updated.append(copy_and_update(item))
+                    new_path = copy_and_update(item)
+                    if new_path:
+                        updated.append(new_path)
             transformed[field] = updated
 
         for key in ["frames", "subformats", "additional_files"]:
@@ -621,7 +626,7 @@ def load_json(json_file_path):
 
 def rsync_copy(src_path, dst_path, logger):
     """
-    Copy using xrdcp from CephFS to EOS.
+    Copy using rsync from CephFS to EOS.
     """
     cmd = ["rsync", "-ah", "--progress", src_path, dst_path]
     try:
@@ -633,11 +638,27 @@ def rsync_copy(src_path, dst_path, logger):
         return False
 
 
-def main():
-    # Test access to media_data folder and eos
-    ceph_media_folder = Path("/mnt/cephfs/media_data/")
-    eos_media_folder = Path("/eos/media/cds-videos/dev/stage/media_data")
+def process_json_file(json_path, ceph_media_folder, eos_media_folder, output_folder):
+    """Process a single JSON file and produce corresponding output + log file."""
+    base_name = os.path.basename(json_path)
+    prefix = os.path.splitext(base_name)[0].replace("marc_", "")
 
+    log_file = os.path.join(output_folder, "copy_log_{0}.txt".format(prefix))
+    transformed_files_path = os.path.join(output_folder, "eos_{0}.json".format(prefix))
+
+    # === Setup logger ===
+    logger_files = logging.getLogger(prefix)
+    logger_files.setLevel(logging.INFO)
+    handler = logging.FileHandler(log_file, mode="a")
+    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
+    handler.setFormatter(formatter)
+    logger_files.addHandler(handler)
+
+    logger_files.info(
+        "=== Starting Transform + Copy Process for {0} ===".format(base_name)
+    )
+
+    # === Folder Access Check ===
     for folder in [ceph_media_folder, eos_media_folder]:
         folder_str = str(folder)
         if os.path.exists(folder_str) and os.access(folder_str, os.R_OK):
@@ -649,32 +670,15 @@ def main():
             )
             sys.exit(1)
 
-    # TODO change with your actual marc files json
-    marc_files_path = "/tmp/marc_files_lectures_8.json"
-    # TODO change the output file
-    transformed_files_path = "/tmp/eos_files_lectures_8.json"
-
-    # Output
+    # === Load Records ===
+    records = load_json(json_path)
+    total = len(records)
     all_records_data = defaultdict(list)
 
-    # === Setup logger ===
-    logger_files = logging.getLogger("folders")
-    logger_files.setLevel(logging.INFO)
-    ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    log_file = "/tmp/files_copy_log_{0}.txt".format(ts)
-    handler = logging.FileHandler(log_file, mode="a")
-    formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(message)s")
-    handler.setFormatter(formatter)
-    logger_files.addHandler(handler)
-    logger_files.info("=== Starting Transform + Copy Process ===")
-
-    # Load the records and transform
-    records = load_json(marc_files_path)
-    total = len(records)
     for idx, record in enumerate(records, 1):
         recid = record["recid"]
         logger_files.info(
-            "Processing record {0}/{1} (recid={2})".format(idx, total, record["recid"])
+            "Processing record {0}/{1} (recid={2})".format(idx, total, recid)
         )
         entry_files = record["files"]
         transform_files = TransformFiles(
@@ -693,7 +697,58 @@ def main():
     # Save to a JSON file
     with io.open(transformed_files_path, "w", encoding="utf-8") as f:
         text = json.dumps(all_records_data, indent=4, ensure_ascii=False)
-        # In Python 2, json.dumps() may return a byte string instead of unicode
         if not isinstance(text, unicode):
             text = text.decode("utf-8")
         f.write(text)
+
+    logger_files.info("=== Finished processing {0} ===".format(base_name))
+    logger_files.info("Output written to {0}".format(transformed_files_path))
+    logger_files.info("Log written to {0}".format(log_file))
+    handler.close()
+    logger_files.removeHandler(handler)
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Transform and copy JSON records from a dumps folder."
+    )
+    parser.add_argument(
+        "folder", help="Path to the folder containing marc_files_*.json dumps"
+    )
+    parser.add_argument(
+        "--ceph-media-folder",
+        default="/mnt/cephfs/media_data/",
+        help="Path to CEPh media folder",
+    )
+    parser.add_argument(
+        "--eos-media-folder",
+        default="/eos/media/cds-videos/dev/stage/media_data",
+        help="Path to EOS media folder",
+    )
+    parser.add_argument(
+        "--output-folder",
+        default="/tmp/copied_files/",
+        help="Path to write logs and output JSONs",
+    )
+
+    args = parser.parse_args()
+    folder = args.folder
+
+    if not os.path.isdir(folder):
+        print("Error: Folder does not exist: {0}".format(folder))
+        sys.exit(1)
+
+    # Iterate over JSON files
+    for fname in os.listdir(folder):
+        if fname.startswith("marc_") and fname.endswith(".json"):
+            json_path = os.path.join(folder, fname)
+            process_json_file(
+                json_path,
+                Path(args.ceph_media_folder),
+                Path(args.eos_media_folder),
+                args.output_folder,
+            )
+
+
+if __name__ == "__main__":
+    main()
