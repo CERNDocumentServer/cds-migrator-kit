@@ -1369,6 +1369,16 @@ def relation_type_v(app, relation_type):
     vocab = vocabulary_service.create(
         system_identity,
         {
+            "id": "isreferencedby",
+            "props": {"datacite": "IsReferencedBy"},
+            "title": {"en": "Is referenced by", "de": "Wird referenziert von"},
+            "type": "relationtypes",
+        },
+    )
+
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
             "id": "isversionof",
             "props": {"datacite": "Is version of"},
             "title": {"en": "Is version of"},

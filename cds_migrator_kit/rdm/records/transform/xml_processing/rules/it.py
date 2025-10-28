@@ -15,12 +15,11 @@ from ...config import IGNORED_THESIS_COLLECTIONS
 from ...models.it import it_model as model
 from .base import normalize
 from .base import note as base_internal_notes
-from .base import related_identifiers as base_related_identifiers
 from .base import subjects as base_subjects
 from .base import urls
 from .base import yellow_reports as base_yellow_reports
 from .publications import journal as base_journal
-from .publications import related_identifiers as base_related_identifiers
+from .publications import related_identifiers as base_publication_identifiers
 
 
 @model.over("resource_type", "^980__", override=True)
@@ -218,12 +217,12 @@ def notes(self, key, value):
     url = value.get("u", "")
     note = StringValue(value.get("z", "")).parse()
     if url:
-        identifiers = self.get("identifiers", [])
+        related_identifiers = self.get("related_identifiers", [])
         url_entries = urls(self, key, value)
         for entry in url_entries:
-            if entry not in identifiers:
-                identifiers.append(entry)
-        self["identifiers"] = identifiers
+            if entry not in related_identifiers:
+                related_identifiers.append(entry)
+        self["related_identifiers"] = related_identifiers
 
     elif note:
         _internal_notes = self.get("internal_notes", [])
@@ -281,7 +280,7 @@ def related_identifiers_and_imprint(self, key, value):
 
     # Related identifiers
     rel_ids = self.setdefault("related_identifiers", [])
-    for new_id in base_related_identifiers(self, key, value):
+    for new_id in base_publication_identifiers(self, key, value):
         if new_id not in rel_ids:
             rel_ids.append(new_id)
     self["related_identifiers"] = rel_ids

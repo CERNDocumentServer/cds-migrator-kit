@@ -113,6 +113,14 @@ def test_full_thesis_stream(
                 "title": {"en": "Publication", "de": "Publikation"},
             },
         },
+        {
+            "identifier": "1807850",
+            "relation_type": {
+                "id": "isreferencedby",
+                "title": {"de": "Wird referenziert von", "en": "Is referenced by"},
+            },
+            "scheme": "inspire",
+        },
     ]
 
     another_legacy_recid = "2741624"
