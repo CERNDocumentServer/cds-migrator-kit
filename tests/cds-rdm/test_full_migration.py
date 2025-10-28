@@ -69,7 +69,7 @@ def suite_multi_field(record):
                 "name": "Juste, Vincent",
                 "given_name": "Vincent",
                 "family_name": "Juste",
-                "identifiers": [{"identifier": "2675934", "scheme": "lcds"}],
+                "identifiers": [{"identifier": "2675934", "scheme": "cds"}],
             }
         }
     ]
@@ -99,7 +99,7 @@ def suite_multi_field(record):
                 "given_name": "Mirkoantonio",
                 "identifiers": [
                     {"identifier": "INSPIRE-00366594", "scheme": "inspire_author"},
-                    {"identifier": "2083412", "scheme": "lcds"},
+                    {"identifier": "2083412", "scheme": "cds"},
                 ],
                 "name": "Casolino, Mirkoantonio",
                 "type": "personal",
@@ -111,7 +111,7 @@ def suite_multi_field(record):
             "person_or_org": {
                 "family_name": "Ahdida",
                 "given_name": "Claudia Christina",
-                "identifiers": [{"identifier": "2087282", "scheme": "lcds"}],
+                "identifiers": [{"identifier": "2087282", "scheme": "cds"}],
                 "name": "Ahdida, Claudia Christina",
                 "type": "personal",
             },
@@ -123,7 +123,7 @@ def suite_multi_field(record):
                 "name": "Vincke, Helmut",
                 "given_name": "Helmut",
                 "family_name": "Vincke",
-                "identifiers": [{"identifier": "2067721", "scheme": "lcds"}],
+                "identifiers": [{"identifier": "2067721", "scheme": "cds"}],
             },
             "role": {"id": "other", "title": {"en": "Other"}},
             "affiliations": [{"name": "CERN"}],
@@ -153,7 +153,7 @@ def suite_multi_field(record):
         },
     ]
     assert dict_rec["metadata"]["identifiers"] == [
-        {"identifier": "2684743", "scheme": "lcds"},
+        {"identifier": "2684743", "scheme": "cds"},
         {"identifier": "CERN-STUDENTS-Note-2019-028", "scheme": "cdsrn"},
         {"identifier": "CERN-PBC-Notes-2021-006", "scheme": "cdsrn"},
     ]
@@ -177,7 +177,7 @@ def orcid_id(record, orcid_name_data):
                 "given_name": "Diego",
                 "family_name": "Mendoza",
                 "identifiers": [
-                    {"identifier": "2773374", "scheme": "lcds"},
+                    {"identifier": "2773374", "scheme": "cds"},
                     {"identifier": "0009-0007-7638-4652", "scheme": "orcid"},
                 ],
             }
@@ -342,7 +342,7 @@ def contains_aleph(record):
     dict_rec = record.to_dict()
     assert "identifiers" in dict_rec["metadata"]
     assert dict_rec["metadata"]["identifiers"] == [
-        {"identifier": "1597985", "scheme": "lcds"},
+        {"identifier": "1597985", "scheme": "cds"},
         {"identifier": "CERN-STUDENTS-Note-2013-181", "scheme": "cdsrn"},
         {"identifier": "000733613CER", "scheme": "aleph"},
     ]
@@ -380,7 +380,7 @@ def author_with_inspire(record):
                 "family_name": "Glatzer",
                 "identifiers": [
                     {"identifier": "INSPIRE-00013837", "scheme": "inspire_author"},
-                    {"identifier": "2073275", "scheme": "lcds"},
+                    {"identifier": "2073275", "scheme": "cds"},
                 ],
             },
             "role": {

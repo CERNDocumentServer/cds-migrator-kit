@@ -56,7 +56,7 @@ cli_logger = logging.getLogger("migrator")
 def recid(self, key, value):
     """Record Identifier."""
     identifiers = self.get("identifiers", [])
-    new_id = {"identifier": value, "scheme": "lcds"}
+    new_id = {"identifier": value, "scheme": "cds"}
     if new_id not in identifiers:
         identifiers.append(new_id)
         self["identifiers"] = identifiers
@@ -363,7 +363,7 @@ def identifiers(self, key, value):
     if is_aleph_number:
         scheme = "aleph"
     if scheme.lower() == "cds":
-        scheme = "lcds"
+        scheme = "cds"
     if scheme.lower() == "inspire":
         validate_inspire_identifier(id_value, key)
     rel_id = {"scheme": scheme.lower(), "identifier": id_value}
@@ -737,7 +737,7 @@ def related_identifiers(self, key, value):
     rel_ids = self.get("related_identifiers", [])
     new_id = {
         "identifier": recid,
-        "scheme": "lcds",
+        "scheme": "cds",
         "relation_type": {"id": "references"},
     }
 
@@ -767,7 +767,7 @@ def related_identifiers(self, key, value):
     rel_ids = self.get("related_identifiers", [])
     new_id = {
         "identifier": recid,
-        "scheme": "lcds",
+        "scheme": "cds",
         "relation_type": {"id": "references"},
     }
     if new_id not in rel_ids:

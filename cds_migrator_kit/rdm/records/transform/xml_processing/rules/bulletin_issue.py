@@ -1,7 +1,7 @@
 import re
 from urllib.parse import ParseResult, urlparse
 
-from cds_rdm.schemes import is_legacy_cds
+from cds_rdm.schemes import is_cds
 from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
 
@@ -259,9 +259,9 @@ def related_identifiers(self, key, value):
 
     res_type_map = {"photo": {"id": "image-photo"}, "other": {"id": "other"}}
 
-    is_cds_recid = is_legacy_cds(id)
+    is_cds_recid = is_cds(id)
     if is_cds_recid:
-        scheme = "lcds"
+        scheme = "cds"
 
     new_id = {
         "identifier": id,
@@ -367,7 +367,7 @@ def related_identifiers(self, key, value):
             new_ids.append(
                 {
                     "identifier": recid,
-                    "scheme": "lcds",
+                    "scheme": "cds",
                     "relation_type": {"id": "ispublishedin"},
                 }
             )
