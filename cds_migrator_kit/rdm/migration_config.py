@@ -28,10 +28,11 @@ from invenio_preservation_sync.utils import preservation_info_render
 from invenio_rdm_records.config import (
     RDM_PARENT_PERSISTENT_IDENTIFIERS,
     RDM_PERSISTENT_IDENTIFIERS,
-    RDM_RECORDS_IDENTIFIERS_SCHEMES,
-    RDM_RECORDS_PERSONORG_SCHEMES,
-    always_valid,
 )
+from invenio_rdm_records.config import (
+    RDM_RECORDS_IDENTIFIERS_SCHEMES as RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES,
+)
+from invenio_rdm_records.config import RDM_RECORDS_PERSONORG_SCHEMES, always_valid
 from invenio_vocabularies.config import (
     VOCABULARIES_NAMES_SCHEMES as DEFAULT_VOCABULARIES_NAMES_SCHEMES,
 )
@@ -340,18 +341,22 @@ CDS_MIGRATOR_KIT_LOGS_PATH = (
 CDS_MIGRATOR_KIT_STREAM_CONFIG = "cds_migrator_kit/rdm/streams.yaml"
 
 RDM_RECORDS_IDENTIFIERS_SCHEMES = {
-    **RDM_RECORDS_IDENTIFIERS_SCHEMES,
+    "cdsrn": {
+        "label": _("CDS Reference"),
+        "validator": always_valid,
+        "datacite": "CDS",
+    },
+    "aleph": {
+        "label": _("Aleph number"),
+        "validator": schemes.is_aleph,
+        "datacite": "ALEPH",
+    },
+    "lcds": {"label": _("CDS"), "validator": schemes.is_legacy_cds, "datacite": "CDS"},
+}
+
+RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES = {
+    **RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES,
     **{
-        "cdsrn": {
-            "label": _("CDS Reference"),
-            "validator": always_valid,
-            "datacite": "CDS",
-        },
-        "aleph": {
-            "label": _("Aleph number"),
-            "validator": schemes.is_aleph,
-            "datacite": "ALEPH",
-        },
         "inspire": {
             "label": _("Inspire"),
             "validator": schemes.is_inspire,
@@ -362,17 +367,19 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {
             "validator": schemes.is_inspire,
             "datacite": "INIS",
         },
-        "lcds": {
-            "label": _("CDS"),
-            "validator": schemes.is_legacy_cds,
-            "datacite": "CDS",
-        },
         "indico": {
             "label": _("Indico"),
             "validator": schemes.is_indico,
             "datacite": "INDICO",
         },
+        "hdl": {
+            "label": _("Handle"),
+            "validator": schemes.is_handle,
+            "datacite": "HANDLE",
+        },
     },
+    # keep internal identifiers' schemes for internal record relations
+    **RDM_RECORDS_IDENTIFIERS_SCHEMES,
 }
 
 RDM_RECORDS_PERSONORG_SCHEMES = {

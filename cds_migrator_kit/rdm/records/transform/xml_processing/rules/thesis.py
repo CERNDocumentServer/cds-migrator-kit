@@ -340,8 +340,8 @@ def related_identifiers(self, key, value):
         #  otherwise it will be a conference reference
         res_type = "event"
     new_id = {
-        "identifier": f"https://cds.cern.ch/record/{recid}",
-        "scheme": "url",
+        "identifier": recid,
+        "scheme": "lcds",
         "relation_type": {"id": "references"},
     }
 
