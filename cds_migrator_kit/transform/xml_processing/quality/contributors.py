@@ -145,7 +145,7 @@ def extract_json_contributor_ids(info, orcid_subfield="k"):
     """Extract author IDs from MARC tags."""
     SOURCES = {
         "AUTHOR|(INSPIRE)": "inspire_author",
-        "AUTHOR|(CDS)": "lcds",
+        "AUTHOR|(CDS)": "cds",
         "AUTHOR|(SzGeCERN)": "cern",
     }
     regex = re.compile(r"(AUTHOR\|\((INSPIRE|CDS|SzGeCERN)\))(.*)")

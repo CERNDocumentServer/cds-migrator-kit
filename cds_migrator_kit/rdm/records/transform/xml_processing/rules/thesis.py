@@ -341,7 +341,7 @@ def related_identifiers(self, key, value):
         res_type = "event"
     new_id = {
         "identifier": recid,
-        "scheme": "lcds",
+        "scheme": "cds",
         "relation_type": {"id": "references"},
     }
 

@@ -16,7 +16,7 @@ from cds_rdm.permissions import (
     CDSCommunitiesPermissionPolicy,
     CDSRDMRecordPermissionPolicy,
 )
-from cds_rdm.schemes import is_aleph, is_inspire, is_inspire_author, is_legacy_cds
+from cds_rdm.schemes import is_aleph, is_inspire, is_inspire_author, is_cds
 from flask_security.utils import hash_password
 from flask_webpackext.manifest import (
     JinjaManifest,
@@ -116,7 +116,7 @@ def app_config(app_config):
             "validator": is_inspire_author,
             "datacite": "INSPIRE",
         },
-        "lcds": {"label": _("CDS"), "validator": is_legacy_cds, "datacite": "CDS"},
+        "cds": {"label": _("CDS"), "validator": is_cds, "datacite": "CDS"},
     }
     app_config["RDM_RECORDS_PERSONORG_SCHEMES"] = {
         **RDM_RECORDS_PERSONORG_SCHEMES,
@@ -126,9 +126,9 @@ def app_config(app_config):
                 "validator": is_inspire_author,
                 "datacite": "INSPIRE",
             },
-            "lcds": {
+            "cds": {
                 "label": _("CDS"),
-                "validator": is_legacy_cds,
+                "validator": is_cds,
                 "datacite": "CDS",
             },
         },
@@ -152,7 +152,7 @@ def app_config(app_config):
                 "datacite": "INSPIRE",
             },
             "inis": {"label": _("INIS"), "validator": is_inspire, "datacite": "INIS"},
-            "lcds": {"label": _("CDS"), "validator": is_legacy_cds, "datacite": "CDS"},
+            "cds": {"label": _("CDS"), "validator": is_cds, "datacite": "CDS"},
         },
     }
 

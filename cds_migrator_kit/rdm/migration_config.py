@@ -351,7 +351,7 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {
         "validator": schemes.is_aleph,
         "datacite": "ALEPH",
     },
-    "lcds": {"label": _("CDS"), "validator": schemes.is_legacy_cds, "datacite": "CDS"},
+    "cds": {"label": _("CDS"), "validator": schemes.is_cds, "datacite": "CDS"},
 }
 
 RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES = {
@@ -390,9 +390,9 @@ RDM_RECORDS_PERSONORG_SCHEMES = {
             "validator": schemes.is_inspire_author,
             "datacite": "INSPIRE",
         },
-        "lcds": {
+        "cds": {
             "label": _("CDS"),
-            "validator": schemes.is_legacy_cds,
+            "validator": schemes.is_cds,
             "datacite": "CDS",
         },
     },
@@ -438,7 +438,7 @@ VOCABULARIES_NAMES_SCHEMES = {
         "validator": schemes.is_inspire_author,
         "datacite": "INSPIRE",
     },
-    "lcds": {"label": _("CDS"), "validator": schemes.is_legacy_cds, "datacite": "CDS"},
+    "cds": {"label": _("CDS"), "validator": schemes.is_cds, "datacite": "CDS"},
 }
 """Names allowed identifier schemes."""
 

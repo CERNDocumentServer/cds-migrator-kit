@@ -163,7 +163,7 @@ class CDSRecordStatsLoad(Load):
                     "bool": {
                         "must": [
                             {"match": {"parent_recid": record["parent_recid"]}},
-                            {"match": {"is_lcds": True}},
+                            {"match": {"is_cds": True}},
                         ]
                     }
                 }

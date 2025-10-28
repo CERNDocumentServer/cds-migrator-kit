@@ -126,7 +126,7 @@ def process_download_event(entry, rec_context, logger):
         # Note: id_bibrec doesn't have the new format pids
         "unique_id": f"ui_{_record_version['new_recid']}",
         # Mark the event as migrated
-        "is_lcds": True,
+        "is_cds": True,
         # Mark if event was COUNTER compliant
         "before_COUNTER": before_COUNTER,
     }
@@ -203,7 +203,7 @@ def process_pageview_event(entry, rec_context, logger):
         "unique_session_id": entry["unique_session_id"],
         "country": entry.get("country", ""),
         # Mark the event as migrated
-        "is_lcds": True,
+        "is_cds": True,
         # Mark if event was COUNTER compliant
         "before_COUNTER": before_COUNTER,
     }

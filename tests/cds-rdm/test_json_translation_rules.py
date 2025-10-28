@@ -27,7 +27,7 @@ def test_migrate_sspn_record(datadir, base_app):
             "recid": "2285569",
             "legacy_recid": 2285569,
             "identifiers": [
-                {"identifier": "2285569", "scheme": "lcds"},
+                {"identifier": "2285569", "scheme": "cds"},
                 {"scheme": "cdsrn", "identifier": "CERN-STUDENTS-Note-2017-222"},
             ],
             "languages": [{"id": "eng"}],
@@ -38,7 +38,7 @@ def test_migrate_sspn_record(datadir, base_app):
                         "family_name": "A",
                         "given_name": "O",
                         "identifiers": [
-                            {"identifier": "2261577", "scheme": "lcds"},
+                            {"identifier": "2261577", "scheme": "cds"},
                             {"identifier": "1111", "scheme": "cern"},
                         ],
                     }
@@ -124,7 +124,7 @@ def test_migrate_record_all_fields(datadir, base_app):
             "recid": "2684743",
             "legacy_recid": 2684743,
             "identifiers": [
-                {"scheme": "lcds", "identifier": "2684743"},
+                {"scheme": "cds", "identifier": "2684743"},
                 {"scheme": "cdsrn", "identifier": "CERN-STUDENTS-Note-2019-028"},
                 {"scheme": "cdsrn", "identifier": "CERN-PBC-Notes-2021-006"},
             ],
@@ -136,7 +136,7 @@ def test_migrate_record_all_fields(datadir, base_app):
                         "family_name": "Juste",
                         "given_name": "Vincent",
                         "identifiers": [
-                            {"identifier": "2675934", "scheme": "lcds"},
+                            {"identifier": "2675934", "scheme": "cds"},
                             {"identifier": "81111", "scheme": "cern"},
                         ],
                     }
@@ -190,7 +190,7 @@ def test_migrate_record_all_fields(datadir, base_app):
                                 "scheme": "inspire_author",
                             },
                             {"identifier": "1111", "scheme": "cern"},
-                            {"identifier": "2083412", "scheme": "lcds"},
+                            {"identifier": "2083412", "scheme": "cds"},
                         ],
                         "type": "personal",
                     },
@@ -202,7 +202,7 @@ def test_migrate_record_all_fields(datadir, base_app):
                         "family_name": "A",
                         "given_name": "CC",
                         "identifiers": [
-                            {"identifier": "2087282", "scheme": "lcds"},
+                            {"identifier": "2087282", "scheme": "cds"},
                             {"identifier": "1111", "scheme": "cern"},
                         ],
                         "type": "personal",
@@ -215,7 +215,7 @@ def test_migrate_record_all_fields(datadir, base_app):
                         "family_name": "V",
                         "given_name": "H",
                         "identifiers": [
-                            {"identifier": "2067721", "scheme": "lcds"},
+                            {"identifier": "2067721", "scheme": "cds"},
                             {"identifier": "1111", "scheme": "cern"},
                         ],
                     },

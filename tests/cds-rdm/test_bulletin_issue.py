@@ -25,7 +25,7 @@ def parent_related_identifier(record):
     assert dict_rec["metadata"]["related_identifiers"] == [
         {
             "identifier": "1713049",
-            "scheme": "lcds",
+            "scheme": "cds",
             "relation_type": {
                 "id": "ispublishedin",
                 "title": {"de": "Ist veröffentlicht in", "en": "Is published in"},

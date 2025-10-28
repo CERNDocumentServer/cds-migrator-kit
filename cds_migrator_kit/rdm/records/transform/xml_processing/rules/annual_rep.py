@@ -39,7 +39,7 @@ def related_identifiers_custom_fields(self, key, value):
 
     new_id = {
         "identifier": recid,
-        "scheme": "lcds",
+        "scheme": "cds",
         "relation_type": {"id": "ispartof"},
         "resource_type": {"id": "publication-report"},
     }

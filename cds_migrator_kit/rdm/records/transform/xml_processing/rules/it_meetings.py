@@ -62,13 +62,13 @@ def collection(self, key, value):
 @model.over("related_identifiers", "^962__", override=True)
 @for_each_value
 def related_identifiers(self, key, value):
-    """Translate 962 fields into related identifiers (LCDS)."""
+    """Translate 962 fields into related identifiers (cds)."""
     recid = value.get("b")
 
     self.setdefault("related_identifiers", []).append(
         {
             "identifier": recid,
-            "scheme": "lcds",
+            "scheme": "cds",
             "relation_type": {"id": "ispartof"},
         }
     )
