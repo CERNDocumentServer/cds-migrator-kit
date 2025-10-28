@@ -1,5 +1,5 @@
 import re
-from urllib.parse import urlparse, ParseResult
+from urllib.parse import ParseResult, urlparse
 
 from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
@@ -8,11 +8,10 @@ from dojson.utils import force_list
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import for_each_value
 from cds_migrator_kit.transform.xml_processing.quality.parsers import clean_val
-from .base import urls
-from .publications import related_identifiers, journal
 
 from ...models.courier import courier_issue_model as model
-from .base import normalize
+from .base import normalize, urls
+from .publications import journal, related_identifiers
 
 
 @model.over("publication_date", "(^260__)", override=True)
