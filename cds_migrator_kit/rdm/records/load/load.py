@@ -202,6 +202,9 @@ class CDSRecordServiceLoad(Load):
                 alternate_identifier_component = MintAlternateIdentifierComponent(
                     current_rdm_records_service
                 )
+                alternate_identifier_component.update_draft(
+                    system_identity, data=record, record=record._record, errors=[]
+                )
                 alternate_identifier_component.publish(
                     system_identity, draft=record, record=record._record
                 )
@@ -305,14 +308,12 @@ class CDSRecordServiceLoad(Load):
             )
 
             is_local_dev = current_app.config.get("CDS_MIGRATOR_KIT_ENV") == "local"
-            print("VALIDATION CHECK:",
-                current_app.config.get("CDS_MIGRATOR_KIT_ENV"),
-                is_local_dev,
-                grant.subject_id,
-                current_rdm_records_service.access._validate_grant_subject(identity, grant))
 
             if (
-                not is_local_dev and not current_rdm_records_service.access._validate_grant_subject(identity, grant)
+                not is_local_dev
+                and not current_rdm_records_service.access._validate_grant_subject(
+                    identity, grant
+                )
             ):
                 raise ManualImportRequired(
                     message="Verification of access subject failed (likely not existing entry)",
@@ -412,9 +413,9 @@ class CDSRecordServiceLoad(Load):
         self._after_publish_update_dois(identity, published_record, entry)
         self._after_publish_update_created(published_record, entry, version)
         self._after_publish_mint_recid(published_record, entry, version)
-        self._after_publish_update_cdsrn(identity, published_record, entry)
         self._after_publish_update_files_created(published_record, entry, version)
         access = entry["versions"][version]["access"]
+        self._after_publish_update_cdsrn(identity, published_record, entry)
         self._after_publish_load_parent_access_grants(published_record, access, entry)
         db.session.commit()
 

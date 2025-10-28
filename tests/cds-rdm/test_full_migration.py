@@ -28,11 +28,25 @@ from helpers import config
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User, UserIdentity
 from invenio_oauthclient.models import RemoteAccount
+from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_vocabularies.contrib.names.models import NamesMetadata
 
 from cds_migrator_kit.rdm.records.streams import RecordStreamDefinition
 from cds_migrator_kit.runner.runner import Runner
+
+
+def registered_cdsrn_pid(record):
+    """2684743."""
+    pids = PersistentIdentifier.query.filter(
+        PersistentIdentifier.object_uuid == record._record.pid.object_uuid,
+        PersistentIdentifier.pid_type == "cdsrn",
+    ).all()
+    assert len(pids) == 2
+    pid_values = {pid.pid_value for pid in pids}
+    assert pid_values == {"CERN-PBC-Notes-2021-006", "CERN-STUDENTS-Note-2019-028"}
+    assert pids[0].status == PIDStatus.REGISTERED
+    assert pids[1].status == PIDStatus.REGISTERED
 
 
 def suite_multi_field(record):
@@ -458,6 +472,7 @@ def test_full_migration_stream(
         )
         if record["legacy_recid"] == "2684743":
             suite_multi_field(loaded_rec)
+            registered_cdsrn_pid(loaded_rec)
         if record["legacy_recid"] == "2788738":
             orcid_id(loaded_rec, orcid_name_data)
         if record["legacy_recid"] == "2889522":
