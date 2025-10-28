@@ -16,7 +16,7 @@ from cds_rdm.permissions import (
     CDSCommunitiesPermissionPolicy,
     CDSRDMRecordPermissionPolicy,
 )
-from cds_rdm.schemes import is_aleph, is_inspire, is_inspire_author, is_cds
+from cds_rdm.schemes import is_aleph, is_cds, is_inspire, is_inspire_author
 from flask_security.utils import hash_password
 from flask_webpackext.manifest import (
     JinjaManifest,

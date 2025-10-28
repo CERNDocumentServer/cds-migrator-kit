@@ -32,7 +32,10 @@ from invenio_rdm_records.config import (
 from invenio_rdm_records.config import (
     RDM_RECORDS_IDENTIFIERS_SCHEMES as RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES,
 )
-from invenio_rdm_records.config import RDM_RECORDS_PERSONORG_SCHEMES, always_valid
+from invenio_rdm_records.config import (
+    RDM_RECORDS_PERSONORG_SCHEMES,
+    always_valid,
+)
 from invenio_vocabularies.config import (
     VOCABULARIES_NAMES_SCHEMES as DEFAULT_VOCABULARIES_NAMES_SCHEMES,
 )

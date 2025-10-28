@@ -8,9 +8,9 @@
 
 """CDS Migrator Records views."""
 
+import io
 import json
 import logging
-import io
 import os
 import zipfile
 
@@ -19,9 +19,9 @@ from flask import (
     abort,
     current_app,
     jsonify,
+    make_response,
     render_template,
     request,
-    make_response,
     send_file,
 )
 

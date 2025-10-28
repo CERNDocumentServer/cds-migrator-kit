@@ -14,6 +14,7 @@ from copy import deepcopy
 
 import arrow
 from cds_rdm.clc_sync.models import CDSToCLCSyncModel
+from cds_rdm.components import MintAlternateIdentifierComponent
 from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from cds_rdm.minters import legacy_recid_minter
@@ -27,7 +28,7 @@ from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_records.systemfields.relations import InvalidRelationValue
 from marshmallow import ValidationError
-from cds_rdm.components import MintAlternateIdentifierComponent
+
 from cds_migrator_kit.errors import (
     CDSMigrationException,
     GrantCreationError,
