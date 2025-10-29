@@ -233,6 +233,10 @@ def title(self, key, value):
         new_id = report_number(self, key, value)
     elif key == "8564_":
         new_id = urls(self, key, value)
+        rel_ids = self.get("related_identifiers", [])
+        rel_ids.append(new_id)
+        self["related_identifiers"] = rel_ids
+        raise IgnoreKey("identifiers")
     elif key == "970__":
         new_id = aleph_number(self, key, value)
     if new_id:

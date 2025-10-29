@@ -375,18 +375,22 @@ def identifiers(self, key, value):
     if scheme.lower() == "zentralblatt math":
         rel_id = {"scheme": "url", "identifier": f"https://zbmath.org/?q=an:{id_value}"}
     if id_value:
-        if scheme.lower() in RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES:
+        if rel_id["scheme"] in RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES:
             rel_id.update(
                 {
                     "relation_type": {"id": "isreferencedby"},
+                    "resource_type": {"id": "publication-other"},
                 }
             )
             related_works.append(rel_id)
             self["related_identifiers"] = related_works
             raise IgnoreKey("identifiers")
 
-        elif rel_id not in self.get("identifiers", []):
+        elif rel_id["scheme"] in RDM_RECORDS_IDENTIFIERS_SCHEMES and (
+            rel_id not in self.get("identifiers", [])):
             return rel_id
+        else:
+            raise UnexpectedValue(field=key, value=value, subfield="9", message="Invalid scheme")
     raise IgnoreKey("identifiers")
 
 
@@ -607,7 +611,7 @@ def copyrights(self, key, value):
     return f"{year} © {holder}. {statement} {url}".strip()
 
 
-@model.over("identifiers", "^8564_")
+@model.over("related_identifiers", "^8564_")
 @for_each_value
 def urls(self, key, value, subfield="u"):
     """Translates urls field."""
@@ -635,7 +639,7 @@ def urls(self, key, value, subfield="u"):
             netloc = "www." + netloc
 
         p = ParseResult("http", netloc, path, *p[3:])
-        return {"identifier": p.geturl(), "scheme": "url"}
+        return {"identifier": p.geturl(), "scheme": "url", "relation_type": {"id": "references"}}
 
 
 @model.over("additional_descriptions", "^490__")
@@ -730,11 +734,13 @@ def yellow_reports(self, key, value):
 
 @model.over("related_identifiers", "^787[0_]_")
 @for_each_value
-def related_identifiers(self, key, value):
+def related_identifiers_787(self, key, value):
     """Translates related identifiers."""
     description = value.get("i")
     recid = value.get("w")
     rel_ids = self.get("related_identifiers", [])
+    if "https://cds.cern.ch/record/" in recid:
+        recid = recid.replace("https://cds.cern.ch/record/", "")
     new_id = {
         "identifier": recid,
         "scheme": "cds",
