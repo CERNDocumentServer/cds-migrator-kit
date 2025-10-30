@@ -316,7 +316,7 @@ def rel_identifiers(self, key, value):
     if new_id not in identifiers:
         identifiers.append(new_id)
     self["related_identifiers"] = identifiers
-    raise IgnoreKey("bull_related_identifiers")
+    raise IgnoreKey("bull_related_identifiers_2")
 
 
 @model.over("resource_type", "^980__", override=True)
