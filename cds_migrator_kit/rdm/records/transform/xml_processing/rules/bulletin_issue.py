@@ -7,7 +7,7 @@ from dojson.errors import IgnoreKey
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
-    related_identifiers as base_related_identifiers,
+    related_identifiers_787 as base_related_identifiers,
 )
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
@@ -192,7 +192,7 @@ def urls_bulletin(self, key, value):
         url_u = value.get("u", "")
         raise IgnoreKey("url_identifiers")
 
-    identifiers = self.get("identifiers", [])
+    identifiers = self.get("related_identifiers", [])
 
     if (
         "q" in value
@@ -205,7 +205,7 @@ def urls_bulletin(self, key, value):
 
     identifiers += _urls
 
-    self["identifiers"] = identifiers
+    self["related_identifiers"] = identifiers
     raise IgnoreKey("url_identifiers")
 
 
@@ -250,9 +250,9 @@ def issue_number(self, key, value):
     return _custom_fields
 
 
-@model.over("related_identifiers", "^941__")
+@model.over("bull_related_identifiers_1", "(^941__)")
 @for_each_value
-def related_identifiers(self, key, value):
+def bull_related_identifiers(self, key, value):
     id = value.get("a")
     resource_type = value.get("t", "other")
     scheme = "other"
@@ -272,11 +272,12 @@ def related_identifiers(self, key, value):
 
     rel_ids = self.get("related_identifiers", [])
     if new_id not in rel_ids:
-        return new_id
-    raise IgnoreKey("related_identifiers")
+        rel_ids.append(new_id)
+    self["related_identifiers"] = rel_ids
+    raise IgnoreKey("bull_related_identifiers")
 
 
-@model.over("related_identifiers", "(^962__)")
+@model.over("bull_related_identifiers_2", "(^962__)", override=True)
 @for_each_value
 def rel_identifiers(self, key, value):
     """Old aleph identifier pointing to MMD repository."""
@@ -285,7 +286,7 @@ def rel_identifiers(self, key, value):
     report_number = value.get("t", "").lower()
 
     if not identifier:
-        raise IgnoreKey("related_identifiers")
+        raise IgnoreKey("bull_related_identifiers_2")
 
     if "pho" in scheme.lower():
         res_type = "photo"
@@ -313,8 +314,9 @@ def rel_identifiers(self, key, value):
 
     identifiers = self.get("related_identifiers", [])
     if new_id not in identifiers:
-        return new_id
-    raise IgnoreKey("related_identifiers")
+        identifiers.append(new_id)
+    self["related_identifiers"] = identifiers
+    raise IgnoreKey("bull_related_identifiers_2")
 
 
 @model.over("resource_type", "^980__", override=True)
@@ -379,4 +381,4 @@ def related_identifiers(self, key, value):
             rel_ids.append(new_id)
 
     self["related_identifiers"] = rel_ids
-    raise IgnoreKey("related_identifiers")
+    raise IgnoreKey("bull_related_identifiers")
