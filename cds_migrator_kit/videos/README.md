@@ -198,6 +198,8 @@ cds queues declare
 cds roles create cds-operators-qa
 cds access allow deposit-admin-access role cds-operators-qa
 cds access allow superuser-access role cds-operators-qa
+cds roles create cern-user
+cds access allow videos-upload-access role cern-user
 
 cds roles add <user> cds-operators-qa
 ```
