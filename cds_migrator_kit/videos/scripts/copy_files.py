@@ -485,11 +485,17 @@ class TransformFiles:
             "poster": "",  # Poster image path if exists
             "duration": 0,  # Duration in seconds (from data.v2.json)
             "master_quality": "",
+            "year": None,
         }
         try:
             # Get master path from the record
             master_path = self._get_master_path()
             self.transformed_files_json["master_path"] = master_path
+
+            # year
+            after_master_data = master_path.split("master_data/")[1]
+            year_str = after_master_data.split("/")[0]
+            self.transformed_files_json["year"] = int(year_str)
 
             # Get the year and id eg: master_data/year/event_id
             path = master_path.split("master_data/", 1)[-1]
@@ -638,7 +644,9 @@ def rsync_copy(src_path, dst_path, logger):
         return False
 
 
-def process_json_file(json_path, ceph_media_folder, eos_media_folder, output_folder):
+def process_json_file(
+    json_path, ceph_media_folder, eos_media_folder, output_folder, before_year
+):
     """Process a single JSON file and produce corresponding output + log file."""
     base_name = os.path.basename(json_path)
     prefix = os.path.splitext(base_name)[0].replace("marc_", "")
@@ -690,6 +698,13 @@ def process_json_file(json_path, ceph_media_folder, eos_media_folder, output_fol
         file_info_json = transform_files.transform()
         if not file_info_json:
             continue
+        if before_year and file_info_json["year"] >= before_year:
+            logger_files.info(
+                "Skipping record! Year: {0} is greater or equal to {1}".format(
+                    file_info_json.get("year"), before_year
+                )
+            )
+            continue
         # Destination
         copied_file_info_json = transform_files.copy_needed_files(eos_media_folder)
         all_records_data[recid].append(copied_file_info_json)
@@ -730,6 +745,12 @@ def main():
         default="/tmp/copied_files/",
         help="Path to write logs and output JSONs",
     )
+    parser.add_argument(
+        "--before-year",
+        default=None,
+        type=int,
+        help="Copy the files before a certain year (integer)",
+    )
 
     args = parser.parse_args()
     folder = args.folder
@@ -747,6 +768,7 @@ def main():
                 Path(args.ceph_media_folder),
                 Path(args.eos_media_folder),
                 args.output_folder,
+                args.before_year,
             )
 
 
