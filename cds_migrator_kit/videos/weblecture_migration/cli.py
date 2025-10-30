@@ -15,7 +15,8 @@ import click
 from flask import current_app
 from flask.cli import with_appcontext
 from invenio_accounts.models import User
-from sqlalchemy.exc import NoResultFound
+from invenio_accounts.proxies import current_datastore
+from invenio_db import db
 
 from cds_migrator_kit.runner.runner import Runner
 from cds_migrator_kit.videos.weblecture_migration.logger import VideosJsonLogger
@@ -140,25 +141,21 @@ def create_system_user():
         cli_logger.error("System user email is not configured.")
         return
 
-    try:
-        user = User.query.filter_by(email=email).one()
+    user = User.query.filter_by(email=email).one_or_none()
+    if user:
         cli_logger.info(f"User {email} exists.")
         return
-    except NoResultFound:
-        username = email.split("@")[0].replace(".", "")
-        username = re.sub(r"\W+", "", username).lower()
-        extra_data = {"migration": {"note": "System user for migration"}}
-        user_api = CDSVideosMigrationUserAPI()
-
-        try:
-            user = user_api.create_user(
-                email,
-                name="Weblectures System User",
-                username=username,
-                person_id=None,
-                extra_data=extra_data,
-            )
-        except Exception as exc:
-            cli_logger.error(
-                f"System user creation failed: {email}, {username}\n {exc}"
-            )
+    try:
+        # Create user via Invenio datastore
+        user = current_datastore.create_user(
+            email=email,
+            password=None,
+            active=True,
+        )
+        current_datastore.add_role_to_user(user, "cern-user")
+        db.session.commit()
+        cli_logger.info(f"User created with email {email} (id={user.id}).")
+    except Exception as exc:
+        cli_logger.error(
+            f"System user creation failed: {email}\n {exc}"
+        )
