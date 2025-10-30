@@ -164,8 +164,6 @@ def create_video(project_deposit, video_metadata, media_files, submitter):
     chapters = media_files["chapters"]
     duration = media_files.get("duration", 0)
     quality = media_files.get("master_quality")
-    if quality == "None":
-        raise ManualImportRequired(f"Master quality is invalid.", stage="load")
 
     if chapters:
         chapters_txt = format_chapters(chapters)
@@ -196,7 +194,8 @@ def create_video(project_deposit, video_metadata, media_files, submitter):
         )
 
     ObjectVersionTag.create_or_update(object_version, "duration", str(duration))
-    ObjectVersionTag.create_or_update(object_version, "height", str(quality))
+    if quality and quality != "None":
+        ObjectVersionTag.create_or_update(object_version, "height", str(quality))
     return video_deposit, object_version
 
 
@@ -311,7 +310,9 @@ def fail_extract_metadata_task(payload, media_files):
 
 def extract_metadata(payload, media_files):
     """Extract the metadata of the master video file."""
-    if current_app.config.get("FAIL_FILE_COPY_TASKS"):
+    quality = media_files.get("master_quality")
+    is_quality_valid = bool(quality and quality != "None")
+    if current_app.config.get("FAIL_FILE_COPY_TASKS") and is_quality_valid:
         fail_extract_metadata_task(payload, media_files)
         return
     try:
