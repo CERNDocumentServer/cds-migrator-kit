@@ -465,13 +465,7 @@ class TransformFiles:
         self._set_media_files(path_files)
         master_quality = self.transformed_files_json["master_quality"]
         if not master_quality or master_quality == "None":
-            raise MissingRequiredField(
-                message="master_quality is missing!",
-                stage="transform",
-                recid=self.recid,
-                value=self.record_media_data_folder,
-                priority="critical",
-            )
+            self.transformed_files_json["master_quality"] = None
         if not self.transformed_files_json["duration"]:
             self.transformed_files_json["duration"] = 0
 
