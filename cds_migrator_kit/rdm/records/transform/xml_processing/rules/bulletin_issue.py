@@ -286,7 +286,7 @@ def rel_identifiers(self, key, value):
     report_number = value.get("t", "").lower()
 
     if not identifier:
-        raise IgnoreKey("bull_related_identifiers")
+        raise IgnoreKey("bull_related_identifiers_2")
 
     if "pho" in scheme.lower():
         res_type = "photo"
