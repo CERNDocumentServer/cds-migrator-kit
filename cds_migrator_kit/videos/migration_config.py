@@ -68,9 +68,9 @@ COLLECTION_MAPPING = {
     "TP": "Lectures::Talks, Seminars and Other Events::Teacher Programmes",
     "e-learning": "Lectures::E-learning modules",
     "E-LEARNING": "Lectures::E-learning modules",
-    "Restricted_ATLAS_Talks": "Lectures::Restricted ATLAS Talks",
+    "Restricted_ATLAS_Talks": "Lectures::ATLAS Talks",
     "SL": "Lectures::Talks, Seminars and Other Events::Student Lectures",
-    "Restricted_CMS_Talks": "Lectures::Restricted CMS Talks",
+    "Restricted_CMS_Talks": "Lectures::CMS Talks",
     "VIDEOARC": "",  # omit
 }
 
