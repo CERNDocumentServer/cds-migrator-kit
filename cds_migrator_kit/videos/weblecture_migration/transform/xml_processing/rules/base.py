@@ -12,9 +12,6 @@ import datetime
 import pycountry
 
 from cds_migrator_kit.errors import MissingRequiredField, UnexpectedValue
-from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
-    created as base_created,
-)
 from cds_migrator_kit.transform.xml_processing.quality.dates import get_week_start
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
@@ -112,7 +109,33 @@ def record_submitter(self, key, value):
 @require(["w"])
 def created(self, key, value):
     """Translates created information to fields."""
-    return base_created(self, key, value)
+    if "s" in value:
+        source = clean_val("s", value, str)
+        # h = human catalogued
+        # n = script catalogued or via submission
+        if source not in ["n", "h", "m", "r"]:
+            raise UnexpectedValue(subfield="s", field=key, value=value)
+    date_values = value.get("w")
+    if not date_values or not date_values[0]:
+        return datetime.date.today().isoformat()
+    if isinstance(date_values, list):
+        date = min(date_values)
+    elif isinstance(date_values, tuple):
+        date = int(date_values[0])
+    else:
+        date = int(date_values)
+    try:
+        if date:
+            if not (100000 < int(date) < 999999):
+                raise UnexpectedValue("Wrong date format", field=key, subfield="w")
+            year, week = str(date)[:4], str(date)[4:]
+            date = get_week_start(int(year), int(week))
+            if date < datetime.date.today():
+                return date.isoformat()
+            else:
+                return datetime.date.today().isoformat()
+    except ValueError:
+        return datetime.date.today().isoformat()
 
 
 @model.over("keywords", "^653[12_]_")
