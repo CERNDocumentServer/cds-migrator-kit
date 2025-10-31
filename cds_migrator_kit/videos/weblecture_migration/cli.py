@@ -24,16 +24,15 @@ from cds_migrator_kit.videos.weblecture_migration.streams import (
     FoldersStreamDefinition,
     RecordStreamDefinition,
 )
-from cds_migrator_kit.videos.weblecture_migration.users.api import (
-    CDSVideosMigrationUserAPI,
-)
+
 from cds_migrator_kit.videos.weblecture_migration.users.runner import (
     GenerateFilesFoldersRunner,
-    VideosSubmitterRunner,
+    # VideosSubmitterRunner,
 )
-from cds_migrator_kit.videos.weblecture_migration.users.streams import (
-    SubmitterStreamDefinition,
-)
+
+# from cds_migrator_kit.videos.weblecture_migration.users.streams import (
+#     SubmitterStreamDefinition,
+# )
 
 cli_logger = logging.getLogger("migrator")
 
@@ -114,21 +113,21 @@ def submitters():
     pass
 
 
-@submitters.command()
-@click.option(
-    "--dry-run",
-    is_flag=True,
-)
-@with_appcontext
-def run(dry_run=False):
-    """Migrate the users(submitters) if missing."""
-    stream_config = current_app.config["CDS_MIGRATOR_KIT_VIDEOS_STREAM_CONFIG"]
-    runner = VideosSubmitterRunner(
-        stream_definition=SubmitterStreamDefinition,
-        config_filepath=Path(stream_config).absolute(),
-        dry_run=dry_run,
-    )
-    runner.run()
+# @submitters.command()
+# @click.option(
+#     "--dry-run",
+#     is_flag=True,
+# )
+# @with_appcontext
+# def run(dry_run=False):
+#     """Migrate the users(submitters) if missing."""
+#     stream_config = current_app.config["CDS_MIGRATOR_KIT_VIDEOS_STREAM_CONFIG"]
+#     runner = VideosSubmitterRunner(
+#         stream_definition=SubmitterStreamDefinition,
+#         config_filepath=Path(stream_config).absolute(),
+#         dry_run=dry_run,
+#     )
+#     runner.run()
 
 
 @submitters.command()
@@ -156,6 +155,4 @@ def create_system_user():
         db.session.commit()
         cli_logger.info(f"User created with email {email} (id={user.id}).")
     except Exception as exc:
-        cli_logger.error(
-            f"System user creation failed: {email}\n {exc}"
-        )
+        cli_logger.error(f"System user creation failed: {email}\n {exc}")
