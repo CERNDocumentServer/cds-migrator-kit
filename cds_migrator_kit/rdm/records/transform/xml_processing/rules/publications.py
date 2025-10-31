@@ -76,7 +76,7 @@ def issn(self, key, value):
         }
         if new_id not in ids:
             return new_id
-    raise IgnoreKey("identifiers")
+    raise IgnoreKey("related_identifiers")
 
 
 @model.over("subjects", "(^080__)")

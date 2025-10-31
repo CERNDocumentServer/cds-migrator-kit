@@ -13,16 +13,20 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValu
 
 from ...config import IGNORED_THESIS_COLLECTIONS
 from ...models.it import it_model as model
+from .base import additional_titles as base_additional_titles
+from .base import custom_fields_693 as base_custom_fields_693
 from .base import normalize
 from .base import note as base_internal_notes
 from .base import subjects as base_subjects
 from .base import urls
 from .base import yellow_reports as base_yellow_reports
+from .publications import imprint_info as base_publication_imprint_info
+from .publications import issn as base_publications_issn
 from .publications import journal as base_journal
-from .publications import related_identifiers as base_publication_identifiers
+from .publications import related_identifiers as base_publications_related_identifiers
 
 
-@model.over("resource_type", "^980__", override=True)
+@model.over("resource_type", "(^980__)|(^697C_)", override=True)
 def resource_type(self, key, value):
     """Translates resource_type."""
     value_a = value.get("a", "")
@@ -77,6 +81,7 @@ def resource_type(self, key, value):
         "cnlissue": {"id": "publication-periodicalissue"},
         "cnlarticle": {"id": "publication-periodicalarticle"},
         "report": {"id": "publication-report"},
+        "progress report": {"id": "publication-report"},
         "poster": {"id": "poster"},
     }
 
@@ -102,9 +107,9 @@ def resource_type(self, key, value):
             )
 
 
-@model.over("custom_fields", "^111__")
+@model.over("meeting_info", "^111__")
 def meeting(self, key, value):
-    _custom_fields = self.get("custom_fields", {})
+    _custom_fields = self.setdefault("custom_fields", {})
     meeting_fields = _custom_fields.get("meeting:meeting", {})
     meeting_fields["title"] = StringValue(value.get("a", "")).parse()
     meeting_fields["place"] = StringValue(value.get("c", "")).parse()
@@ -117,23 +122,29 @@ def meeting(self, key, value):
         meeting_fields.setdefault("identifiers", []).append(identifier)
 
     _custom_fields["meeting:meeting"] = meeting_fields
-    return _custom_fields
+    raise IgnoreKey("meeting_info")
 
 
-@model.over("additional_descriptions", "(^500__)")
+@model.over("additional_descriptions", "(^500__)|(^935__)|(^210__)")
 @for_each_value
 @require(["a"])
 def additional_descriptions(self, key, value):
     """Translates additional description."""
-    description_text = StringValue(value.get("a")).parse()
-    if description_text:
-        _additional_description = {
-            "description": description_text,
-            "type": {
-                "id": "other",
-            },
-        }
-        return _additional_description
+    if key.startswith("210"):
+        base_additional_titles(self, key, value)
+    else:
+        description_text = StringValue(value.get("a")).parse()
+        description_type = "other"
+        if key.startswith("935"):
+            description_type = "technical-info"
+        if description_text:
+            _additional_description = {
+                "description": description_text,
+                "type": {
+                    "id": description_type,
+                },
+            }
+            return _additional_description
     raise IgnoreKey("additional_descriptions")
 
 
@@ -201,7 +212,7 @@ def meeting(self, key, value):
     raise IgnoreKey("meeting")
 
 
-@model.over("custom_fields", "(^250__)")
+@model.over("imprint_info", "(^250__)")
 @for_each_value
 @require(["a"])
 def imprint(self, key, value):
@@ -209,7 +220,7 @@ def imprint(self, key, value):
     _custom_fields = self.setdefault("custom_fields", {})
     imprint = _custom_fields.setdefault("imprint:imprint", {})
     imprint["edition"] = StringValue(value.get("a")).parse()
-    raise IgnoreKey("custom_fields")
+    raise IgnoreKey("imprint_info")
 
 
 @model.over("notes", "^8564_", override=True)
@@ -282,7 +293,7 @@ def related_identifiers_and_imprint(self, key, value):
 
     # Related identifiers
     rel_ids = self.setdefault("related_identifiers", [])
-    for new_id in base_publication_identifiers(self, key, value):
+    for new_id in base_publications_related_identifiers(self, key, value):
         if new_id not in rel_ids:
             rel_ids.append(new_id)
     self["related_identifiers"] = rel_ids
@@ -309,10 +320,12 @@ def supervisor(self, key, value):
     return contributor
 
 
-@model.over("dates", "(^269__)", override=True)
+@model.over("custom_fields", "(^269__)|(^933__)|(^693__)", override=True)
 @for_each_value
 def imprint_dates(self, key, value):
     """Translates imprint - WARNING - also publisher and publication_date."""
+    if key.startswith("693"):
+        base_custom_fields_693(self, key, value)
 
     # --- imprint metadata ---
     _cf = self.setdefault("custom_fields", {})
@@ -326,7 +339,7 @@ def imprint_dates(self, key, value):
 
     pub = value.get("c")
     if not pub:
-        raise IgnoreKey("dates")
+        raise IgnoreKey("custom_fields")
 
     try:
         if "?" in pub:
@@ -346,7 +359,7 @@ def imprint_dates(self, key, value):
             message=f"Can't parse provided publication date. Value: {pub}",
         )
 
-    raise IgnoreKey("dates")
+    raise IgnoreKey("custom_fields")
 
 
 @model.over("conference_title_and_note", "^595__", override=True)
@@ -389,3 +402,89 @@ def translated_description(self, key, value):
         }
         return _additional_description
     raise IgnoreKey("additional_descriptions")
+
+
+@model.over("publication_date", "(^362__)|(^260__)", override=True)
+def imprint_info(self, key, value):
+    """Translates publication_date field."""
+    if key.startswith("260"):
+        base_publication_imprint_info(self, key, value)
+    else:
+        from cds_migrator_kit.rdm.migration_config import CDS_RECORDS_TO_UNMERGE
+
+        if self["recid"] in CDS_RECORDS_TO_UNMERGE:
+            raise IgnoreKey("publication_date")
+        publication_date_str = value.get("a")
+        if publication_date_str:
+            try:
+                pub_date = re.search(
+                    r"\b(19|20)\d{2}(?:[-/]\d{1,2})?(?:[-/]\d{1,2})?\b",
+                    publication_date_str,
+                )
+                if pub_date:
+                    publication_date = normalize(pub_date.group(0))
+                    return publication_date
+            except (ParserError, TypeError) as e:
+                raise UnexpectedValue(
+                    field=key,
+                    value=value,
+                    message=f"Can't parse provided publication date. Value: {publication_date_str}",
+                )
+        raise IgnoreKey("publication_date")
+
+
+@model.over("related_identifiers", "^785__")
+@for_each_value
+def related_works(self, key, value):
+    """Translates related identifiers."""
+    description = StringValue(value.get("i")).parse().lower()
+    recid = value.get("w")
+    rel_ids = self.get("related_identifiers", [])
+    if "continue" in description:
+        relation_type = "iscontinuedby"
+    else:
+        relation_type = "references"
+    new_id = {
+        "identifier": recid,
+        "scheme": "cds",
+        "relation_type": {"id": relation_type},
+    }
+    if new_id not in rel_ids:
+        return new_id
+
+    raise IgnoreKey("related_identifiers")
+
+
+@model.over("additional_descriptions", "(^85641)")
+@for_each_value
+def series(self, key, value):
+    """Translates additional descriptinn and url."""
+    description = StringValue(value.get("3")).parse()
+    url = value.get("u", "")
+    if url:
+        related_identifiers = self.get("related_identifiers", [])
+        url_entries = urls(self, key, value)
+        for entry in url_entries:
+            if entry not in related_identifiers:
+                related_identifiers.append(entry)
+        self["related_identifiers"] = related_identifiers
+    if description:
+        return {"description": description, "type": {"id": "series-information"}}
+    raise IgnoreKey("additional_descriptions")
+
+
+@model.over("additional_titles", "^246_[3]")
+@for_each_value
+@require(["a"])
+def additional_titles(self, key, value):
+    """Translates additional titles."""
+    description_text = value.get("a")
+    if description_text:
+        _additional_title = {
+            "title": description_text,
+            "type": {
+                "id": "alternative-title",
+            },
+        }
+        return _additional_title
+    raise IgnoreKey("additional_titles")

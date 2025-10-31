@@ -218,7 +218,7 @@ def subjects(self, key, value):
 
 @model.over("custom_fields", "(^693__)")
 @for_each_value
-def custom_fields(self, key, value):
+def custom_fields_693(self, key, value):
     """Translates custom fields."""
     _custom_fields = self.get("custom_fields", {})
 
@@ -258,11 +258,25 @@ def record_restriction(self, key, value):
 @for_each_value
 def report_number(self, key, value):
     """Translates report_number fields."""
+
     identifier = value.get("a", "")
     identifier = StringValue(identifier).parse()
     existing_ids = self.get("identifiers", [])
     scheme = value.get("2")
     provenance = value.get("9", "")
+    if provenance.lower() == "arxiv" or identifier.startswith("arXiv:"):
+        scheme = "arxiv"
+        identifier = identifier.replace("oai:arXiv.org:", "arXiv:")
+        related_works = self.get("related_identifiers", [])
+        new_id = {
+            "scheme": scheme,
+            "identifier": identifier,
+            "relation_type": {"id": "isreferencedby"},
+        }
+        if new_id not in related_works:
+            related_works.append(new_id)
+            self["related_identifiers"] = related_works
+        raise IgnoreKey("identifiers")
     if not scheme:
         scheme = provenance
         is_hidden_report_number = scheme.upper().startswith("CERN-")
@@ -285,7 +299,7 @@ def report_number(self, key, value):
             raise UnexpectedValue(field=key, value=value, subfield="n")
         scheme = "handle"
     if (key == "037__" and not scheme) or (identifier and key == "088__"):
-        # if there is no scheme, it means report number
+        # if there is no scheme, it meaens report number
         scheme = "cdsrn"
 
     # if there is no identifier it means something else was stored in __9
@@ -302,7 +316,6 @@ def report_number(self, key, value):
             raise IgnoreKey("identifiers")
         else:
             raise UnexpectedValue("Missing ID value", field=key, value=value)
-
     new_id = {"scheme": scheme, "identifier": identifier}
     if new_id in existing_ids:
         raise IgnoreKey("identifiers")
@@ -340,6 +353,8 @@ def identifiers(self, key, value):
     # drop oai harvest info
     if id_value.startswith("oai:inspirehep.net"):
         raise IgnoreKey("identifiers")
+    if scheme.lower() == "arxiv":
+        id_value = id_value.replace("oai:arXiv.org:", "arXiv:")
     if scheme.lower() == "cern annual report":
 
         additional_descriptions = self.get("additional_descriptions", [])
@@ -368,12 +383,18 @@ def identifiers(self, key, value):
         validate_inspire_identifier(id_value, key)
     rel_id = {"scheme": scheme.lower(), "identifier": id_value}
     if scheme.lower() == "admbul":
-        rel_id = {"scheme": "other", "identifier": f"{scheme}_{id_value}"}
+        scheme = "other"
+        rel_id = {"scheme": scheme, "identifier": f"{scheme}_{id_value}"}
     if scheme.lower() == "agendamaker":
         indico_id = get_new_indico_id(id_value)
-        rel_id = {"scheme": "indico", "identifier": str(indico_id)}
+        scheme = "indico"
+        rel_id = {"scheme": scheme, "identifier": str(indico_id)}
     if scheme.lower() == "zentralblatt math":
-        rel_id = {"scheme": "url", "identifier": f"https://zbmath.org/?q=an:{id_value}"}
+        scheme = "url"
+        rel_id = {
+            "scheme": scheme,
+            "identifier": f"https://zbmath.org/?q=an:{id_value}",
+        }
     if id_value:
         if rel_id["scheme"] in RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES:
             rel_id.update(
@@ -612,6 +633,7 @@ def copyrights(self, key, value):
 
 
 @model.over("related_identifiers", "^8564_")
+@model.over("related_identifiers", "^8564_")
 @for_each_value
 def urls(self, key, value, subfield="u"):
     """Translates urls field."""
@@ -630,7 +652,7 @@ def urls(self, key, value, subfield="u"):
     if all(x in sub_u for x in ["cds", ".cern.ch/record/", "/files"]):
         is_cds_file = True
     if is_cds_file:
-        raise IgnoreKey("identifiers")
+        raise IgnoreKey("related_identifiers")
     else:
         p = urlparse(sub_u, "http")
         netloc = p.netloc or p.path
@@ -639,7 +661,11 @@ def urls(self, key, value, subfield="u"):
             netloc = "www." + netloc
 
         p = ParseResult("http", netloc, path, *p[3:])
-        return {"identifier": p.geturl(), "scheme": "url", "relation_type": {"id": "references"}}
+        return {
+            "identifier": p.geturl(),
+            "scheme": "url",
+            "relation_type": {"id": "references"},
+        }
 
 
 @model.over("additional_descriptions", "^490__")
@@ -889,9 +915,19 @@ def note(self, key, value):
 
 @model.over("additional_titles", "(^246_[1_])")
 @for_each_value
-@require(["a"])
 def additional_titles(self, key, value):
     """Translates additional titles."""
+
+    additional_desc_text = value.get("p")
+    if additional_desc_text:
+        _additional_descriptions = self.get("additional_descriptions", [])
+        _additional_descriptions.append(
+            {
+                "description": additional_desc_text,
+                "type": {"id": "technical-info"},
+            }
+        )
+        self["additional_descriptions"] = _additional_descriptions
     description_text = value.get("a")
     translated_subtitle = value.get("b")
     source = value.get("9")

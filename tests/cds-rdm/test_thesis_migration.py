@@ -119,6 +119,12 @@ def test_full_thesis_stream(
                 "id": "isreferencedby",
                 "title": {"de": "Wird referenziert von", "en": "Is referenced by"},
             },
+            "resource_type": {
+                "id": "publication-other",
+                "title": {
+                    "en": "Other",
+                },
+            },
             "scheme": "inspire",
         },
     ]
