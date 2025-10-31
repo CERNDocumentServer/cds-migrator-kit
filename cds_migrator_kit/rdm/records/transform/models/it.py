@@ -22,6 +22,7 @@ class ITModel(CdsOverdo):
                     OR 980__:PUBLARDA
                     OR 690C_:CERNITBROCHURE OR 980__:ITCERNTALK
                     OR 980__:ITUDSPUBSOURCEARCHIVE
+                    OR 980__:CNLARTICLE
                     -980__.b:INDICO_IT-DEP
                     -980__.a:EVENTSFROMINDICO 
                     -980__.a:CONTRIBUTIONSFROMINDICO
@@ -33,17 +34,25 @@ class ITModel(CdsOverdo):
 
     __ignore_keys__ = {
         "021__a",  # Physical Location https://cds.cern.ch/record/181665/export/hm?ln=en
+        "022__b",  # material type
         "0247_9",  # source of pid
         "0248_a",
         "0248_p",
         "0248_q",
         "030__a",  # https://cds.cern.ch/record/409840/export/hm
         "037__c",  # arXiv subject https://cds.cern.ch/record/1562050/export/hm
+        "044__a",  # country code
+        "080__a",  # UDC
         "100__m",  # Author's email
         "300__a",
         "300__b",  # Physical medium description
+        "222__a",  # Duplicate title
+        "246_39",
+        "246_3i",
         "260__b",  # CERN
+        "310__a",  # periodicity
         "340__a",  # Physical medium
+        "362__a",  # date period
         "500__9",  # arXiv
         "520__9",  # arxiv
         "540__3",  # Material of copyright
@@ -58,24 +67,39 @@ class ITModel(CdsOverdo):
         "773__a",  # Duplicate DOI
         "773__o",  # Duplicate meeting title
         "773__u",  # Duplicate meeting url
+        "785__t",  # Related works platform
+        "785__x",  # Related works type
         "7870_r",  # detailed description of record relation
         "852__a",  # Physical Location https://cds.cern.ch/record/307939/export/hm?ln=en
         "852__c",  # Physical Location https://cds.cern.ch/record/134892/export/hm?ln=en
         "852__h",  # Physical Location https://cds.cern.ch/record/134892/export/hm?ln=en
+        "866__a",  # Holdings on ILS
+        "866__b",
+        "866__g",
+        "866__x",
+        "866__z",
         "8564_8",  # Files system field
         "8564_s",  # Files system field
         "8564_x",  # Files system field - Icon
         "8564_q",  # Files system field - Link
         "8564_y",  # Files / URLS label
+        "85641g",
+        "85641m",
+        "85641n",
+        "85641y",  # Year file
+        "85641x",
         "913__t",  # Citation field
         "913__y",  # Citation field
         "913__v",  # Citation field
         "913__c",  # Citation field
         "916__y",  # year
         "916__a",  # year
+        "981__b",  # duplicated pid
         "923__r",  # Author's email
         "937__c",  # last modified
         "937__s",  # last modified
+        "938__a",
+        "938__p",
         "960__a",  # collection id? usually value 14, to confirm if we ignore
         "961__c",  # CDS modification tag
         "961__h",  # CDS modification tag
