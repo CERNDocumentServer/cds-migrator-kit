@@ -376,7 +376,7 @@ def copy_frames(payload, frame_paths):
     frames_payload = payload.copy()
     version_id = frames_payload["version_id"]
     object_version = as_object_version(version_id)
-    duration = int(object_version.get_tags().get("duration", 0))
+    duration = int(float(object_version.get_tags().get("duration", 0) or 0))
     if not len(frame_paths) == 10:
         logger_flows.warning(
             f"[WARNING] Deposit: {frames_payload['deposit_id']} frames are creating with celery task."
