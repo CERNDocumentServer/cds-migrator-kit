@@ -8,6 +8,7 @@
 """CDS-Videos transform module files helper."""
 import json
 import logging
+import os
 import re
 from pathlib import Path
 
@@ -210,16 +211,6 @@ class TransformFiles:
 
         files_paths: Founded paths from the record marcxml.
         """
-        # No path found in the record
-        if not files_paths:
-            raise UnexpectedValue(
-                message="No media file found in the record!",
-                stage="transform",
-                value=self.record_media_data_folder,
-                recid=self.recid,
-                priority="critical",
-            )
-
         # Get all files (even the subfolder files) in media_data folder
         all_files = {
             file.name
@@ -250,6 +241,12 @@ class TransformFiles:
         highest_quality_videos = []
         all_subformats = []
         streams = datajson.get("streams", [])
+        if not streams:
+            raise UnexpectedValue(
+                "No stream found in data.v2.json: {0}".format(
+                    self.record_media_data_folder
+                ),
+            )
         # One video record should have 1 stream
         if not self.use_composite and len(streams) != 1:
             raise UnexpectedValue(
@@ -261,6 +258,30 @@ class TransformFiles:
                 if not subformats:
                     raise UnexpectedValue("Missing MP4 formats in one of the streams")
 
+                # Filter out missing and duplicated files
+                seen = {}
+                missing_files = []
+                for f in subformats:
+                    src = f.get("src")
+                    if not src:
+                        continue
+                    cleaned = src.strip("/")
+                    full_path = os.path.join(self.media_folder, cleaned)
+
+                    if not os.path.exists(full_path):
+                        missing_files.append(cleaned)
+                        continue
+
+                    if cleaned not in seen:
+                        seen[cleaned] = f
+
+                # Log missing files
+                if missing_files:
+                    logger_files.warning(
+                        f"Skipped {len(missing_files)} missing MP4s in {self.record_media_data_folder}: {missing_files}"
+                    )
+
+                subformats = list(seen.values())
                 if len(subformats) == 1:
                     # TODO is there any better solution to migrate these records?
                     # Only one video — no need to sort
@@ -340,6 +361,9 @@ class TransformFiles:
         frames_list = sorted(
             data.get("frameList", []), key=lambda frame: frame.get("time", 0)
         )
+        # ~~~~Chapters~~~~
+        chapters = [frame["time"] for frame in frames_list if "time" in frame]
+        self.transformed_files_json["chapters"] = chapters
 
         # Use the composite, composite exists
         if self.use_composite:
@@ -369,6 +393,12 @@ class TransformFiles:
 
             # ~~~~FRAMES~~~~
             # Check missing or extra frames
+            # Remove the poster path if it exists in frames_list
+            poster_path = self.transformed_files_json["poster"]
+            if poster_path:
+                frames_list = [
+                    f for f in frames_list if f.get("url") not in poster_path
+                ]
             if self._frames_exists(frames_list):
                 self._add_files_to_file_json(
                     json_key="frames",
@@ -382,10 +412,6 @@ class TransformFiles:
         self.transformed_files_json["duration"] = data.get("metadata", {}).get(
             "duration", 0
         )
-
-        # ~~~~Chapters~~~~
-        chapters = [frame["time"] for frame in frames_list if "time" in frame]
-        self.transformed_files_json["chapters"] = chapters
 
         # ~~~~SUBTITLES~~~~
         # Get subtitles from data.v2.json
@@ -465,6 +491,9 @@ class TransformFiles:
         self._set_media_files(path_files)
         master_quality = self.transformed_files_json["master_quality"]
         if not master_quality or master_quality == "None":
+            logger_files.warning(
+                "Recid:{0} master_quality is missing!".format(self.recid)
+            )
             self.transformed_files_json["master_quality"] = None
         if not self.transformed_files_json["duration"]:
             self.transformed_files_json["duration"] = 0

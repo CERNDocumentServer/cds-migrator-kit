@@ -11,6 +11,8 @@
 import json
 import os
 
+from flask import current_app
+
 from cds_migrator_kit.errors import ManualImportRequired
 
 
@@ -42,6 +44,41 @@ def get_files_by_recid(recid, directory):
                     priority="critical",
                 )
 
-        if recid in data:
-            return data[recid]  # return immediately, found
+        if recid not in data:
+            continue  # not in this dump, skip
+
+        files = data[recid]
+
+        eos_path = current_app.config["MOUNTED_MEDIA_CEPH_PATH"]
+        missing = []
+
+        # Check all paths inside the record
+        for record in files:
+            paths_to_check = []
+            for key in ["master_video", "poster"]:
+                if record.get(key):
+                    paths_to_check.append(record[key])
+            for key in ["frames", "additional_files"]:
+                for item in record.get(key, []):
+                    paths_to_check.append(item)
+            for sub in record.get("subformats", []):
+                if sub.get("path"):
+                    paths_to_check.append(sub["path"])
+
+            for path in paths_to_check:
+                # For local
+                if not eos_path.startswith("/eos"):
+                    relative_path = path.split("/media_data")[-1]
+                    path = eos_path + relative_path
+                if not os.path.exists(path):
+                    missing.append(path)
+
+            if missing:
+                raise ManualImportRequired(
+                    message=f"Missing {len(missing)} files for recid {recid}",
+                    stage="transform",
+                    value=f"Missing: {missing}",
+                    priority="critical",
+                )
+        return files
     return []
