@@ -244,16 +244,6 @@ class TransformFiles:
 
         files_paths: Founded paths from the record marcxml.
         """
-        # No path found in the record
-        if not files_paths:
-            raise CDSMigrationException(
-                message="No media file found in the record!",
-                stage="transform",
-                value=self.record_media_data_folder,
-                recid=self.recid,
-                priority="critical",
-            )
-
         # Get all files (even the subfolder files) in media_data folder
         all_files = {
             file.name
@@ -284,6 +274,12 @@ class TransformFiles:
         highest_quality_videos = []
         all_subformats = []
         streams = datajson.get("streams", [])
+        if not streams:
+            raise CDSMigrationException(
+                message="No stream found in data.v2.json: {0}".format(
+                    self.record_media_data_folder
+                ),
+            )
         # One video record should have 1 stream
         if not self.use_composite and len(streams) != 1:
             raise CDSMigrationException(
@@ -297,6 +293,30 @@ class TransformFiles:
                         "Missing MP4 formats in one of the streams"
                     )
 
+                seen = {}
+                missing_files = []
+                for f in subformats:
+                    src = f.get("src")
+                    if not src:
+                        continue
+                    cleaned = src.strip("/")
+                    full_path = os.path.join(str(self.media_folder), cleaned)
+
+                    if not os.path.exists(full_path):
+                        missing_files.append(cleaned)
+                        continue
+
+                    if cleaned not in seen:
+                        seen[cleaned] = f
+
+                if missing_files:
+                    self.logger_files.warning(
+                        "Skipped {0} missing MP4s in {1}".format(
+                            len(missing_files), self.record_media_data_folder
+                        )
+                    )
+
+                subformats = seen.values()
                 if len(subformats) == 1:
                     # TODO is there any better solution to migrate these records?
                     # Only one video — no need to sort
@@ -381,6 +401,9 @@ class TransformFiles:
         frames_list = sorted(
             data.get("frameList", []), key=lambda frame: frame.get("time", 0)
         )
+        # ~~~~Chapters~~~~
+        chapters = [frame["time"] for frame in frames_list if "time" in frame]
+        self.transformed_files_json["chapters"] = chapters
 
         # Use the composite, composite exists
         if self.use_composite:
@@ -410,6 +433,12 @@ class TransformFiles:
 
             # ~~~~FRAMES~~~~
             # Check missing or extra frames
+            # Remove the poster path if it exists in frames_list
+            poster_path = self.transformed_files_json["poster"]
+            if poster_path:
+                frames_list = [
+                    f for f in frames_list if f.get("url") not in poster_path
+                ]
             if self._frames_exists(frames_list):
                 self._add_files_to_file_json(
                     json_key="frames",
@@ -423,10 +452,6 @@ class TransformFiles:
         self.transformed_files_json["duration"] = data.get("metadata", {}).get(
             "duration", 0
         )
-
-        # ~~~~Chapters~~~~
-        chapters = [frame["time"] for frame in frames_list if "time" in frame]
-        self.transformed_files_json["chapters"] = chapters
 
         # ~~~~SUBTITLES~~~~
         # Get subtitles from data.v2.json
@@ -519,6 +544,10 @@ class TransformFiles:
 
             if not self.transformed_files_json["duration"]:
                 self.transformed_files_json["duration"] = 0
+            if not self.transformed_files_json["master_video"]:
+                raise CDSMigrationException(
+                    message="Master video is missing!",
+                )
 
             return self.transformed_files_json
 
@@ -533,14 +562,14 @@ class TransformFiles:
 
             self.logger_files.error(log_msg, exc_info=True)
 
-    def copy_needed_files(self, new_base, is_master=False):
+    def copy_needed_files(self, new_base):
         """
         Copy all needed files to new_base (e.g. /eos/media/cds-videos/dev/stage/media_data)
         and return a transformed_files_json with updated destination paths.
         """
         transformed = self.transformed_files_json.copy()
 
-        def copy_and_update(src_path_str):
+        def copy_and_update(src_path_str, is_master=False):
             """Copy file if needed and return new dest path as string."""
             if not src_path_str:
                 return ""
@@ -592,7 +621,7 @@ class TransformFiles:
 
         # --- Update each field ---
         transformed["master_video"] = copy_and_update(
-            self.transformed_files_json["master_video"]
+            self.transformed_files_json["master_video"], is_master=True
         )
         transformed["poster"] = copy_and_update(
             self.transformed_files_json.get("poster")

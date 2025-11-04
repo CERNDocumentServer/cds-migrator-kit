@@ -137,17 +137,23 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             # Get the latest version
             file = files[k][-1]
             full_path = file.get("full_path")
-            # TODO replace if it's local migration
-            # path = full_path.replace(";1", "").replace(";2", "")
             path = full_path.replace("/opt/cdsweb/var/data/files", self.files_dump_dir)
-            if not os.path.exists(path):
+            possible_paths = [path, path.replace(";1", "").replace(";2", "")]
+            # Try both possibilities
+            found_path = None
+            for candidate in possible_paths:
+                if os.path.exists(candidate):
+                    found_path = candidate
+                    break
+
+            if not found_path:
                 raise ManualImportRequired(
                     message="AFS file not found!",
                     stage="transform",
-                    value=path,
+                    value=f"Tried: {possible_paths}",
                     priority="critical",
                 )
-            record_files.append(path)
+            record_files.append(found_path)
 
         return record_files
 
