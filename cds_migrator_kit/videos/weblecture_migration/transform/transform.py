@@ -128,6 +128,9 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
     def _files(self, record_dump):
         """Transform the files of a record."""
+        # No need to check files if record is migrated (they'll be moved)
+        if self.check_pid_exists(self._recid(record_dump)):
+            return []
         record_dump.prepare_files()
         files = record_dump.files
 
@@ -183,15 +186,19 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
     def _media_files(self, entry):
         """Transform the media files (lecturemedia files) of a record."""
         recid = entry["legacy_recid"]
-        # No need to check files if record is migrated (they'll be moved)
-        if self.check_pid_exists(str(recid)):
-            return {}
         use_generated = current_app.config.get("USE_GENERATED_FILE_PATHS", False)
 
         # Check if record has one master folder, or more
         master_paths = [
             item["master_path"] for item in entry.get("files") if "master_path" in item
         ]
+        if len(master_paths) > 1:
+            self.has_multiple_master = True
+
+        # No need to check files if record is migrated (they'll be moved)
+        if self.check_pid_exists(str(recid)):
+            return {}
+
         if len(master_paths) == 1:
             if use_generated:
                 # Use pre-generated EOS JSON paths
@@ -210,7 +217,6 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             file_info_json = transform_files.transform()
             return file_info_json
         elif len(master_paths) > 1:
-            self.has_multiple_master = True
             master_file_ids = [
                 master_path.split("/")[-1] for master_path in master_paths
             ]
