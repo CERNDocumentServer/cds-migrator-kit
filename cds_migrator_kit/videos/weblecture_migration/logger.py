@@ -8,10 +8,11 @@
 
 """CDS Migrator Records loggers."""
 
-import csv
-import json
 import logging
 import os
+from pathlib import Path
+
+from flask import current_app
 
 formatter = logging.Formatter(
     "%(asctime)s - %(name)s - " "%(message)s - \n " "[in %(pathname)s:%(lineno)d]"
@@ -22,11 +23,17 @@ class VideosJsonLogger:
     """Log videos record migration."""
 
     @classmethod
-    def initialize(cls, log_dir, keep_logs=False):
+    def initialize(cls, collection, keep_logs=False):
         """Initialize the videos logger."""
         cls.keep_logs = keep_logs
         # Determine file mode based on keep_logs flag
         log_mode = "a" if keep_logs else "w"
+
+        logs_path = os.path.join(
+            current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"], collection
+        )
+        log_dir = Path(logs_path)
+        log_dir.mkdir(parents=True, exist_ok=True)
 
         logger_files = logging.getLogger("files")
         fh = logging.FileHandler(log_dir / "files.log", mode=log_mode)
@@ -37,28 +44,6 @@ class VideosJsonLogger:
         fh = logging.FileHandler(log_dir / "flows.log", mode=log_mode)
         fh.setFormatter(formatter)
         logger_flows.addHandler(fh)
-
-        # Add a new json file for video records redirections
-        cls.json_path = log_dir / "record_redirections.json"
-        if not keep_logs or not cls.json_path.exists():
-            with open(cls.json_path, "w") as json_file:
-                json.dump([], json_file)
-
-    @classmethod
-    def log_record_redirection(cls, legacy_id, cds_videos_id, legacy_anchor_id=None):
-        """Log multi video record redirection to a json file."""
-        entry = {
-            "legacy_id": legacy_id,
-            "cds_videos_id": cds_videos_id,
-        }
-        if legacy_anchor_id:
-            entry["legacy_anchor_id"] = legacy_anchor_id
-        if os.path.exists(cls.json_path):
-            with open(cls.json_path, "r+") as json_file:
-                data = json.load(json_file)
-                data.append(entry)
-                json_file.seek(0)
-                json.dump(data, json_file, indent=4)
 
 
 class SubmitterLogger:

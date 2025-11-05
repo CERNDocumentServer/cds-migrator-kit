@@ -6,9 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-Videos command line module."""
-import json
 import logging
-import re
 from pathlib import Path
 
 import click
@@ -72,7 +70,7 @@ def run(collection, dry_run=False, keep_logs=False):
         collection=collection,
         keep_logs=keep_logs,
     )
-    VideosJsonLogger.initialize(runner.log_dir, keep_logs)
+    VideosJsonLogger.initialize(collection, keep_logs)
     runner.run()
 
 
