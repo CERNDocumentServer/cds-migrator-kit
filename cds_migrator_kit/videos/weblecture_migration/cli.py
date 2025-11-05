@@ -24,10 +24,8 @@ from cds_migrator_kit.videos.weblecture_migration.streams import (
     FoldersStreamDefinition,
     RecordStreamDefinition,
 )
-
-from cds_migrator_kit.videos.weblecture_migration.users.runner import (
+from cds_migrator_kit.videos.weblecture_migration.users.runner import (  # VideosSubmitterRunner,
     GenerateFilesFoldersRunner,
-    # VideosSubmitterRunner,
 )
 
 # from cds_migrator_kit.videos.weblecture_migration.users.streams import (

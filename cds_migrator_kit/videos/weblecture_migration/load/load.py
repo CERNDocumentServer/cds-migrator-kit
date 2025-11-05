@@ -7,6 +7,8 @@
 
 """CDS-Videos migration load module."""
 
+import logging
+import mimetypes
 from pathlib import Path
 
 from cds.modules.flows.deposit import index_deposit_project
@@ -49,6 +51,8 @@ from .helpers import (
     transcode_task,
     upload_poster,
 )
+
+logger_files = logging.getLogger("files")
 
 
 class CDSVideosLoad(Load):
@@ -137,6 +141,22 @@ class CDSVideosLoad(Load):
                 "duration": 0,
                 "master_quality": "720",
             }
+        # Filter out unsupported files
+        mimetypes.add_type("subtitle/vtt", ".vtt")
+
+        def is_supported(file_path):
+            guessed_type = mimetypes.guess_type(str(file_path))[0]
+            return guessed_type is not None
+
+        if "additional_files" in media_files:
+            filtered = []
+            for path in media_files["additional_files"]:
+                if is_supported(path):
+                    filtered.append(path)
+                else:
+                    logger_files.warning(f"Removed unsupported file: {path}")
+            media_files["additional_files"] = filtered
+
         media_files.setdefault("additional_files", []).extend(afs_files)
         return media_files
 
