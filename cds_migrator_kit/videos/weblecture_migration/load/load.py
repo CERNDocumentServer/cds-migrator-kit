@@ -34,7 +34,6 @@ from cds_migrator_kit.reports.log import (
     MigrationProgressLogger,
     RecordStateLogger,
 )
-from cds_migrator_kit.videos.weblecture_migration.logger import VideosJsonLogger
 from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.identifiers import (
     transform_legacy_urls,
 )
@@ -299,9 +298,11 @@ class CDSVideosLoad(Load):
 
         legacy_recid = entry["record"]["recid"]
         cds_videos_recid = str(published_video["recid"])
-        VideosJsonLogger.log_record_redirection(
-            legacy_id=legacy_recid,
-            cds_videos_id=cds_videos_recid,
+        self.record_state_logger.add_record_state(
+            {
+                "legacy_recid": legacy_recid,
+                "cds_videos_recid": cds_videos_recid,
+            }
         )
 
         # Run after publish fixes
@@ -393,10 +394,12 @@ class CDSVideosLoad(Load):
             # Migration state with legacy recid, master file id and new recid
             legacy_recid = entry["record"]["recid"]
             cds_videos_recid = str(published_video["recid"])
-            VideosJsonLogger.log_record_redirection(
-                legacy_id=legacy_recid,
-                legacy_anchor_id=master_file_id,
-                cds_videos_id=cds_videos_recid,
+            self.record_state_logger.add_record_state(
+                {
+                    "legacy_recid": legacy_recid,
+                    "legacy_anchor_id": master_file_id,
+                    "cds_videos_recid": cds_videos_recid,
+                }
             )
 
         # Publish project
@@ -431,9 +434,11 @@ class CDSVideosLoad(Load):
                 object_uuid=pid.object_uuid, pid_type="recid"
             ).one()
             cds_videos_recid = record_pid.pid_value
-            VideosJsonLogger.log_record_redirection(
-                legacy_id=recid,
-                cds_videos_id=cds_videos_recid,
+            self.record_state_logger.add_record_state(
+                {
+                    "legacy_recid": recid,
+                    "cds_videos_recid": cds_videos_recid,
+                }
             )
         return pid is not None
 
