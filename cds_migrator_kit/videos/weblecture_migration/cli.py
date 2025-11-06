@@ -7,6 +7,7 @@
 
 """CDS-Videos command line module."""
 import logging
+from datetime import datetime
 from pathlib import Path
 
 import click
@@ -16,8 +17,12 @@ from invenio_accounts.models import User
 from invenio_accounts.proxies import current_datastore
 from invenio_db import db
 
+from cds_migrator_kit.rdm.stats.runner import RecordStatsRunner
 from cds_migrator_kit.runner.runner import Runner
 from cds_migrator_kit.videos.weblecture_migration.logger import VideosJsonLogger
+from cds_migrator_kit.videos.weblecture_migration.stats.streams import (
+    RecordStatsStreamDefinition,
+)
 from cds_migrator_kit.videos.weblecture_migration.streams import (
     FoldersStreamDefinition,
     RecordStreamDefinition,
@@ -152,3 +157,43 @@ def create_system_user():
         cli_logger.info(f"User created with email {email} (id={user.id}).")
     except Exception as exc:
         cli_logger.error(f"System user creation failed: {email}\n {exc}")
+
+
+@videos.group()
+def stats():
+    """Migration CLI for statistics."""
+    pass
+
+
+@stats.command()
+@click.option(
+    "--dry-run",
+    is_flag=True,
+)
+@click.option(
+    "--filepath",
+    help="Path to the list of records file that the legacy statistics will be migrated.",
+)
+@click.option(
+    "--less-than-date",
+    default=lambda: datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+    help="ISO string e.g 2024-12-13T20:00:00 to migrate events up to this date.",
+)
+@with_appcontext
+def run(filepath, less_than_date, dry_run=False):
+    """Migrate the legacy statistics for the records in `filepath`."""
+    stream_config = current_app.config["CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG"]
+    stream_config["DEST_SEARCH_INDEX_PREFIX"] = (
+        f"{current_app.config['SEARCH_INDEX_PREFIX']}events-stats"
+    )
+    stream_config["DEST_SEARCH_HOSTS"] = current_app.config["SEARCH_HOSTS"]
+    log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "stats"
+    runner = RecordStatsRunner(
+        stream_definition=RecordStatsStreamDefinition,
+        filepath=filepath,
+        config=stream_config,
+        less_than_date=less_than_date,
+        log_dir=log_dir,
+        dry_run=dry_run,
+    )
+    runner.run()

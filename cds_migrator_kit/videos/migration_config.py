@@ -75,3 +75,18 @@ COLLECTION_MAPPING = {
 }
 
 CAS_LECTURES_ACCESS = []
+
+
+CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(
+    ####### Search ##############
+    SRC_SEARCH_HOSTS=json.loads(
+        os.environ.get("CDS_MIGRATOR_KIT_SRC_SEARCH_HOSTS", "[]")
+    ),
+    SRC_SEARCH_SIZE=5000,
+    SRC_SEARCH_SCROLL="1h",
+)
+"""Config for record statistics migration."""
+
+# Invenio-Search
+# ==============
+SEARCH_INDEX_PREFIX = "cds-videos-sandbox-"

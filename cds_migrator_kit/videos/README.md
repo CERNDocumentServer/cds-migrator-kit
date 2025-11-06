@@ -152,6 +152,97 @@ To visualize errors locally, run:
     gunicorn -b :8080 --timeout 120 --graceful-timeout 60 cds_migrator_kit.app:app --reload --log-level debug --capture-output --access-logfile '-' --error-logfile '-'
 
 
+## Stats Migration
+
+Update the mappings:
+
+```python
+from opensearchpy import OpenSearch
+
+os_client = OpenSearch([
+    {
+        "host": "os-{cds-videos-host}.cern.ch",
+        "url_prefix": "/os",
+        "timeout": 30,
+        "port": 443,
+        "use_ssl": True,
+        "verify_certs": False,
+        "http_auth": ("username", "password"),
+    }
+])
+
+index_pattern = "cds-videos-sandbox-events-stats-record-view-*"
+
+mapping_update = {
+    "properties": {
+        "is_cds": {"type": "boolean"},
+        "before_COUNTER": {"type": "boolean"}
+    }
+}
+
+indices = os_client.indices.get(index_pattern)
+
+for index in indices:
+    try:
+        os_client.indices.put_mapping(index=index, body=mapping_update)
+        print(f"Updated mapping for {index}")
+    except Exception as exc:
+        print(f"Failed to update {index}: {exc}")
+```
+
+
+When the invenio migration run command ends it will produce a `rdm_records_state.json`
+
+ The format will be similar to below:
+
+```json
+{
+    "legacy_recid":"1951320",
+    "cds_videos_recid":"1",
+    "videos_record_uuid":"6b313200-6a0e-4890-86e0-d46b78ef1529"
+}
+```
+
+Before migrating the stats open the `cds_migrator_kit/rdm/migration/stats/config.py` and
+
+  - export the below 2 environmental variables
+    - `CDS_MIGRATOR_KIT_SRC_SEARCH_HOSTS`: e.g `export CDS_MIGRATOR_KIT_SRC_SEARCH_HOSTS='[{"host": "os-cds-legacy.cern.ch", "url_prefix": "/os", "timeout": 30, "port": 443, "use_ssl": true, "verify_certs": false, "http_auth": ["LEGACY_PRODUCTION_OPENSEARCH_USERNAME", "<LEGACY_PRODUCTION_OPENSEARCH_PASSWORD>"]}]'`
+      - you find the credentials for `LEGACY_PRODUCTION_OPENSEARCH_PASSWORD` by `tbag show LEGACY_PRODUCTION_OPENSEARCH_PASSWORD --hg cds`
+      - you find the credentials for `LEGACY_PRODUCTION_OPENSEARCH_USERNAME` by `tbag show LEGACY_PRODUCTION_OPENSEARCH_USERNAME --hg cds`
+
+Run:
+```
+invenio migration stats run --filepath "path/to/file/of/rdm_records_state.json"
+```
+
+This will migrate only the raw statistic events. When all events are ingested to the new cluster then we will need to aggregate them.
+To do so, you need to run after you have set the correct bookmark for each event:
+on opensearch
+```
+DELETE /cds-videos-sandbox-stats-bookmarks
+
+POST /cds-videos-sandbox-stats-bookmarks/_doc
+{
+  "date": "2000-06-26T15:56:05.755394",
+  "aggregation_type": "record-view-agg"
+}
+POST /cds-videos-sandbox-stats-bookmarks/_doc
+{
+  "date": "2000-06-26T15:56:05.755394",
+  "aggregation_type": "stats_reindex"
+}
+```
+
+```python
+from invenio_stats.tasks import aggregate_events
+
+start_date = '2000-01-01'
+end_date = '2024-12-01'
+
+aggregations = ["record-view-agg"]
+aggregate_events(aggregations)
+```
+
 ## Clean-up dev env
 
 ### 1. Drop all public tables
