@@ -298,10 +298,13 @@ class CDSVideosLoad(Load):
 
         legacy_recid = entry["record"]["recid"]
         cds_videos_recid = str(published_video["recid"])
+        recid_pid, _ = published_video.fetch_published()
+        record_uuid = str(recid_pid.object_uuid)
         self.record_state_logger.add_record_state(
             {
                 "legacy_recid": legacy_recid,
                 "cds_videos_recid": cds_videos_recid,
+                "videos_record_uuid": record_uuid,
             }
         )
 
@@ -394,11 +397,14 @@ class CDSVideosLoad(Load):
             # Migration state with legacy recid, master file id and new recid
             legacy_recid = entry["record"]["recid"]
             cds_videos_recid = str(published_video["recid"])
+            recid_pid, _ = published_video.fetch_published()
+            record_uuid = str(recid_pid.object_uuid)
             self.record_state_logger.add_record_state(
                 {
                     "legacy_recid": legacy_recid,
                     "legacy_anchor_id": master_file_id,
                     "cds_videos_recid": cds_videos_recid,
+                    "videos_record_uuid": record_uuid,
                 }
             )
 
@@ -438,6 +444,7 @@ class CDSVideosLoad(Load):
                 {
                     "legacy_recid": recid,
                     "cds_videos_recid": cds_videos_recid,
+                    "videos_record_uuid": str(record_pid.object_uuid),
                 }
             )
         return pid is not None
