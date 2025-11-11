@@ -7,7 +7,7 @@ from dojson.errors import IgnoreKey
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
-    related_identifiers_787 as base_related_identifiers,
+    related_identifiers_787 as base_related_identifiers, report_number,
 )
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
@@ -234,6 +234,25 @@ def issue_number(self, key, value):
     self["custom_fields"] = _custom_fields
     raise IgnoreKey("custom_fields_journal")
 
+
+@model.over("bulletin_report_number", "(^088__)")
+@for_each_value
+def bulletin_report_number(self, key, value):
+    """Translates report number."""
+
+    identifier = value.get("a", "")
+    pattern = r'\b\d+/(19|20)\d{2}\b'
+    matches = re.findall(pattern, identifier)
+
+    if identifier and matches:
+        _custom_fields = self.get("custom_fields", {})
+        journal_fields = _custom_fields.get("journal:journal", {})
+        journal_fields["issue"] = identifier
+        _custom_fields["journal:journal"] = journal_fields
+        self["custom_fields"] = _custom_fields
+        raise IgnoreKey("bulletin_report_number")
+    else:
+        return report_number(self, key, value)
 
 @model.over("custom_fields", "(^925__)")
 def issue_number(self, key, value):
