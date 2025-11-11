@@ -271,7 +271,8 @@ def report_number(self, key, value):
         new_id = {
             "scheme": scheme,
             "identifier": identifier,
-            "relation_type": {"id": "isreferencedby"},
+            "relation_type": {"id": "isvariantof"},
+            "resource_type": {"id": "publication-other"},
         }
         if new_id not in related_works:
             related_works.append(new_id)
