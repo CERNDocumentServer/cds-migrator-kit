@@ -800,7 +800,7 @@ def test_copyright(dumpdir, base_app):
         # Extract record
         res = load_and_dump_revision(data[0])
         assert "copyright" in res
-        assert res["copyright"]["holder"] == "2016 © CERN."
+        assert res["copyright"]["holder"] == "CERN"
         assert res["copyright"]["year"] == "2016"
         assert res["copyright"]["url"] == "http://copyright.web.cern.ch"
 
@@ -808,7 +808,7 @@ def test_copyright(dumpdir, base_app):
         record_entry = CDSToVideosRecordEntry()
         metadata = record_entry._metadata(res)
         assert "copyright" in metadata
-        assert metadata["copyright"]["holder"] == "2016 © CERN."
+        assert metadata["copyright"]["holder"] == "CERN"
         assert metadata["copyright"]["year"] == "2016"
         assert metadata["copyright"]["url"] == "http://copyright.web.cern.ch"
 
