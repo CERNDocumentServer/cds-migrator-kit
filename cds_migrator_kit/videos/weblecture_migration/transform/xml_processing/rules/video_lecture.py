@@ -507,7 +507,7 @@ def copyright(self, key, value):
     if material and material not in ["publication", "Report"]:
         raise UnexpectedValue(field=key, subfield="3", value=material)
 
-    full_holder = f"{year} © {holder}. {statement}".strip()
+    full_holder = f"{holder} {statement}".strip()
     if not full_holder:
         raise UnexpectedValue(message="Holder is missing for copyright!")
 
