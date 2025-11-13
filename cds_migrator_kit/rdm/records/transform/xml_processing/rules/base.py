@@ -384,8 +384,9 @@ def identifiers(self, key, value):
         validate_inspire_identifier(id_value, key)
     rel_id = {"scheme": scheme.lower(), "identifier": id_value}
     if scheme.lower() == "admbul":
+        legacy_scheme = scheme
         scheme = "other"
-        rel_id = {"scheme": scheme, "identifier": f"{scheme}_{id_value}"}
+        rel_id = {"scheme": scheme, "identifier": f"{legacy_scheme}_{id_value}"}
     if scheme.lower() == "agendamaker":
         indico_id = get_new_indico_id(id_value)
         scheme = "indico"
