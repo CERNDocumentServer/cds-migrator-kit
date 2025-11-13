@@ -185,6 +185,19 @@ records:
         - "77617386-632c-4b86-8dd2-68de77ae0018"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hr/duplicated_pids.json
+  circulars:
+    data_dir: cds_migrator_kit/rdm/data/circulars
+    tmp_dir: cds_migrator_kit/rdm/tmp/circulars
+    log_dir: cds_migrator_kit/rdm/log/circulars
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/circulars/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/circulars/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "6bdff664-d066-483c-9635-361864418c4d"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/circulars/duplicated_pids.json
   ccp:
     data_dir: cds_migrator_kit/rdm/data/ccp
     tmp_dir: cds_migrator_kit/rdm/tmp/ccp
