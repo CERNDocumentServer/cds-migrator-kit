@@ -128,8 +128,16 @@ def journal(self, key, value):
     _custom_fields = self.get("custom_fields", {})
     journal_fields = _custom_fields.get("journal:journal", {})
 
-    journal_fields["issue"] = StringValue(value.get("n", "")).parse()
-    journal_fields["pages"] = StringValue(value.get("c", "")).parse()
+    issue = value.get("n", "")
+    pages = value.get("c", "")
+    if issue:
+        issue = StringValue(issue).parse()
+        if "issue" in journal_fields and issue not in journal_fields["issue"]:
+            journal_fields["issue"] += f"-{issue}"
+        else:
+            journal_fields["issue"] = issue
+    if pages:
+        journal_fields["pages"] = StringValue(pages).parse()
 
     _custom_fields["journal:journal"] = journal_fields
     return _custom_fields
@@ -235,11 +243,10 @@ def issue_number(self, key, value):
     raise IgnoreKey("custom_fields_journal")
 
 
-@model.over("bulletin_report_number", "(^088__)")
+@model.over("bulletin_report_number", "(^037__)|(^088__)", override=True)
 @for_each_value
 def bulletin_report_number(self, key, value):
     """Translates report number."""
-
     identifier = value.get("a", "")
     pattern = r'\b\d+/(19|20)\d{2}\b'
     matches = re.findall(pattern, identifier)
@@ -247,12 +254,22 @@ def bulletin_report_number(self, key, value):
     if identifier and matches:
         _custom_fields = self.get("custom_fields", {})
         journal_fields = _custom_fields.get("journal:journal", {})
-        journal_fields["issue"] = identifier
+        if journal_fields.get("issue"):
+            journal_fields["issue"] += f"-{identifier}"
+        else:
+            journal_fields["issue"] = identifier
         _custom_fields["journal:journal"] = journal_fields
         self["custom_fields"] = _custom_fields
         raise IgnoreKey("bulletin_report_number")
     else:
-        return report_number(self, key, value)
+        _identifier = report_number(self, key, value)
+        identifiers = self.get("identifiers", [])
+
+        if _identifier and _identifier not in identifiers:
+            identifiers += _identifier
+        self["identifiers"] = identifiers
+        raise IgnoreKey("bulletin_report_number")
+
 
 @model.over("custom_fields", "(^925__)")
 def issue_number(self, key, value):

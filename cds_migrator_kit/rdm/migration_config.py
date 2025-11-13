@@ -18,6 +18,11 @@ from cds_rdm.permissions import (
     CDSCommunitiesPermissionPolicy,
     CDSRDMPreservationSyncPermissionPolicy,
 )
+from cds_rdm.clc_sync.services.components import ClcSyncComponent
+from cds_rdm.components import CDSResourcePublication
+from cds_rdm.components import SubjectsValidationComponent
+from cds_rdm.components import MintAlternateIdentifierComponent
+
 from invenio_app_rdm.config import CELERY_BEAT_SCHEDULE as APP_RDM_CELERY_BEAT_SCHEDULE
 from invenio_app_rdm.config import *
 from invenio_cern_sync.sso import cern_keycloak, cern_remote_app_name
@@ -36,6 +41,7 @@ from invenio_rdm_records.config import (
     RDM_RECORDS_PERSONORG_SCHEMES,
     always_valid,
 )
+from invenio_rdm_records.services.components import DefaultRecordsComponents
 from invenio_vocabularies.config import (
     VOCABULARIES_NAMES_SCHEMES as DEFAULT_VOCABULARIES_NAMES_SCHEMES,
 )
@@ -470,3 +476,12 @@ CDS_ACCESS_GROUP_MAPPINGS = {
 CDS_CERN_MINT_ALTERNATE_IDS = {"cdsrn": "CDS Reference"}
 
 CDS_RECORDS_TO_UNMERGE = ["2631468"]
+
+RDM_RECORDS_SERVICE_COMPONENTS = [
+    # don't check the subjects on migration
+    # SubjectsValidationComponent,
+    *DefaultRecordsComponents,
+    CDSResourcePublication,
+    ClcSyncComponent,
+    MintAlternateIdentifierComponent,
+]

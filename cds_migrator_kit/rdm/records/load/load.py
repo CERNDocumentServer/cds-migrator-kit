@@ -28,6 +28,7 @@ from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_records.systemfields.relations import InvalidRelationValue
 from marshmallow import ValidationError
+from sqlalchemy.orm.exc import StaleDataError
 
 from cds_migrator_kit.errors import (
     CDSMigrationException,
@@ -191,23 +192,6 @@ class CDSRecordServiceLoad(Load):
                 # the new published metadata as in the new system we have more information available
                 _draft = current_rdm_records_service.edit(identity, record["id"])
                 current_rdm_records_service.publish(identity, _draft["id"])
-
-    def _after_publish_update_cdsrn(self, identity, record, entry):
-        """Update migrated CDS report number post publish."""
-        alternative_identifiers = entry["record"]["json"]["metadata"]["identifiers"]
-        for scheme, identifier in [
-            (a["scheme"], a["identifier"]) for a in alternative_identifiers
-        ]:
-            if scheme == "cdsrn":
-                alternate_identifier_component = MintAlternateIdentifierComponent(
-                    current_rdm_records_service
-                )
-                alternate_identifier_component.update_draft(
-                    system_identity, data=record, record=record._record, errors=[]
-                )
-                alternate_identifier_component.publish(
-                    system_identity, draft=record, record=record._record
-                )
 
     def _after_publish_load_parent_access_grants(self, draft, access_dict, entry):
         """Load access grants from metadata and record grants efficiently."""
@@ -382,8 +366,17 @@ class CDSRecordServiceLoad(Load):
                 tzinfo=None
             )
 
-        record._record.model.created = creation_date
-        record._record.commit()
+        record_obj = record._record.model
+        for attempt in range(3):
+            try:
+                with db.session.begin_nested():
+                    record_obj.created = creation_date
+                    record._record.commit()
+            except StaleDataError as e:
+                db.session.rollback()
+                record_obj = db.session.merge(record_obj, load=False)
+                if attempt == 2:
+                    raise e
 
     def _after_publish_mint_recid(self, record, entry, version):
         """Mint legacy ids for redirections assigned to the parent."""
@@ -415,7 +408,6 @@ class CDSRecordServiceLoad(Load):
         self._after_publish_mint_recid(published_record, entry, version)
         self._after_publish_update_files_created(published_record, entry, version)
         access = entry["versions"][version]["access"]
-        self._after_publish_update_cdsrn(identity, published_record, entry)
         self._after_publish_load_parent_access_grants(published_record, access, entry)
         db.session.commit()
 
