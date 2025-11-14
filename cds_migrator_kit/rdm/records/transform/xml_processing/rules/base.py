@@ -667,6 +667,7 @@ def urls(self, key, value, subfield="u"):
             "identifier": p.geturl(),
             "scheme": "url",
             "relation_type": {"id": "references"},
+            "resource_type": {"id": "other"},
         }
 
 

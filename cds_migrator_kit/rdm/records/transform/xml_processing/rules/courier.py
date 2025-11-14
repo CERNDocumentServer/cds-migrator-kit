@@ -110,8 +110,8 @@ def imprint_info(self, key, value):
                     "décembre": f"{year}-12",
                     "summer": f"{year}-06/{year}-09",
                     "été": f"{year}-06/{year}-09",
-                    "winter": f"{year}-12/{int(year)+1}-03",
-                    "hiver": f"{year}-12/{int(year)+1}-03",
+                    "winter": f"{year}-12/{int(year) + 1}-03",
+                    "hiver": f"{year}-12/{int(year) + 1}-03",
                 }
                 try:
                     date = months_mapping[months]
@@ -130,6 +130,7 @@ def imprint_info(self, key, value):
                     message=f"Can't parse provided publication date. Value: {publication_date_str}",
                 )
     raise IgnoreKey("courier_custom_fields")
+
 
 @model.over("additional_descriptions", "(^500__)")
 @for_each_value
@@ -207,7 +208,8 @@ def collection(self, key, value):
         subjects.append({"subject": f"collection:{collection_a}"})
         self["subjects"] = subjects
         raise IgnoreKey("collection")
-    if collection_a not in ["cern", "cern courier", "article", "publats", "fcc acc"]:  # 2265255
+    if collection_a not in ["cern", "cern courier", "article", "publats",
+                            "fcc acc"]:  # 2265255
         raise UnexpectedValue(subfield="a", key=key, value=value, field="690C_")
     raise IgnoreKey("collection")
 
@@ -236,7 +238,7 @@ def urls_bulletin(self, key, value):
         raise IgnoreKey("url_identifiers")
 
     url_q = value.get("q", "").strip()
-    identifiers = self.get("identifiers", [])
+    identifiers = self.get("related_identifiers", [])
 
     if "q" not in value:
         _urls = urls(self, key, value)
@@ -249,11 +251,13 @@ def urls_bulletin(self, key, value):
             netloc = "www." + netloc
 
         p = ParseResult("http", netloc, path, *p[3:])
-        new_id = {"identifier": p.geturl(), "scheme": "url"}
+        new_id = {"identifier": p.geturl(), "scheme": "url",
+                  "relation_type": {"id": "references"},
+                  "resource_type": {"id": "other"}}
         if new_id not in identifiers:
             identifiers.append(new_id)
 
-    self["identifiers"] = identifiers
+    self["related_identifiers"] = identifiers
     raise IgnoreKey("url_identifiers")
 
 

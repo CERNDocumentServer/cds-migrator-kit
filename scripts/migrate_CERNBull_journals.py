@@ -94,7 +94,10 @@ def link_related_articles():
             for hit in results.hits:
                 data = {"identifier": record_pid,
                         "relation_type": {
-                            "id": "ispublishedin"}}
+                            "id": "ispublishedin"},
+                        "scheme": "cds",
+                        "resource_type": {"id": "publication-periodicalissue"}
+                        }
                 record = current_rdm_records_service.read(system_identity,
                                                           hit["id"])
                 _draft = current_rdm_records_service.edit(system_identity, record["id"])

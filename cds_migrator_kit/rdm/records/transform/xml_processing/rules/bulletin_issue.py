@@ -280,7 +280,8 @@ def issue_number(self, key, value):
 
     issue = f"{issue_start}-{issue_end}"
     journal_fields = _custom_fields.get("journal:journal", {})
-    journal_fields["issue"] = issue
+    if journal_fields.get("issue") is None:
+        journal_fields["issue"] = issue
 
     _custom_fields["journal:journal"] = journal_fields
     return _custom_fields
@@ -407,6 +408,7 @@ def related_identifiers(self, key, value):
                     "identifier": recid,
                     "scheme": "cds",
                     "relation_type": {"id": "ispublishedin"},
+                    "resource_type": {"id": "publication-periodicalissue"},
                 }
             )
     else:
