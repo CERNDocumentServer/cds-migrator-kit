@@ -31,9 +31,9 @@ class CourierIssueModel(CdsOverdo):
         "542__3",
         "595__s",
         "595__a",
-        "6531_9", # 1733485 scheme CERN
+        "6531_9",  # 1733485 scheme CERN
         "690C_a",
-        "690__a", # only CERN value
+        "690__a",  # only CERN value
         "700__m",
         "773__y",
         "773__n",
@@ -44,8 +44,8 @@ class CourierIssueModel(CdsOverdo):
         "8564_8",
         "8564_s",
         "8564_x",
-        "8564_y", # file description
-        "960__a", # 2265255
+        "8564_y",  # file description
+        "960__a",  # 2265255
         "981__a",
     }
 

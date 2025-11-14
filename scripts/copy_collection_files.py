@@ -7,12 +7,16 @@ import sys
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
-collection = "it_meetings"
-environment = "dev"
+collection = "courier"
+environment = "sandbox"
 
-destination_prefix = "/eos/media/cds/cds-rdm/{0}/migration/{1}/files".format(environment, collection)
+destination_prefix = "/eos/media/cds/cds-rdm/{0}/migration/{1}/files".format(
+    environment, collection
+)
 working_dir = "/eos/media/cds/cds-rdm/{0}/migration/{1}".format(environment, collection)
-json_dump_dir = "/eos/media/cds/cds-rdm/{0}/migration/{1}/dump".format(environment, collection)
+json_dump_dir = "/eos/media/cds/cds-rdm/{0}/migration/{1}/dump".format(
+    environment, collection
+)
 
 
 def copy_collection_file(dump_files, destination_prefix, working_dir):

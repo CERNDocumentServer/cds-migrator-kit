@@ -7,7 +7,8 @@ from dojson.errors import IgnoreKey
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
-    related_identifiers_787 as base_related_identifiers, report_number,
+    related_identifiers_787 as base_related_identifiers,
+    report_number,
 )
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
@@ -248,7 +249,7 @@ def issue_number(self, key, value):
 def bulletin_report_number(self, key, value):
     """Translates report number."""
     identifier = value.get("a", "")
-    pattern = r'\b\d+/(19|20)\d{2}\b'
+    pattern = r"\b\d+/(19|20)\d{2}\b"
     matches = re.findall(pattern, identifier)
 
     if identifier and matches:
