@@ -78,9 +78,12 @@ def imprint_info(self, key, value):
             match = re.search(year_pattern, publication_date_str)
             if match:
                 year = match.group(0)
-                months = (publication_date_str
-                          .replace(year, "")
-                          .replace("/", "-").strip().lower())
+                months = (
+                    publication_date_str.replace(year, "")
+                    .replace("/", "-")
+                    .strip()
+                    .lower()
+                )
                 months_mapping = {
                     "january-february": f"{year}-01/{year}-02",
                     "janvier-février": f"{year}-01/{year}-02",
@@ -208,8 +211,13 @@ def collection(self, key, value):
         subjects.append({"subject": f"collection:{collection_a}"})
         self["subjects"] = subjects
         raise IgnoreKey("collection")
-    if collection_a not in ["cern", "cern courier", "article", "publats",
-                            "fcc acc"]:  # 2265255
+    if collection_a not in [
+        "cern",
+        "cern courier",
+        "article",
+        "publats",
+        "fcc acc",
+    ]:  # 2265255
         raise UnexpectedValue(subfield="a", key=key, value=value, field="690C_")
     raise IgnoreKey("collection")
 
@@ -251,9 +259,12 @@ def urls_bulletin(self, key, value):
             netloc = "www." + netloc
 
         p = ParseResult("http", netloc, path, *p[3:])
-        new_id = {"identifier": p.geturl(), "scheme": "url",
-                  "relation_type": {"id": "references"},
-                  "resource_type": {"id": "other"}}
+        new_id = {
+            "identifier": p.geturl(),
+            "scheme": "url",
+            "relation_type": {"id": "references"},
+            "resource_type": {"id": "other"},
+        }
         if new_id not in identifiers:
             identifiers.append(new_id)
 
@@ -261,14 +272,14 @@ def urls_bulletin(self, key, value):
     raise IgnoreKey("url_identifiers")
 
 
-@model.over('internal_notes', '^903__')
+@model.over("internal_notes", "^903__")
 def internal_notes(self, key, value):
     """Translates private notes field."""
-    _internal_notes = self.get('internal_notes', [])
+    _internal_notes = self.get("internal_notes", [])
     for v in force_list(value):
-        note = clean_val('d', v, str, req=True)
-        note += clean_val('s', v, str)
-        internal_note = {'value': note}
+        note = clean_val("d", v, str, req=True)
+        note += clean_val("s", v, str)
+        internal_note = {"value": note}
         if internal_note not in _internal_notes:
             _internal_notes.append(internal_note)
     return _internal_notes

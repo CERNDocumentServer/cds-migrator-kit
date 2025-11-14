@@ -595,11 +595,10 @@ class CDSRecordServiceLoad(Load):
                     db.session.add(_original_dump_model)
                     db.session.commit()
             except StaleDataError as e:
-                    db.session.rollback()
-                    _original_dump_model = db.session.merge(_original_dump_model, load=True)
-                    if attempt == 2:
-                        raise e
-
+                db.session.rollback()
+                _original_dump_model = db.session.merge(_original_dump_model, load=True)
+                if attempt == 2:
+                    raise e
 
     def _have_migrated_recid(self, recid):
         """Check if we have minted `lrecid` pid."""

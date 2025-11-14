@@ -410,10 +410,13 @@ def identifiers(self, key, value):
             raise IgnoreKey("identifiers")
 
         elif rel_id["scheme"] in RDM_RECORDS_IDENTIFIERS_SCHEMES and (
-            rel_id not in self.get("identifiers", [])):
+            rel_id not in self.get("identifiers", [])
+        ):
             return rel_id
         else:
-            raise UnexpectedValue(field=key, value=value, subfield="9", message="Invalid scheme")
+            raise UnexpectedValue(
+                field=key, value=value, subfield="9", message="Invalid scheme"
+            )
     raise IgnoreKey("identifiers")
 
 
