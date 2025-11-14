@@ -374,7 +374,7 @@ class CDSRecordServiceLoad(Load):
                     record._record.commit()
             except StaleDataError as e:
                 db.session.rollback()
-                record_obj = db.session.merge(record_obj, load=False)
+                record_obj = db.session.merge(record_obj, load=True)
                 if attempt == 2:
                     raise e
 
@@ -582,15 +582,24 @@ class CDSRecordServiceLoad(Load):
         This is the originally extracted record before any transformation.
         """
         _original_dump = entry["_original_dump"]
-
         _original_dump_model = CDSMigrationLegacyRecord(
             json=_original_dump,
             parent_object_uuid=recid_state["parent_object_uuid"],
             migrated_record_object_uuid=recid_state["latest_version_object_uuid"],
             legacy_recid=entry["record"]["recid"],
         )
-        db.session.add(_original_dump_model)
-        db.session.commit()
+
+        for attempt in range(3):
+            try:
+                with db.session.begin_nested():
+                    db.session.add(_original_dump_model)
+                    db.session.commit()
+            except StaleDataError as e:
+                    db.session.rollback()
+                    _original_dump_model = db.session.merge(_original_dump_model, load=True)
+                    if attempt == 2:
+                        raise e
+
 
     def _have_migrated_recid(self, recid):
         """Check if we have minted `lrecid` pid."""
