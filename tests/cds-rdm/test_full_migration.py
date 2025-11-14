@@ -39,7 +39,7 @@ from cds_migrator_kit.runner.runner import Runner
 def registered_cdsrn_pid(record):
     """2684743."""
     pids = PersistentIdentifier.query.filter(
-        PersistentIdentifier.object_uuid == record._record.pid.object_uuid,
+        PersistentIdentifier.object_uuid == record._record.parent.pid.object_uuid,
         PersistentIdentifier.pid_type == "cdsrn",
     ).all()
     assert len(pids) == 2

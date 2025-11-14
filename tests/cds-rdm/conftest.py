@@ -735,6 +735,28 @@ def resource_type_v(app, resource_type_type):
     vocabulary_service.create(
         system_identity,
         {
+            "id": "publication-periodicalissue",
+            "icon": "file alternate",
+            "props": {
+                "csl": "article",
+                "datacite_general": "Text",
+                "datacite_type": "",
+                "openaire_resourceType": "0001",
+                "openaire_type": "publication",
+                "eurepo": "info:eu-repo/semantics/article",
+                "schema.org": "https://schema.org/ScholarlyArticle",
+                "subtype": "publication-periodicalarticle",
+                "type": "publication",
+            },
+            "title": {"en": "Periodical issue"},
+            "tags": ["depositable", "linkable"],
+            "type": "resourcetypes",
+        },
+    )
+
+    vocabulary_service.create(
+        system_identity,
+        {
             "id": "publication-other",
             "icon": "file alternate",
             "props": {
