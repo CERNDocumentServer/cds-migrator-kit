@@ -74,6 +74,7 @@ class SubmitterModel(CdsOverdo):
         "100__t",  # TODO ROR https://cds.cern.ch/record/2879802/export/hm?ln=en
         "100__t",  # todo ror https://cds.cern.ch/record/2883993/export/hm?ln=en
         "100__v",  # https://cds.cern.ch/record/2022781/export/hm?ln=en
+        "110__a",  # corporate autor
         "210__a",  # https://cds.cern.ch/record/2284607/export/hm?ln=en
         "242__9",  # https://cds.cern.ch/record/2284615/export/hm?ln=en
         "242__a",  # https://cds.cern.ch/record/1569831/export/hm?ln=en
@@ -84,6 +85,7 @@ class SubmitterModel(CdsOverdo):
         "246__9",  # https://cds.cern.ch/record/2284607/export/hm?ln=en
         "246__b",  # https://cds.cern.ch/record/2057663/export/hm?ln=en
         "246__n",  # https://cds.cern.ch/record/968697/export/hm?ln=en
+        "246_1a",  # alt title
         "246__p",  # check ILS fields https://cds.cern.ch/record/968697/export/hm?ln=en # TODO
         "246__y",  # https://cds.cern.ch/record/1566121/export/hm?ln=en
         "250__a",  # https://cds.cern.ch/record/383483/export/hm?ln=en edition? 401681
@@ -138,6 +140,8 @@ class SubmitterModel(CdsOverdo):
         "542__u",  # https://cds.cern.ch/record/2285212/export/hm?ln=en
         "560172",  # https://cds.cern.ch/record/383486/export/hm?ln=en
         "56017a",  # https://cds.cern.ch/record/383486/export/hm?ln=en wrong keyword subfield
+        "506__m",  # mail
+        "590__b",  # abstract translation
         "590__a",  # abstract translation TODO https://cds.cern.ch/record/1476067/export/hm?ln=en
         "594__a",  # https://cds.cern.ch/record/466504/export/hm?ln=en, 455788
         "595__b",  # https://cds.cern.ch/record/1498702/export/hm?ln=en
@@ -160,10 +164,12 @@ class SubmitterModel(CdsOverdo):
         "6532_a",  # https://cds.cern.ch/record/1341864/export/hm?ln=en looks like subjects but seems a wrong field
         "653__9",  # https://cds.cern.ch/record/2263131/export/hm?ln=en strange keyword scheme 2283139, 1464084
         "653__a",  # https://cds.cern.ch/record/2263131/export/hm?ln=en
+        "691__a",  # material
         "659172",  # https://cds.cern.ch/record/1198225/export/hm?ln=en subjects, TODO check 1198225
         "65917a",  # https://cds.cern.ch/record/1198225/export/hm?ln=en
         "690C_9",  # founder? https://cds.cern.ch/record/1295514/export/hm?ln=en
         "690C_e",  # https://cds.cern.ch/record/1751219/export/hm?ln=en
+        "690__a",  # corporate author
         "694__9",  # https://cds.cern.ch/record/744924/export/hm?ln=en
         "694__a",  # https://cds.cern.ch/record/744924/export/hm?ln=en
         "695__2",  # https://cds.cern.ch/record/1566113/export/hm?ln=en
@@ -191,11 +197,14 @@ class SubmitterModel(CdsOverdo):
         "773__v",  # https://cds.cern.ch/record/318683/export/hm?ln=en
         "773__x",  # https://cds.cern.ch/record/2318731/export/hm?ln=en
         "773__y",  # https://cds.cern.ch/record/318683/export/hm?ln=en
+        "773__t",  # pub info
         "775__b",  # https://cds.cern.ch/record/108178/export/hm?ln=en
         "775__b",  # https://cds.cern.ch/record/1528167/export/hm?ln=en # TODO related document
         "775__c",  # https://cds.cern.ch/record/108178/export/hm?ln=en
         "775__w",  # https://cds.cern.ch/record/108178/export/hm?ln=en
         "775__w",  # https://cds.cern.ch/record/1528167/export/hm?ln=en # TODO related document
+        "787__i",  # relation
+        "787__w",  # relation
         "7870_i",  # https://cds.cern.ch/record/2839604/export/hm?ln=en
         "7870_r",  # https://cds.cern.ch/record/2879802/export/hm?ln=en a note? shouldn't be in a note field?
         "7870_w",  # https://cds.cern.ch/record/2839604/export/hm?ln=en
@@ -208,20 +217,32 @@ class SubmitterModel(CdsOverdo):
         "8564_b",  # https://cds.cern.ch/record/2883993/export/hm?ln=en
         "8564_c",  # what kind of date is it? https://cds.cern.ch/record/2883993/export/hm?ln=en
         "8564_w",  # https://cds.cern.ch/record/548140/export/hm?ln=en
+        "8564_z",  # https://cds.cern.ch/record/2120833/export/hm?ln=en additional label on file
         "8565_u",  # https://cds.cern.ch/record/2284218/export/hm?ln=en wrong url field
         "8565_y",  # https://cds.cern.ch/record/2284218/export/hm?ln=en
+        "8564_q",  # 45387
+        "856__x",  # icon qualifier
+        "856__q",  # photo link
         "856__a",  # https://cds.cern.ch/record/1536507/export/hm?ln=en seems like an url, but missing ind=4
+        "8560_f",  # contact e-mail
+        "856_0f",  # contact e-mail
         "856__y",  # https://cds.cern.ch/record/1536507/export/hm?ln=en
         "859__a",  # https://cds.cern.ch/record/1613874/export/hm?ln=en wrong submitter subfield, should be f, 1442305
         "901__u",  # https://cds.cern.ch/record/831034/export/hm?ln=en
+        "903__d",  # document status
+        "903__s",  # document status
         "916__a",  # https://cds.cern.ch/record/1236728/export/hm?ln=en
         "916__d",  # https://cds.cern.ch/record/325944/export/hm?ln=en not sure the meaning of the number
         "916__e",  # source ? https://cds.cern.ch/record/1536507/export/hm?ln=en
+        "916__z",  # issue number (bulletin)
         "925__a",  # https://cds.cern.ch/record/1032351/export/hm?ln=en
         "925__b",  # https://cds.cern.ch/record/1032351/export/hm?ln=en
+        "906__m",  # email info
         "962__b",  # https://cds.cern.ch/record/450847/export/hm?ln=en
         "962__k",  # https://cds.cern.ch/record/450847/export/hm?ln=en
         "962__n",  # https://cds.cern.ch/record/450847/export/hm?ln=en
+        "962__t",  # aleph
+        "962__l",  # aleph
         "964__a",  # https://cds.cern.ch/record/180824/export/hm?ln=en
         "970__b",  # ? note ? internal system tag? https://cds.cern.ch/record/139394/export/hm?ln=en
         "980__b",  # https://cds.cern.ch/record/1498702/export/hm?ln=en

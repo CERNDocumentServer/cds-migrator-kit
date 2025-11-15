@@ -54,7 +54,9 @@ class CDSUserEntry(Entry):
 
     def transform(self, entry, dojson_model):
         """Transform a user single entry."""
-        record_dump = CDSRecordDump(entry, dojson_model=dojson_model)
+        record_dump = CDSRecordDump(
+            entry, dojson_model=dojson_model, raise_on_missing_rules=False
+        )
 
         record_dump.prepare_revisions()
         timestamp, json_data = record_dump.latest_revision

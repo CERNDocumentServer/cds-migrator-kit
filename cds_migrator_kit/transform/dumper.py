@@ -6,18 +6,16 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM MARC XML dumper module."""
+import logging
 
 import arrow
 from cds_dojson.marc21.utils import create_record
 
-from cds_migrator_kit.errors import (
-    MissingRequiredField,
-    RecordModelMissing,
-    UnexpectedValue,
-)
-from cds_migrator_kit.reports.handlers import migration_exception_handler
 from cds_migrator_kit.transform import migrator_marc21
 from cds_migrator_kit.transform.errors import LossyConversion
+
+
+cli_logger = logging.getLogger("migrator")
 
 
 class CDSRecordDump:
@@ -78,5 +76,6 @@ class CDSRecordDump:
 
         missing = self.dojson_model.missing(marc_record)
         if missing and self.raise_on_missing_rules:
+            cli_logger.warning(missing)
             raise LossyConversion(missing=missing)
         return timestamp, json_converted_record

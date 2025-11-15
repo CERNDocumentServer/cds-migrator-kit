@@ -21,6 +21,7 @@ def migrate_bull_issues():
         writer = csv.writer(outfile)
         for row in reader:
             id_journal, issue_number, issue_display, date_released, date_announced = row
+            print(f"Processing {issue_number}...")
             data = {
                 "metadata": {
                     "title": f"CERN Bulletin Issue {issue_display}",
