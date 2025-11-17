@@ -6,7 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM migration stats events generator module."""
-
+import json
 from copy import deepcopy
 from datetime import datetime
 
@@ -122,7 +122,7 @@ def process_download_event(entry, rec_context, logger):
         "via_api": False,
         "country": entry.get("country", ""),
         "visitor_id": entry.get("visitor_id", ""),
-        "unique_session_id": entry["unique_session_id"],
+        "unique_session_id": entry.get("unique_session_id", ""),
         # Note: id_bibrec doesn't have the new format pids
         "unique_id": f"ui_{_record_version['new_recid']}",
         # Mark the event as migrated
@@ -200,7 +200,7 @@ def process_pageview_event(entry, rec_context, logger):
         "visitor_id": entry.get("visitor_id", ""),
         # Note: id_bibrec doesn't have the new format pids
         "unique_id": f"ui_{rec_context['latest_version']}",
-        "unique_session_id": entry["unique_session_id"],
+        "unique_session_id": entry.get("unique_session_id", ""),
         "country": entry.get("country", ""),
         # Mark the event as migrated
         "is_lcds": True,
