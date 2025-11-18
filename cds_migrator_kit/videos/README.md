@@ -212,7 +212,7 @@ Before migrating the stats open the `cds_migrator_kit/rdm/migration/stats/config
 
 Run:
 ```
-invenio migration stats run --filepath "path/to/file/of/rdm_records_state.json"
+invenio migration videos stats run --filepath "path/to/file/of/rdm_records_state.json"
 ```
 
 This will migrate only the raw statistic events. When all events are ingested to the new cluster then we will need to aggregate them.

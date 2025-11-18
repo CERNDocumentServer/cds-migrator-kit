@@ -81,7 +81,7 @@ def process_pageview_event(entry, rec_context, logger):
         "is_robot": is_bot,
         "visitor_id": entry.get("visitor_id", ""),
         "unique_id": f"{pid_type}_{videos_recid}",
-        "unique_session_id": entry["unique_session_id"],
+        "unique_session_id": entry.get("unique_session_id", ""),
         "updated_timestamp": datetime.utcnow().isoformat(),
         # Mark the event as migrated
         "is_cds": True,
@@ -135,10 +135,11 @@ def prepare_new_doc(
             # Retrieve year from timestamp
             date_object = datetime.fromisoformat(processed_doc["timestamp"])
             year = f"{date_object.year:4}"
+            month = f"{date_object.month:02}"
 
             yield {
                 "_op_type": "create",
-                "_index": f"{dest_search_index_prefix}-{index_type}-{year}",
+                "_index": f"{dest_search_index_prefix}-{index_type}-{year}-{month}",
                 "_source": processed_doc,
                 "_id": new_doc["_id"],
             }
