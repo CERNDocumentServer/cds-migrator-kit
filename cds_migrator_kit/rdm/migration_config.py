@@ -471,6 +471,9 @@ CDS_ACCESS_GROUP_MAPPINGS = {
     "HrDepRestrFile": ["hr-dep", "fap-dep-tpr-mi-staf"],
     "HRCircDocs": ["hr-web-gacepa"],
     "HRDepExtended": ["hr-dep", "hr-dep-cds-extended"],
+    "EligibilityHRCirc": ["eligibility-retr-actual", "hr-web-gacepa"],
+    "CERNPeopleEligibility": ["cern-personnel", "eligibility-retr-actual"]
+    # CERN E-guide restricted docs: https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showroledetails?id_role=69 CERN personnel has view rights
 }
 
 CDS_CERN_MINT_ALTERNATE_IDS = {"cdsrn": "CDS Reference"}

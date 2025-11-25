@@ -9,9 +9,58 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     require,
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
+from .publications import related_identifiers, journal
 
 from ...models.hr import hr_model as model
 from .base import aleph_number, corporate_author, report_number, subjects, urls
+
+
+@model.over("access_grants", "^506[1_]_")
+@for_each_value
+def access_grants(self, key, value):
+    """Translates access permissions (by user email or group name)."""
+    raw_identifier = value.get("d") or value.get("m") or value.get("a")
+    subject_identifier = StringValue(raw_identifier).parse()
+    if not subject_identifier:
+        raise IgnoreKey("access_grants")
+
+    permission_type = "view"
+    return {str(subject_identifier): permission_type}
+
+
+@model.over("additional_descriptions_hr", "^270__")
+@for_each_value
+def additional_desc(self, key, value):
+    """Translates contact e-mail."""
+    email = value.get("m", "")
+    email = StringValue(email).parse()
+    if not email:
+        raise IgnoreKey("additional_descriptions_hr")
+
+    additional_descriptions = self.get("additional_descriptions", [])
+    additional_descriptions.append({
+        "description": f"Contact: {email}",
+        "type": {"id": "technical-info"},
+    })
+    self["additional_descriptions"] = additional_descriptions
+    raise IgnoreKey("additional_descriptions_hr")
+
+
+@model.over("additional_descriptions_hr_smc", "(^594__)")
+@for_each_value
+def additional_desc(self, key, value):
+    """Translates contact e-mail."""
+    material = value.get("a", "")
+    material = StringValue(material).parse()
+    if not material:
+        raise IgnoreKey("additional_descriptions_hr_smc")
+
+    additional_descriptions = self.get("additional_descriptions", [])
+    additional_descriptions.append({
+        "description": material,
+        "type": {"id": "technical-info"},
+    })
+    raise IgnoreKey("additional_descriptions_hr")
 
 
 @model.over("subjects", "(^6931_)|(^650[12_][7_])|(^653[12_]_)|(^695__)|(^694__)")
@@ -20,14 +69,23 @@ from .base import aleph_number, corporate_author, report_number, subjects, urls
 def hr_subjects(self, key, value):
     if key == "6531_":
         keyword = value.get("a")
-        try:
+        if "," in keyword:
+            keywords = keyword.split(",")
+            _subjects = self.get("subjects", [])
+            for key in keywords:
+                _subjects.append({"subject": key})
+            self["subjects"] = _subjects
+            raise IgnoreKey("subjects")
+        else:
             resource_type_map = {
                 "Presentation": {"id": "presentation"},
+
             }
-            self["resource_type"] = resource_type_map.get(keyword)
+            resource_type = resource_type_map.get(keyword)
+            if resource_type:
+                self["resource_type"] = resource_type
             raise IgnoreKey("subjects")
-        except KeyError:
-            pass
+
     subjects(self, key, value)
 
 
@@ -39,6 +97,9 @@ def collection(self, key, value):
     if collection in ["chis bulletin"]:
         subjects = self.get("subjects", [])
         subjects.append({"subject": "collection:{}".format(collection)})
+        chis = {"subject": "CHIS"}
+        if chis not in subjects:
+            subjects.append({"subject": "CHIS"})
         self["subjects"] = subjects
         raise IgnoreKey("collection")
     if collection not in [
@@ -56,22 +117,10 @@ def collection(self, key, value):
     raise IgnoreKey("collection")
 
 
-@model.over("creators", "(^773__)|(^110__)")
+@model.over("creators", "(^110__)")
 @for_each_value
 def corpo_author(self, key, value):
-    if key == "773__":
-        author = value.get("t", "").strip()
-        conference_cnum = value.get("w", "")
-        if conference_cnum:
-            _custom_fields = self.get("custom_fields", {})
-            custom_meeting_fields = _custom_fields.get("meeting:meeting", {})
-            identifiers = custom_meeting_fields.get("identifiers", [])
-            identifiers.append({"scheme": "inspire", "identifier": conference_cnum})
-            # TODO for record 2713447 - belongs to two conferences, what do we do?
-            custom_meeting_fields["identifiers"] = identifiers
-            _custom_fields["meeting:meeting"] = custom_meeting_fields
-    else:
-        author = value.get("a", "").strip()
+    author = value.get("a", "").strip()
     if not author:
         raise UnexpectedValue(subfield="a", value=value, field=key)
     author = {"person_or_org": {"type": "organizational", "name": author}}
@@ -86,14 +135,17 @@ def resource_type(self, key, value):
     value = value.get("a")
     if value:
         value = value.strip().lower()
+    if value in ["article"]:
+        raise IgnoreKey("resource_type")
     if value in ["hr-smc", "ccp"]:
         subjects = self.get("subjects", [])
         subjects.append({"subject": f"collection:{value}"})
         self["subjects"] = subjects
+    if value == "administrativenote":
+        raise IgnoreKey("resource_type")
     map = {
         "annualstats": {"id": "publication-report"},
-        "cern-admin-e-guide": {"id": "publication-article"},
-        "administrativenote": {"id": "publication-technicalnote"},
+        "cern-admin-e-guide": {"id": "publication-other"},
         "intnotehrpubl": {"id": "publication-technicalnote"},
         "chisbulletin": {"id": "publication-periodicalissue"},
         "bulletin": {"id": "publication-periodicalissue"},
@@ -103,8 +155,10 @@ def resource_type(self, key, value):
         "staffrulesvd": {"id": "administrative-regulation"},
         "hr-smc": {"id": "administrative-regulation"},
         "ccp": {"id": "other"},
+        "conferencepaper": {"id": "publication-conferencepaper"}
     }
     try:
+
         return map[value]
     except KeyError:
         raise UnexpectedValue("Unknown resource type (HR)", field=key, value=value)
@@ -158,7 +212,7 @@ def date(self, key, value):
     }
     dates.append(date)
     withdrawn = value.get("b")
-    if "9999" not in withdrawn:
+    if withdrawn and "9999" not in withdrawn:
         date = {
             "date": valid,
             "type": {"id": "withdrawn"},
@@ -242,3 +296,24 @@ def title(self, key, value):
     if new_id:
         return new_id[0]
     raise IgnoreKey("identifiers")
+
+
+@model.over("meeting_cf", "^773__")
+@for_each_value
+def meeting(self, key, value):
+    """Translates meeting fields."""
+    author = value.get("t", "").strip()
+    if author:
+        author = {"person_or_org": {"type": "organizational", "name": author}}
+        creators = self.get("creators", [])
+        if author not in creators:
+            creators.append(author)
+        self["creators"] = creators
+    self["custom_fields"].update(journal(self, key, value))
+    raise IgnoreKey("meeting_cf")
+
+
+@model.over("related_identifiers", "^962__")
+def related_identifiers_hr(self, key, value):
+    """Translates HR related identifiers."""
+    return related_identifiers(self, key, value)

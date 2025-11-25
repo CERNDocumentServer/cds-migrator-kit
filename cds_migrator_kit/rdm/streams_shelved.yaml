@@ -1,0 +1,132 @@
+db_uri: postgresql://cds-rdm:cds-rdm@localhost:5432/cds-rdm
+records:
+  thesis:
+    data_dir: cds_migrator_kit/rdm/data/thesis
+    tmp_dir: cds_migrator_kit/rdm/tmp/thesis
+    log_dir: cds_migrator_kit/rdm/log/thesis
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/thesis/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/thesis/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/thesis/duplicated_pids.json
+  mous:
+    data_dir: cds_migrator_kit/rdm/data/mous
+    tmp_dir: cds_migrator_kit/rdm/tmp/mous
+    log_dir: cds_migrator_kit/rdm/log/mous
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/mous/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/mous/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - 3488e719-a1c6-4084-8e0c-4a72c3a08ab1
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/mous/duplicated_pids.json
+  yellow_report_issues:
+    data_dir: cds_migrator_kit/rdm/data/yellow_report_issues
+    tmp_dir: cds_migrator_kit/rdm/tmp/yellow_report_issues
+    log_dir: cds_migrator_kit/rdm/log/yellow_report_issues
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/yellow_report_issues/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/yellow_report_issues/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  yellow_report_contrib:
+    data_dir: cds_migrator_kit/rdm/data/yellow_reports_contrib
+    tmp_dir: cds_migrator_kit/rdm/tmp/yellow_reports_contrib
+    log_dir: cds_migrator_kit/rdm/log/yellow_reports_contrib
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/yellow_reports_contrib/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/yellow_reports_contrib/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  annual_reports:
+    data_dir: cds_migrator_kit/rdm/data/annual_reports
+    tmp_dir: cds_migrator_kit/rdm/tmp/annual_reports
+    log_dir: cds_migrator_kit/rdm/log/annual_reports
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/annual_reports/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/annual_reports/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  books:
+    data_dir: cds_migrator_kit/rdm/data/books
+    tmp_dir: cds_migrator_kit/rdm/tmp/books
+    log_dir: cds_migrator_kit/rdm/log/books
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/books/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/books/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  beams:
+    data_dir: cds_migrator_kit/rdm/data/beams
+    tmp_dir: cds_migrator_kit/rdm/tmp/beams
+    log_dir: cds_migrator_kit/rdm/log/beams
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/beams/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/beams/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "9d208c63-a1e8-448f-955f-babe692f408e"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  sy:
+    data_dir: cds_migrator_kit/rdm/data/sy
+    tmp_dir: cds_migrator_kit/rdm/tmp/sy
+    log_dir: cds_migrator_kit/rdm/log/sy
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/sy/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/sy/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "47606600-5bf0-4527-b370-3a2d4fd582b2"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  te:
+    data_dir: cds_migrator_kit/rdm/data/te
+    tmp_dir: cds_migrator_kit/rdm/tmp/te
+    log_dir: cds_migrator_kit/rdm/log/te
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/te/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/te/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "c1a5abb2-0aaf-4765-8d57-210b68c6e695"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  en:
+    data_dir: cds_migrator_kit/rdm/data/en
+    tmp_dir: cds_migrator_kit/rdm/tmp/en
+    log_dir: cds_migrator_kit/rdm/log/en
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/en/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/en/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "5ec66c01-1fb9-4193-a2af-e19074281657"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
