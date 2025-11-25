@@ -78,7 +78,7 @@ def migrate_bull_issues():
                     except StaleDataError as e:
                         db.session.rollback()
                         record_obj = db.session.merge(record_obj, load=False)
-                        if attempt == 2:
+                        if attempt >= 2:
                             raise e
 
                 writer.writerow(
@@ -107,14 +107,17 @@ def link_related_articles():
                 date_announced,
                 record_pid,
             ) = row
-            results = current_rdm_records_service.search(
+
+            issue_number = issue_number.replace("/", "\\/")
+            results = current_rdm_records_service.scan(
                 system_identity,
-                params={"q": f'custom_fields.journal\:journal.issue:"{issue_number}"'},
+                q=f'custom_fields.journal\:journal.issue:*{issue_number}*',
             )
+            list_res = list(results)
             print(
-                f"Found {results.total} related articles for issue {issue_number} {record_pid}"
+                f"Found {len(list_res)} related articles for issue {issue_number} {record_pid}"
             )
-            for hit in results.hits:
+            for hit in list_res:
                 data = {
                     "identifier": record_pid,
                     "relation_type": {"id": "ispublishedin"},
@@ -127,11 +130,15 @@ def link_related_articles():
                 update_data = deepcopy(_draft.data)
                 if "related_identifiers" not in update_data["metadata"]:
                     update_data["metadata"]["related_identifiers"] = []
-                update_data["metadata"]["related_identifiers"].append(data)
-                draft = current_rdm_records_service.update_draft(
-                    system_identity, _draft["id"], update_data
-                )
-                record = current_rdm_records_service.publish(
-                    system_identity, draft["id"]
-                )
-                print(f"Linked {hit['id']} to {record_pid}")
+                if data not in record.data["metadata"].get("related_identifiers", []):
+                    update_data["metadata"]["related_identifiers"].append(data)
+                    draft = current_rdm_records_service.update_draft(
+                        system_identity, _draft["id"], update_data
+                    )
+                    record = current_rdm_records_service.publish(
+                        system_identity, draft["id"]
+                    )
+                    print(f"Linked {hit['id']} to {record_pid}")
+                else:
+                    print(f"Skipped {hit['id']} to {record_pid}")
+
