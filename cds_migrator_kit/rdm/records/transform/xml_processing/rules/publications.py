@@ -232,7 +232,7 @@ def organisation(self, key, value):
     }
 
 
-@model.over("related_identifiers", "^962_")
+@model.over("related_identifiers", "^962__")
 @for_each_value
 def related_identifiers(self, key, value):
     """Translates related identifiers."""
@@ -253,8 +253,8 @@ def related_identifiers(self, key, value):
     rel_ids = self.get("related_identifiers", [])
 
     new_id = {
-        "identifier": f"https://cds.cern.ch/record/{recid}",
-        "scheme": "url",
+        "identifier": recid,
+        "scheme": "cds",
         "relation_type": {"id": "references"},
         "resource_type": {"id": "event"},
     }

@@ -90,6 +90,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         restricted=False,
         migration_logger=None,
         record_state_logger=None,
+        access_grants_view=None
     ):
         """Constructor."""
         self.missing_users_dir = missing_users_dir
@@ -98,6 +99,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         self.dry_run = dry_run
         self.collection = collection
         self.restricted = restricted
+        self.access_grants_view = access_grants_view
         self.migration_logger = migration_logger
         self.record_state_logger = record_state_logger
         super().__init__(partial)
@@ -650,6 +652,14 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 subfield=None,
             )
 
+    def _access_grants(self, json_data, record_json_output):
+        access_grants = json_data.get("access_grants", [])
+        if self.access_grants_view:
+            for grant in self.access_grants_view:
+                access_grants.append({str(grant): "view"})
+        if access_grants:
+            record_json_output.update({"access_grants": access_grants})
+
     def transform(self, entry):
         """Transform a record single entry."""
         record_dump = CDSRecordDump(
@@ -673,17 +683,17 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "metadata": self._metadata(json_data, entry),
         }
 
+        self._access_grants(json_data, record_json_output)
         custom_fields = self._custom_fields(json_data, record_json_output)
         internal_notes = json_data.get("internal_notes")
-        access_grants = json_data.get("access_grants")
+
         if custom_fields:
             record_json_output.update({"custom_fields": custom_fields})
         if internal_notes:
             record_json_output.update(
                 {"internal_notes": json_data.get("internal_notes")}
             )
-        if access_grants:
-            record_json_output.update({"access_grants": access_grants})
+
         access = None
         try:
             access = self._access(json_data, record_dump)
@@ -724,6 +734,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         plots=False,
         migration_logger=None,
         record_state_logger=None,
+        access_grants_view=None,
     ):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
@@ -732,6 +743,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         self.dry_run = dry_run
         self.collection = collection
         self.restricted = restricted
+        self.access_grants_view = access_grants_view
         self.plots = plots
         self.migration_logger = migration_logger
         self.record_state_logger = record_state_logger
@@ -805,6 +817,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             dry_run=self.dry_run,
             collection=self.collection,
             restricted=self.restricted,
+            access_grants_view=self.access_grants_view,
             migration_logger=self.migration_logger,
             record_state_logger=self.record_state_logger,
         ).transform(entry)

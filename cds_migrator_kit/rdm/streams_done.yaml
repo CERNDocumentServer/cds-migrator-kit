@@ -1,0 +1,55 @@
+db_uri: postgresql://cds-rdm:cds-rdm@localhost:5432/cds-rdm
+records:
+  thesis:
+    data_dir: cds_migrator_kit/rdm/data/thesis
+    tmp_dir: cds_migrator_kit/rdm/tmp/thesis
+    log_dir: cds_migrator_kit/rdm/log/thesis
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/thesis/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/thesis/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/thesis/duplicated_pids.json
+  bulletin_issue:
+    data_dir: cds_migrator_kit/rdm/data/bulletin_issue
+    tmp_dir: cds_migrator_kit/rdm/tmp/bulletin_issue
+    log_dir: cds_migrator_kit/rdm/log/bulletin_issue
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/bulletin_issue/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/bulletin_issue/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - 8c3db554-0a3c-4ba7-a011-b266c4de8352
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_issue/duplicated_pids.json
+  bulletin_art:
+    data_dir: cds_migrator_kit/rdm/data/bulletin_art
+    tmp_dir: cds_migrator_kit/rdm/tmp/bulletin_art
+    log_dir: cds_migrator_kit/rdm/log/bulletin_art
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/bulletin_art/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/bulletin_art/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - 8c3db554-0a3c-4ba7-a011-b266c4de8352
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  courier:
+    data_dir: cds_migrator_kit/rdm/data/courier
+    tmp_dir: cds_migrator_kit/rdm/tmp/courier
+    log_dir: cds_migrator_kit/rdm/log/courier
+    plots: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/courier/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/courier/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - 35699521-ba4f-4214-bf47-da5df659af16
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json

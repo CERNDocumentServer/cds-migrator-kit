@@ -24,15 +24,17 @@ class HrModel(CdsOverdo):
                    980__:CHISBULLETIN OR
                    980__:CCP OR
                    980__:CERN-ADMIN-E-GUIDE OR
-                   980__:HR-SMC"""
+                   980__:HR-SMC
+                   """
 
     __ignore_keys__ = {
+        "0247_9",
         "0248_a",
         "0248_p",
         "0248_q",
         "100__m",
-        "270__m",
         "300__a",  # number of pages
+        "591__b",  #
         "700__m",
         "7870_r",  # detailed description of record relation (2862345)
         "8564_8",
@@ -61,3 +63,4 @@ hr_model = HrModel(
     bases=(rdm_base_record_model,),
     entry_point_group="cds_migrator_kit.migrator.rules.hr",
 )
+

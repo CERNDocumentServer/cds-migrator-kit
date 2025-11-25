@@ -193,7 +193,7 @@ class CDSRecordServiceLoad(Load):
                 _draft = current_rdm_records_service.edit(identity, record["id"])
                 current_rdm_records_service.publish(identity, _draft["id"])
 
-    def _after_publish_load_parent_access_grants(self, draft, access_dict, entry):
+    def _after_publish_load_parent_access_grants(self, draft, version, entry):
         """Load access grants from metadata and record grants efficiently."""
 
         def _normalize_group_name(subject):
@@ -201,6 +201,7 @@ class CDSRecordServiceLoad(Load):
                 subject = subject.rsplit(" [CERN]", 1)[0]
             return subject.strip()
 
+        access_dict = entry["versions"][version]["access"]
         parent = draft._record.parent
         identity = system_identity
 
@@ -218,10 +219,23 @@ class CDSRecordServiceLoad(Load):
         # ----Parse file status metadata----#
         if metadata:
             group_mappings = current_app.config.get("CDS_ACCESS_GROUP_MAPPINGS", {})
+
             if metadata in group_mappings:
-                groups.update(group_mappings[metadata])
+                try:
+                    groups.update(group_mappings[metadata])
+                except KeyError as e:
+                    raise ManualImportRequired(
+                        message="Missing permission mapping",
+                        field="access",
+                        subfield="subject.id",
+                        stage="load",
+                        recid=entry["record"]["recid"],
+                        priority="critical",
+                        value=metadata,
+                    )
             elif metadata == "restricted":
-                pass
+                # https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showroledetails?id_role=69
+                groups.update("cern-personnel")
             else:
                 if not any(
                     kw in metadata for kw in ("firerole: allow group", "allow email")
@@ -233,6 +247,7 @@ class CDSRecordServiceLoad(Load):
                         stage="load",
                         recid=entry["record"]["recid"],
                         priority="critical",
+                        value=metadata
                     )
 
                 meta_str = metadata.replace("\r\n", "\n")
@@ -407,8 +422,7 @@ class CDSRecordServiceLoad(Load):
         self._after_publish_update_created(published_record, entry, version)
         self._after_publish_mint_recid(published_record, entry, version)
         self._after_publish_update_files_created(published_record, entry, version)
-        access = entry["versions"][version]["access"]
-        self._after_publish_load_parent_access_grants(published_record, access, entry)
+        self._after_publish_load_parent_access_grants(published_record, version, entry)
         db.session.commit()
 
     def _pre_publish(self, identity, entry, version, draft):

@@ -52,6 +52,7 @@ class Runner:
                 stream_config = config.get(definition.name) or {}
                 self.data_dir = Path(stream_config[collection].get("data_dir"))
                 self.restricted = stream_config[collection].get("restricted", False)
+                self.access_grants_view = stream_config[collection].get("access_grants_view", False)
                 self.data_dir.mkdir(parents=True, exist_ok=True)
 
                 self.tmp_dir = Path(stream_config[collection].get("tmp_dir"))
@@ -81,6 +82,7 @@ class Runner:
                         collection=collection,
                         **stream_config[collection].get("transform", {}),
                         restricted=self.restricted,
+                        access_grants_view=self.access_grants_view,
                         migration_logger=self.migration_logger,
                         record_state_logger=self.record_state_logger,
                     )
