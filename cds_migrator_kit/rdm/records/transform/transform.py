@@ -90,7 +90,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         restricted=False,
         migration_logger=None,
         record_state_logger=None,
-        access_grants_view=None
+        access_grants_view=None,
     ):
         """Constructor."""
         self.missing_users_dir = missing_users_dir

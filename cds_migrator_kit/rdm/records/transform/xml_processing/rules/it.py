@@ -26,6 +26,19 @@ from .publications import journal as base_journal
 from .publications import related_identifiers as base_publications_related_identifiers
 
 
+@model.over("access_grants", "^506[1_]_")
+@for_each_value
+def access_grants(self, key, value):
+    """Translates access permissions (by user email or group name)."""
+    raw_identifier = value.get("d") or value.get("m") or value.get("a")
+    subject_identifier = StringValue(raw_identifier).parse()
+    if not subject_identifier:
+        raise IgnoreKey("access_grants")
+
+    permission_type = "view"
+    return {str(subject_identifier): permission_type}
+
+
 @model.over("resource_type", "(^980__)|(^697C_)", override=True)
 def resource_type(self, key, value):
     """Translates resource_type."""

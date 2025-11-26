@@ -24,10 +24,10 @@ class ITModel(CdsOverdo):
                     OR 980__:ITUDSPUBSOURCEARCHIVE
                     OR 980__:CNLARTICLE
                     -980__.b:INDICO_IT-DEP
-                    -980__.a:EVENTSFROMINDICO 
+                    -980__.a:EVENTSFROMINDICO
                     -980__.a:CONTRIBUTIONSFROMINDICO
                     -980__:CERNITArchive -980__:INTNOTECMSPUBL
-                    -980__.a:EVENTSFROMINDICO 
+                    -980__.a:EVENTSFROMINDICO
                     -980__.a:CONTRIBUTIONSFROMINDICO
                     -980__:BOOK -690C_:YELLOWREPORT
                     -690C_:"YELLOW REPORT" -980__:THESIS"""
@@ -46,6 +46,7 @@ class ITModel(CdsOverdo):
         "100__m",  # Author's email
         "300__a",
         "300__b",  # Physical medium description
+        "270__m",  # contact e-mail
         "222__a",  # Duplicate title
         "246_39",
         "246_3i",

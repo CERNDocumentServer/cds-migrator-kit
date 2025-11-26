@@ -111,7 +111,7 @@ def link_related_articles():
             issue_number = issue_number.replace("/", "\\/")
             results = current_rdm_records_service.scan(
                 system_identity,
-                q=f'custom_fields.journal\:journal.issue:*{issue_number}*',
+                q=f"custom_fields.journal\:journal.issue:*{issue_number}*",
             )
             list_res = list(results)
             print(
@@ -141,4 +141,3 @@ def link_related_articles():
                     print(f"Linked {hit['id']} to {record_pid}")
                 else:
                     print(f"Skipped {hit['id']} to {record_pid}")
-

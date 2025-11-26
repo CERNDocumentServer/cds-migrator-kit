@@ -52,7 +52,9 @@ class Runner:
                 stream_config = config.get(definition.name) or {}
                 self.data_dir = Path(stream_config[collection].get("data_dir"))
                 self.restricted = stream_config[collection].get("restricted", False)
-                self.access_grants_view = stream_config[collection].get("access_grants_view", False)
+                self.access_grants_view = stream_config[collection].get(
+                    "access_grants_view", False
+                )
                 self.data_dir.mkdir(parents=True, exist_ok=True)
 
                 self.tmp_dir = Path(stream_config[collection].get("tmp_dir"))
