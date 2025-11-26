@@ -235,7 +235,7 @@ class CDSRecordServiceLoad(Load):
                     )
             elif metadata == "restricted":
                 # https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showroledetails?id_role=69
-                groups.update("cern-personnel")
+                groups.add("cern-personnel")
             else:
                 if not any(
                     kw in metadata for kw in ("firerole: allow group", "allow email")
@@ -247,7 +247,7 @@ class CDSRecordServiceLoad(Load):
                         stage="load",
                         recid=entry["record"]["recid"],
                         priority="critical",
-                        value=metadata
+                        value=metadata,
                     )
 
                 meta_str = metadata.replace("\r\n", "\n")

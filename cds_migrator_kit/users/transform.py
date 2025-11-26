@@ -30,8 +30,9 @@ class SubmitterTransform(RDMRecordTransform):
         """Transform a single entry."""
         # creates the output structure for load step
         try:
-            record_dump = CDSRecordDump(entry, dojson_model=self.dojson_model,
-                                        raise_on_missing_rules=False)
+            record_dump = CDSRecordDump(
+                entry, dojson_model=self.dojson_model, raise_on_missing_rules=False
+            )
             record_dump.prepare_revisions()
 
             timestamp, json_data = record_dump.latest_revision

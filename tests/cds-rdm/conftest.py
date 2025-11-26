@@ -887,6 +887,16 @@ def title_type_v(app, title_type):
         },
     )
 
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "alternative-title",
+            "props": {"datacite": "AlternativeTitle"},
+            "title": {"en": "Alternative title"},
+            "type": "titletypes",
+        },
+    )
+
     return vocab
 
 
@@ -1637,49 +1647,22 @@ def orcid_name_data(app):
     }
 
 
-def _create_group(id, name, description, is_managed, database, datastore):
+def _create_group(id, name, description, is_managed, app):
     """Creates a Role/Group."""
-    r = datastore.create_role(
-        id=id, name=name, description=description, is_managed=is_managed
-    )
-    datastore.commit()
-    return r
-
-
-@pytest.fixture(scope="module")
-def group1(database, app):
-    """A single group."""
     ds = app.extensions["invenio-accounts"].datastore
-    r = _create_group(
-        id="it-dep",
-        name="it-dep",
-        description="IT Department",
-        is_managed=True,
-        database=database,
-        datastore=ds,
-    )
+    r = ds.create_role(id=id, name=name, description=description, is_managed=is_managed)
+    ds.commit()
     return r
 
 
 @pytest.fixture(scope="module")
-def group2(database, app):
-    """A single group."""
-    ds = app.extensions["invenio-accounts"].datastore
-    r = _create_group(
-        id="hr-dep",
-        name="hr-dep",
-        description="HR Department",
-        is_managed=True,
-        database=database,
-        datastore=ds,
-    )
-    return r
-
-
-@pytest.fixture(scope="module")
-def groups(database, group1, group2):
+def groups(database, app):
     """Available indexed groups."""
-    roles = [group1, group2]
+    roles = [
+        _create_group("hr-dep", "hr-dep", "HR department", True, app),
+        _create_group("it-dep", "it-dep", "IT department", True, app),
+        _create_group("cern-personnel", "cern-personnel", "CERN personnel", True, app),
+    ]
 
     current_groups_service.indexer.process_bulk_queue()
     current_groups_service.record_cls.index.refresh()

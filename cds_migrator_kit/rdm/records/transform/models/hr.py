@@ -63,4 +63,3 @@ hr_model = HrModel(
     bases=(rdm_base_record_model,),
     entry_point_group="cds_migrator_kit.migrator.rules.hr",
 )
-

@@ -32,6 +32,7 @@ def test_full_hr_stream(
     orcid_name_data,
     community,
     mocker,
+    groups,
 ):
 
     stream_config = config(mocker, community, orcid_name_data)
@@ -65,7 +66,7 @@ def test_full_hr_stream(
         parent_record_pid=new_record["parent"]["id"]
     )
 
-    # Administartive Unit
+    # Administrative Unit
     assert new_record["custom_fields"]["cern:administrative_unit"] == "DI"
 
     # Title extracted from field 037__ (CERN-STAFF-RULES-ED01) when missing in 245__

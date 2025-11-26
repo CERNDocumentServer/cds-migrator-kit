@@ -33,11 +33,6 @@ def grant_access_permissions(record):
             "subject": {"id": "1", "type": "user"},
             "origin": "migrated",
         },
-        {
-            "permission": "manage",
-            "subject": {"id": "2", "type": "user"},
-            "origin": "migrated",
-        },
     ]
 
 

@@ -12,8 +12,14 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValu
 from .publications import related_identifiers, journal
 
 from ...models.hr import hr_model as model
-from .base import aleph_number, corporate_author, report_number, subjects, urls, \
-    identifiers
+from .base import (
+    aleph_number,
+    corporate_author,
+    report_number,
+    subjects,
+    urls,
+    identifiers,
+)
 
 
 @model.over("access_grants", "^506[1_]_")
@@ -39,10 +45,12 @@ def additional_desc(self, key, value):
         raise IgnoreKey("additional_descriptions_hr")
 
     additional_descriptions = self.get("additional_descriptions", [])
-    additional_descriptions.append({
-        "description": f"Contact: {email}",
-        "type": {"id": "technical-info"},
-    })
+    additional_descriptions.append(
+        {
+            "description": f"Contact: {email}",
+            "type": {"id": "technical-info"},
+        }
+    )
     self["additional_descriptions"] = additional_descriptions
     raise IgnoreKey("additional_descriptions_hr")
 
@@ -57,10 +65,12 @@ def additional_desc(self, key, value):
         raise IgnoreKey("additional_descriptions_hr_smc")
 
     additional_descriptions = self.get("additional_descriptions", [])
-    additional_descriptions.append({
-        "description": material,
-        "type": {"id": "technical-info"},
-    })
+    additional_descriptions.append(
+        {
+            "description": material,
+            "type": {"id": "technical-info"},
+        }
+    )
     raise IgnoreKey("additional_descriptions_hr")
 
 
@@ -80,7 +90,6 @@ def hr_subjects(self, key, value):
         else:
             resource_type_map = {
                 "Presentation": {"id": "presentation"},
-
             }
             resource_type = resource_type_map.get(keyword)
             if resource_type:
@@ -156,7 +165,7 @@ def resource_type(self, key, value):
         "staffrulesvd": {"id": "administrative-regulation"},
         "hr-smc": {"id": "administrative-regulation"},
         "ccp": {"id": "other"},
-        "conferencepaper": {"id": "publication-conferencepaper"}
+        "conferencepaper": {"id": "publication-conferencepaper"},
     }
     try:
 
@@ -270,7 +279,9 @@ def translated_description(self, key, value):
     raise IgnoreKey("additional_descriptions")
 
 
-@model.over("identifiers", "(^035__)|(^037__)|(^088__)|(^8564_)|(^970__)", override=True)
+@model.over(
+    "identifiers", "(^035__)|(^037__)|(^088__)|(^8564_)|(^970__)", override=True
+)
 @for_each_value
 def title(self, key, value):
     """Translates title and identifiers."""
