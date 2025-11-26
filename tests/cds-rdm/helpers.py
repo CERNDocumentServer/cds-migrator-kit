@@ -70,6 +70,23 @@ def config(mocker, community, orcid_name_data):
                         "legacy_pids_to_redirect": "tests/cds-rdm/data/hr/duplicated_pids.json"
                     },
                 },
+                "hr_restricted": {
+                    "data_dir": "tests/cds-rdm/data/hr_restricted",
+                    "tmp_dir": "tests/cds-rdm/data/hr_restricted",
+                    "log_dir": "tests/cds-rdm/data/log/hr_restricted",
+                    "extract": {"dirpath": "tests/cds-rdm/data/hr_restricted/dumps/"},
+                    "transform": {
+                        "files_dump_dir": "tests/cds-rdm/data/hr_restricted/files/",
+                        "missing_users": "tests/cds-rdm/data/users",
+                        "communities_ids": [f"{str(community.id)}"],
+                    },
+                    "load": {
+                        "legacy_pids_to_redirect": "tests/cds-rdm/data/hr_restricted/duplicated_pids.json"
+                    },
+                    # Configure access_grants_view with specific groups
+                    "restricted": "True",
+                    "access_grants_view": ["hr-web-gacepa", "eligibility-retr-actual"],
+                },
                 "thesis": {
                     "data_dir": "tests/cds-rdm/data/thesis",
                     "tmp_dir": "tests/cds-rdm/data/thesis",

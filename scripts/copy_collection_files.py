@@ -7,8 +7,8 @@ import sys
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
-collection = "courier"
-environment = "sandbox"
+collection = "e_guide_restr"
+environment = "dev"
 
 destination_prefix = "/eos/media/cds/cds-rdm/{0}/migration/{1}/files".format(
     environment, collection

@@ -12,17 +12,18 @@ import os
 from datetime import datetime, timedelta
 
 from cds_rdm import schemes
+from cds_rdm.clc_sync.services.components import ClcSyncComponent
+from cds_rdm.components import (
+    CDSResourcePublication,
+    MintAlternateIdentifierComponent,
+    SubjectsValidationComponent,
+)
 from cds_rdm.custom_fields import CUSTOM_FIELDS, NAMESPACES
 from cds_rdm.files import storage_factory
 from cds_rdm.permissions import (
     CDSCommunitiesPermissionPolicy,
     CDSRDMPreservationSyncPermissionPolicy,
 )
-from cds_rdm.clc_sync.services.components import ClcSyncComponent
-from cds_rdm.components import CDSResourcePublication
-from cds_rdm.components import SubjectsValidationComponent
-from cds_rdm.components import MintAlternateIdentifierComponent
-
 from invenio_app_rdm.config import CELERY_BEAT_SCHEDULE as APP_RDM_CELERY_BEAT_SCHEDULE
 from invenio_app_rdm.config import *
 from invenio_cern_sync.sso import cern_keycloak, cern_remote_app_name

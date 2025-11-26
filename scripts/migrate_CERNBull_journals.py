@@ -1,7 +1,7 @@
+import csv
 from copy import deepcopy
 
 import arrow
-import csv
 from invenio_access.permissions import system_identity
 from invenio_communities.proxies import current_communities
 from invenio_db import db
