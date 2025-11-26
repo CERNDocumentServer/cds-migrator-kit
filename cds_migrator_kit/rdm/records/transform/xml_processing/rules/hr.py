@@ -12,7 +12,8 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValu
 from .publications import related_identifiers, journal
 
 from ...models.hr import hr_model as model
-from .base import aleph_number, corporate_author, report_number, subjects, urls
+from .base import aleph_number, corporate_author, report_number, subjects, urls, \
+    identifiers
 
 
 @model.over("access_grants", "^506[1_]_")
@@ -211,10 +212,10 @@ def date(self, key, value):
         "type": {"id": "valid"},
     }
     dates.append(date)
-    withdrawn = value.get("b")
+    withdrawn = value.get("b", "")
     if withdrawn and "9999" not in withdrawn:
         date = {
-            "date": valid,
+            "date": withdrawn,
             "type": {"id": "withdrawn"},
         }
         dates.append(date)
@@ -269,7 +270,7 @@ def translated_description(self, key, value):
     raise IgnoreKey("additional_descriptions")
 
 
-@model.over("identifiers", "(^037__)|(^088__)|(^8564_)|(^970__)", override=True)
+@model.over("identifiers", "(^035__)|(^037__)|(^088__)|(^8564_)|(^970__)", override=True)
 @for_each_value
 def title(self, key, value):
     """Translates title and identifiers."""
@@ -283,8 +284,32 @@ def title(self, key, value):
 
     # ------Identifiers-----#
     new_id = None
+    if key == "037__":
+        circulars = {
+            "ADMIN": "Administrative Circular",
+            "OPER": "Operational Circular",
+            "STAFF": "Staff Rules and Regulations",
+        }
+        title = ""
+        rep_num = value.get("a").split("-")
+        revision = rep_num[-1]
+        circ_type = rep_num[1]
+        number = rep_num[3]
+        title += circulars[circ_type]
+        number_stripped = number.replace("(", "").replace(")", "")
+
+        if number.isalnum() or number_stripped.isalnum():
+            title += " No." + number
+
+        if revision != "REV0" and circ_type != "STAFF":
+            title += " (Rev %s)" % revision[3:]
+        _add_titles = self.get("additional_titles", [])
+        _add_titles.append({"title": title, "type": {"id": "alternative-title"}})
+        self["additional_titles"] = _add_titles
+
     if key in ("037__", "088__"):
         new_id = report_number(self, key, value)
+
     elif key == "8564_":
         new_id = urls(self, key, value)
         rel_ids = self.get("related_identifiers", [])
@@ -293,6 +318,8 @@ def title(self, key, value):
         raise IgnoreKey("identifiers")
     elif key == "970__":
         new_id = aleph_number(self, key, value)
+    elif key == "035__":
+        new_id = identifiers(self, key, value)
     if new_id:
         return new_id[0]
     raise IgnoreKey("identifiers")
