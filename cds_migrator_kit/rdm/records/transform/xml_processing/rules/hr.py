@@ -9,17 +9,17 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     require,
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
-from .publications import related_identifiers, journal
 
 from ...models.hr import hr_model as model
 from .base import (
     aleph_number,
     corporate_author,
+    identifiers,
     report_number,
     subjects,
     urls,
-    identifiers,
 )
+from .publications import journal, related_identifiers
 
 
 @model.over("access_grants", "^506[1_]_")

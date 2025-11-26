@@ -276,6 +276,17 @@ def test_app(running_app):
     running_app.app.config["RDM_PARENT_PERSISTENT_IDENTIFIERS"]["doi"][
         "required"
     ] = False
+    running_app.app.config["CDS_ACCESS_GROUP_MAPPINGS"] = {
+        "SSO": ["cern-personnel"],
+        "ITDepRestrFile": ["it-dep"],
+        "HrDepRestrFile": ["hr-dep", "fap-dep-tpr-mi-staf"],
+        "HRCircDocs": ["hr-web-gacepa"],
+        "HRDepExtended": ["hr-dep", "hr-dep-cds-extended"],
+        "EligibilityHRCirc": ["eligibility-retr-actual", "hr-web-gacepa"],
+        "CERNPeopleEligibility": ["cern-personnel", "eligibility-retr-actual"],
+        # CERN E-guide restricted docs: https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showroledetails?id_role=69 CERN personnel has view rights
+    }
+
     return running_app.app
 
 
@@ -1662,6 +1673,14 @@ def groups(database, app):
         _create_group("hr-dep", "hr-dep", "HR department", True, app),
         _create_group("it-dep", "it-dep", "IT department", True, app),
         _create_group("cern-personnel", "cern-personnel", "CERN personnel", True, app),
+        _create_group(
+            "eligibility-retr-actual",
+            "eligibility-retr-actual",
+            "CERN Retirees",
+            True,
+            app,
+        ),
+        _create_group("hr-web-gacepa", "hr-web-gacepa", "Special HR group", True, app),
     ]
 
     current_groups_service.indexer.process_bulk_queue()

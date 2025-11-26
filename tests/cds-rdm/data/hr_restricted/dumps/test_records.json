@@ -1,0 +1,86 @@
+[
+  {
+    "files": [
+      {
+        "comment": null,
+        "status": "restricted",
+        "version": 1,
+        "encoding": null,
+        "creation_date": "2013-09-06T09:31:03+00:00",
+        "bibdocid": 7921875,
+        "mime": "application/pdf",
+        "full_name": "July Report.pdf",
+        "superformat": ".pdf",
+        "recids_doctype": [[555555, "DEPIN_FILE", "July Report.pdf"]],
+        "path": "/opt/cdsweb/var/data/files/g79/792187/July Report.pdf;1",
+        "size": 1525703,
+        "license": {},
+        "modification_date": "2013-09-06T09:31:03+00:00",
+        "copyright": {},
+        "url": "http://cds.cern.ch/record/555555/files/July Report.pdf",
+        "checksum": "2942bfabb3d05332b66eb128e0842cff",
+        "description": null,
+        "format": ".pdf",
+        "name": "Report on ALICE RPE Website",
+        "subformat": "",
+        "etag": "\"792187.pdf1\"",
+        "recid": 555555,
+        "flags": [],
+        "hidden": false,
+        "type": "DEPIN_FILE",
+        "full_path": "/opt/cdsweb/var/data/files/g79/792187/July Report.pdf;1"
+      }
+    ],
+    "collections": null,
+    "recid": 555555,
+    "record": [
+      {
+        "marcxml": "<record>\n  <controlfield tag=\"001\">555555</controlfield>\n  <controlfield tag=\"005\">20210427161418.0</controlfield>\n   <datafield tag=\"245\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">Another document</subfield>\n  </datafield>\n  <datafield tag=\"260\" ind1=\" \" ind2=\" \">\n    <subfield code=\"c\">2021</subfield>\n  </datafield>\n  <datafield tag=\"269\" ind1=\" \" ind2=\" \">\n    <subfield code=\"b\">CERN</subfield>\n    <subfield code=\"a\">Geneva</subfield>\n  <subfield code=\"c\">01 May 2021</subfield>\n  </datafield>\n <datafield tag=\"591\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">PUBLIC</subfield>\n  </datafield>\n   <datafield tag=\"270\" ind1=\" \" ind2=\" \">\n  <subfield code=\"m\">admin@inveniosoftware.org</subfield>\n  </datafield>\n  <datafield tag=\"690\" ind1=\"C\" ind2=\" \">\n   <subfield code=\"a\">Administrative Circular</subfield>\n  </datafield>\n  <datafield tag=\"710\" ind1=\" \" ind2=\" \">\n  <subfield code=\"5\">HR</subfield>\n  <subfield code=\"b\">DI</subfield>\n   </datafield>\n  <datafield tag=\"773\" ind1=\" \" ind2=\" \">\n  <subfield code=\"t\">HR-DHO</subfield>\n  </datafield>\n  <datafield tag=\"925\" ind1=\" \" ind2=\" \">\n  <subfield code=\"a\">2025-12-09</subfield>\n    <subfield code=\"b\">9999-12-31</subfield>\n  </datafield>\n <datafield tag=\"980\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">ADMINCIRCULAR</subfield>\n  </datafield>\n </record>",
+        "json": null,
+        "modification_datetime": "2021-10-04T12:37:29+00:00"
+      }
+    ]
+  },
+  {
+    "files": [
+      {
+        "comment": null,
+        "status": "EligibilityHRCirc",
+        "version": 1,
+        "encoding": null,
+        "creation_date": "2013-09-06T09:31:03+00:00",
+        "bibdocid": 79218766,
+        "mime": "application/pdf",
+        "full_name": "July Report.pdf",
+        "superformat": ".pdf",
+        "recids_doctype": [[23646466, "DEPIN_FILE", "July Report.pdf"]],
+        "path": "/opt/cdsweb/var/data/files/g79/792187/July Report.pdf;1",
+        "size": 1525703,
+        "license": {},
+        "modification_date": "2013-09-06T09:31:03+00:00",
+        "copyright": {},
+        "url": "http://cds.cern.ch/record/23646466/files/July Report.pdf",
+        "checksum": "2942bfabb3d05332b66eb128e0842cff",
+        "description": null,
+        "format": ".pdf",
+        "name": "Report on ALICE RPE Website",
+        "subformat": "",
+        "etag": "\"792187.pdf1\"",
+        "recid": 23646466,
+        "flags": [],
+        "hidden": false,
+        "type": "DEPIN_FILE",
+        "full_path": "/opt/cdsweb/var/data/files/g79/792187/July Report.pdf;1"
+      }
+    ],
+    "collections": null,
+    "recid": 23646466,
+    "record": [
+      {
+        "marcxml": "<record>\n  <controlfield tag=\"001\">23646466</controlfield>\n  <controlfield tag=\"005\">20210427161418.0</controlfield>\n   <datafield tag=\"245\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">Another document</subfield>\n  </datafield>\n  <datafield tag=\"260\" ind1=\" \" ind2=\" \">\n    <subfield code=\"c\">2021</subfield>\n  </datafield>\n  <datafield tag=\"269\" ind1=\" \" ind2=\" \">\n    <subfield code=\"b\">CERN</subfield>\n    <subfield code=\"a\">Geneva</subfield>\n  <subfield code=\"c\">01 May 2021</subfield>\n  </datafield>\n <datafield tag=\"591\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">PUBLIC</subfield>\n  </datafield>\n   <datafield tag=\"270\" ind1=\" \" ind2=\" \">\n  <subfield code=\"m\">admin@inveniosoftware.org</subfield>\n  </datafield>\n  <datafield tag=\"690\" ind1=\"C\" ind2=\" \">\n   <subfield code=\"a\">Administrative Circular</subfield>\n  </datafield>\n  <datafield tag=\"710\" ind1=\" \" ind2=\" \">\n  <subfield code=\"5\">HR</subfield>\n  <subfield code=\"b\">DI</subfield>\n   </datafield>\n  <datafield tag=\"773\" ind1=\" \" ind2=\" \">\n  <subfield code=\"t\">HR-DHO</subfield>\n  </datafield>\n  <datafield tag=\"925\" ind1=\" \" ind2=\" \">\n  <subfield code=\"a\">2025-12-09</subfield>\n    <subfield code=\"b\">9999-12-31</subfield>\n  </datafield>\n <datafield tag=\"980\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">ADMINCIRCULAR</subfield>\n  </datafield>\n </record>",
+        "json": null,
+        "modification_datetime": "2021-10-04T12:37:29+00:00"
+      }
+    ]
+  }
+]

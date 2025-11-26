@@ -14,7 +14,6 @@ from cds_dojson.marc21.utils import create_record
 from cds_migrator_kit.transform import migrator_marc21
 from cds_migrator_kit.transform.errors import LossyConversion
 
-
 cli_logger = logging.getLogger("migrator")
 
 

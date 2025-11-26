@@ -8,6 +8,8 @@ from dojson.errors import IgnoreKey
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
     related_identifiers_787 as base_related_identifiers,
+)
+from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
     report_number,
 )
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
