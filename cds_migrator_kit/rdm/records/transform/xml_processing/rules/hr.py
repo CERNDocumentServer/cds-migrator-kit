@@ -306,17 +306,18 @@ def title(self, key, value):
         revision = rep_num[-1]
         circ_type = rep_num[1]
         number = rep_num[3]
-        title += circulars[circ_type]
-        number_stripped = number.replace("(", "").replace(")", "")
+        if circ_type in circulars.keys():
+            title += circulars[circ_type]
+            number_stripped = number.replace("(", "").replace(")", "")
 
-        if number.isalnum() or number_stripped.isalnum():
-            title += " No." + number
+            if number.isalnum() or number_stripped.isalnum():
+                title += " No." + number
 
-        if revision != "REV0" and circ_type != "STAFF":
-            title += " (Rev %s)" % revision[3:]
-        _add_titles = self.get("additional_titles", [])
-        _add_titles.append({"title": title, "type": {"id": "alternative-title"}})
-        self["additional_titles"] = _add_titles
+            if revision != "REV0" and circ_type != "STAFF":
+                title += " (Rev %s)" % revision[3:]
+            _add_titles = self.get("additional_titles", [])
+            _add_titles.append({"title": title, "type": {"id": "alternative-title"}})
+            self["additional_titles"] = _add_titles
 
     if key in ("037__", "088__"):
         new_id = report_number(self, key, value)
