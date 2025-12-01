@@ -52,14 +52,14 @@ def resource_type(self, key, value):
         v: i
         for i, v in enumerate(
             [
+                "bookchapter",
+                "conferencepaper",
+                "itcerntalk",
+                "article",
+                "preprint",
                 "intnoteitpubl",
                 "intnotetspubl",
                 "note",
-                "itcerntalk",
-                "preprint",
-                "bookchapter",
-                "conferencepaper",
-                "article",
             ]
         )
     }
@@ -172,7 +172,7 @@ def collection(self, key, value):
         subjects = self.get("subjects", [])
         subjects.append(
             {
-                "subject": collection.upper(),
+                "subject": f"collection:{collection.upper()}",
             }
         )
         self["subjects"] = subjects
@@ -185,7 +185,7 @@ def collection(self, key, value):
     raise IgnoreKey("collection")
 
 
-@model.over("contributors", "^110__")
+@model.over("creators", "^110__")
 @for_each_value
 def corporate_author(self, key, value):
     """Translates corporate author."""
@@ -199,7 +199,6 @@ def corporate_author(self, key, value):
                 "name": StringValue(name).parse(),
                 "family_name": StringValue(name).parse(),
             },
-            "role": {"id": "hostinginstitution"},
         }
         return contributor
     raise IgnoreKey("contributors")

@@ -382,11 +382,6 @@ RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES = {
             "validator": schemes.is_indico,
             "datacite": "INDICO",
         },
-        "hdl": {
-            "label": _("Handle"),
-            "validator": schemes.is_handle,
-            "datacite": "HANDLE",
-        },
     },
     # keep internal identifiers' schemes for internal record relations
     **RDM_RECORDS_IDENTIFIERS_SCHEMES,

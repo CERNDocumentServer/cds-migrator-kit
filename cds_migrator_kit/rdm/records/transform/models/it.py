@@ -26,11 +26,15 @@ class ITModel(CdsOverdo):
                     -980__.b:INDICO_IT-DEP
                     -980__.a:EVENTSFROMINDICO
                     -980__.a:CONTRIBUTIONSFROMINDICO
-                    -980__:CERNITArchive -980__:INTNOTECMSPUBL
+                    -980__:CERNITArchive
                     -980__.a:EVENTSFROMINDICO
                     -980__.a:CONTRIBUTIONSFROMINDICO
-                    -980__:BOOK -690C_:YELLOWREPORT
-                    -690C_:"YELLOW REPORT" -980__:THESIS"""
+                    -980__:BOOK
+                    -690C_:YELLOWREPORT
+                    -690C_:"YELLOW REPORT"
+                    -980__:THESIS
+                    -980__:INTNOTECMSPUBL
+                    """
 
     __ignore_keys__ = {
         "021__a",  # Physical Location https://cds.cern.ch/record/181665/export/hm?ln=en
@@ -135,7 +139,6 @@ class ITModel(CdsOverdo):
 
     _default_fields = {
         "custom_fields": {"cern:departments": ["IT"]},
-        "creators": [{"person_or_org": {"type": "organizational", "name": "CERN"}}],
     }
 
 

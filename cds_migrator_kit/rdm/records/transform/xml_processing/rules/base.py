@@ -28,7 +28,7 @@ from cds_migrator_kit.rdm.records.transform.config import (
     KEYWORD_SCHEMES_TO_DROP,
     PID_SCHEMES_TO_STORE_IN_IDENTIFIERS,
     RECOGNISED_KEYWORD_SCHEMES,
-    udc_pattern,
+    udc_pattern, IDENTIFIERS_SCHEMES_TO_DROP,
 )
 from cds_migrator_kit.rdm.records.transform.models.base_record import (
     rdm_base_record_model as model,
@@ -271,7 +271,7 @@ def report_number(self, key, value):
         new_id = {
             "scheme": scheme,
             "identifier": identifier,
-            "relation_type": {"id": "isvariantof"},
+            "relation_type": {"id": "isvariantformof"},
             "resource_type": {"id": "publication-other"},
         }
         if new_id not in related_works:
@@ -351,6 +351,8 @@ def identifiers(self, key, value):
     id_value = StringValue(value.get("a", "")).parse()
     scheme = StringValue(value.get("9", "")).parse()
     related_works = self.get("related_identifiers", [])
+    if scheme.upper() in IDENTIFIERS_SCHEMES_TO_DROP:
+        raise IgnoreKey("identifiers")
     # drop oai harvest info
     if id_value.startswith("oai:inspirehep.net"):
         raise IgnoreKey("identifiers")

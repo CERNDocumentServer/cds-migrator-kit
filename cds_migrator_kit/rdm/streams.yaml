@@ -14,14 +14,14 @@ records:
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/it_dep/duplicated_pids.json
   it_meetings:
-    data_dir: cds_migrator_kit/rdm/data/it_dep/it_meetings
-    tmp_dir: cds_migrator_kit/rdm/tmp/it_dep/it_meetings
-    log_dir: cds_migrator_kit/rdm/log/it_dep/it_meetings
+    data_dir: cds_migrator_kit/rdm/data/it_meetings
+    tmp_dir: cds_migrator_kit/rdm/tmp/it_meetings
+    log_dir: cds_migrator_kit/rdm/log/it_meetings
     restricted: "True"
     extract:
-      dirpath: cds_migrator_kit/rdm/data/it_dep/it_meetings/dump/
+      dirpath: cds_migrator_kit/rdm/data/it_meetings/dump/
     transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/it_dep/it_meetings/files/
+      files_dump_dir: cds_migrator_kit/rdm/data/it_meetings/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "42da91cf-d476-4d09-9193-7841e03e271c"

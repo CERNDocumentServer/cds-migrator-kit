@@ -7,7 +7,7 @@ import sys
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
-collection = "e_guide_restr"
+collection = "it_meetings"
 environment = "dev"
 
 destination_prefix = "/eos/media/cds/cds-rdm/{0}/migration/{1}/files".format(
