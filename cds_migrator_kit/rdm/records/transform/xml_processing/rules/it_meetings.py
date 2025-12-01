@@ -31,9 +31,19 @@ def resource_type(self, key, value):
     value = value.lower()
 
     map = {
-        "contributionsfromindico": {"id": "presentation"},
+        "contributionsfromindico": {"id": "other"},
         "eventsfromindico": {"id": "event"},
     }
+
+    if value == "contributionsfromindico":
+        _additional_descriptions = self.get("additional_descriptions", [])
+        _additional_descriptions.append(
+            {"description": "Indico event contribution", "type": {"id": "technical-info"}})
+        self["additional_descriptions"] = _additional_descriptions
+
+        _subjects = self.get("subjects", [])
+        _subjects.append({"subject": f"collection:indico-contributions"})
+        self["subjects"] = _subjects
     try:
         return map[value]
     except KeyError:
