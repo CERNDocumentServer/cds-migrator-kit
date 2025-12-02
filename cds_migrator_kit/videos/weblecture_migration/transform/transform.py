@@ -829,6 +829,7 @@ class CDSToVideosRecordTransform(RDMRecordTransform):
         restricted=False,  # Not used but needed for runner
         migration_logger=None,
         record_state_logger=None,
+        access_grants_view=None, # Not used but needed for runner
     ):
         """Constructor."""
         self.eos_file_paths_dir = Path(eos_file_paths_dir).absolute().as_posix()
