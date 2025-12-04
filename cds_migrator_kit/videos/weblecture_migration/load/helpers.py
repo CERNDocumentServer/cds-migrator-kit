@@ -581,10 +581,12 @@ def copy_additional_files(bucket_id, additional_files):
 def format_chapters(chapters):
     """Format chapters to be added to the description."""
     lines = []
+    chapters = sorted({int(c) for c in chapters})
+    if 0 not in chapters:
+        chapters.insert(0, 0)
     for i, chapter in enumerate(chapters, start=1):
-        seconds = int(chapter)
         # Convert seconds to hh:mm:ss
-        t = str(timedelta(seconds=seconds))
+        t = str(timedelta(seconds=chapter))
         if len(t.split(":")) == 2:  # timedelta omits hours if < 1h
             t = "00:" + t
         lines.append(f"{t} Slide {i}")
