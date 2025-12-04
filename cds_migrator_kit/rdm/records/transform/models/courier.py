@@ -35,11 +35,6 @@ class CourierIssueModel(CdsOverdo):
         "690C_a",
         "690__a",  # only CERN value
         "700__m",
-        "773__y",
-        "773__n",
-        "773__p",
-        "773__c",
-        "773__v",
         "0248_q",
         "8564_8",
         "8564_s",
@@ -50,7 +45,6 @@ class CourierIssueModel(CdsOverdo):
     }
 
     _default_fields = {
-        "resource_type": {"id": "publication-other"},
         "custom_fields": {"journal:journal": {"title": "CERN Courier"}},
         "creators": [{"person_or_org": {"type": "organizational", "name": "CERN"}}],
     }

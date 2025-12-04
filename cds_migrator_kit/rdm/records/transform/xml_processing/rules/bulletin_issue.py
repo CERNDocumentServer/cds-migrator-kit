@@ -394,32 +394,3 @@ def resource_type(self, key, value):
         )
 
 
-@model.over("related_identifiers", "^787[0_]_", override=True)
-@for_each_value
-def related_identifiers(self, key, value):
-    """Translates related identifiers."""
-    rel_ids = self.setdefault("related_identifiers", [])
-
-    description = value.get("i")
-    new_ids = []
-
-    if description == "issue":
-        recid = value.get("w")
-        if recid:
-            new_ids.append(
-                {
-                    "identifier": recid,
-                    "scheme": "cds",
-                    "relation_type": {"id": "ispublishedin"},
-                    "resource_type": {"id": "publication-periodicalissue"},
-                }
-            )
-    else:
-        new_ids.extend(base_related_identifiers(self, key, value))
-
-    for new_id in new_ids:
-        if new_id not in rel_ids:
-            rel_ids.append(new_id)
-
-    self["related_identifiers"] = rel_ids
-    raise IgnoreKey("bull_related_identifiers")

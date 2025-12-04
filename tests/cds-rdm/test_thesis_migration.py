@@ -97,11 +97,23 @@ def test_full_thesis_stream(
             "identifier": "978-3-030-90375-6",
             "scheme": "isbn",
             "relation_type": {"id": "isversionof", "title": {"en": "Is version of"}},
+            'resource_type': {
+                'id': 'publication-book',
+                'title': {
+                    'de': 'Buch',
+                    'en': 'Book',
+                }, }
         },
         {
             "identifier": "978-3-030-90376-3",
             "scheme": "isbn",
             "relation_type": {"id": "isversionof", "title": {"en": "Is version of"}},
+            'resource_type': {
+                'id': 'publication-book',
+                'title': {
+                    'de': 'Buch',
+                    'en': 'Book',
+                }, }
         },
         ## secondary DOI is a version of the publication in springer
         {
