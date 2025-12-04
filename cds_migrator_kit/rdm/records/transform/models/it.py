@@ -68,6 +68,7 @@ class ITModel(CdsOverdo):
         "6531_9",  # Keyword provenance
         "700__m",  # Author's email
         "710__b",  # Group name, TBD https://cds.cern.ch/record/2258345/export/hm?ln=en
+        "710__9",  # Group name, TBD https://cds.cern.ch/record/2258345/export/hm?ln=en
         "720__a",  # Author's duplicate
         "773__a",  # Duplicate DOI
         "773__o",  # Duplicate meeting title
@@ -86,7 +87,10 @@ class ITModel(CdsOverdo):
         "8564_8",  # Files system field
         "8564_s",  # Files system field
         "8564_x",  # Files system field - Icon
+        "8564_z",  # File comment, handled on files level, not MARC
         "8564_q",  # Files system field - Link
+        "856418",  # Files system field
+        "85641q",  # Files system field - Link
         "8564_y",  # Files / URLS label
         "85641g",
         "85641m",
@@ -110,7 +114,7 @@ class ITModel(CdsOverdo):
         "961__h",  # CDS modification tag
         "961__l",  # CDS modification tag
         "961__x",  # CDS modification tag
-        "964__a",  # Item usualy 0001?
+        "964__a",  # Item usually 0001?
         "981__a",  # duplicated record marker
         "999C50",  # https://cds.cern.ch/record/2284609/export/hm?ln=en CMS contributions
         "999C52",  # https://cds.cern.ch/record/2640188/export/hm?ln=en

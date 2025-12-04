@@ -23,7 +23,7 @@ from ...models.base_publication_record import rdm_base_publication_model as mode
 from .base import normalize
 
 
-@model.over("custom_fields", "(^020__)")
+@model.over("isbns", "^020__")
 def isbn(self, key, value):
     _custom_fields = self.get("custom_fields", {})
     _isbn = StringValue(value.get("a", "")).parse()
@@ -40,21 +40,26 @@ def isbn(self, key, value):
         _custom_fields["imprint:imprint"] = thesis_fields
 
         if is_cern_isbn:
-            destination = "identifiers"
-            new_id = {"identifier": _isbn, "scheme": "isbn"}
+            # TODO, should we have ISBN as internal?
+            destination = "related_identifiers"
+            new_id = {"identifier": _isbn, "scheme": "isbn",
+                      "relation_type": {"id": "isversionof"},
+                      "resource_type": {"id": "publication-book"},}
         else:
             destination = "related_identifiers"
             new_id = {
                 "identifier": _isbn,
                 "scheme": "isbn",
                 "relation_type": {"id": "isversionof"},
+                "resource_type": {"id": "publication-book"},
             }
         ids = self.get(destination, [])
 
         if new_id not in ids:
             ids.append(new_id)
         self[destination] = ids
-    return _custom_fields
+    self["custom_fields"] = _custom_fields
+    raise IgnoreKey("custom_fields")
 
 
 @model.over("related_identifiers", "(^022__)")
@@ -267,6 +272,6 @@ def related_identifiers(self, key, value):
             res_type = "publication-other"
             new_id.update({"resource_type": {"id": res_type}})
 
-    if new_id not in rel_ids:
+    if recid and new_id not in rel_ids:
         return new_id
     raise IgnoreKey("related_identifiers")

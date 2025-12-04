@@ -11,7 +11,6 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
 
-from ...config import IGNORED_THESIS_COLLECTIONS
 from ...models.it import it_model as model
 from .base import additional_titles as base_additional_titles
 from .base import custom_fields_693 as base_custom_fields_693
@@ -19,9 +18,7 @@ from .base import normalize
 from .base import note as base_internal_notes
 from .base import subjects as base_subjects
 from .base import urls
-from .base import yellow_reports as base_yellow_reports
 from .publications import imprint_info as base_publication_imprint_info
-from .publications import issn as base_publications_issn
 from .publications import journal as base_journal
 from .publications import related_identifiers as base_publications_related_identifiers
 
@@ -48,18 +45,21 @@ def resource_type(self, key, value):
 
     value_b = value.get("b", "")
 
+
+    # first has highest priority
     priority = {
         v: i
         for i, v in enumerate(
             [
+                "note",
+                "intnotetspubl",
+                "intnoteitpubl",
+                "preprint",
+                "article",
+                "slides",
+                "itcerntalk",
                 "bookchapter",
                 "conferencepaper",
-                "itcerntalk",
-                "article",
-                "preprint",
-                "intnoteitpubl",
-                "intnotetspubl",
-                "note",
             ]
         )
     }
@@ -83,11 +83,12 @@ def resource_type(self, key, value):
     mapping = {
         "preprint": {"id": "publication-preprint"},
         "conferencepaper": {"id": "publication-conferencepaper"},
-        "article": {"id": "publication"},
+        "article": {"id": "publication-article"},
         "note": {"id": "publication-technicalnote"},
         "brochure": {"id": "publication-brochure"},
         "itcerntalk": {"id": "presentation"},
-        "peri": {"id": "publication-periodicalissue"},
+        "slides": {"id": "presentation"},
+        "peri": {"id": "publication-periodical"},
         "intnoteitpubl": {"id": "publication-technicalnote"},
         "intnotetspubl": {"id": "publication-technicalnote"},
         "bookchapter": {"id": "publication-section"},
@@ -208,6 +209,16 @@ def corporate_author(self, key, value):
 @for_each_value
 def meeting(self, key, value):
     """Translates additional description."""
+    published_in = value.get("e", "").strip().lower()
+
+    if published_in:
+        _related_identifiers = self.setdefault("related_identifiers", [])
+        _related_identifiers.append({"identifier": published_in, "scheme": "cds",
+                                     "relation_type": {"id": "ispublishedin"},
+                                     "resource_type": {
+                                         "id": "publication-periodicalissue"}})
+        self["related_identifiers"] = _related_identifiers
+
     _custom_fields = self.setdefault("custom_fields", {})
     meeting_fields = _custom_fields.get("meeting:meeting", {})
     if value.get("t"):
@@ -233,27 +244,6 @@ def imprint(self, key, value):
     imprint = _custom_fields.setdefault("imprint:imprint", {})
     imprint["edition"] = StringValue(value.get("a")).parse()
     raise IgnoreKey("imprint_info")
-
-
-@model.over("notes", "^8564_", override=True)
-@for_each_value
-def notes(self, key, value):
-    """Translate internal notes"""
-    url = value.get("u", "")
-    note = StringValue(value.get("z", "")).parse()
-    if url:
-        related_identifiers = self.get("related_identifiers", [])
-        url_entries = urls(self, key, value)
-        for entry in url_entries:
-            if entry not in related_identifiers:
-                related_identifiers.append(entry)
-        self["related_identifiers"] = related_identifiers
-
-    elif note:
-        _internal_notes = self.get("internal_notes", [])
-        _internal_notes.append(note)
-        self["internal_notes"] = _internal_notes
-    raise IgnoreKey("notes")
 
 
 @model.over(
@@ -422,10 +412,6 @@ def imprint_info(self, key, value):
     if key.startswith("260"):
         base_publication_imprint_info(self, key, value)
     else:
-        from cds_migrator_kit.rdm.migration_config import CDS_RECORDS_TO_UNMERGE
-
-        if self["recid"] in CDS_RECORDS_TO_UNMERGE:
-            raise IgnoreKey("publication_date")
         publication_date_str = value.get("a")
         if publication_date_str:
             try:
@@ -460,6 +446,7 @@ def related_works(self, key, value):
         "identifier": recid,
         "scheme": "cds",
         "relation_type": {"id": relation_type},
+        "resource_type": {"id": "other"},
     }
     if new_id not in rel_ids:
         return new_id
@@ -467,10 +454,17 @@ def related_works(self, key, value):
     raise IgnoreKey("related_identifiers")
 
 
-@model.over("additional_descriptions", "(^85641)")
+@model.over("additional_descriptions_it", "^8564[1_]", override=True)
 @for_each_value
 def series(self, key, value):
-    """Translates additional descriptinn and url."""
+    """Translates additional descriptions and url."""
+    content_type = value.get("x", "")
+    if content_type == "icon":
+        # ignore icon urls (conditionally ignoring by accessing the value)
+        url_q = value.get("q", "")
+        url_u = value.get("u", "")
+        raise IgnoreKey("url_identifiers")
+
     description = StringValue(value.get("3")).parse()
     url = value.get("u", "")
     if url:
@@ -481,8 +475,10 @@ def series(self, key, value):
                 related_identifiers.append(entry)
         self["related_identifiers"] = related_identifiers
     if description:
-        return {"description": description, "type": {"id": "series-information"}}
-    raise IgnoreKey("additional_descriptions")
+        _additional_descriptions = self.setdefault("additional_descriptions", [])
+        _additional_descriptions.append({"description": description, "type": {"id": "series-information"}})
+        self["additional_descriptions"] = _additional_descriptions
+    raise IgnoreKey("additional_descriptions_it")
 
 
 @model.over("additional_titles", "^246_[3]")
