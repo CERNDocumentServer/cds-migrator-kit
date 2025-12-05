@@ -45,7 +45,6 @@ def resource_type(self, key, value):
 
     value_b = value.get("b", "")
 
-
     # first has highest priority
     priority = {
         v: i
@@ -213,10 +212,14 @@ def meeting(self, key, value):
 
     if published_in:
         _related_identifiers = self.setdefault("related_identifiers", [])
-        _related_identifiers.append({"identifier": published_in, "scheme": "cds",
-                                     "relation_type": {"id": "ispublishedin"},
-                                     "resource_type": {
-                                         "id": "publication-periodicalissue"}})
+        _related_identifiers.append(
+            {
+                "identifier": published_in,
+                "scheme": "cds",
+                "relation_type": {"id": "ispublishedin"},
+                "resource_type": {"id": "publication-periodicalissue"},
+            }
+        )
         self["related_identifiers"] = _related_identifiers
 
     _custom_fields = self.setdefault("custom_fields", {})
@@ -476,7 +479,9 @@ def series(self, key, value):
         self["related_identifiers"] = related_identifiers
     if description:
         _additional_descriptions = self.setdefault("additional_descriptions", [])
-        _additional_descriptions.append({"description": description, "type": {"id": "series-information"}})
+        _additional_descriptions.append(
+            {"description": description, "type": {"id": "series-information"}}
+        )
         self["additional_descriptions"] = _additional_descriptions
     raise IgnoreKey("additional_descriptions_it")
 

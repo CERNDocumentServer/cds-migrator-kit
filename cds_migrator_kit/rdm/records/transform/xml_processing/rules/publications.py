@@ -42,9 +42,12 @@ def isbn(self, key, value):
         if is_cern_isbn:
             # TODO, should we have ISBN as internal?
             destination = "related_identifiers"
-            new_id = {"identifier": _isbn, "scheme": "isbn",
-                      "relation_type": {"id": "isversionof"},
-                      "resource_type": {"id": "publication-book"},}
+            new_id = {
+                "identifier": _isbn,
+                "scheme": "isbn",
+                "relation_type": {"id": "isversionof"},
+                "resource_type": {"id": "publication-book"},
+            }
         else:
             destination = "related_identifiers"
             new_id = {
