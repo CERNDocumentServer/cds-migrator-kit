@@ -392,5 +392,3 @@ def resource_type(self, key, value):
         raise UnexpectedValue(
             "Unknown resource type (BULLETIN)", field=key, value=value
         )
-
-

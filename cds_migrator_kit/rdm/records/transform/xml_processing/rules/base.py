@@ -28,7 +28,8 @@ from cds_migrator_kit.rdm.records.transform.config import (
     KEYWORD_SCHEMES_TO_DROP,
     PID_SCHEMES_TO_STORE_IN_IDENTIFIERS,
     RECOGNISED_KEYWORD_SCHEMES,
-    udc_pattern, IDENTIFIERS_SCHEMES_TO_DROP,
+    udc_pattern,
+    IDENTIFIERS_SCHEMES_TO_DROP,
 )
 from cds_migrator_kit.rdm.records.transform.models.base_record import (
     rdm_base_record_model as model,
@@ -777,19 +778,20 @@ def related_identifiers_787(self, key, value):
     if recid and "https://cds.cern.ch/record/" in recid:
         recid = recid.replace("https://cds.cern.ch/record/", "")
 
-    relation_map = {"issue":
-                         {"relation_type": {"id": "ispublishedin"},
-                         "resource_type": {"id": "publication-periodicalissue"}
-                          },
-                    "slides":
-                        {"relation_type": {"id": "references"},
-                         "resource_type": {"id": "presentation"}
-                         },
-                    "conference paper":
-                        {"relation_type": {"id": "references"},
-                         "resource_type": {"id": "publication-conferencepaper"}
-                         },
-                     }
+    relation_map = {
+        "issue": {
+            "relation_type": {"id": "ispublishedin"},
+            "resource_type": {"id": "publication-periodicalissue"},
+        },
+        "slides": {
+            "relation_type": {"id": "references"},
+            "resource_type": {"id": "presentation"},
+        },
+        "conference paper": {
+            "relation_type": {"id": "references"},
+            "resource_type": {"id": "publication-conferencepaper"},
+        },
+    }
 
     if recid:
         if description:
@@ -806,8 +808,9 @@ def related_identifiers_787(self, key, value):
                 "resource_type": {"id": "other"},
             }
         else:
-            raise UnexpectedValue(f"Unexpected relation description {description}",
-                                  field=key, value=value)
+            raise UnexpectedValue(
+                f"Unexpected relation description {description}", field=key, value=value
+            )
 
     report_number = value.get("r")
     if not recid and report_number:
@@ -815,7 +818,7 @@ def related_identifiers_787(self, key, value):
             "identifier": report_number,
             "scheme": "cdsrn",
             "relation_type": {"id": "references"},
-            "resource_type": {"id": "other"}
+            "resource_type": {"id": "other"},
         }
         if report_id not in rel_ids:
             rel_ids.append(report_id)
