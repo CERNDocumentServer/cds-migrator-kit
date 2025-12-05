@@ -28,7 +28,8 @@ from cds_migrator_kit.rdm.records.transform.config import (
     KEYWORD_SCHEMES_TO_DROP,
     PID_SCHEMES_TO_STORE_IN_IDENTIFIERS,
     RECOGNISED_KEYWORD_SCHEMES,
-    udc_pattern, IDENTIFIERS_SCHEMES_TO_DROP,
+    udc_pattern,
+    IDENTIFIERS_SCHEMES_TO_DROP,
 )
 from cds_migrator_kit.rdm.records.transform.models.base_record import (
     rdm_base_record_model as model,
@@ -359,7 +360,6 @@ def identifiers(self, key, value):
     if scheme.lower() == "arxiv":
         id_value = id_value.replace("oai:arXiv.org:", "arXiv:")
     if scheme.lower() == "cern annual report":
-
         additional_descriptions = self.get("additional_descriptions", [])
         new_desc = {
             "description": f"{scheme} {id_value}",
@@ -384,6 +384,7 @@ def identifiers(self, key, value):
         scheme = "cds"
     if scheme.lower() == "inspire":
         validate_inspire_identifier(id_value, key)
+
     rel_id = {"scheme": scheme.lower(), "identifier": id_value}
     if scheme.lower() == "admbul":
         legacy_scheme = scheme
@@ -639,8 +640,7 @@ def copyrights(self, key, value):
     return f"{year} © {holder}. {statement} {url}".strip()
 
 
-@model.over("related_identifiers", "^8564_")
-@model.over("related_identifiers", "^8564_")
+@model.over("related_identifiers", "^8564[1_]")
 @for_each_value
 def urls(self, key, value, subfield="u"):
     """Translates urls field."""
@@ -770,28 +770,60 @@ def yellow_reports(self, key, value):
 @for_each_value
 def related_identifiers_787(self, key, value):
     """Translates related identifiers."""
-    description = value.get("i")
+    description = value.get("i", "").lower()
     recid = value.get("w")
+    new_id = {}
     rel_ids = self.get("related_identifiers", [])
-    if "https://cds.cern.ch/record/" in recid:
+
+    if recid and "https://cds.cern.ch/record/" in recid:
         recid = recid.replace("https://cds.cern.ch/record/", "")
-    new_id = {
-        "identifier": recid,
-        "scheme": "cds",
-        "relation_type": {"id": "references"},
+
+    relation_map = {
+        "issue": {
+            "relation_type": {"id": "ispublishedin"},
+            "resource_type": {"id": "publication-periodicalissue"},
+        },
+        "slides": {
+            "relation_type": {"id": "references"},
+            "resource_type": {"id": "presentation"},
+        },
+        "conference paper": {
+            "relation_type": {"id": "references"},
+            "resource_type": {"id": "publication-conferencepaper"},
+        },
     }
 
+    if recid:
+        if description:
+            new_id = {
+                "identifier": recid,
+                "scheme": "cds",
+                **relation_map[description],
+            }
+        elif not description or description not in relation_map.keys():
+            new_id = {
+                "identifier": recid,
+                "scheme": "cds",
+                "relation_type": {"id": "references"},
+                "resource_type": {"id": "other"},
+            }
+        else:
+            raise UnexpectedValue(
+                f"Unexpected relation description {description}", field=key, value=value
+            )
+
     report_number = value.get("r")
-    if report_number:
+    if not recid and report_number:
         report_id = {
             "identifier": report_number,
             "scheme": "cdsrn",
             "relation_type": {"id": "references"},
+            "resource_type": {"id": "other"},
         }
         if report_id not in rel_ids:
             rel_ids.append(report_id)
             self["related_identifiers"] = rel_ids
-    if new_id not in rel_ids:
+    if new_id and new_id not in rel_ids:
         return new_id
 
     raise IgnoreKey("related_identifiers")
@@ -809,8 +841,9 @@ def related_identifiers(self, key, value):
         "identifier": recid,
         "scheme": "cds",
         "relation_type": {"id": "references"},
+        "resource_type": {"id": "other"},
     }
-    if new_id not in rel_ids:
+    if recid and new_id not in rel_ids:
         return new_id
     raise IgnoreKey("related_identifiers")
 

@@ -754,7 +754,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         communities = record.get("communities", [])
         communities = self.communities_ids + [slug for slug in communities]
         if communities:
-            return {"ids": communities, "default": self.communities_ids}
+            return {"ids": communities, "default": self.communities_ids[0]}
         return {}
 
     def _parent(self, entry, record):
@@ -903,6 +903,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                             "description": file["description"],
                             "name": file["name"],
                             "status": file["status"],
+                            "comment": file["comment"],
                         },
                         "mimetype": file["mime"],
                         "checksum": file["checksum"],
