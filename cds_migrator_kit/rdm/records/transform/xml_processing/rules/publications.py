@@ -45,7 +45,7 @@ def isbn(self, key, value):
             new_id = {
                 "identifier": _isbn,
                 "scheme": "isbn",
-                "relation_type": {"id": "isversionof"},
+                "relation_type": {"id": "isvariantformof"},
                 "resource_type": {"id": "publication-book"},
             }
         else:
@@ -53,7 +53,7 @@ def isbn(self, key, value):
             new_id = {
                 "identifier": _isbn,
                 "scheme": "isbn",
-                "relation_type": {"id": "isversionof"},
+                "relation_type": {"id": "isvariantformof"},
                 "resource_type": {"id": "publication-book"},
             }
         ids = self.get(destination, [])

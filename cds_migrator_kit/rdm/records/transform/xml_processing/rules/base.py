@@ -350,19 +350,20 @@ def identifiers(self, key, value):
     https://github.com/CERNDocumentServer/cds-migrator-kit/issues/21
     """
     id_value = StringValue(value.get("a", "")).parse()
-    scheme = StringValue(value.get("9", "")).parse()
+    original_scheme = StringValue(value.get("9", "")).parse()
+    scheme = original_scheme.lower()
     related_works = self.get("related_identifiers", [])
-    if scheme.upper() in IDENTIFIERS_SCHEMES_TO_DROP:
+    if original_scheme.upper() in IDENTIFIERS_SCHEMES_TO_DROP:
         raise IgnoreKey("identifiers")
     # drop oai harvest info
     if id_value.startswith("oai:inspirehep.net"):
         raise IgnoreKey("identifiers")
-    if scheme.lower() == "arxiv":
+    if scheme == "arxiv":
         id_value = id_value.replace("oai:arXiv.org:", "arXiv:")
-    if scheme.lower() == "cern annual report":
+    if scheme == "cern annual report":
         additional_descriptions = self.get("additional_descriptions", [])
         new_desc = {
-            "description": f"{scheme} {id_value}",
+            "description": f"{original_scheme} {id_value}",
             "type": {"id": "series-information"},
         }
         additional_descriptions.append(new_desc)
@@ -377,34 +378,36 @@ def identifiers(self, key, value):
         self["related_identifiers"] = related_works
         raise IgnoreKey("identifiers")
 
-    is_aleph_number = scheme.lower() == "cercer" or not scheme and "CERCER" in id_value
+    is_aleph_number = scheme == "cercer" or not scheme and "CERCER" in id_value
+
     if is_aleph_number:
         scheme = "aleph"
-    if scheme.lower() == "cds":
+    elif scheme == "cds":
         scheme = "cds"
-    if scheme.lower() == "inspire":
+    elif scheme == "inspire":
         validate_inspire_identifier(id_value, key)
 
-    rel_id = {"scheme": scheme.lower(), "identifier": id_value}
-    if scheme.lower() == "admbul":
-        legacy_scheme = scheme
+    rel_id = {"scheme": scheme, "identifier": id_value}
+
+    if scheme == "admbul":
         scheme = "other"
-        rel_id = {"scheme": scheme, "identifier": f"{legacy_scheme}_{id_value}"}
-    if scheme.lower() == "agendamaker":
+        rel_id = {"scheme": scheme, "identifier": f"{original_scheme}_{id_value}"}
+    if scheme == "agendamaker":
         indico_id = get_new_indico_id(id_value)
         scheme = "indico"
         rel_id = {"scheme": scheme, "identifier": str(indico_id)}
-    if scheme.lower() == "zentralblatt math":
+    if scheme == "zentralblatt math":
         scheme = "url"
         rel_id = {
             "scheme": scheme,
             "identifier": f"https://zbmath.org/?q=an:{id_value}",
         }
+
     if id_value:
         if rel_id["scheme"] in RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES:
             rel_id.update(
                 {
-                    "relation_type": {"id": "isreferencedby"},
+                    "relation_type": {"id": "isvariantformof"},
                     "resource_type": {"id": "publication-other"},
                 }
             )
@@ -459,7 +462,7 @@ def _pids(self, key, value):
         else:
             new_id.update(
                 {
-                    "relation_type": {"id": "isversionof"},
+                    "relation_type": {"id": "isvariantformof"},
                     "resource_type": {"id": qualifier},
                 }
             )
@@ -779,6 +782,10 @@ def related_identifiers_787(self, key, value):
         recid = recid.replace("https://cds.cern.ch/record/", "")
 
     relation_map = {
+        "periodical": {
+            "relation_type": {"id": "ispublishedin"},
+            "resource_type": {"id": "publication-periodical"},
+        },
         "issue": {
             "relation_type": {"id": "ispublishedin"},
             "resource_type": {"id": "publication-periodicalissue"},
