@@ -1472,6 +1472,16 @@ def relation_type_v(app, relation_type):
         },
     )
 
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "isvariantformof",
+            "props": {"datacite": "Is variant form of"},
+            "title": {"en": "Is variant form of"},
+            "type": "relationtypes",
+        },
+    )
+
     Vocabulary.index.refresh()
 
     return vocab

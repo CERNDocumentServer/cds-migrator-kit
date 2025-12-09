@@ -8,7 +8,7 @@
 """CDS-RDM transform config module."""
 
 # filters out PIDs which we don't migrate
-PIDS_SCHEMES_TO_DROP = ["HAL"]
+PIDS_SCHEMES_TO_DROP = []
 # validates allowed schemes
 PIDS_SCHEMES_ALLOWED = ["DOI"]
 
@@ -16,6 +16,7 @@ PIDS_SCHEMES_ALLOWED = ["DOI"]
 PID_SCHEMES_TO_STORE_IN_IDENTIFIERS = [
     "ARXIV",
     "HDL",
+    "HAL"
     "HANDLE",
     "URN",
     "INIS",
@@ -25,7 +26,6 @@ PID_SCHEMES_TO_STORE_IN_IDENTIFIERS = [
 
 IDENTIFIERS_SCHEMES_TO_DROP = [
     "SPIRES",
-    "HAL",
     "OSTI",
     "SLAC",
     "PROQUEST",
