@@ -74,7 +74,9 @@ def additional_desc(self, key, value):
     raise IgnoreKey("additional_descriptions_hr")
 
 
-@model.over("subjects", "(^6931_)|(^650[12_][7_])|(^653[12_]_)|(^695__)|(^694__)", override=True)
+@model.over(
+    "subjects", "(^6931_)|(^650[12_][7_])|(^653[12_]_)|(^695__)|(^694__)", override=True
+)
 @require(["a"])
 @for_each_value
 def hr_subjects(self, key, value):
@@ -157,7 +159,7 @@ def resource_type(self, key, value):
         self["subjects"] = subjects
     if value == "administrativenote":
         raise IgnoreKey("resource_type")
-    if value == "cern-admin-e-guide" and self["resource_type"]:
+    if value == "cern-admin-e-guide" and self.get("resource_type"):
         raise IgnoreKey("resource_type")
     map = {
         "annualstats": {"id": "publication-report"},
