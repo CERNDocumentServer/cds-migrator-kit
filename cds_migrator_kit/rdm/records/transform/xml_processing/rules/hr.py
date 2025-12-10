@@ -74,10 +74,11 @@ def additional_desc(self, key, value):
     raise IgnoreKey("additional_descriptions_hr")
 
 
-@model.over("subjects", "(^6931_)|(^650[12_][7_])|(^653[12_]_)|(^695__)|(^694__)")
+@model.over("subjects", "(^6931_)|(^650[12_][7_])|(^653[12_]_)|(^695__)|(^694__)", override=True)
 @require(["a"])
 @for_each_value
 def hr_subjects(self, key, value):
+    keyword = value.get("a")
     if key == "6531_":
         keyword = value.get("a")
         if "," in keyword:
@@ -87,14 +88,17 @@ def hr_subjects(self, key, value):
                 _subjects.append({"subject": key})
             self["subjects"] = _subjects
             raise IgnoreKey("subjects")
-        else:
-            resource_type_map = {
-                "Presentation": {"id": "presentation"},
-            }
-            resource_type = resource_type_map.get(keyword)
-            if resource_type:
-                self["resource_type"] = resource_type
-            raise IgnoreKey("subjects")
+
+    resource_type_map = {
+        "Presentation": {"id": "presentation"},
+        "Mémos": {"id": "publication-memorandum"},
+        "Formulaires": {"id": "publication-form"},
+        "Form": {"id": "publication-form"},
+        "Modèles de documents": {"id": "publication-doctemplate"},
+    }
+    resource_type = resource_type_map.get(keyword)
+    if resource_type:
+        self["resource_type"] = resource_type
 
     subjects(self, key, value)
 
@@ -152,6 +156,8 @@ def resource_type(self, key, value):
         subjects.append({"subject": f"collection:{value}"})
         self["subjects"] = subjects
     if value == "administrativenote":
+        raise IgnoreKey("resource_type")
+    if value == "cern-admin-e-guide" and self["resource_type"]:
         raise IgnoreKey("resource_type")
     map = {
         "annualstats": {"id": "publication-report"},

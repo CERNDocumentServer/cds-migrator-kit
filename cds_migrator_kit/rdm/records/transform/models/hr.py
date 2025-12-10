@@ -35,6 +35,7 @@ class HrModel(CdsOverdo):
         "100__m",
         "300__a",  # number of pages
         "591__b",  #
+        "6531_9",  # keyword scheme
         "700__m",
         "7870_r",  # detailed description of record relation (2862345)
         "8564_8",
