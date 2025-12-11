@@ -8,7 +8,7 @@ reload(sys)
 sys.setdefaultencoding("utf-8")
 
 collection = "it_meetings"
-environment = "dev"
+environment = "sandbox"
 
 destination_prefix = "/eos/media/cds/cds-rdm/{0}/migration/{1}/files".format(
     environment, collection

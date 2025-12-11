@@ -96,7 +96,10 @@ def test_full_thesis_stream(
         {
             "identifier": "978-3-030-90375-6",
             "scheme": "isbn",
-            "relation_type": {"id": "isvariantformof", "title": {"en": "Is variant form of"}},
+            "relation_type": {
+                "id": "isvariantformof",
+                "title": {"en": "Is variant form of"},
+            },
             "resource_type": {
                 "id": "publication-book",
                 "title": {
@@ -108,7 +111,10 @@ def test_full_thesis_stream(
         {
             "identifier": "978-3-030-90376-3",
             "scheme": "isbn",
-            "relation_type": {"id": "isvariantformof", "title": {"en": "Is variant form of"}},
+            "relation_type": {
+                "id": "isvariantformof",
+                "title": {"en": "Is variant form of"},
+            },
             "resource_type": {
                 "id": "publication-book",
                 "title": {
@@ -121,7 +127,10 @@ def test_full_thesis_stream(
         {
             "identifier": "10.1007/978-3-030-90376-3",
             "scheme": "doi",
-            "relation_type": {"id": "isvariantformof", "title": {"en": "Is variant form of"}},
+            "relation_type": {
+                "id": "isvariantformof",
+                "title": {"en": "Is variant form of"},
+            },
             "resource_type": {
                 "id": "publication",
                 "title": {"en": "Publication", "de": "Publikation"},
