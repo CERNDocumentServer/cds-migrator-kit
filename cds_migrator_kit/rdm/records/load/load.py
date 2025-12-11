@@ -22,6 +22,7 @@ from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
 from invenio_db import db
+from invenio_db.uow import UnitOfWork
 from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_pidstore.models import PersistentIdentifier
 from invenio_rdm_migrator.load.base import Load
@@ -181,7 +182,7 @@ class CDSRecordServiceLoad(Load):
         parent.communities.default = entry["parent"]["json"]["communities"]["default"]
         parent.commit()
 
-    def _after_publish_update_dois(self, identity, record, entry):
+    def _after_publish_update_dois(self, identity, record, entry, uow):
         """Update migrated DOIs post publish."""
         migrated_pids = entry["record"]["json"]["pids"]
         for pid_type, identifier in migrated_pids.items():
@@ -190,8 +191,13 @@ class CDSRecordServiceLoad(Load):
                 # will return a warning that "This DOI has already been taken"
                 # In that case, we edit and republish to force an update of the doi with
                 # the new published metadata as in the new system we have more information available
-                _draft = current_rdm_records_service.edit(identity, record["id"])
-                current_rdm_records_service.publish(identity, _draft["id"])
+                _draft = current_rdm_records_service.edit(
+                    identity, record["id"], uow=uow
+                )
+                record = current_rdm_records_service.publish(
+                    identity, _draft["id"], uow=uow
+                )
+                return record
 
     def _after_publish_load_parent_access_grants(self, draft, version, entry):
         """Load access grants from metadata and record grants efficiently."""
@@ -381,17 +387,20 @@ class CDSRecordServiceLoad(Load):
                 tzinfo=None
             )
 
-        record_obj = record._record.model
-        for attempt in range(3):
-            try:
-                with db.session.begin_nested():
-                    record_obj.created = creation_date
-                    record._record.commit()
-            except StaleDataError as e:
-                db.session.rollback()
-                record_obj = db.session.merge(record_obj, load=True)
-                if attempt == 2:
-                    raise e
+        record._record.model.created = creation_date
+        record._record.commit()
+
+        # record_obj = record._record.model
+        # for attempt in range(3):
+        #     try:
+        #         with db.session.begin_nested():
+        #             record_obj.created = creation_date
+        #             record._record.commit()
+        #     except StaleDataError as e:
+        #         db.session.rollback()
+        #         record_obj = db.session.merge(record_obj, load=True)
+        #         if attempt == 2:
+        #             raise e
 
     def _after_publish_mint_recid(self, record, entry, version):
         """Mint legacy ids for redirections assigned to the parent."""
@@ -416,14 +425,18 @@ class CDSRecordServiceLoad(Load):
             )
             file.commit()
 
-    def _after_publish(self, identity, published_record, entry, version):
+    def _after_publish(self, identity, published_record, entry, version, uow):
         """Run fixes after record publish."""
-        self._after_publish_update_dois(identity, published_record, entry)
+        record = self._after_publish_update_dois(
+            identity, published_record, entry, uow
+        )
+        if record:
+            published_record = record
         self._after_publish_update_created(published_record, entry, version)
         self._after_publish_mint_recid(published_record, entry, version)
         self._after_publish_update_files_created(published_record, entry, version)
         self._after_publish_load_parent_access_grants(published_record, version, entry)
-        db.session.commit()
+        # db.session.commit()
 
     def _pre_publish(self, identity, entry, version, draft):
         """Create and process draft before publish."""
@@ -478,7 +491,7 @@ class CDSRecordServiceLoad(Load):
 
         return draft
 
-    def _load_versions(self, entry):
+    def _load_versions(self, entry, uow):
         """Load other versions of the record."""
         versions = entry["versions"]
         legacy_recid = entry["record"]["recid"]
@@ -494,12 +507,13 @@ class CDSRecordServiceLoad(Load):
             draft = self._pre_publish(identity, entry, version, draft)
 
             # Publish draft
+
             published_record = current_rdm_records_service.publish(
-                identity, draft["id"]
+                identity, draft["id"], uow=uow
             )
             # Run after publish fixes
-            self._after_publish(identity, published_record, entry, version)
-            records.append(published_record._record)
+            self._after_publish(identity, published_record, entry, version, uow)
+        records.append(published_record._record)
 
         if records:
             record_state_context = self._load_record_state(legacy_recid, records)
@@ -590,7 +604,7 @@ class CDSRecordServiceLoad(Load):
                 recid_state["latest_version_object_uuid"] = str(rec.id)
         return recid_state
 
-    def _save_original_dumped_record(self, entry, recid_state):
+    def _save_original_dumped_record(self, entry, recid_state, uow):
         """Save the original dumped record.
 
         This is the originally extracted record before any transformation.
@@ -602,17 +616,19 @@ class CDSRecordServiceLoad(Load):
             migrated_record_object_uuid=recid_state["latest_version_object_uuid"],
             legacy_recid=entry["record"]["recid"],
         )
+        db.session.add(_original_dump_model)
+        # uow.add(_original_dump_model)
 
-        for attempt in range(3):
-            try:
-                with db.session.begin_nested():
-                    db.session.add(_original_dump_model)
-                    db.session.commit()
-            except StaleDataError as e:
-                db.session.rollback()
-                _original_dump_model = db.session.merge(_original_dump_model, load=True)
-                if attempt == 2:
-                    raise e
+        # for attempt in range(3):
+        #     try:
+        #         with db.session.begin_nested():
+        #             db.session.add(_original_dump_model)
+        #             db.session.commit()
+        #     except StaleDataError as e:
+        #         db.session.rollback()
+        #         _original_dump_model = db.session.merge(_original_dump_model, load=True)
+        #         if attempt == 2:
+        #             raise e
 
     def _have_migrated_recid(self, recid):
         """Check if we have minted `lrecid` pid."""
@@ -628,7 +644,7 @@ class CDSRecordServiceLoad(Load):
             return True
         return False
 
-    def _after_load_clc_sync(self, record_state):
+    def _after_load_clc_sync(self, record_state, uow):
         if self.clc_sync:
             sync = CDSToCLCSyncModel(
                 parent_record_pid=record_state["parent_recid"],
@@ -636,7 +652,8 @@ class CDSRecordServiceLoad(Load):
                 auto_sync=False,
             )
             db.session.add(sync)
-            db.session.commit()
+            # uow.add(sync)
+            # db.session.commit()
 
     def _load(self, entry):
         """Use the services to load the entries."""
@@ -655,15 +672,18 @@ class CDSRecordServiceLoad(Load):
                 if self.dry_run:
                     self._dry_load(entry)
                 else:
-                    recid_state_after_load = self._load_versions(
-                        entry,
-                    )
-                    if recid_state_after_load:
-                        self._save_original_dumped_record(
-                            entry,
-                            recid_state_after_load,
+                    with UnitOfWork(db.session) as uow:
+                        recid_state_after_load = self._load_versions(
+                            entry, uow
                         )
-                        self._after_load_clc_sync(recid_state_after_load)
+                        if recid_state_after_load:
+                            self._save_original_dumped_record(
+                                entry,
+                                recid_state_after_load,
+                                uow
+                            )
+                            self._after_load_clc_sync(recid_state_after_load, uow)
+                        uow.commit()
                 self.migration_logger.finalise_record(recid)
             except ManualImportRequired as e:
                 self.migration_logger.add_log(e, record=entry)
