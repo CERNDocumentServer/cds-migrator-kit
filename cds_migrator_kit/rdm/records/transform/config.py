@@ -16,8 +16,7 @@ PIDS_SCHEMES_ALLOWED = ["DOI"]
 PID_SCHEMES_TO_STORE_IN_IDENTIFIERS = [
     "ARXIV",
     "HDL",
-    "HAL"
-    "HANDLE",
+    "HAL" "HANDLE",
     "URN",
     "INIS",
     "CERCER",
