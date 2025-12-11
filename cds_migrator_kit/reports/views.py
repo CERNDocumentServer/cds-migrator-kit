@@ -108,8 +108,9 @@ def results(collection):
 def send_json(collection, recid):
     """Serves static json preview output files."""
     print(collection, recid)
-    logger = RecordStateLogger(collection=collection)
-    records = logger.load_record_dumps()
+    logger = RecordStateLogger(collection=collection, keep_logs=True)
+    logger._load_existing_logs()
+    records = logger._records
     if recid not in records:
         abort(404)
     return jsonify(records[recid])

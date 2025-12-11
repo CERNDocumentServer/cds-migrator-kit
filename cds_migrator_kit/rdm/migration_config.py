@@ -48,6 +48,10 @@ from invenio_vocabularies.config import (
 )
 
 from .permissions import CDSRDMMigrationRecordPermissionPolicy
+from invenio_app_rdm.config import (
+    STATS_EVENTS as _APP_RDM_STATS_EVENTS,
+    STATS_AGGREGATIONS as _APP_RDM_STATS_AGGREGATIONS,
+)
 
 
 def _(x):  # needed to avoid start time failure with lazy strings
@@ -482,5 +486,30 @@ RDM_RECORDS_SERVICE_COMPONENTS = [
     *DefaultRecordsComponents,
     CDSResourcePublication,
     ClcSyncComponent,
-    MintAlternateIdentifierComponent,
+    # component disabled, this part is handled separately in migration code
+    # due to two conflicting DB updates causing StaleDataError
+    # MintAlternateIdentifierComponent,
 ]
+
+
+# Invenio Stats
+# =============
+
+# We override the templates to add new fields needed for the migrated statistic events
+_APP_RDM_STATS_EVENTS["file-download"][
+    "templates"
+] = "cds_rdm.stats.templates.events.file_download"
+_APP_RDM_STATS_EVENTS["record-view"][
+    "templates"
+] = "cds_rdm.stats.templates.events.record_view"
+
+# Add the yearly suffix
+_APP_RDM_STATS_EVENTS["file-download"]["params"]["suffix"] = "%Y"
+_APP_RDM_STATS_EVENTS["record-view"]["params"]["suffix"] = "%Y"
+
+# Override the index_interval to be year
+_APP_RDM_STATS_AGGREGATIONS["file-download-agg"]["params"]["index_interval"] = "year"
+_APP_RDM_STATS_AGGREGATIONS["record-view-agg"]["params"]["index_interval"] = "year"
+
+# don't generate logs for migration
+AUDIT_LOGS_ENABLED = False
