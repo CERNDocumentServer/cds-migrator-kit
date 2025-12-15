@@ -617,7 +617,7 @@ class CDSRecordServiceLoad(Load):
                 recid_state["latest_version_object_uuid"] = str(rec.id)
         return recid_state
 
-    def _save_original_dumped_record(self, entry, recid_state, uow):
+    def _save_original_dumped_record(self, entry, recid_state):
         """Save the original dumped record.
 
         This is the originally extracted record before any transformation.
@@ -645,7 +645,7 @@ class CDSRecordServiceLoad(Load):
             return True
         return False
 
-    def _after_load_clc_sync(self, record_state, uow):
+    def _after_load_clc_sync(self, record_state):
         if self.clc_sync:
             sync = CDSToCLCSyncModel(
                 parent_record_pid=record_state["parent_recid"],
@@ -673,9 +673,9 @@ class CDSRecordServiceLoad(Load):
                         recid_state_after_load = self._load_versions(entry, uow)
                         if recid_state_after_load:
                             self._save_original_dumped_record(
-                                entry, recid_state_after_load, uow
+                                entry, recid_state_after_load
                             )
-                            self._after_load_clc_sync(recid_state_after_load, uow)
+                            self._after_load_clc_sync(recid_state_after_load)
                         uow.commit()
                 self.migration_logger.finalise_record(recid)
             except ManualImportRequired as e:
