@@ -50,15 +50,15 @@ def resource_type(self, key, value):
         v: i
         for i, v in enumerate(
             [
-                "note",
+                "conferencepaper",
+                "bookchapter",
+                "itcerntalk",
+                "slides",
+                "article",
+                "preprint",
                 "intnotetspubl",
                 "intnoteitpubl",
-                "preprint",
-                "article",
-                "slides",
-                "itcerntalk",
-                "bookchapter",
-                "conferencepaper",
+                "note",
             ]
         )
     }
@@ -223,12 +223,6 @@ def meeting(self, key, value):
         self["related_identifiers"] = _related_identifiers
 
     _custom_fields = self.setdefault("custom_fields", {})
-    meeting_fields = _custom_fields.get("meeting:meeting", {})
-    if value.get("t"):
-        meeting_fields["place"] = StringValue(value.get("t", "")).parse()
-        _custom_fields["meeting:meeting"] = meeting_fields
-    _custom_fields["meeting:meeting"] = meeting_fields
-
     journal_info = (base_journal(self, key, value)).get("journal:journal", {})
     existing_journal = _custom_fields.get("journal:journal", {})
     existing_journal.update(journal_info)
@@ -336,10 +330,13 @@ def imprint_dates(self, key, value):
     _cf = self.setdefault("custom_fields", {})
     imprint = _cf.setdefault("imprint:imprint", {})
 
-    if value.get("b") and not self.get("publisher"):
-        self["publisher"] = value["b"]
-    if value.get("a"):
-        imprint["place"] = value["a"]
+    value_a = value.get("a")
+    value_b = value.get("b")
+
+    if value_b and not self.get("publisher"):
+        self["publisher"] = value_b
+    if value_a:
+        imprint["place"] = value_a.rstrip(".")
     _cf["imprint:imprint"] = imprint
 
     pub = value.get("c")

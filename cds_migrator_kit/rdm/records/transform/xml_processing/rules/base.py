@@ -659,7 +659,7 @@ def urls(self, key, value, subfield="u"):
             value=value,
         )
     is_cds_file = False
-    if all(x in sub_u for x in ["cds", ".cern.ch/record/", "/files"]):
+    if all(x in sub_u for x in ["cds", ".cern.ch/record/", "/files", self["recid"]]):
         is_cds_file = True
     if is_cds_file:
         raise IgnoreKey("related_identifiers")
@@ -667,8 +667,8 @@ def urls(self, key, value, subfield="u"):
         p = urlparse(sub_u, "http")
         netloc = p.netloc or p.path
         path = p.path if p.netloc else ""
-        if not netloc.startswith("www."):
-            netloc = "www." + netloc
+        if netloc.startswith("www."):
+            netloc = netloc.replace("www.", "")
 
         p = ParseResult("http", netloc, path, *p[3:])
         return {
@@ -777,7 +777,6 @@ def related_identifiers_787(self, key, value):
     recid = value.get("w")
     new_id = {}
     rel_ids = self.get("related_identifiers", [])
-
     if recid and "https://cds.cern.ch/record/" in recid:
         recid = recid.replace("https://cds.cern.ch/record/", "")
 
@@ -899,7 +898,7 @@ def imprint_info(self, key, value):
     if _publisher and not self.get("publisher"):
         self["publisher"] = _publisher
     if place:
-        imprint["place"] = place
+        imprint["place"] = place.rstrip(".")
     self["custom_fields"]["imprint:imprint"] = imprint
     if publication_date_str:
         try:

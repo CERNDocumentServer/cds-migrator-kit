@@ -50,6 +50,7 @@ RECOGNISED_KEYWORD_SCHEMES = [
     "in2p3",
     "eucard",
     "inspec",
+    "desy",
 ]
 KEYWORD_SCHEMES_TO_DROP = ["proquest", "disxa"]
 

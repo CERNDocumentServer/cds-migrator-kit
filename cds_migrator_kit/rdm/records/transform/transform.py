@@ -10,6 +10,7 @@ import datetime
 import logging
 from collections import OrderedDict
 from copy import deepcopy
+from flask import current_app
 from pathlib import Path
 
 import arrow
@@ -349,7 +350,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     name.json = json_copy
 
                     db.session.add(name)
-                    db.session.commit()
+                    # db.session.commit()
 
         def creators(json, key="creators"):
             _creators = deepcopy(json.get(key, []))
@@ -976,19 +977,17 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
 
     def run(self, entries):
         """Run transformation step."""
-        if self._workers is None:
-            for entry in entries:
-                if self.should_skip(entry):
-                    continue
-                try:
-                    yield self._transform(entry)
-                except Exception:
-                    self.logger.exception(entry, exc_info=True)
-                    if self._throw:
-                        raise
-                    continue
-        else:
-            yield from self._multiprocess_transform(entries)
+        for entry in entries:
+            if self.should_skip(entry):
+                current_app.logger.warning(f"Skipping entry {entry['recid']}")
+                continue
+            try:
+                yield self._transform(entry)
+            except Exception:
+                self.logger.exception(entry, exc_info=True)
+                if self._throw:
+                    raise
+                continue
 
     #
     #
