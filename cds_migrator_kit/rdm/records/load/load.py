@@ -284,6 +284,7 @@ class CDSRecordServiceLoad(Load):
             subject, permission = next(iter(grant_info.items()))
             permission = permission or default_permission
             grants_with_perms[subject] = permission
+            subject = subject.lower()
 
             if email_pattern.match(subject):
                 emails.add(subject)
@@ -313,12 +314,12 @@ class CDSRecordServiceLoad(Load):
             )
 
             is_local_dev = current_app.config.get("CDS_MIGRATOR_KIT_ENV") == "local"
-
-            if (
-                not is_local_dev
-                and not current_rdm_records_service.access._validate_grant_subject(
+            is_valid =  current_rdm_records_service.access._validate_grant_subject(
                     identity, grant
                 )
+            if (
+                not is_local_dev
+                and not is_valid
             ):
                 raise ManualImportRequired(
                     message="Verification of access subject failed (likely not existing entry)",
