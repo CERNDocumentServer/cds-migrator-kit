@@ -853,6 +853,11 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 # if we have anything in the status string,
                 # it means the file is restricted
                 # we pass this information to parse later in load step
+                self.migration_logger.add_information(
+                    str(file["recid"]),
+                    {"message": "Record has individual file restrictions",
+                     "value": file["status"]},
+                )
                 return {
                     "access_obj": {"record": record_access, "files": "restricted"},
                     "meta": file["status"],

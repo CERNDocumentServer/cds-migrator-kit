@@ -212,8 +212,8 @@ class CDSRecordServiceLoad(Load):
         identity = system_identity
 
         record_grants = entry["record"]["json"].get("access_grants", [])
-        metadata = access_dict.get("meta", "")
-        if not metadata and not record_grants:
+        specific_file_restrictions = access_dict.get("meta", "")
+        if not specific_file_restrictions and not record_grants:
             return
         default_permission = "view"
 
@@ -223,12 +223,13 @@ class CDSRecordServiceLoad(Load):
         email_pattern = re.compile(r"[^@]+@[^@]+\.[^@]+")
 
         # ----Parse file status metadata----#
-        if metadata:
+        if specific_file_restrictions:
+
             group_mappings = current_app.config.get("CDS_ACCESS_GROUP_MAPPINGS", {})
 
-            if metadata in group_mappings:
+            if specific_file_restrictions in group_mappings:
                 try:
-                    groups.update(group_mappings[metadata])
+                    groups.update(group_mappings[specific_file_restrictions])
                 except KeyError as e:
                     raise ManualImportRequired(
                         message="Missing permission mapping",
@@ -237,14 +238,14 @@ class CDSRecordServiceLoad(Load):
                         stage="load",
                         recid=entry["record"]["recid"],
                         priority="critical",
-                        value=metadata,
+                        value=specific_file_restrictions,
                     )
-            elif metadata == "restricted":
+            elif specific_file_restrictions == "restricted":
                 # https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showroledetails?id_role=69
                 groups.add("cern-personnel")
             else:
                 if not any(
-                    kw in metadata for kw in ("firerole: allow group", "allow email")
+                    kw in specific_file_restrictions for kw in ("firerole: allow group", "allow email")
                 ):
                     raise ManualImportRequired(
                         message="Unexpected permission format.",
@@ -253,10 +254,10 @@ class CDSRecordServiceLoad(Load):
                         stage="load",
                         recid=entry["record"]["recid"],
                         priority="critical",
-                        value=metadata,
+                        value=specific_file_restrictions,
                     )
 
-                meta_str = metadata.replace("\r\n", "\n")
+                meta_str = specific_file_restrictions.replace("\r\n", "\n")
 
                 # Parse groups
                 group_matches = re.search(
@@ -285,10 +286,15 @@ class CDSRecordServiceLoad(Load):
             permission = permission or default_permission
             grants_with_perms[subject] = permission
 
-            if email_pattern.match(subject):
-                emails.add(subject)
-            else:
-                groups.add(_normalize_group_name(subject))
+            # attention!
+            # this is important - if there was no specific restrictions on the file,
+            # then the record grands takes over - but if file had specific status,
+            # then we take the least possible access
+            if not specific_file_restrictions:
+                if email_pattern.match(subject):
+                    emails.add(subject)
+                else:
+                    groups.add(_normalize_group_name(subject))
 
         def _create_grant(subject_type, subject_id, permission):
             grant_data = {
