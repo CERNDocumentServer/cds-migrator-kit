@@ -224,11 +224,12 @@ def date(self, key, value):
     """Translates dates."""
     dates = self.get("dates", [])
     valid = value.get("a")
-    date = {
-        "date": valid,
-        "type": {"id": "valid"},
-    }
-    dates.append(date)
+    if valid:
+        date = {
+            "date": valid,
+            "type": {"id": "valid"},
+        }
+        dates.append(date)
     withdrawn = value.get("b", "")
     if withdrawn and "9999" not in withdrawn:
         date = {

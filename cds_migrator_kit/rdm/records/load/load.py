@@ -443,7 +443,9 @@ class CDSRecordServiceLoad(Load):
                     status=PIDStatus.REGISTERED,
                 )
             except PIDAlreadyExists as e:
-                pid = PersistentIdentifier.get(pid_type="cdsrn", pid_value=report_number)
+                pid = PersistentIdentifier.get(
+                    pid_type="cdsrn", pid_value=report_number
+                )
                 if pid.object_uuid != draft._record.parent.id:
                     # raise only if different parent uuid found, meaning they are 2
                     # different records and the repnum is duplicated
