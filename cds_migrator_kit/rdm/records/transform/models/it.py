@@ -73,6 +73,7 @@ class ITModel(CdsOverdo):
         "773__a",  # Duplicate DOI
         "773__o",  # Duplicate meeting title
         "773__u",  # Duplicate meeting url
+        "773__t",  # CNL articles - duplicate info
         "785__t",  # Related works platform
         "785__x",  # Related works type
         "7870_r",  # detailed description of record relation

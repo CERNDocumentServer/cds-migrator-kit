@@ -116,6 +116,7 @@ def imprint_info(self, key, value):
     if _publisher and not self.get("publisher"):
         self["publisher"] = _publisher
     if place:
+        place = place.rstrip(".")
         imprint["place"] = place
     self["custom_fields"]["imprint:imprint"] = imprint
     if publication_date_str:
@@ -271,7 +272,7 @@ def related_identifiers(self, key, value):
         artid_from_773 = (
             self.get("custom_fields", {}).get("journal:journal", {}).get("pages")
         )
-        if artid_from_773 != artid:
+        if artid_from_773 and artid_from_773 != artid:
             res_type = "publication-other"
             new_id.update({"resource_type": {"id": res_type}})
 
