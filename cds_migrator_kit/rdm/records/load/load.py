@@ -204,7 +204,7 @@ class CDSRecordServiceLoad(Load):
 
         def _normalize_group_name(subject):
             if subject.endswith(" [CERN]"):
-                subject = subject.rsplit(" [CERN]", 1)[0]
+                subject = subject.replace(" [CERN]", "")
             return subject.strip()
 
         access_dict = entry["versions"][version]["access"]
@@ -284,7 +284,6 @@ class CDSRecordServiceLoad(Load):
             subject, permission = next(iter(grant_info.items()))
             permission = permission or default_permission
             grants_with_perms[subject] = permission
-            subject = subject.lower()
 
             if email_pattern.match(subject):
                 emails.add(subject)
@@ -335,7 +334,7 @@ class CDSRecordServiceLoad(Load):
         for group in groups:
             _create_grant(
                 subject_type="role",
-                subject_id=group,
+                subject_id=group.lower(),
                 permission=grants_with_perms.get(group, default_permission),
             )
 
