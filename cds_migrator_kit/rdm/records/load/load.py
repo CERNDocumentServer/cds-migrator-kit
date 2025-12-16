@@ -245,7 +245,8 @@ class CDSRecordServiceLoad(Load):
                 groups.add("cern-personnel")
             else:
                 if not any(
-                    kw in specific_file_restrictions for kw in ("firerole: allow group", "allow email")
+                    kw in specific_file_restrictions
+                    for kw in ("firerole: allow group", "allow email")
                 ):
                     raise ManualImportRequired(
                         message="Unexpected permission format.",
@@ -319,13 +320,10 @@ class CDSRecordServiceLoad(Load):
             )
 
             is_local_dev = current_app.config.get("CDS_MIGRATOR_KIT_ENV") == "local"
-            is_valid =  current_rdm_records_service.access._validate_grant_subject(
-                    identity, grant
-                )
-            if (
-                not is_local_dev
-                and not is_valid
-            ):
+            is_valid = current_rdm_records_service.access._validate_grant_subject(
+                identity, grant
+            )
+            if not is_local_dev and not is_valid:
                 raise ManualImportRequired(
                     message="Verification of access subject failed (likely not existing entry)",
                     field="access",

@@ -150,18 +150,11 @@ def test_collection_with_access_grants_view_configuration(
 
     # restricted file status, restricted  = cern-personnel
     # see https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showactiondetails?id_action=39&reverse=1
-    sorted_grants = [tuple(sorted(d)) for d in new_record["parent"]["access"]["grants"]]
+    assert new_record["access"]["record"] == "restricted"
+    assert new_record["access"]["files"] == "restricted"
+    grants = new_record["parent"]["access"]["grants"]
+    sorted_grants = sorted(grants, key=lambda d: d["subject"]["id"])
     expected = [
-        {
-            "permission": "view",
-            "subject": {"id": "hr-web-gacepa", "type": "role"},
-            "origin": "migrated",
-        },
-        {
-            "permission": "view",
-            "subject": {"id": "eligibility-retr-actual", "type": "role"},
-            "origin": "migrated",
-        },
         {
             "permission": "view",
             "subject": {"id": "cern-personnel", "type": "role"},
@@ -169,7 +162,7 @@ def test_collection_with_access_grants_view_configuration(
         },
     ]
 
-    sorted_expected = [tuple(sorted(d)) for d in expected]
+    sorted_expected = sorted(expected, key=lambda d: d["subject"]["id"])
     assert sorted_grants == sorted_expected
 
     # assigned status
@@ -188,7 +181,10 @@ def test_collection_with_access_grants_view_configuration(
     parent_id = new_record["parent"]["id"]
     assert parent_id is not None
 
-    sorted_grants = [tuple(sorted(d)) for d in new_record["parent"]["access"]["grants"]]
+    assert new_record["access"]["record"] == "restricted"
+    assert new_record["access"]["files"] == "restricted"
+    grants = new_record["parent"]["access"]["grants"]
+    sorted_grants = sorted(grants, key=lambda d: d["subject"]["id"])
     expected = [
         {
             "permission": "view",
@@ -201,7 +197,8 @@ def test_collection_with_access_grants_view_configuration(
             "origin": "migrated",
         },
     ]
-    sorted_expected = [tuple(sorted(d)) for d in expected]
-    # restricted file status, restricted  = cern-personnel
+
+    sorted_expected = sorted(expected, key=lambda d: d["subject"]["id"])
+    # check if restricted file status takes over the collection settings
     # see https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showactiondetails?id_action=39&reverse=1
     assert sorted_grants == sorted_expected

@@ -85,7 +85,7 @@ def config(mocker, community, orcid_name_data):
                     },
                     # Configure access_grants_view with specific groups
                     "restricted": "True",
-                    "access_grants_view": ["hr-web-gacepa", "eligibility-retr-actual"],
+                    "access_grants_view": ["cern-personnel"],
                 },
                 "thesis": {
                     "data_dir": "tests/cds-rdm/data/thesis",
