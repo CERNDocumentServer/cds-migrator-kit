@@ -7,25 +7,24 @@
 
 """CDS-RDM migration load module."""
 
-from flask import current_app
-
-from invenio_rdm_migrator.load.base import Load
-
-from cds_migrator_kit.rdm.comments.log import CommentsLogger
-from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
-from invenio_access.permissions import system_identity
-from invenio_requests.proxies import current_requests_service
-from invenio_rdm_records.proxies import current_rdm_records_service
-from invenio_rdm_records.records.api import RDMParent
-from invenio_requests.customizations.event_types import CommentEventType
-from invenio_requests.proxies import current_events_service
-from invenio_requests.resolvers.registry import ResolverRegistry
-from invenio_accounts.models import User
-from invenio_db import db
 from datetime import datetime
 
-from invenio_requests.customizations.request_types import CommunitySubmission
-from invenio_requests.customizations.event_types import LogEventType
+from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
+from flask import current_app, url_for
+from invenio_access.permissions import system_identity
+from invenio_accounts.models import User
+from invenio_db import db
+from invenio_rdm_migrator.load.base import Load
+from invenio_rdm_records.proxies import current_rdm_records_service
+from invenio_rdm_records.records.api import RDMParent
+from invenio_rdm_records.requests import CommunitySubmission
+from invenio_requests.customizations.event_types import CommentEventType, LogEventType
+from invenio_requests.proxies import current_events_service, current_requests_service
+from invenio_requests.records.api import RequestEventFormat
+from invenio_requests.resolvers.registry import ResolverRegistry
+
+from cds_migrator_kit.errors import ManualImportRequired
+from cds_migrator_kit.rdm.comments.log import CommentsLogger
 
 logger = CommentsLogger.get_logger()
 
@@ -38,14 +37,13 @@ class CDSCommentsLoad(Load):
 
     def __init__(
         self,
-        config,
-        less_than_date,
+        dirpath,
         dry_run=False,
     ):
         """Constructor."""
-        self.config = config
-        self.less_than_date = less_than_date
+        self.dirpath = dirpath  # TODO: To be used later to load the attached files
         self.dry_run = dry_run
+        self.all_record_versions = {}
 
     def get_oldest_record(self, parent_pid_value):
         latest_record = current_rdm_records_service.read_latest(
@@ -55,61 +53,120 @@ class CDSCommentsLoad(Load):
             identity=system_identity,
             id_=latest_record["id"],
         )
-        record_versions = {hit["versions"]["index"]: hit for hit in search_result}
-        oldest_version = min(record_versions.keys())
-        return record_versions[oldest_version]
-
+        self.all_record_versions = {
+            str(hit["versions"]["index"]): hit for hit in search_result
+        }
+        oldest_version = min(
+            int(version) for version in self.all_record_versions.keys()
+        )
+        return self.all_record_versions[str(oldest_version)]
 
     def create_event(self, request, data, community, record, parent_comment_id=None):
         if not parent_comment_id:
-            print("Creating event for record: ", record['id'], "request: ", request.id, "comment ID: ", data.get("comment_id"))
+            logger.info(
+                "Creating event for record<{}> request<{}> comment<{}>".format(
+                    record["id"],
+                    request.id,
+                    data.get("comment_id"),
+                )
+            )
         else:
-            print("Creating reply event for record: ", record['id'], "request: ", request.id, "comment ID: ", data.get("comment_id"), "parent comment ID: ", parent_comment_id)
-        # TODO: Only add commment if the version id matches. To be finalized in discussion
-        # if data.get("version") != record['versions']['index']:
-        #     return
+            logger.info(
+                "Creating reply event for record<{}> request<{}> comment<{}> parent_comment<{}>".format(
+                    record["id"],
+                    request.id,
+                    data.get("comment_id"),
+                    parent_comment_id,
+                )
+            )
 
         # Create comment event
         comment_payload = {
             "payload": {
                 "content": data.get("content"),
-                "format": "html",
+                "format": RequestEventFormat.HTML.value,
             }
         }
 
         comment_status = data.get("status")
+        event_type = CommentEventType
         if comment_status == "da":
-            comment_payload["payload"].update({"content": "comment was deleted by the author.", "event_type": "comment_deleted"})
+            comment_payload["payload"].update(
+                {
+                    "content": "comment was deleted by the author.",
+                    "event_type": "comment_deleted",
+                }
+            )
+            event_type = LogEventType
         elif comment_status == "dm":
-            comment_payload["payload"].update({"content": "comment was deleted by the moderator.", "event_type": "comment_deleted"})
+            comment_payload["payload"].update(
+                {
+                    "content": "comment was deleted by the moderator.",
+                    "event_type": "comment_deleted",
+                }
+            )
+            event_type = LogEventType
 
-        event = current_events_service.record_cls.create({}, request=request.model, request_id=str(request.id), type=CommentEventType)
+        event = current_events_service.record_cls.create(
+            {}, request=request.model, request_id=str(request.id), type=event_type
+        )
+
+        if data.get("file_relation"):
+            file_relation = data.get("file_relation")
+            file_id = file_relation.get("file_id")
+            version = file_relation.get("version")
+            record_version = self.all_record_versions.get(str(version), None)
+            if record_version:
+                record_url = url_for(
+                    "invenio_app_rdm_records.record_detail",
+                    pid_value=record_version["id"],
+                    preview_file=file_id,
+                )
+                version_link = f"<p><a href='{record_url}'>See related record version {version}</a></p>"
+                comment_payload["payload"]["content"] = (
+                    version_link + "\n" + comment_payload["payload"]["content"]
+                )
 
         if parent_comment_id:
+            logger.info(
+                "Found parent event<{}> for reply event<{}>. Setting parent_id.".format(
+                    event.id,
+                    parent_comment_id,
+                )
+            )
             # If it's a reply, 1. set parent comment id, 2. and if a nested reply, in the content add mentioned reply event's deep link
             event.parent_id = str(parent_comment_id)
-            mentioned_event_id = self.LEGACY_REPLY_LINK_MAP.get(data.get("reply_to_id"), None)
+            mentioned_event_id = self.LEGACY_REPLY_LINK_MAP.get(
+                data.get("reply_to_id"), None
+            )
             if mentioned_event_id:
+                logger.info(
+                    "Adding deep link to the content for the deeply nested reply event<{}>.".format(
+                        mentioned_event_id,
+                        event.id,
+                    )
+                )
                 deep_link = f"<p><a href='{current_app.config['CDS_MIGRATOR_KIT_SITE_UI_URL']}/communities/{community.slug}/requests/{request.id}#commentevent-{parent_comment_id}_{mentioned_event_id}'>Link to the reply</a></p>"
-                comment_payload["payload"]["content"] = deep_link + "\n" + comment_payload["payload"]["content"]
+                comment_payload["payload"]["content"] = (
+                    deep_link + "\n" + comment_payload["payload"]["content"]
+                )
 
         # TODO: Add attached files to the event
-        for attached_file in data.get("attached_files", []):
-            print("TODO: Add attached files to the event: ", attached_file)
-        # if data.get("attached_files"):
-        #     comment_payload["payload"]["files"] = data.get("attached_files")
+        # https://github.com/CERNDocumentServer/cds-migrator-kit/issues/381
 
         event.update(comment_payload)
 
         user = User.query.filter_by(email=data.get("created_by")).one_or_none()
-        # TODO: It shouldn't be not found, if so, raise manual migration error?
         if user:
-            event.created_by = ResolverRegistry.resolve_entity_proxy({"user": str(user.id)}, raise_=True)
+            event.created_by = ResolverRegistry.resolve_entity_proxy(
+                {"user": str(user.id)}, raise_=True
+            )
         else:
             print("User not found for email: ", data.get("created_by"))
-            event.created_by = ResolverRegistry.resolve_entity_proxy({"user": "system"}, raise_=True)
-
-        event.model.created = data.get("created_at") # Not changing the updated at because of the context of migration
+            raise ManualImportRequired(
+                f"User not found for email: {data.get('created_by')}"
+            )
+        event.model.created = data.get("created_at")
         event.model.version_id = 0
 
         event.commit()
@@ -118,23 +175,35 @@ class CDSCommentsLoad(Load):
         current_events_service.indexer.index(event)
         return event
 
-
     def create_accepted_community_inclusion_request(
         self,
         record,
         community,
         creator_user_id,
-        comments=None, # TODO: Should an accepted request be created if there are no comments?
+        comments=None,
     ):
+        """Create an accepted community inclusion request."""
+        if not comments:
+            logger.warning(
+                f"No comments found for record<{record['id']}>. Skipping request creation."
+            )
+            return None
+
         # Resolve entities for references
-        creator_ref = ResolverRegistry.reference_entity({"user": str(creator_user_id)}, raise_=True)
-        receiver_ref = ResolverRegistry.reference_entity({"community": str(community.id)}, raise_=True)
-        topic_ref = ResolverRegistry.reference_entity({"record": record['id']}, raise_=True)
+        creator_ref = ResolverRegistry.reference_entity(
+            {"user": str(creator_user_id)}, raise_=True
+        )
+        receiver_ref = ResolverRegistry.reference_entity(
+            {"community": str(community.id)}, raise_=True
+        )
+        topic_ref = ResolverRegistry.reference_entity(
+            {"record": record["id"]}, raise_=True
+        )
 
         request_item = current_requests_service.create(
             system_identity,
             data={
-                "title": record['metadata']["title"],
+                "title": record["metadata"]["title"],
             },
             request_type=CommunitySubmission,
             receiver=receiver_ref,
@@ -144,34 +213,24 @@ class CDSCommentsLoad(Load):
         )
         request = request_item._record
         request.status = "accepted"
-        created_at = datetime.fromisoformat(record['created'])
+        created_at = datetime.fromisoformat(record["created"])
         request.model.created = created_at
-        # request.model.updated = created_at # Not changing the updated to keep the context of migration
 
         request.commit()
         db.session.commit()
 
         current_requests_service.indexer.index(request)
+        logger.info(
+            f"Created accepted community submission request<{request.id}> for record<{record['id']}>."
+        )
 
         for comment_data in comments:
             comment_event = self.create_event(request, comment_data, community, record)
             for reply in comment_data.get("replies", []):
-                reply_event = self.create_event(request, reply, community, record, comment_event.id)
+                reply_event = self.create_event(
+                    request, reply, community, record, comment_event.id
+                )
                 self.LEGACY_REPLY_LINK_MAP[reply.get("comment_id")] = reply_event.id
-
-        # Add accepted log action
-        event = LogEventType(payload=dict(event="accepted"))
-        _data = dict(payload=event.payload)
-        log_event = current_events_service.create(
-            system_identity, request.id, _data, event, uow=None
-        )
-        # TODO: What should be the created for the log event, record's or last comment's? To be finalized in discussion
-        log_event._record.model.created = created_at
-
-        log_event._record.commit()
-        db.session.commit()
-
-        current_events_service.indexer.index(log_event._record)
 
         return request
 
@@ -183,7 +242,9 @@ class CDSCommentsLoad(Load):
         parent = RDMParent.pid.resolve(parent_pid.pid_value)
         community = parent.communities.default
         record_owner_id = parent.access.owned_by.owner_id
-        request = self.create_accepted_community_inclusion_request(oldest_record, community, record_owner_id, comments)
+        request = self.create_accepted_community_inclusion_request(
+            oldest_record, community, record_owner_id, comments
+        )
         return request
 
     def _load(self, entry):
