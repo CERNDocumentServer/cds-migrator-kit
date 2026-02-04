@@ -7,9 +7,9 @@
 
 """CDS-Migrator-Kit comments streams module."""
 from invenio_rdm_migrator.streams import StreamDefinition
+from invenio_rdm_migrator.transform import IdentityTransform
 
 from cds_migrator_kit.rdm.comments.extract import LegacyCommentsExtract
-from invenio_rdm_migrator.transform import IdentityTransform
 
 from .load import CDSCommentsLoad
 

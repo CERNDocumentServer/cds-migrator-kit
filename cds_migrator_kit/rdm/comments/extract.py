@@ -25,6 +25,8 @@ class LegacyCommentsExtract(Extract):
         """Run."""
         with open(self.filepath, "r") as dump_file:
             data = json.load(dump_file)
-            with click.progressbar(data.items(), label="Processing comments") as metadata:
+            with click.progressbar(
+                data.items(), label="Processing comments"
+            ) as metadata:
                 for recid, comments in metadata:
                     yield (recid, comments)

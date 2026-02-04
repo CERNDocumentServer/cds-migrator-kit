@@ -14,9 +14,10 @@ import click
 from flask import current_app
 from flask.cli import with_appcontext
 
-from cds_migrator_kit.rdm.comments.runner import CommentsRunner
 from cds_migrator_kit.rdm.affiliations.runner import RecordAffiliationsRunner
 from cds_migrator_kit.rdm.affiliations.streams import AffiliationsStreamDefinition
+from cds_migrator_kit.rdm.comments.runner import CommentsRunner
+from cds_migrator_kit.rdm.comments.streams import CommentsStreamDefinition
 from cds_migrator_kit.rdm.records.streams import (  # UserStreamDefinition,
     RecordStreamDefinition,
 )
@@ -244,6 +245,7 @@ def dump(slug, title, filepath):
     with open(filepath, "w") as fp:
         yaml.safe_dump(streams, fp, default_flow_style=False, sort_keys=False)
 
+
 @migration.group()
 def comments():
     """Migration CLI for comments."""
@@ -270,6 +272,7 @@ def comments_run(filepath, dirpath, dry_run=False):
     """Migrate the comments for the records in `filepath`."""
     log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "comments"
     runner = CommentsRunner(
+        stream_definition=CommentsStreamDefinition,
         filepath=filepath,
         dirpath=dirpath,
         log_dir=log_dir,
