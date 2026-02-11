@@ -16,8 +16,11 @@ from flask.cli import with_appcontext
 
 from cds_migrator_kit.rdm.affiliations.runner import RecordAffiliationsRunner
 from cds_migrator_kit.rdm.affiliations.streams import AffiliationsStreamDefinition
-from cds_migrator_kit.rdm.comments.runner import CommentsRunner
-from cds_migrator_kit.rdm.comments.streams import CommentsStreamDefinition
+from cds_migrator_kit.rdm.comments.runner import CommenterRunner, CommentsRunner
+from cds_migrator_kit.rdm.comments.streams import (
+    CommenterStreamDefinition,
+    CommentsStreamDefinition,
+)
 from cds_migrator_kit.rdm.records.streams import (  # UserStreamDefinition,
     RecordStreamDefinition,
 )
@@ -275,6 +278,35 @@ def comments_run(filepath, dirpath, dry_run=False):
         stream_definition=CommentsStreamDefinition,
         filepath=filepath,
         dirpath=dirpath,
+        log_dir=log_dir,
+        dry_run=dry_run,
+    )
+    runner.run()
+
+
+@comments.command()
+@click.option(
+    "--dry-run",
+    is_flag=True,
+)
+@click.option(
+    "--filepath",
+    help="Path to the users metadata json file.",
+    required=True,
+)
+@click.option(
+    "--missing-users-filepath",
+    help="Path to the people.csv file containing person_id for missing users.",
+    default=None,
+)
+@with_appcontext
+def commenters_run(filepath, missing_users_filepath, dry_run=False):
+    """Pre-create commenters accounts."""
+    log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "comments"
+    runner = CommenterRunner(
+        stream_definition=CommenterStreamDefinition,
+        filepath=filepath,
+        missing_users_filepath=missing_users_filepath,
         log_dir=log_dir,
         dry_run=dry_run,
     )

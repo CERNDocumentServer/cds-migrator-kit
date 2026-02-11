@@ -9,7 +9,11 @@
 from invenio_rdm_migrator.streams import StreamDefinition
 from invenio_rdm_migrator.transform import IdentityTransform
 
-from cds_migrator_kit.rdm.comments.extract import LegacyCommentsExtract
+from cds_migrator_kit.rdm.comments.extract import (
+    LegacyCommentersExtract,
+    LegacyCommentsExtract,
+)
+from cds_migrator_kit.users.load import CDSSubmitterLoad
 
 from .load import CDSCommentsLoad
 
@@ -20,3 +24,11 @@ CommentsStreamDefinition = StreamDefinition(
     load_cls=CDSCommentsLoad,
 )
 """ETL stream for CDS to RDM comments."""
+
+CommenterStreamDefinition = StreamDefinition(
+    name="commenters",
+    extract_cls=LegacyCommentersExtract,
+    transform_cls=IdentityTransform,
+    load_cls=CDSSubmitterLoad,
+)
+"""ETL stream for CDS to RDM commenters."""
