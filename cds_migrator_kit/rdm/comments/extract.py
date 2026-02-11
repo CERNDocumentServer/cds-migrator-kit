@@ -30,3 +30,23 @@ class LegacyCommentsExtract(Extract):
             ) as metadata:
                 for recid, comments in metadata:
                     yield (recid, comments)
+
+
+class LegacyCommentersExtract(Extract):
+    """LegacyCommentersExtract."""
+
+    def __init__(self, filepath, **kwargs):
+        """Constructor."""
+        self.filepath = Path(filepath).absolute()
+
+    def run(self):
+        """Run."""
+        with open(self.filepath, "r") as dump_file:
+            data = json.load(dump_file)
+            with click.progressbar(
+                data.items(), label="Processing commenters"
+            ) as metadata:
+                for user_data in metadata:
+                    # user_data is a list (from JSON): [user_id, user_email, user_nickname, user_note, user_last_login]
+                    email = user_data[1]
+                    yield {"submitter": email}

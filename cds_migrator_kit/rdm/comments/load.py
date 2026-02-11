@@ -7,17 +7,19 @@
 
 """CDS-RDM migration load module."""
 
+import os
 from datetime import datetime
 
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from flask import current_app, url_for
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
-from invenio_db import db
+from invenio_db.uow import UnitOfWork
 from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.records.api import RDMParent
 from invenio_rdm_records.requests import CommunitySubmission
+from invenio_records_resources.services.uow import RecordCommitOp
 from invenio_requests.customizations.event_types import CommentEventType, LogEventType
 from invenio_requests.proxies import current_events_service, current_requests_service
 from invenio_requests.records.api import RequestEventFormat
@@ -41,9 +43,16 @@ class CDSCommentsLoad(Load):
         dry_run=False,
     ):
         """Constructor."""
-        self.dirpath = dirpath  # TODO: To be used later to load the attached files
+        self.dirpath = dirpath  # The directory path where the attached files are stored
         self.dry_run = dry_run
         self.all_record_versions = {}
+
+    def get_attached_files_for_comment(self, recid, comment_id):
+        """Get the attached files for the comment."""
+        attached_files_directory = os.path.join(self.dirpath, recid, comment_id)
+        if os.path.exists(attached_files_directory):
+            return os.listdir(attached_files_directory)
+        return []
 
     def get_oldest_record(self, parent_pid_value):
         latest_record = current_rdm_records_service.read_latest(
@@ -61,24 +70,17 @@ class CDSCommentsLoad(Load):
         )
         return self.all_record_versions[str(oldest_version)]
 
-    def create_event(self, request, data, community, record, parent_comment_id=None):
-        if not parent_comment_id:
-            logger.info(
-                "Creating event for record<{}> request<{}> comment<{}>".format(
-                    record["id"],
-                    request.id,
-                    data.get("comment_id"),
-                )
+    def create_event(
+        self, request, data, community, record, uow, parent_comment_id=None
+    ):
+        logger.info(
+            "Creating event for record ID<{}> request ID<{}> comment ID<{}> parent_comment ID<{}>".format(
+                record["id"],
+                request.id,
+                data.get("comment_id"),
+                "self" if not parent_comment_id else parent_comment_id,
             )
-        else:
-            logger.info(
-                "Creating reply event for record<{}> request<{}> comment<{}> parent_comment<{}>".format(
-                    record["id"],
-                    request.id,
-                    data.get("comment_id"),
-                    parent_comment_id,
-                )
-            )
+        )
 
         # Create comment event
         comment_payload = {
@@ -111,6 +113,7 @@ class CDSCommentsLoad(Load):
             {}, request=request.model, request_id=str(request.id), type=event_type
         )
 
+        # If the comment is attached to a record file, add a link to the file in the content
         if data.get("file_relation"):
             file_relation = data.get("file_relation")
             file_id = file_relation.get("file_id")
@@ -153,6 +156,14 @@ class CDSCommentsLoad(Load):
 
         # TODO: Add attached files to the event
         # https://github.com/CERNDocumentServer/cds-migrator-kit/issues/381
+        # For now, if attached files are found, raise ManualImportRequired error
+        attached_files = self.get_attached_files_for_comment(
+            record["id"], data.get("comment_id")
+        )
+        if attached_files:
+            raise ManualImportRequired(
+                f"Attached files found for comment ID<{data.get('comment_id')}>."
+            )
 
         event.update(comment_payload)
 
@@ -162,17 +173,16 @@ class CDSCommentsLoad(Load):
                 {"user": str(user.id)}, raise_=True
             )
         else:
-            print("User not found for email: ", data.get("created_by"))
             raise ManualImportRequired(
                 f"User not found for email: {data.get('created_by')}"
             )
         event.model.created = data.get("created_at")
         event.model.version_id = 0
 
-        event.commit()
-        db.session.commit()
+        # THere aren't any components to run for creating the event
+        # Since we are not using the services to create the event, we need to register the commit operation manually for indexing
+        uow.register(RecordCommitOp(event, indexer=current_events_service.indexer))
 
-        current_events_service.indexer.index(event)
         return event
 
     def create_accepted_community_inclusion_request(
@@ -200,37 +210,44 @@ class CDSCommentsLoad(Load):
             {"record": record["id"]}, raise_=True
         )
 
-        request_item = current_requests_service.create(
-            system_identity,
-            data={
-                "title": record["metadata"]["title"],
-            },
-            request_type=CommunitySubmission,
-            receiver=receiver_ref,
-            creator=creator_ref,
-            topic=topic_ref,
-            uow=None,
-        )
-        request = request_item._record
-        request.status = "accepted"
-        created_at = datetime.fromisoformat(record["created"])
-        request.model.created = created_at
+        with UnitOfWork() as uow:
+            request_item = current_requests_service.create(
+                system_identity,
+                data={
+                    "title": record["metadata"]["title"],
+                },
+                request_type=CommunitySubmission,
+                receiver=receiver_ref,
+                creator=creator_ref,
+                topic=topic_ref,
+                uow=uow,
+            )
+            request = request_item._record
+            request.status = "accepted"
+            created_at = datetime.fromisoformat(record["created"])
+            request.model.created = created_at
 
-        request.commit()
-        db.session.commit()
+            logger.info(
+                f"Created accepted community submission request<{request.id}> for record<{record['id']}>."
+            )
 
-        current_requests_service.indexer.index(request)
-        logger.info(
-            f"Created accepted community submission request<{request.id}> for record<{record['id']}>."
-        )
-
-        for comment_data in comments:
-            comment_event = self.create_event(request, comment_data, community, record)
-            for reply in comment_data.get("replies", []):
-                reply_event = self.create_event(
-                    request, reply, community, record, comment_event.id
+            for comment_data in comments:
+                comment_event = self.create_event(
+                    request, comment_data, community, record, uow
                 )
-                self.LEGACY_REPLY_LINK_MAP[reply.get("comment_id")] = reply_event.id
+                for reply in comment_data.get("replies", []):
+                    reply_event = self.create_event(
+                        request,
+                        reply,
+                        community,
+                        record,
+                        uow,
+                        parent_comment_id=comment_event.id,
+                    )
+                    self.LEGACY_REPLY_LINK_MAP[reply.get("comment_id")] = reply_event.id
+
+            # Commit at the end to rollback if any error occurs not only for the request but also for the comments
+            uow.commit()
 
         return request
 

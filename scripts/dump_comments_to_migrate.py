@@ -32,7 +32,7 @@ collection_queries = [
     "980:ITUDSPUBSOURCEARCHIVE -980:DELETED -980:HIDDEN -980__a:DUMMY",
 ]
 """
-For thesis: "(980__:THESIS OR 980__:Thesis OR 980__:thesis) -980__:DUMMY -980__c:HIDDEN"
+For thesis, change the query and re-run this script: "(980__:THESIS OR 980__:Thesis OR 980__:thesis) -980__:DUMMY -980__c:HIDDEN"
 """
 recids_list = []
 print("Querying already migrated records...")
@@ -198,6 +198,8 @@ for i, recid in enumerate(recids_with_comments):
     print("Found `{}` comment(s) for record<{}>".format(len(comments), recid))
     comments_metadata[recid] = []
 
+    # `get_comment_to_bibdoc_relations` is used to find if comments are attached to the record's files (and the version of the files)
+    # This is not the same as the files attached to the comments
     comments_to_file_relations = get_comment_to_bibdoc_relations(recid)
     comment_to_version_relations = {}
     for relation in comments_to_file_relations:
@@ -255,13 +257,12 @@ for i, recid in enumerate(recids_with_comments):
 
 with open("comments_metadata.json", "w") as f:
     json.dump(comments_metadata, f)
+"""
+This file will be read and run by the CommentsRunner to migrate the comments.
+"""
 
 with open("users_metadata.json", "w") as f:
     json.dump(users_metadata, f)
 """
-This file will be read and then this script (with some tweaks) can be run to find out the missing users in the new system.
-https://gitlab.cern.ch/cds-team/production_scripts/-/blob/master/cds-rdm/migration/dump_users.py?ref_type=heads
-
-TODO: Might not be needed as we migrated the whole users table. To be discussed with someone.
-TODO: Might need to also fix the script since it returns missing for users migrated as inactive.
+This file will be read and run by the CommenterRunner to pre-create the commenters accounts.
 """
