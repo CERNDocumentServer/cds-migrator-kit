@@ -46,7 +46,7 @@ class CommenterRunner:
     """ETL streams runner dedicated to pre-create commenters accounts."""
 
     def __init__(
-        self, stream_definition, filepath, missing_users_filepath, log_dir, dry_run
+        self, stream_definition, filepath, missing_users_dir, log_dir, dry_run
     ):
         """Constructor."""
         self.log_dir = Path(log_dir)
@@ -60,7 +60,7 @@ class CommenterRunner:
             transform=stream_definition.transform_cls(),
             load=stream_definition.load_cls(
                 dry_run=dry_run,
-                missing_users_filepath=missing_users_filepath,
+                missing_users_dir=missing_users_dir,
                 logger=CommentsLogger.get_logger(),
                 user_api_cls=CDSMigrationUserAPI,
             ),

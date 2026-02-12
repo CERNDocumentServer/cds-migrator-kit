@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2024 CERN.
+# Copyright (C) 2026 CERN.
 #
 # CDS-RDM is free software; you can redistribute it and/or modify it under
 # the terms of the MIT License; see LICENSE file for more details.
@@ -8,8 +8,8 @@
 """CDS-RDM migration load module."""
 
 import os
-from datetime import datetime
 
+import arrow
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from flask import current_app, url_for
 from invenio_access.permissions import system_identity
@@ -49,7 +49,7 @@ class CDSCommentsLoad(Load):
 
     def get_attached_files_for_comment(self, recid, comment_id):
         """Get the attached files for the comment."""
-        attached_files_directory = os.path.join(self.dirpath, recid, comment_id)
+        attached_files_directory = os.path.join(self.dirpath, str(recid), str(comment_id))
         if os.path.exists(attached_files_directory):
             return os.listdir(attached_files_directory)
         return []
@@ -59,16 +59,12 @@ class CDSCommentsLoad(Load):
             identity=system_identity, id_=parent_pid_value
         )
         search_result = current_rdm_records_service.scan_versions(
-            identity=system_identity,
-            id_=latest_record["id"],
+            system_identity, latest_record["id"],
         )
-        self.all_record_versions = {
-            str(hit["versions"]["index"]): hit for hit in search_result
-        }
-        oldest_version = min(
-            int(version) for version in self.all_record_versions.keys()
-        )
-        return self.all_record_versions[str(oldest_version)]
+        for hit in search_result.hits:
+            self.all_record_versions[hit["versions"]["index"]] = hit
+        oldest_version_index = min(self.all_record_versions.keys())
+        return self.all_record_versions[oldest_version_index]
 
     def create_event(
         self, request, data, community, record, uow, parent_comment_id=None
@@ -166,33 +162,32 @@ class CDSCommentsLoad(Load):
             )
 
         event.update(comment_payload)
-
-        user = User.query.filter_by(email=data.get("created_by")).one_or_none()
+        user = User.query.filter_by(email=data.get("user_email")).one_or_none()
         if user:
             event.created_by = ResolverRegistry.resolve_entity_proxy(
                 {"user": str(user.id)}, raise_=True
             )
         else:
             raise ManualImportRequired(
-                f"User not found for email: {data.get('created_by')}"
+                f"User not found for email: {data.get('user_email')}"
             )
-        event.model.created = data.get("created_at")
+        created_at = arrow.get(data.get("created_at")).datetime.replace(tzinfo=None)
+        event.model.created = created_at
         event.model.version_id = 0
 
-        # THere aren't any components to run for creating the event
         # Since we are not using the services to create the event, we need to register the commit operation manually for indexing
         uow.register(RecordCommitOp(event, indexer=current_events_service.indexer))
 
         return event
 
-    def create_accepted_community_inclusion_request(
+    def create_accepted_community_submission_request(
         self,
         record,
         community,
         creator_user_id,
         comments=None,
     ):
-        """Create an accepted community inclusion request."""
+        """Create an accepted community submission request."""
         if not comments:
             logger.warning(
                 f"No comments found for record<{record['id']}>. Skipping request creation."
@@ -224,7 +219,7 @@ class CDSCommentsLoad(Load):
             )
             request = request_item._record
             request.status = "accepted"
-            created_at = datetime.fromisoformat(record["created"])
+            created_at = arrow.get(record["created"]).datetime.replace(tzinfo=None)
             request.model.created = created_at
 
             logger.info(
@@ -259,7 +254,7 @@ class CDSCommentsLoad(Load):
         parent = RDMParent.pid.resolve(parent_pid.pid_value)
         community = parent.communities.default
         record_owner_id = parent.access.owned_by.owner_id
-        request = self.create_accepted_community_inclusion_request(
+        request = self.create_accepted_community_submission_request(
             oldest_record, community, record_owner_id, comments
         )
         return request
