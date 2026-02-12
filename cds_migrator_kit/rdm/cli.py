@@ -300,13 +300,13 @@ def comments_run(filepath, dirpath, dry_run=False):
     default=None,
 )
 @with_appcontext
-def commenters_run(filepath, missing_users_filepath, dry_run=False):
+def commenters_run(filepath, users_dir_path, dry_run=False):
     """Pre-create commenters accounts."""
     log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "comments"
     runner = CommenterRunner(
         stream_definition=CommenterStreamDefinition,
         filepath=filepath,
-        missing_users_filepath=missing_users_filepath,
+        missing_users_dir=users_dir_path,
         log_dir=log_dir,
         dry_run=dry_run,
     )

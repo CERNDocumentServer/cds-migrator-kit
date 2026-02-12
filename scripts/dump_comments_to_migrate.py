@@ -1,5 +1,6 @@
 """
 This script is used to get the comments from the legacy system and save them to a json file.
+It also dumps the users metadata into valid_users.json and missing_users.json files.
 """
 
 """
@@ -8,13 +9,22 @@ This script is used to get the comments from the legacy system and save them to 
 3. Map legacy user id to cdsrdm user id
 4. Create comments metadata
 5. Save comments metadata to json file
+6. Dump the users metadata into valid_users.json and missing_users.json files.
 """
 
 import json
+import os
 
+from invenio.bibcirculation_cern_ldap import get_user_info_from_ldap
 from invenio.dbquery import run_sql
 from invenio.search_engine import search_pattern
 from invenio.webcomment_dblayer import get_comment_to_bibdoc_relations
+
+ENV = "dev"
+BASE_OUTPUT_DIR = f"/eos/media/cds/cds-rdm/{ENV}/migration/"
+COMMENTS_METADATA_FILEPATH = os.path.join(
+    BASE_OUTPUT_DIR, "comments", "comments_metadata.json"
+)
 
 collection_queries = [
     "980__a:CNLISSUE -980:DELETED -980:HIDDEN -980__a:DUMMY",
@@ -165,12 +175,9 @@ comments_metadata = {}
 }
 """
 
-users_metadata = {}
+users_metadata = []
 """
-{
-    user_id: (user_id, user_email, user_nickname, user_note, user_last_login),
-    ...,
-}
+[(user_id, user_email, user_nickname, user_note, user_last_login), ...]
 """
 
 for i, recid in enumerate(recids_with_comments):
@@ -214,12 +221,14 @@ for i, recid in enumerate(recids_with_comments):
     )
 
     for comment in comments:
-        users_metadata[comment["id_user"]] = (
-            comment["id_user"],
-            comment["email"],
-            comment["nickname"],
-            comment["note"],
-            comment["last_login"],
+        users_metadata.append(
+            (
+                comment["id_user"],
+                comment["email"],
+                comment["nickname"],
+                comment["note"],
+                comment["last_login"],
+            ),
         )
 
     # Flatten the reply comments
@@ -255,14 +264,85 @@ for i, recid in enumerate(recids_with_comments):
         comments_metadata[recid].append(comment_data)
     print("Successfully processed comment(s) for record<{}>!!!".format(recid))
 
-with open("comments_metadata.json", "w") as f:
+with open(COMMENTS_METADATA_FILEPATH, "w") as f:
     json.dump(comments_metadata, f)
 """
 This file will be read and run by the CommentsRunner to migrate the comments.
 """
 
-with open("users_metadata.json", "w") as f:
-    json.dump(users_metadata, f)
 """
-This file will be read and run by the CommenterRunner to pre-create the commenters accounts.
+The following snippet is taken from the `dump_users.py` script in the `production_scripts` repository:
+https://gitlab.cern.ch/cds-team/production_scripts/-/blob/master/cds-rdm/migration/dump_users.py?ref_type=heads
+
+It is used to dump the users metadata as valid_users.json and missing_users.json files.
+
+After running this script, place the "active_users.json" and "missing_users.json" files in the "cds_migrator_kit/rdm/data/users/" folder along with "people.csv" file.
 """
+
+OUTPUT_DIR = os.path.join(BASE_OUTPUT_DIR, "users")
+USERS_FILEPATH = os.path.join(OUTPUT_DIR, "active_users.json")
+MISSING_USERS_FILEPATH = os.path.join(OUTPUT_DIR, "missing_users.json")
+
+if not os.path.exists(OUTPUT_DIR):
+    os.makedirs(OUTPUT_DIR)
+
+
+def dump_users():
+    """
+    Dump the users metadata into valid_users.json and missing_users.json files.
+    """
+
+    def get_uid_from_ldap_user(ldap_user):
+        try:
+            uidNumber = ldap_user["uidNumber"][0]
+            return uidNumber
+        except:
+            return None
+
+    def get_department_from_ldap_user(ldap_user):
+        try:
+            department = ldap_user["department"][0]
+            return department
+        except:
+            return None
+
+    def _dump(recs):
+        valid_users = []
+        missing_users = []
+
+        for rec in recs:
+            # record example: (
+            #   414320
+            #   joe.doe@mail.com
+            # )
+
+            email = rec[1]
+            ldap_user = get_user_info_from_ldap(email=email)
+            uidNumber = get_uid_from_ldap_user(ldap_user)
+            record = {
+                "id": rec[0],
+                "email": rec[1],
+                "displayname": rec[2],
+                "active": rec[3],
+            }
+            if uidNumber:
+                record["uid"] = uidNumber
+                department = get_department_from_ldap_user(ldap_user)
+                if department:
+                    record["department"] = department
+                else:
+                    print("No department for {}".format(email))
+                valid_users.append(record)
+            else:
+                missing_users.append(record)
+
+        return valid_users, missing_users
+
+    valid_users, missing_users = _dump(users_metadata)
+    with open(USERS_FILEPATH, "w") as fp:
+        json.dump(valid_users, fp, indent=2)
+
+    if missing_users:
+        print("Missing users found {0}".format(len(missing_users)))
+        with open(MISSING_USERS_FILEPATH, "w") as fp:
+            json.dump(missing_users, fp, indent=2)
