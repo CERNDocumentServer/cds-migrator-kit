@@ -10,12 +10,12 @@ import datetime
 import logging
 from collections import OrderedDict
 from copy import deepcopy
-from flask import current_app
 from pathlib import Path
 
 import arrow
 from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
 from dateutil.parser import ParserError, parse
+from flask import current_app
 from idutils import normalize_ror
 from idutils.validators import is_doi, is_ror
 from invenio_access.permissions import system_identity
@@ -375,7 +375,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             if not pub_date:
                 if created:
                     pub_date = entry["status_week_date"]
-                elif files:
+                elif not created and files:
                     pub_date = parse(files[0]["creation_date"]).date().isoformat()
             return pub_date
 

@@ -292,7 +292,7 @@ def translated_description(self, key, value):
     "identifiers", "(^035__)|(^037__)|(^088__)|(^8564_)|(^970__)", override=True
 )
 @for_each_value
-def title(self, key, value):
+def rep_num(self, key, value):
     """Translates title and identifiers."""
     # ----Title-----#
     title = StringValue(value.get("a")).parse()
@@ -300,7 +300,8 @@ def title(self, key, value):
         match = re.match(r"^CERN-STAFF-RULES-([A-Z0-9]+)(?:-.+)?$", title)
         if match:
             suffix = match.group(1)
-            self["title"] = f"Staff Rules and Regulations No.{suffix}"
+            suffix = suffix.replace("ED", "ed. ")
+            self["title"] = f"Staff Rules and Regulations {suffix}"
 
     # ------Identifiers-----#
     new_id = None
@@ -344,6 +345,53 @@ def title(self, key, value):
     if new_id:
         return new_id[0]
     raise IgnoreKey("identifiers")
+
+
+@model.over("title", "^245__", override=True)
+def title(self, key, value):
+    """Translates title."""
+    title = StringValue(value.get("a"))
+    subtitle = StringValue(value.get("b", "")).parse()
+    title.required()
+    title = title.parse()
+    if subtitle:
+        alt_titles = self.get("additional_titles", [])
+        alt_titles.append(
+            {
+                "title": subtitle,
+                "type": {"id": "subtitle"},
+            }
+        )
+        self["additional_titles"] = alt_titles
+    identifiers = self.get("identifiers", [])
+    rep_num = next(
+        (
+            identifier
+            for identifier in identifiers
+            if identifier["scheme"] == "cdsrn"
+        ),
+        {},
+    ).get("identifier")
+
+    circulars = {
+        "ADMIN": "AC",
+        "OPER": "OC",
+        # "STAFF": "Staff Rules and Regulations",
+    }
+
+    if rep_num:
+        rep_num = rep_num.split("-")
+        circ_type = rep_num[1]
+        number = rep_num[3]
+        if circ_type in circulars.keys():
+            suffix = f" ({circulars[circ_type]}"
+            number_stripped = number.replace("(", "").replace(")", "")
+
+            if number.isalnum() or number_stripped.isalnum():
+                suffix += f"{number_stripped})"
+                title += suffix
+    return title
+
 
 
 @model.over("meeting_cf", "^773__")

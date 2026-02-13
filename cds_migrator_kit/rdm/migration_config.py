@@ -25,6 +25,8 @@ from cds_rdm.permissions import (
     CDSRDMPreservationSyncPermissionPolicy,
 )
 from invenio_app_rdm.config import CELERY_BEAT_SCHEDULE as APP_RDM_CELERY_BEAT_SCHEDULE
+from invenio_app_rdm.config import STATS_AGGREGATIONS as _APP_RDM_STATS_AGGREGATIONS
+from invenio_app_rdm.config import STATS_EVENTS as _APP_RDM_STATS_EVENTS
 from invenio_app_rdm.config import *
 from invenio_cern_sync.sso import cern_keycloak, cern_remote_app_name
 from invenio_cern_sync.users.profile import CERNUserProfileSchema
@@ -42,16 +44,13 @@ from invenio_rdm_records.config import (
     RDM_RECORDS_PERSONORG_SCHEMES,
     always_valid,
 )
+from invenio_rdm_records.proxies import current_rdm_records_service as record_service
 from invenio_rdm_records.services.components import DefaultRecordsComponents
 from invenio_vocabularies.config import (
     VOCABULARIES_NAMES_SCHEMES as DEFAULT_VOCABULARIES_NAMES_SCHEMES,
 )
 
 from .permissions import CDSRDMMigrationRecordPermissionPolicy
-from invenio_app_rdm.config import (
-    STATS_EVENTS as _APP_RDM_STATS_EVENTS,
-    STATS_AGGREGATIONS as _APP_RDM_STATS_AGGREGATIONS,
-)
 
 
 def _(x):  # needed to avoid start time failure with lazy strings
@@ -466,7 +465,7 @@ CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(
 CDS_MIGRATOR_KIT_ENV = "local"
 
 CDS_ACCESS_GROUP_MAPPINGS = {
-    "SSO": ["cern-personnel"],
+    "SSO": ["cern-primary-accounts"],
     "ITDepRestrFile": ["it-dep"],
     "HrDepRestrFile": ["hr-dep", "fap-dep-tpr-mi-staf"],
     "HRCircDocs": ["hr-web-gacepa"],
