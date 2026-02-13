@@ -25,11 +25,11 @@ from cds_migrator_kit.rdm.migration_config import (
 )
 from cds_migrator_kit.rdm.records.transform.config import (
     CONTROLLED_SUBJECTS_SCHEMES,
+    IDENTIFIERS_SCHEMES_TO_DROP,
     KEYWORD_SCHEMES_TO_DROP,
     PID_SCHEMES_TO_STORE_IN_IDENTIFIERS,
     RECOGNISED_KEYWORD_SCHEMES,
     udc_pattern,
-    IDENTIFIERS_SCHEMES_TO_DROP,
 )
 from cds_migrator_kit.rdm.records.transform.models.base_record import (
     rdm_base_record_model as model,

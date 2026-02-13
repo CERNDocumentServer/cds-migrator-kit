@@ -33,6 +33,7 @@ from cds_migrator_kit.rdm.records.transform.xml_processing.rules.hr import (
     hr_subjects,
     note,
     record_restriction,
+    rep_num,
     resource_type,
     title,
     translated_description,
@@ -88,7 +89,7 @@ def test_full_hr_stream(
     assert new_record["custom_fields"]["cern:administrative_unit"] == "DI"
 
     # Title extracted from field 037__ (CERN-STAFF-RULES-ED01) when missing in 245__
-    assert new_record["metadata"]["title"] == "Staff Rules and Regulations No.ED01"
+    assert new_record["metadata"]["title"] == "Staff Rules and Regulations ed. 01"
 
     # Restricted access - field 591 --> CERN INTERNAL
     assert new_record["access"] == {
@@ -399,9 +400,9 @@ def test_additional_descriptions_function_missing_field():
 def test_title_staff_rules_extraction():
     """Test title extraction for Staff Rules from report numbers."""
     record = {}
-    result = title(record, "037__", {"a": "CERN-STAFF-RULES-ED01"})
+    result = rep_num(record, "037__", {"a": "CERN-STAFF-RULES-ED01"})
     # Should set the title on the record
-    assert record.get("title") == "Staff Rules and Regulations No.ED01"
+    assert record.get("title") == "Staff Rules and Regulations ed. 01"
     # Should also return identifier
     assert result is not None
 
@@ -409,15 +410,15 @@ def test_title_staff_rules_extraction():
 def test_title_staff_rules_with_revision():
     """Test title extraction for Staff Rules with revision suffix."""
     record = {}
-    result = title(record, "037__", {"a": "CERN-STAFF-RULES-ED02-REV1"})
-    assert record.get("title") == "Staff Rules and Regulations No.ED02"
+    result = rep_num(record, "037__", {"a": "CERN-STAFF-RULES-ED02-REV1"})
+    assert record.get("title") == "Staff Rules and Regulations ed. 02"
 
 
 def test_title_circular_alternative_titles():
     """Test alternative title generation for circulars."""
     # Test Administrative Circular
     record = {}
-    result = title(record, "037__", {"a": "CERN-ADMIN-CIRCULAR-1-REV0"})
+    result = rep_num(record, "037__", {"a": "CERN-ADMIN-CIRCULAR-1-REV0"})
     assert "additional_titles" in record
     assert any(
         t["title"] == "Administrative Circular No.1"
@@ -426,7 +427,7 @@ def test_title_circular_alternative_titles():
 
     # Test Operational Circular
     record = {}
-    result = title(record, "037__", {"a": "CERN-OPER-CIRCULAR-2-REV0"})
+    result = rep_num(record, "037__", {"a": "CERN-OPER-CIRCULAR-2-REV0"})
     assert "additional_titles" in record
     assert any(
         t["title"] == "Operational Circular No.2" for t in record["additional_titles"]
@@ -434,7 +435,7 @@ def test_title_circular_alternative_titles():
 
     # Test with revision
     record = {}
-    result = title(record, "037__", {"a": "CERN-ADMIN-CIRCULAR-3-REV2"})
+    result = rep_num(record, "037__", {"a": "CERN-ADMIN-CIRCULAR-3-REV2"})
     assert "additional_titles" in record
     assert any(
         "Administrative Circular No.3 (Rev 2)" in t["title"]
