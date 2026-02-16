@@ -465,7 +465,7 @@ CDS_MIGRATOR_KIT_RECORD_STATS_STREAM_CONFIG = dict(
 CDS_MIGRATOR_KIT_ENV = "local"
 
 CDS_ACCESS_GROUP_MAPPINGS = {
-    "SSO": ["cern-primary-accounts"],
+    "SSO": ["cern-accounts-primary"],
     "ITDepRestrFile": ["it-dep"],
     "HrDepRestrFile": ["hr-dep", "fap-dep-tpr-mi-staf"],
     "HRCircDocs": ["hr-web-gacepa"],
