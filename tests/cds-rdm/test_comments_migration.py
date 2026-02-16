@@ -7,25 +7,33 @@
 
 """Tests for comments migration workflow."""
 
-import json
 import os
 import tempfile
 
 import pytest
+from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
-from invenio_db.uow import UnitOfWork
 from invenio_rdm_records.proxies import current_rdm_records_service
-from invenio_rdm_records.records.api import RDMParent
 from invenio_requests.proxies import current_events_service, current_requests_service
 
+from cds_migrator_kit.base_minter import legacy as legacy_minter
 from cds_migrator_kit.rdm.comments.runner import CommenterRunner, CommentsRunner
 from cds_migrator_kit.rdm.comments.streams import (
     CommenterStreamDefinition,
     CommentsStreamDefinition,
 )
 
-LEGACY_RECD_ID = "12345"
+LEGACY_RECD_ID_LIST = [12345, 23456, 34567, 45678]
+"""
+Legacy recid list to be used in the tests.
+Testcases to be used in the tests:
+    - 12345: No attached files, no comments related to any file: Normal case
+    - 23456: With attached files: ManualImportRequired error is raised
+    - 34567: Unknown user (not in users_metadata.json): No request is created
+    - 45678: Deeply nested comments related to files: Normal case with flatted replies
+(Also to show the errors before doesn't affect other testcases)
+"""
 
 
 @pytest.fixture
@@ -36,61 +44,62 @@ def temp_dir():
 
 
 @pytest.fixture
-def migrated_record_with_comments(test_app, community, uploader, db, add_pid):
+def migrated_records_with_comments(test_app, community, uploader, db, add_pid):
     """Create a migrated RDM record that will have comments and a legacy PID."""
-    minimal_record = {
-        "metadata": {
-            "title": "Test Record with Comments",
-            "publication_date": "2026-01-01",
-            "resource_type": {"id": "publication-article"},
-            "creators": [
-                {
-                    "person_or_org": {
-                        "type": "personal",
-                        "name": "Test Author",
-                        "given_name": "Test",
-                        "family_name": "Author",
+    legacy_recid_list = [12345, 23456, 34567, 45678]
+    records_created = {}
+    for legacy_recid in legacy_recid_list:
+        minimal_record = {
+            "metadata": {
+                "title": f"Test Record with Comments {legacy_recid}",
+                "publication_date": "2026-01-01",
+                "resource_type": {"id": "publication-article"},
+                "creators": [
+                    {
+                        "person_or_org": {
+                            "type": "personal",
+                            "name": "Test Author",
+                            "given_name": "Test",
+                            "family_name": "Author",
+                        }
                     }
-                }
-            ],
-        },
-        "access": {
-            "record": "public",
-            "files": "public",
-        },
-        "files": {
-            "enabled": False,
-        },
-        "media_files": {
-            "enabled": False,
-        },
-    }
+                ],
+            },
+            "access": {
+                "record": "public",
+                "files": "public",
+            },
+            "files": {
+                "enabled": False,
+            },
+            "media_files": {
+                "enabled": False,
+            },
+        }
 
-    # Create the draft
-    draft = current_rdm_records_service.create(
-        system_identity,
-        minimal_record,
-    )
+        # Create the draft
+        draft = current_rdm_records_service.create(
+            system_identity,
+            minimal_record,
+        )
 
-    # Publish the record
-    record = current_rdm_records_service.publish(system_identity, draft.id)
+        # Publish the record
+        record = current_rdm_records_service.publish(system_identity, draft.id)
 
-    # Add to community
-    parent = record._record.parent
-    parent.communities.add(community)
-    parent.communities.default = community
-    parent.commit()
+        # Add to community
+        parent = record._record.parent
+        parent.communities.add(community)
+        parent.communities.default = community
+        parent.commit()
 
-    # Add 'lrecid' legacy PID to the published record
-    add_pid(
-        pid_type="lrecid",
-        pid_value=LEGACY_RECD_ID,
-        object_uuid=parent.pid.object_uuid,
-    )
+        # Add 'lrecid' legacy PID to the published record
+        legacy_minter(legacy_recid, parent.pid.object_uuid)
 
-    current_rdm_records_service.record_cls.index.refresh()
+        current_rdm_records_service.record_cls.index.refresh()
 
-    return record
+        records_created[legacy_recid] = record
+
+    return records_created
 
 
 def test_create_users_from_metadata(
@@ -149,13 +158,15 @@ def test_create_users_dry_run(
 
 def test_migrate_comments_from_metadata(
     temp_dir,
-    migrated_record_with_comments,
+    migrated_records_with_comments,
+    community,
     db,
 ):
     """Test migrating comments from comments_metadata.json."""
     # Create users first (required for comments migration)
     user1 = User(email="submitter13@cern.ch", active=True)
     user2 = User(email="submitter10@gmail.com", active=True)
+    # unknown@example.com won't be created for the unknown user testcase
     db.session.add(user1)
     db.session.add(user2)
     db.session.commit()
@@ -178,27 +189,91 @@ def test_migrate_comments_from_metadata(
     runner.run()
 
     current_requests_service.record_cls.index.refresh()
-    # Verify request was created
-    request = current_requests_service.search(
-        identity=system_identity,
-        q=f"topic.record:{migrated_record_with_comments['id']}",
-    )
-    assert request.total == 1
-    request = next(request.hits)
-
     current_events_service.record_cls.index.refresh()
+
+    # 12345: No attached files, no comments related to any file: Normal case
+    record_id = migrated_records_with_comments[12345]["id"]
+    request_result = current_requests_service.search(
+        identity=system_identity,
+        q=f'topic.record:"{record_id}"',
+    )
+    assert request_result.total == 1
+    request = list(request_result.hits)[0]
     # Verify comments were created as request events
-    comments = current_events_service.search(
+    comments_result = current_events_service.search(
         identity=system_identity,
         request_id=request["id"],
     )
-    assert comments.total == 2  # 1 comment and 1 reply
+    assert comments_result.total == 1
+    comments = list(comments_result.hits)
+    assert comments[0]["payload"]["content"] == "This is a test comment"
+    assert "user" in comments[0]["created_by"]
+    replies = comments[0]["children"]
+    assert len(replies) == 2
+    assert replies[0]["payload"]["content"] == "This is a reply"
+    assert "user" in replies[0]["created_by"]
+    assert replies[1]["payload"]["event"] == "comment_deleted"
+    assert "user" in replies[1]["created_by"]
+
+    # 23456: With attached files: ManualImportRequired error is raised
+    record_id = migrated_records_with_comments[23456]["id"]
+    request_result = current_requests_service.search(
+        identity=system_identity,
+        q=f'topic.record:"{record_id}"',
+    )
+    assert request_result.total == 0
+
+    # 34567: Unknown user (not in users_metadata.json): No request is created
+    record_id = migrated_records_with_comments[34567]["id"]
+    request_result = current_requests_service.search(
+        identity=system_identity,
+        q=f'topic.record:"{record_id}"',
+    )
+    assert request_result.total == 0
+
+    # 45678: Deeply nested comments related to files: Normal case with flatted replies
+    record_id = migrated_records_with_comments[45678]["id"]
+    request_result = current_requests_service.search(
+        identity=system_identity,
+        q=f'topic.record:"{record_id}"',
+    )
+    assert request_result.total == 1
+    request = list(request_result.hits)[0]
+    comments_result = current_events_service.search(
+        identity=system_identity,
+        request_id=request["id"],
+    )
+    assert comments_result.total == 1
+    comments = list(comments_result.hits)
+    deep_link = (
+        current_app.config["CDS_MIGRATOR_KIT_SITE_UI_URL"]
+        + "/records/"
+        + record_id
+        + "?preview_file=example.pdf"
+    )
+    deep_link_html = f"<p><a href='{deep_link}'>See related record version 1</a></p>"
+    assert comments[0]["payload"]["content"] == (
+        deep_link_html + "\n" + "This is a comment related to a file"
+    )
+    assert "user" in comments[0]["created_by"]
+    replies = comments[0]["children"]
+    assert len(replies) == 2
+    assert replies[0]["payload"]["content"] == "This is a reply to a comment."
+    assert "user" in replies[0]["created_by"]
+    parent_comment_id = comments[0]["id"]
+    mentioned_event_id = replies[0]["id"]
+    deep_link = (
+        current_app.config["CDS_MIGRATOR_KIT_SITE_UI_URL"]
+        + f"/communities/{community.slug}/requests/{request['id']}#commentevent-{parent_comment_id}_{mentioned_event_id}"
+    )
+    deep_link_html = f"<p><a href='{deep_link}'>Link to the reply</a></p>"
+    assert replies[1]["payload"]["content"] == (
+        deep_link_html + "\n" + "This is a reply to a reply."
+    )
+    assert "user" in replies[1]["created_by"]
 
 
-def test_migrate_comments_dry_run(
-    temp_dir,
-    migrated_record_with_comments,
-):
+def test_migrate_comments_dry_run(temp_dir):
     """Test migrating comments in dry-run mode."""
     # Create directory structure for attached files
     comments_dir = os.path.join(os.path.dirname(__file__), "data", "comments")
@@ -219,9 +294,8 @@ def test_migrate_comments_dry_run(
 
     # In dry-run mode, request and comments should not be created
     # Verify the runner completes without errors
-    current_requests_service.record_cls.index.refresh()
     request = current_requests_service.search(
         identity=system_identity,
-        q=f"topic.record:{migrated_record_with_comments['id']}",
+        q="",
     )
-    assert request.total == 0
+    assert request.total == 2  # Already created ones in the non dry-run mode

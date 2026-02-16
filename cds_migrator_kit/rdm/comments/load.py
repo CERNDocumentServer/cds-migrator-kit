@@ -11,7 +11,7 @@ import os
 
 import arrow
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
-from flask import current_app, url_for
+from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
 from invenio_db.uow import UnitOfWork
@@ -49,7 +49,9 @@ class CDSCommentsLoad(Load):
 
     def get_attached_files_for_comment(self, recid, comment_id):
         """Get the attached files for the comment."""
-        attached_files_directory = os.path.join(self.dirpath, str(recid), str(comment_id))
+        attached_files_directory = os.path.join(
+            self.dirpath, str(recid), str(comment_id)
+        )
         if os.path.exists(attached_files_directory):
             return os.listdir(attached_files_directory)
         return []
@@ -59,7 +61,8 @@ class CDSCommentsLoad(Load):
             identity=system_identity, id_=parent_pid_value
         )
         search_result = current_rdm_records_service.scan_versions(
-            system_identity, latest_record["id"],
+            system_identity,
+            latest_record["id"],
         )
         for hit in search_result.hits:
             self.all_record_versions[hit["versions"]["index"]] = hit
@@ -67,11 +70,17 @@ class CDSCommentsLoad(Load):
         return self.all_record_versions[oldest_version_index]
 
     def create_event(
-        self, request, data, community, record, uow, parent_comment_id=None
+        self,
+        request,
+        data,
+        community,
+        uow,
+        legacy_recid,
+        parent_comment_id=None,
     ):
         logger.info(
-            "Creating event for record ID<{}> request ID<{}> comment ID<{}> parent_comment ID<{}>".format(
-                record["id"],
+            "Creating event for legacy recid ID<{}> request ID<{}> comment ID<{}> parent_comment ID<{}>".format(
+                legacy_recid,
                 request.id,
                 data.get("comment_id"),
                 "self" if not parent_comment_id else parent_comment_id,
@@ -89,20 +98,14 @@ class CDSCommentsLoad(Load):
         comment_status = data.get("status")
         event_type = CommentEventType
         if comment_status == "da":
-            comment_payload["payload"].update(
-                {
-                    "content": "comment was deleted by the author.",
-                    "event_type": "comment_deleted",
-                }
-            )
+            comment_payload["payload"]["content"] = "comment was deleted by the author."
+            comment_payload["payload"]["event"] = "comment_deleted"
             event_type = LogEventType
         elif comment_status == "dm":
-            comment_payload["payload"].update(
-                {
-                    "content": "comment was deleted by the moderator.",
-                    "event_type": "comment_deleted",
-                }
-            )
+            comment_payload["payload"][
+                "content"
+            ] = "comment was deleted by the moderator."
+            comment_payload["payload"]["event"] = "comment_deleted"
             event_type = LogEventType
 
         event = current_events_service.record_cls.create(
@@ -114,16 +117,17 @@ class CDSCommentsLoad(Load):
             file_relation = data.get("file_relation")
             file_id = file_relation.get("file_id")
             version = file_relation.get("version")
-            record_version = self.all_record_versions.get(str(version), None)
+            record_version = self.all_record_versions.get(version, None)
             if record_version:
-                record_url = url_for(
-                    "invenio_app_rdm_records.record_detail",
-                    pid_value=record_version["id"],
-                    preview_file=file_id,
+                record_url = (
+                    current_app.config["CDS_MIGRATOR_KIT_SITE_UI_URL"]
+                    + "/records/"
+                    + record_version["id"]
+                    + f"?preview_file={file_id}"
                 )
-                version_link = f"<p><a href='{record_url}'>See related record version {version}</a></p>"
+                version_link_html = f"<p><a href='{record_url}'>See related record version {version}</a></p>"
                 comment_payload["payload"]["content"] = (
-                    version_link + "\n" + comment_payload["payload"]["content"]
+                    version_link_html + "\n" + comment_payload["payload"]["content"]
                 )
 
         if parent_comment_id:
@@ -145,20 +149,29 @@ class CDSCommentsLoad(Load):
                         event.id,
                     )
                 )
-                deep_link = f"<p><a href='{current_app.config['CDS_MIGRATOR_KIT_SITE_UI_URL']}/communities/{community.slug}/requests/{request.id}#commentevent-{parent_comment_id}_{mentioned_event_id}'>Link to the reply</a></p>"
+                deep_link = (
+                    current_app.config["CDS_MIGRATOR_KIT_SITE_UI_URL"]
+                    + f"/communities/{community.slug}/requests/{request.id}#commentevent-{parent_comment_id}_{mentioned_event_id}"
+                )
+                deep_link_html = f"<p><a href='{deep_link}'>Link to the reply</a></p>"
                 comment_payload["payload"]["content"] = (
-                    deep_link + "\n" + comment_payload["payload"]["content"]
+                    deep_link_html + "\n" + comment_payload["payload"]["content"]
                 )
 
         # TODO: Add attached files to the event
         # https://github.com/CERNDocumentServer/cds-migrator-kit/issues/381
         # For now, if attached files are found, raise ManualImportRequired error
         attached_files = self.get_attached_files_for_comment(
-            record["id"], data.get("comment_id")
+            legacy_recid, data.get("comment_id")
         )
         if attached_files:
             raise ManualImportRequired(
-                f"Attached files found for comment ID<{data.get('comment_id')}>."
+                message=f"Attached files found.",
+                field=data.get("comment_id"),
+                value=attached_files,
+                stage="load",
+                recid=legacy_recid,
+                priority="critical",
             )
 
         event.update(comment_payload)
@@ -169,7 +182,12 @@ class CDSCommentsLoad(Load):
             )
         else:
             raise ManualImportRequired(
-                f"User not found for email: {data.get('user_email')}"
+                message=f"User not found.",
+                field=data.get("comment_id"),
+                value=data.get("user_email"),
+                stage="load",
+                recid=legacy_recid,
+                priority="critical",
             )
         created_at = arrow.get(data.get("created_at")).datetime.replace(tzinfo=None)
         event.model.created = created_at
@@ -182,6 +200,7 @@ class CDSCommentsLoad(Load):
 
     def create_accepted_community_submission_request(
         self,
+        legacy_recid,
         record,
         community,
         creator_user_id,
@@ -228,25 +247,25 @@ class CDSCommentsLoad(Load):
 
             for comment_data in comments:
                 comment_event = self.create_event(
-                    request, comment_data, community, record, uow
+                    request, comment_data, community, uow, legacy_recid
                 )
                 for reply in comment_data.get("replies", []):
                     reply_event = self.create_event(
                         request,
                         reply,
                         community,
-                        record,
                         uow,
+                        legacy_recid,
                         parent_comment_id=comment_event.id,
                     )
                     self.LEGACY_REPLY_LINK_MAP[reply.get("comment_id")] = reply_event.id
 
-            # Commit at the end to rollback if any error occurs not only for the request but also for the comments
+            # Commit at the end so that rollback can be done if any error occurs not only for the request but also for the comments in the middle
             uow.commit()
 
         return request
 
-    def _process_legacy_comments_for_recid(self, recid, comments):
+    def _process_legacy_comments_for_recid(self, recid, comments, dry_run):
         """Process the legacy comments for the record."""
         logger.info(f"Processing legacy comments for recid: {recid}")
         parent_pid = get_pid_by_legacy_recid(recid)
@@ -254,8 +273,11 @@ class CDSCommentsLoad(Load):
         parent = RDMParent.pid.resolve(parent_pid.pid_value)
         community = parent.communities.default
         record_owner_id = parent.access.owned_by.owner_id
+        if dry_run:
+            logger.info(f"Dry loading legacy comments for recid: {recid}")
+            return None
         request = self.create_accepted_community_submission_request(
-            oldest_record, community, record_owner_id, comments
+            recid, oldest_record, community, record_owner_id, comments
         )
         return request
 
@@ -264,9 +286,17 @@ class CDSCommentsLoad(Load):
         if entry:
             recid, comments = entry
             try:
-                self._process_legacy_comments_for_recid(recid, comments)
+                self._process_legacy_comments_for_recid(recid, comments, self.dry_run)
+            except ManualImportRequired as ex:
+                error_message = (
+                    f"Error: {ex.message} | "
+                    f"Value: {ex.value} | "
+                    f"Recid: {recid} | "
+                    f"Comment ID: {ex.field}"
+                )
+                logger.error(error_message)
             except Exception as ex:
-                logger.error(ex)
+                logger.error(f"Error: {ex} | Recid: {recid}")
 
     def _cleanup(self, *args, **kwargs):
         """Cleanup the entries."""
