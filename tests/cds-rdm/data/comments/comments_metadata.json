@@ -5,7 +5,7 @@
             "content": "This is a test comment",
             "status": "ok",
             "user_email": "submitter13@cern.ch",
-            "created_at": "2026-01-10 10:00:00",
+            "created_at": "2025-01-10 10:00:00",
             "file_relation": {},
             "replies": [
                 {
@@ -13,9 +13,69 @@
                     "content": "This is a reply",
                     "status": "ok",
                     "user_email": "submitter10@gmail.com",
-                    "created_at": "2026-02-10 11:00:00",
+                    "created_at": "2025-02-10 11:00:00",
                     "reply_to_id": 1,
                     "file_relation": {}
+                },
+                {
+                    "comment_id": 3,
+                    "content": "This is a deleted comment",
+                    "status": "da",
+                    "user_email": "submitter10@gmail.com",
+                    "created_at": "2025-02-10 11:00:00",
+                    "reply_to_id": 1,
+                    "file_relation": {}
+                }
+            ]
+        }
+    ],
+    "23456": [
+        {
+            "comment_id": 4,
+            "content": "This is a test comment with attached files",
+            "status": "ok",
+            "user_email": "submitter13@cern.ch",
+            "created_at": "2024-01-10 10:00:00",
+            "file_relation": {}
+        }
+    ],
+    "34567": [
+        {
+            "comment_id": 5,
+            "content": "This is a comment with an unknown user",
+            "status": "ok",
+            "user_email": "unknown@example.com",
+            "created_at": "2022-01-10 10:00:00",
+            "file_relation": {}
+        }
+    ],
+    "45678": [
+        {
+            "comment_id": 6,
+            "content": "This is a comment related to a file",
+            "status": "ok",
+            "user_email": "submitter13@cern.ch",
+            "created_at": "2021-01-10 10:00:00",
+            "file_relation": {
+                "file_id": "example.pdf",
+                "version": 1
+            },
+            "replies": [
+                {
+                    "comment_id": 7,
+                    "content": "This is a reply to a comment.",
+                    "status": "ok",
+                    "user_email": "submitter13@cern.ch",
+                    "created_at": "2021-01-10 10:00:00",
+                    "reply_to_id": 6
+                },
+                {
+                    "comment_id": 8,
+                    "content": "This is a reply to a reply.",
+                    "status": "ok",
+                    "user_email": "submitter13@cern.ch",
+                    "created_at": "2021-01-10 10:00:00",
+                    "reply_to_id": 7
                 }
             ]
         }
