@@ -238,6 +238,7 @@ class CDSCommentsLoad(Load):
             )
             request = request_item._record
             request.status = "accepted"
+            request.number = f"lrecid:{legacy_recid}"
             created_at = arrow.get(record["created"]).datetime.replace(tzinfo=None)
             request.model.created = created_at
 
@@ -265,7 +266,7 @@ class CDSCommentsLoad(Load):
 
         return request
 
-    def _process_legacy_comments_for_recid(self, recid, comments, dry_run):
+    def _process_legacy_comments_for_recid(self, recid, comments):
         """Process the legacy comments for the record."""
         logger.info(f"Processing legacy comments for recid: {recid}")
         parent_pid = get_pid_by_legacy_recid(recid)
@@ -273,7 +274,17 @@ class CDSCommentsLoad(Load):
         parent = RDMParent.pid.resolve(parent_pid.pid_value)
         community = parent.communities.default
         record_owner_id = parent.access.owned_by.owner_id
-        if dry_run:
+        # Skip if it is already migrated
+        search_result = current_requests_service.search(
+            identity=system_identity,
+            q=f'number:"lrecid:{recid}"',
+        )
+        if search_result.total > 0:
+            logger.info(
+                f"Skipping recid: {recid} because the request comments are already migrated"
+            )
+            return None
+        if self.dry_run:
             logger.info(f"Dry loading legacy comments for recid: {recid}")
             return None
         request = self.create_accepted_community_submission_request(
@@ -286,7 +297,7 @@ class CDSCommentsLoad(Load):
         if entry:
             recid, comments = entry
             try:
-                self._process_legacy_comments_for_recid(recid, comments, self.dry_run)
+                self._process_legacy_comments_for_recid(recid, comments)
             except ManualImportRequired as ex:
                 error_message = (
                     f"Error: {ex.message} | "

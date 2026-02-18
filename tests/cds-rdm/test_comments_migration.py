@@ -46,9 +46,8 @@ def temp_dir():
 @pytest.fixture
 def migrated_records_with_comments(test_app, community, uploader, db, add_pid):
     """Create a migrated RDM record that will have comments and a legacy PID."""
-    legacy_recid_list = [12345, 23456, 34567, 45678]
     records_created = {}
-    for legacy_recid in legacy_recid_list:
+    for legacy_recid in LEGACY_RECD_ID_LIST:
         minimal_record = {
             "metadata": {
                 "title": f"Test Record with Comments {legacy_recid}",
@@ -199,6 +198,7 @@ def test_migrate_comments_from_metadata(
     )
     assert request_result.total == 1
     request = list(request_result.hits)[0]
+    assert request["number"] == "lrecid:12345"
     # Verify comments were created as request events
     comments_result = current_events_service.search(
         identity=system_identity,
@@ -239,6 +239,7 @@ def test_migrate_comments_from_metadata(
     )
     assert request_result.total == 1
     request = list(request_result.hits)[0]
+    assert request["number"] == "lrecid:45678"
     comments_result = current_events_service.search(
         identity=system_identity,
         request_id=request["id"],
@@ -272,6 +273,45 @@ def test_migrate_comments_from_metadata(
     )
     assert "user" in replies[1]["created_by"]
 
+    # Now create the missing user to check idempotency of the migration runner
+    user3 = User(email="unknown@example.com", active=True)
+    db.session.add(user3)
+    db.session.commit()
+
+    # Run comments runner again
+    runner.run()
+    current_requests_service.record_cls.index.refresh()
+    current_events_service.record_cls.index.refresh()
+
+    # Verify the errored request is created now
+    record_id = migrated_records_with_comments[34567]["id"]
+    request_result = current_requests_service.search(
+        identity=system_identity,
+        q=f'topic.record:"{record_id}"',
+    )
+    assert request_result.total == 1
+    request = list(request_result.hits)[0]
+    assert request["number"] == "lrecid:34567"
+    comments_result = current_events_service.search(
+        identity=system_identity,
+        request_id=request["id"],
+    )
+    assert comments_result.total == 1
+    comments = list(comments_result.hits)
+    assert comments[0]["payload"]["content"] == "This is a comment with an unknown user"
+    assert "user" in comments[0]["created_by"]
+
+    user_id = comments[0]["created_by"]["user"]
+    user = User.query.filter_by(id=user_id).one_or_none()
+    assert user.email == "unknown@example.com"
+
+    # Verify the total requests are 3 (so no duplicates are created in the second run)
+    request_result = current_requests_service.search(
+        identity=system_identity,
+        q="",
+    )
+    assert request_result.total == 3
+
 
 def test_migrate_comments_dry_run(temp_dir):
     """Test migrating comments in dry-run mode."""
@@ -298,4 +338,4 @@ def test_migrate_comments_dry_run(temp_dir):
         identity=system_identity,
         q="",
     )
-    assert request.total == 2  # Already created ones in the non dry-run mode
+    assert request.total == 3  # Already created ones in the non dry-run mode
