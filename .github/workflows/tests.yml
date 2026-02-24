@@ -95,6 +95,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -U pip setuptools wheel
+          pip install "setuptools<82"
           pip install uritemplate
           pip install "pytest-cov<4.0.0"
           pip install ".[$EXTRAS]"
