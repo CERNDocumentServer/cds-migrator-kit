@@ -16,6 +16,11 @@ from flask.cli import with_appcontext
 
 from cds_migrator_kit.rdm.affiliations.runner import RecordAffiliationsRunner
 from cds_migrator_kit.rdm.affiliations.streams import AffiliationsStreamDefinition
+from cds_migrator_kit.rdm.comments.runner import CommenterRunner, CommentsRunner
+from cds_migrator_kit.rdm.comments.streams import (
+    CommenterStreamDefinition,
+    CommentsStreamDefinition,
+)
 from cds_migrator_kit.rdm.records.streams import (  # UserStreamDefinition,
     RecordStreamDefinition,
 )
@@ -242,3 +247,67 @@ def dump(slug, title, filepath):
 
     with open(filepath, "w") as fp:
         yaml.safe_dump(streams, fp, default_flow_style=False, sort_keys=False)
+
+
+@migration.group()
+def comments():
+    """Migration CLI for comments."""
+    pass
+
+
+@comments.command()
+@click.option(
+    "--dry-run",
+    is_flag=True,
+)
+@click.option(
+    "--filepath",
+    help="Path to the comments metadata json file.",
+    required=True,
+)
+@click.option(
+    "--dirpath",
+    help="Path to the record-wise comments directory containing attached files.",
+    required=True,
+)
+@with_appcontext
+def comments_run(filepath, dirpath, dry_run=False):
+    """Migrate the comments for the records in `filepath`."""
+    log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "comments"
+    runner = CommentsRunner(
+        stream_definition=CommentsStreamDefinition,
+        filepath=filepath,
+        dirpath=dirpath,
+        log_dir=log_dir,
+        dry_run=dry_run,
+    )
+    runner.run()
+
+
+@comments.command()
+@click.option(
+    "--dry-run",
+    is_flag=True,
+)
+@click.option(
+    "--filepath",
+    help="Path to the users metadata json file.",
+    required=True,
+)
+@click.option(
+    "--missing-users-filepath",
+    help="Path to the people.csv file containing person_id for missing users.",
+    default=None,
+)
+@with_appcontext
+def commenters_run(filepath, users_dir_path, dry_run=False):
+    """Pre-create commenters accounts."""
+    log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "comments"
+    runner = CommenterRunner(
+        stream_definition=CommenterStreamDefinition,
+        filepath=filepath,
+        missing_users_dir=users_dir_path,
+        log_dir=log_dir,
+        dry_run=dry_run,
+    )
+    runner.run()
