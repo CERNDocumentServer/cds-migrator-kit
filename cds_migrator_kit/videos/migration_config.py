@@ -63,7 +63,7 @@ COLLECTION_MAPPING = {
     "TALK": "Lectures::Talks, Seminars and Other Events::Other Talks",
     "CMTE": "Lectures::Talks, Seminars and Other Events::CERN-wide meetings, trainings and events",
     "CR": "Lectures::Talks, Seminars and Other Events,Conference records",
-    "OE": "Lectures:Talks, Seminars and Other Events::Outreach events",
+    "OE": "Lectures::Talks, Seminars and Other Events::Outreach events",
     "SSW": "Lectures::Talks, Seminars and Other Events::Scientific Seminars and Workshops",
     "TP": "Lectures::Talks, Seminars and Other Events::Teacher Programmes",
     "e-learning": "Lectures::E-learning modules",
