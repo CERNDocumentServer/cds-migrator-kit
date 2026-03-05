@@ -97,6 +97,8 @@ jobs:
           pip install -U pip setuptools wheel
           pip install uritemplate
           pip install "pytest-cov<4.0.0"
+          pip install "setuptools<82"
+          pip install "Flask-Security-Invenio<4"
           pip install ".[$EXTRAS]"
           pip freeze
           docker --version
