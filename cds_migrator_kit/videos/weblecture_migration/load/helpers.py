@@ -585,6 +585,9 @@ def format_chapters(chapters):
     if 0 not in chapters:
         chapters.insert(0, 0)
     for i, chapter in enumerate(chapters, start=1):
+        # Add +1 sec to use beginning of new slide
+        if chapter > 0:
+            chapter = chapter + 1
         # Convert seconds to hh:mm:ss
         t = str(timedelta(seconds=chapter))
         if len(t.split(":")) == 2:  # timedelta omits hours if < 1h
