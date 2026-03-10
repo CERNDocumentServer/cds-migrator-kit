@@ -432,3 +432,135 @@ If you want to copy files from EOS to EOS within `cds-test-wn-21`, you can run:
 ```bash
 rsync -av --ignore-existing /eos/media/cds-videos/dev/acad/media_data/ /eos/media/cds-videos/dev/stage/media_data/
 ```
+
+## Run Post-Migration Script
+
+The post-migration script should be run **in batches**, and tasks should be executed **separately**.
+
+Connect to a webapp node and copy-paste the methods up to the main ones ([weblectures_tasks_runner](scripts/run_failed_tasks.py#L301-L392), [weblectures_chapters_async_runner](scripts/run_failed_tasks.py#L395-L431), [weblectures_check_task_status](scripts/run_failed_tasks.py#L424-L431)).
+
+Copy-paste the following methods:
+
+- [log_success](scripts/run_failed_tasks.py#L24-L31)
+- [log_error](scripts/run_failed_tasks.py#L34-L41)
+- [copy_master_tags_between_buckets](scripts/run_failed_tasks.py#L44-L56)
+- [_find_celery_task_by_name](scripts/run_failed_tasks.py#L59-L67)
+- [find_failed_tasks](scripts/run_failed_tasks.py#L70-L79)
+- [find_succeeded_tasks](scripts/run_failed_tasks.py#L82-L91)
+- [run_metadata_task](scripts/run_failed_tasks.py#L94-L123)
+- [run_failed_tasks](scripts/run_failed_tasks.py#L126-L159)
+- [run_chapters_task](scripts/run_failed_tasks.py#L162-L219)
+- [rerun_chapters_task](scripts/run_failed_tasks.py#L222-L284)
+- [load_record_ids](scripts/run_failed_tasks.py#L287-L293)
+
+---
+
+### Run the General Celery Tasks
+
+First, `weblectures_tasks_runner` needs to be executed **in batches** (not as a method).
+
+See:  
+[`scripts/run_failed_tasks.py#L301-L392`](scripts/run_failed_tasks.py#L301-L392)
+
+#### Steps
+
+- **Create the log files and load the records**
+  
+  [`scripts/run_failed_tasks.py#L304-L323`](scripts/run_failed_tasks.py#L304-L323)
+
+- **Create a subset**
+  
+  [`scripts/run_failed_tasks.py#L325-L328`](scripts/run_failed_tasks.py#L325-L328)
+
+- **Run the first loop** to execute the metadata extraction task.  
+  This will also set the records to **draft**.
+  
+  [`scripts/run_failed_tasks.py#L330-L343`](scripts/run_failed_tasks.py#L330-L343)
+
+- Wait until all tasks are finished. Check the task queue and the last processed record to confirm.
+
+- After the metadata tasks finish, run the **second loop** to execute the remaining failed tasks (frame extraction, transcoding).
+  
+  [`scripts/run_failed_tasks.py#L345-L363`](scripts/run_failed_tasks.py#L345-L363)
+
+- Wait again until all tasks are finished. Check the queue and the last processed record.
+
+- After all tasks finish, run the **final loop** to publish the records.
+  
+  [`scripts/run_failed_tasks.py#L365-L392`](scripts/run_failed_tasks.py#L365-L392)
+
+- Change the subset to the next batch and repeat the same steps.
+
+---
+
+### Run the Chapters Task
+
+After finishing the general celery tasks (metadata, frames, transcoding), you can run the **chapters task**.
+
+The code is in `weblectures_chapters_async_runner`.  
+It should also be run **in batches**, not as a method.
+
+See:  
+[`scripts/run_failed_tasks.py#L395-L431`](scripts/run_failed_tasks.py#L395-L431)
+
+#### Steps
+
+- **Create the log files and load the records**
+  
+  [`scripts/run_failed_tasks.py#L398-L418`](scripts/run_failed_tasks.py#L398-L418)
+
+- **Define your subset**
+  
+  [`scripts/run_failed_tasks.py#L420-L422`](scripts/run_failed_tasks.py#L420-L422)
+
+- **Run the loop** to execute the chapters task
+  
+  [`scripts/run_failed_tasks.py#L424-L431`](scripts/run_failed_tasks.py#L424-L431)
+
+- Wait until the queue is empty.
+
+- Change the subset to the next batch and repeat.
+
+---
+
+### Check the Task Statuses
+
+While these tasks are running, worker pods may restart, which can cause tasks to fail.  
+This usually happens with the **chapters task**.
+
+After all tasks have finished (including chapters tasks), you can fetch all records and check their task statuses to log them.
+
+The main method for this is:  
+`weblectures_check_task_status`
+
+See:  
+[`scripts/run_failed_tasks.py#L424-L431`](scripts/run_failed_tasks.py#L424-L431)
+
+#### Steps
+
+- **Create log files and load the records**.  
+  You can load multiple `records_state.json` files together.
+  
+  [`scripts/run_failed_tasks.py#L435-L530`](scripts/run_failed_tasks.py#L435-L530)
+
+- **Run the loop** to check task statuses
+  
+  [`scripts/run_failed_tasks.py#L468-L486`](scripts/run_failed_tasks.py#L468-L486)
+
+- **Write the results to the log files**
+  
+  [`scripts/run_failed_tasks.py#L488-L511`](scripts/run_failed_tasks.py#L488-L511)
+
+---
+
+#### Additional Actions
+
+- If you have **draft deposits**, you can republish them:
+  
+  [`scripts/run_failed_tasks.py#L513-L520`](scripts/run_failed_tasks.py#L513-L520)
+
+- If you have **failed chapters tasks**, you can rerun them:
+  
+  [`scripts/run_failed_tasks.py#L522-L530`](scripts/run_failed_tasks.py#L522-L530)
+
+- If other tasks have failed, check the records and rerun the task or flow if necessary.
