@@ -26,6 +26,25 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import (
 
 from ...models.base import model
 from ..quality.contributors import get_contributor
+from ..quality.curation import transform_subfields
+
+
+def append_transformed_subfields(self, key, value, field_name, subfield_name=None):
+    """Helper to append transformed subfields to a curation field."""
+    curation = self["_curation"]
+    transformed = transform_subfields(key, value)
+
+    if subfield_name:
+        existing_values = curation.setdefault(field_name, {})
+        legacy_field = existing_values.get(subfield_name, [])
+        legacy_field.extend(transformed)
+        if legacy_field:
+            curation[field_name][subfield_name] = legacy_field
+    else:
+        existing_values = curation.get(field_name, [])
+        existing_values.extend(transformed)
+        if existing_values:
+            curation[field_name] = existing_values
 
 
 @model.over("legacy_recid", "^001")
@@ -46,10 +65,15 @@ def title(self, key, value):
 
 
 @model.over("description", "^520__")
+@for_each_value
 def description(self, key, value):
     """Translates description."""
     description_text = StringValue(value.get("a")).parse()
-
+    provenance = value.get("9", "").strip()
+    curation_info = value.get("8", "").strip()
+    if curation_info or provenance:
+        append_transformed_subfields(self, key, value, "legacy_marc_fields", "520")
+        return None
     return description_text
 
 
@@ -71,7 +95,16 @@ def languages(self, key, value):
 
     if not langs:
         raise MissingRequiredField(field=key, subfield="a", value=raw_lang)
-
+    provenance = value.get("9", "").strip()
+    if provenance and provenance not in ["review", "CERN QA"]:
+        # checking if anything else stored in this field
+        raise UnexpectedValue(field=key, subfield="9", value=provenance)
+    # TODO: we need to add for_each_value to this rule but we need to keep the same behavior
+    # curation_field = value.get("8", "").strip()
+    # if curation_field:
+    #     append_transformed_subfields(self, key, value, "legacy_marc_fields", "041")
+        
+    
     self["additional_languages"].extend(langs[1:])
     return langs[0]
 
@@ -145,10 +178,12 @@ def keywords(self, key, value):
     """Translates keywords from tag 6531."""
     keyword = value.get("a", "").strip()
     provenance = value.get("9", "").strip()
-    if provenance and provenance not in ["CERN", "review"]:
+    if provenance and provenance not in ["CERN", "review", "review Mar2021", "CERN QA"]:
         # checking if anything else stored in this field
         raise UnexpectedValue(field=key, subfield="9", value=provenance)
-
+    curation_field = value.get("8", "").strip()
+    if curation_field:
+        append_transformed_subfields(self, key, value, "legacy_marc_fields", "653")
     if keyword:
         return {"name": keyword}
 
