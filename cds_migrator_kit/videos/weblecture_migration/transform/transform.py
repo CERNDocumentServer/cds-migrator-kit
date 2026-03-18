@@ -300,7 +300,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             ### Returns:
             - `set[str]`: A set of date strings.
             """
-            items = json_data.get(key, [])
+            items = get_values_in_json(json_data, key, type=list)
             if subkey:
                 return {
                     item[subkey]["date"]
@@ -345,7 +345,10 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                     ]
 
                 return None
-
+            # Check imprint date in 260 (digitized records has it)
+            imprint_dates = get_values_in_json(json_data, "imprint_date")
+            if len(imprint_dates) == 1:
+                return list(imprint_dates)
             raise MissingRequiredField(
                 f"No valid date found in record: {json_data.get('recid')}.",
                 stage="transform",
@@ -353,9 +356,19 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
         def description(json_data):
             """Reformat the description for the cds-videos data model."""
-            if not json_data.get("description"):
+            candidates = json_data.get("description") or []
+            values = [v.strip() for v in candidates if v and v.strip()]
+            if len(values) > 1:
+                raise UnexpectedValue(
+                    field="description",
+                    value=values,
+                    message=f"Multiple description values found: {values}"
+                )
+
+            if values:
+                return values[0]
+            else:
                 return json_data.get("title").get("title")
-            return json_data.get("description")
 
         def format_contributors(json_data):
             """
@@ -394,7 +407,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
         def notes(json_data):
             """Get the notes."""
-            notes = entry.get("notes")
+            notes = get_values_in_json(json_data, "notes", type=list)
             if notes:
                 note_strings = [note.get("note") for note in notes]
                 return "\n".join(note_strings)
@@ -459,7 +472,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         def get_keywords(json_data):
             """Return keywords."""
             keywords = json_data.get("keywords", [])
-            subject_categories = json_data.get("subject_categories", [])
+            subject_categories = get_values_in_json(json_data, "subject_categories", type=list)
             subject_indicators = json_data.get("subject_indicators", [])
 
             all_keywords = [
@@ -578,7 +591,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             """Return _curation."""
             _curation = json_data.get("_curation", {})
             # Add volumes
-            additional_titles = json_data.get("additional_titles", [])
+            additional_titles = get_values_in_json(json_data, "additional_titles", type=list)
             volumes = [item["volume"] for item in additional_titles if "volume" in item]
             if volumes:
                 _curation["volumes"] = volumes
@@ -594,7 +607,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
         def get_additional_titles(json_data):
             """Return additional_titles."""
-            tag_246 = json_data.get("additional_titles", {})
+            tag_246 = get_values_in_json(json_data, "additional_titles", type=list)
             _titles = [item for item in tag_246 if "title" in item]
             additional_titles = []
             for title_item in _titles:

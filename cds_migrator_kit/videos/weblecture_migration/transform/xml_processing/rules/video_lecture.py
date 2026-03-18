@@ -85,14 +85,16 @@ def imprint(self, key, value):
     )
     if producer:
         self["contributors"].append({"name": producer, "role": "Producer"})
-
+    provenance = value.get("9", "").strip()
+    if provenance:
+        append_transformed_subfields(self, key, value, "legacy_marc_fields", "269")
     date_field = value.get("c")  # 269 'c' subfield (e.g., '1993-08-09')
     parsed_date = parse_date(date_field)
     if parsed_date:  # If parsing succeeds, return the formatted date
         return parsed_date
 
 
-@model.over("_", "^260__")
+@model.over("imprint_date", "^260__")
 @for_each_value
 def tag260(self, key, value):
     """Check tag 269."""
@@ -103,13 +105,20 @@ def tag260(self, key, value):
                 field=key, subfield=subfield, value=val, message="Unexpected tag 260"
             )
 
-    date_field = value.get("c")  # more detailed in 269__c, drop
     name = value.get("b")
     place = value.get("a")
+    curation_info = value.get("8", "").strip()
+    provenance = value.get("9", "").strip()
+    if provenance or curation_info:
+        append_transformed_subfields(self, key, value, "legacy_marc_fields", "260")
+
+    date_field = value.get("c")
+    parsed_date = parse_date(date_field)
+    if parsed_date:  # If parsing succeeds, return the formatted date
+        return parsed_date
 
     validate_location(place, "a")
     validate_location(name, "b")
-    IgnoreKey("_")
 
 
 @model.over("contributors", "^511__")
@@ -117,6 +126,10 @@ def tag260(self, key, value):
 @require(["a"])
 def related_person(self, key, value):
     """Translates related person."""
+    record = value.get("0")
+    if record:
+        append_transformed_subfields(self, key, value, "legacy_marc_fields", "511")
+        return None
     role = value.get("e", "").strip().lower()
     contributor_role = "" if role else "RelatedPerson"
     return get_contributor(key, value, contributor_role=contributor_role)
@@ -157,6 +170,7 @@ def url_files(self, key, value):
                     "nonpublic_note": format_field(value.get("x")),
                     "md5_checksum": format_field(value.get("w")),
                     "source": format_field(value.get("2")),
+                    "description": format_field(value.get("i")),
                 }.items()
                 if v
             }
@@ -206,6 +220,10 @@ def url_files(self, key, value):
 @require(["a"])
 def notes(self, key, value):
     """Detects notes."""
+    curation_field = value.get("8", "").strip()
+    if curation_field:
+        append_transformed_subfields(self, key, value, "legacy_marc_fields", "500")
+        return None
     note_str = value.get("a").strip()
     if value.get("9"):
         note_str = value.get("9").strip() + " : " + value.get("a").strip()
@@ -408,15 +426,19 @@ def corporate_author(self, key, value):
     return None
 
 
-@model.over("subject_indicators", "^690C_")
+@model.over("subject_indicators", "(^690C_)|(^690c_)")
 @for_each_value
 def subject_indicators(self, key, value):
     """Translates subject_indicators as keywords from tag 690C."""
     subject = value.get("a", "").strip()
     if subject:
-        if subject not in ["ACAD", "CERN", "TALK", "movingimages", "SSLP", "reviewed"]:
+        if subject not in ["ACAD", "CERN", "TALK", "movingimages", "SSLP", "reviewed", "quality-controlled"]:
             # checking if anything else stored in this field
             raise UnexpectedValue(field=key, subfield="a", value=subject)
+    curated_field = value.get("9", "").strip()
+    if curated_field and curated_field not in ["review", "CERN QA"]:
+        # checking if anything else stored in this field
+        raise UnexpectedValue(field=key, subfield="9", value=curated_field)
     return {"name": subject}
 
 
@@ -429,7 +451,14 @@ def subject_categories(self, key, value):
     if source and source != "SzGeCERN":
         # checking if anything else stored in this field
         raise UnexpectedValue(field=key, subfield="9", value=source)
-
+    provenance = value.get("9", "").strip()
+    if provenance and provenance not in ["review", "review Mar2021", "CERN QA"]:
+        # checking if anything else stored in this field
+        raise UnexpectedValue(field=key, subfield="9", value=provenance)
+    curation_field = value.get("8", "").strip()
+    if curation_field:
+        append_transformed_subfields(self, key, value, "legacy_marc_fields", "650")
+        return None
     if keyword:
         return {"name": keyword}
 
@@ -454,7 +483,8 @@ def additional_titles(self, key, value):
                 additional_title["lang"] = "fr"
             # Transform as AlternativeTitle
             elif lang not in ["Previous title", "Also quoted as"]:
-                raise UnexpectedValue(field=key, subfield="i", value=lang)
+                append_transformed_subfields(self, key, value, "legacy_marc_fields", "246")
+                return None
 
     if volume:
         formatted_volume = f"{part} : {volume}" if part else volume
@@ -469,6 +499,11 @@ def additional_titles(self, key, value):
 def additional_descriptions(self, key, value):
     """Translates additional_descriptions."""
     description = value.get("a", "").strip()
+    provenance = value.get("9", "").strip()
+    curation_information = value.get("8", "").strip()
+    if provenance or curation_information:
+        append_transformed_subfields(self, key, value, "legacy_marc_fields", "590")
+        return None
     if description:
         return {"description": description, "type": "Other", "lang": "fr"}
     return None
@@ -524,6 +559,10 @@ def copyright(self, key, value):
 @for_each_value
 def presented_at(self, key, value):
     """Translates related identifiers."""
+    k_value = value.get("k", "").strip()
+    if k_value:
+        append_transformed_subfields(self, key, value, "legacy_marc_fields", "962")
+        return None
     recid = value.get("b")
     material = value.get("n", "").lower().strip()  # drop if recid exists
     rel_ids = self.get("related_identifiers", [])
@@ -684,6 +723,110 @@ def physical_medium(self, key, value):
 def internal_note(self, key, value):
     """Translates internal note."""
     append_transformed_subfields(self, key, value, "internal_note")
+
+
+@model.over("action_note", "^5831_")
+@for_each_value
+def action_note(self, key, value):
+    """Translates action note (digitized information)."""
+    append_transformed_subfields(self, key, value, "action_note")
+
+
+@model.over("5421", "^5421_")
+@for_each_value
+def curation_copyright(self, key, value):
+    """Translates digitized information."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "5421")
+
+
+@model.over("597", "^597__")
+@for_each_value
+def curation_local_note(self, key, value):
+    """Translates digitized information."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "597")
+
+
+@model.over("514", "^514__")
+@for_each_value
+def data_quality_note(self, key, value):
+    """Translates digitized information."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "514")
+
+
+@model.over("594", "^594__")
+@for_each_value
+def digitized_local_note(self, key, value):
+    """Translates digitized information."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "594")
+
+
+@model.over("5111", "5111_")
+@for_each_value
+def performer_note(self, key, value):
+    """Translates digitized information."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "511")
+
+@model.over("963", "^963__")
+@for_each_value
+def digitized_owner(self, key, value):
+    """Translates digitized information."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "963")
+
+
+@model.over("993", "^993__")
+@for_each_value
+def digitized_993(self, key, value):
+    """Translates digitized information."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "993")
+
+
+@model.over("344", "^344__")
+@for_each_value
+def digitized_344(self, key, value):
+    """Translates digitized information."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "344")
+
+
+@model.over("508", "(^5081_)|(^508__)")
+@for_each_value
+def digitized_508(self, key, value):
+    """Translates digitized information."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "508")
+
+
+@model.over("020", "^020__")
+@for_each_value
+def book_number(self, key, value):
+    """Translates digitized information."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "020")
+
+
+@model.over("519", "^519__")
+@for_each_value
+def digitized_519(self, key, value):
+    """Translates digitized information."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "519")
+
+
+@model.over("856", "^856_2")
+@for_each_value
+def digitized_856_2(self, key, value):
+    """Translates digitized information."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "856_2")
+
+
+@model.over("775", "^775__")
+@for_each_value
+def digitized_775(self, key, value):
+    """Translates digitized information."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "775")
+
+
+@model.over("300", "^300__")
+@for_each_value
+def pyhsical_description(self, key, value):
+    """Translates tag 300."""
+    append_transformed_subfields(self, key, value, "legacy_marc_fields", "300")
 
 
 @model.over("964", "^964__")

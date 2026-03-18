@@ -27,7 +27,7 @@ from .base import model as base_model
 class VideoLecture(CdsOverdo):
     """Translation Index for CERN Video Lectures."""
 
-    __query__ = "8567_.x:'Absolute master path' 8567_.d:/mnt/master_share* -980__.C:MIGRATED -980__.c:DELETED -5831_.a:digitized"
+    __query__ = "8567_.x:'Absolute master path' 8567_.d:/mnt/master_share* -980__.C:MIGRATED -980__.c:DELETED"
 
     __ignore_keys__ = base_model.__ignore_keys__
     # IMPLEMENTED
