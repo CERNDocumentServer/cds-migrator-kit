@@ -110,3 +110,14 @@ records:
         - "77617386-632c-4b86-8dd2-68de77ae0018"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hr_restricted/duplicated_pids.json
+  staff_association:
+    data_dir: cds_migrator_kit/rdm/data/staff_association
+    tmp_dir: cds_migrator_kit/rdm/tmp/staff_association
+    log_dir: cds_migrator_kit/rdm/log/staff_association
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/staff_association/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/staff_association/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "9ab1f6bd-b213-4bb7-9249-13b9665e453a"
