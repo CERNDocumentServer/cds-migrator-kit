@@ -229,7 +229,7 @@ def urls_bulletin_bis(self, key, value):
 
 
 @model.over("custom_fields_journal", "(^916__)", override=True)
-def issue_number(self, key, value):
+def custom_fields_journal(self, key, value):
     _custom_fields = self.get("custom_fields", {})
 
     issue = value.get("z")
