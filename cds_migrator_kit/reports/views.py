@@ -25,6 +25,7 @@ from flask import (
     send_file,
 )
 
+from ..rdm.comments.log import CommentsLogger
 from .log import MigrationProgressLogger, RecordStateLogger
 
 cli_logger = logging.getLogger("migrator")
@@ -136,4 +137,14 @@ def download_results(collection):
         mimetype="application/zip",
         as_attachment=True,
         download_name=f"{collection}_results_report.zip",
+    )
+
+
+@blueprint.route("/results/<collection>/comments")
+def comments(collection):
+    """Render a basic view."""
+    comments = CommentsLogger.get_comments_report(collection)
+    return render_template(
+        "cds_migrator_kit_records/comments.html",
+        comments=comments,
     )
