@@ -7,36 +7,131 @@
 
 """CDS-Migrator-Kit comments logger module."""
 
+import csv
 import logging
+import os
+
+from flask import current_app
 
 
 class CommentsLogger:
     """Migrator comments logger."""
 
-    @classmethod
-    def initialize(cls, log_dir):
+    REPORT_COLUMNS = [
+        "legacy_comment_url",
+        "new_comment_deeplink",
+        "status",
+        "error_message",
+    ]
+
+    REPORT_FILENAME = "comments_migration.csv"
+
+    def __init__(self, log_dir, collection=None):
         """Constructor."""
+        self.log_dir = log_dir
+        os.makedirs(self.log_dir, exist_ok=True)
+
+        # Initializes logging format and file handlers for logging module (not CSV report).
         formatter = logging.Formatter(
             fmt="%(asctime)s %(levelname)-8s %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )
         logger = logging.getLogger("comments-migrator")
-        fh = logging.FileHandler(log_dir / "info.log")
-        logger.setLevel(logging.WARNING)
-        logger.addHandler(fh)
-
-        # errors to file
-        fh = logging.FileHandler(log_dir / "error.log")
+        # Info to file
+        fh_info = logging.FileHandler(self.log_dir / "info.log")
+        fh_info.setFormatter(formatter)
+        fh_info.setLevel(logging.INFO)
+        logger.addHandler(fh_info)
+        # Errors to file
+        fh = logging.FileHandler(self.log_dir / "error.log")
         fh.setLevel(logging.ERROR)
         fh.setFormatter(formatter)
         logger.addHandler(fh)
-
-        # info to stream/stdout
+        # Info to stream/stdout
         sh = logging.StreamHandler()
         sh.setFormatter(formatter)
         sh.setLevel(logging.INFO)
         logger.addHandler(sh)
 
+        if collection:
+            self.report_dir = os.path.join(self.log_dir, collection)
+            os.makedirs(self.report_dir, exist_ok=True)
+            self.report_path = os.path.join(self.report_dir, self.REPORT_FILENAME)
+            # CSV report to file
+            self._csv_file = open(self.report_path, "a", newline="", encoding="utf-8")
+            self._csv_writer = csv.DictWriter(
+                self._csv_file, fieldnames=self.REPORT_COLUMNS
+            )
+            # Write header only if file is empty
+            self._csv_file.seek(0, os.SEEK_END)
+            if self._csv_file.tell() == 0:
+                self._csv_writer.writeheader()
+            self._csv_file.flush()
+        else:
+            self.report_path = None
+            self._csv_file = None
+
     @classmethod
     def get_logger(cls):
         """Get migration logger."""
         return logging.getLogger("comments-migrator")
+
+    @classmethod
+    def get_comments_report(cls, collection):
+        """Get the comments report for the collection."""
+        report_dir = os.path.join(
+            current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"], "comments", collection
+        )
+        report_path = os.path.join(report_dir, cls.REPORT_FILENAME)
+        comments = []
+        if os.path.exists(report_path):
+            with open(report_path, "r", newline="") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    comments.append(row)
+        return comments
+
+    def add_comment_log(
+        self,
+        legacy_recid,
+        legacy_comment_id,
+        new_comment_id,
+        status,
+        error_message,
+        community_slug,
+        request_id,
+    ):
+        """Add a comment record to the migration CSV report.
+
+        :param legacy_recid: Legacy record ID.
+        :param legacy_comment_id: Legacy comment ID.
+        :param new_comment_id: The new system's comment ID.
+        :param status: Migration status.
+        :param error_message: Error message.
+        :param community_slug: The slug of the community.
+        :param request_id: The ID of the associated request in the new system.
+        :param comments_ui_base_url: If given, used to construct legacy and new deeplink.
+        """
+        # Compose links for legacy and new comments
+        legacy_comment_url = (
+            f"https://cds.cern.ch/record/{legacy_recid}/comments#C{legacy_comment_id}"
+        )
+        new_comment_deeplink = (
+            (
+                f"{current_app.config['CDS_MIGRATOR_KIT_SITE_UI_URL']}/communities/{community_slug}/requests/{request_id}#commentevent-{new_comment_id}"
+            )
+            if new_comment_id
+            else None
+        )
+
+        data = {
+            "legacy_comment_url": legacy_comment_url,
+            "new_comment_deeplink": new_comment_deeplink,
+            "status": status,
+            "error_message": error_message,
+        }
+        self._csv_writer.writerow(data)
+
+    def finalize(self):
+        """Close file handlers."""
+        if self._csv_file:
+            self._csv_file.close()

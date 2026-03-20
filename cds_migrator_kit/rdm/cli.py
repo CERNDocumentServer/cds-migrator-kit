@@ -266,12 +266,17 @@ def comments():
     required=True,
 )
 @click.option(
+    "--collection",
+    help="Collection name to be migrated (for logging purposes only)",
+    required=True,
+)
+@click.option(
     "--dirpath",
     help="Path to the record-wise comments directory containing attached files.",
     required=True,
 )
 @with_appcontext
-def comments_run(filepath, dirpath, dry_run=False):
+def comments_run(filepath, dirpath, collection, dry_run=False):
     """Migrate the comments for the records in `filepath`."""
     log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "comments"
     runner = CommentsRunner(
@@ -279,6 +284,7 @@ def comments_run(filepath, dirpath, dry_run=False):
         filepath=filepath,
         dirpath=dirpath,
         log_dir=log_dir,
+        collection=collection,
         dry_run=dry_run,
     )
     runner.run()

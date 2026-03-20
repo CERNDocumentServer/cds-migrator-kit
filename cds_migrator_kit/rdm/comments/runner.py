@@ -18,18 +18,21 @@ from cds_migrator_kit.rdm.users.api import CDSMigrationUserAPI
 class CommentsRunner:
     """ETL streams runner."""
 
-    def __init__(self, stream_definition, filepath, dirpath, log_dir, dry_run):
+    def __init__(
+        self, stream_definition, filepath, dirpath, log_dir, collection, dry_run
+    ):
         """Constructor."""
         self.log_dir = Path(log_dir)
-        self.log_dir.mkdir(parents=True, exist_ok=True)
 
-        CommentsLogger.initialize(self.log_dir)
+        self.logger = CommentsLogger(self.log_dir, collection)
 
         self.stream = Stream(
             stream_definition.name,
             extract=stream_definition.extract_cls(filepath),
             transform=stream_definition.transform_cls(),
-            load=stream_definition.load_cls(dirpath=dirpath, dry_run=dry_run),
+            load=stream_definition.load_cls(
+                dirpath=dirpath, dry_run=dry_run, logger=self.logger
+            ),
         )
 
     def run(self):
@@ -37,7 +40,7 @@ class CommentsRunner:
         try:
             self.stream.run()
         except Exception as e:
-            CommentsLogger.get_logger().exception(
+            self.logger.get_logger().exception(
                 f"Stream {self.stream.name} failed.", exc_info=1
             )
 
@@ -52,7 +55,7 @@ class CommenterRunner:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
-        CommentsLogger.initialize(self.log_dir)
+        self.logger = CommentsLogger(self.log_dir)
 
         self.stream = Stream(
             stream_definition.name,
@@ -61,7 +64,7 @@ class CommenterRunner:
             load=stream_definition.load_cls(
                 dry_run=dry_run,
                 missing_users_dir=missing_users_dir,
-                logger=CommentsLogger.get_logger(),
+                logger=self.logger,
                 user_api_cls=CDSMigrationUserAPI,
             ),
         )
