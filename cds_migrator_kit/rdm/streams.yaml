@@ -110,3 +110,14 @@ records:
         - "77617386-632c-4b86-8dd2-68de77ae0018"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hr_restricted/duplicated_pids.json
+  hse:
+    data_dir: cds_migrator_kit/rdm/data/hse
+    tmp_dir: cds_migrator_kit/rdm/tmp/hse
+    log_dir: cds_migrator_kit/rdm/log/hse
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hse/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hse/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "0523fcda-5ac3-4b22-b464-5be8bfa16000"
