@@ -7,6 +7,7 @@
 
 """CDS-RDM migration load module."""
 
+import json
 import os
 
 import arrow
@@ -168,19 +169,11 @@ class CDSCommentsLoad(Load):
             legacy_recid, legacy_comment_id
         )
         if attached_files:
-            self.report_logger.add_comment_log(
-                legacy_recid=legacy_recid,
-                legacy_comment_id=legacy_comment_id,
-                new_comment_id=event.id,
-                status="error",
-                error_message=f"Attached files found: {attached_files}",
-                community_slug=community.slug,
-                request_id=request.id,
-            )
             raise ManualImportRequired(
                 message=f"Attached files found.",
                 field=legacy_comment_id,
-                value=attached_files,
+                subfield="attached_files",
+                value=json.dumps(attached_files),
                 stage="load",
                 recid=legacy_recid,
                 priority="critical",
@@ -194,18 +187,10 @@ class CDSCommentsLoad(Load):
                 {"user": str(user.id)}, raise_=True
             )
         else:
-            self.report_logger.add_comment_log(
-                legacy_recid=legacy_recid,
-                legacy_comment_id=legacy_comment_id,
-                new_comment_id=event.id,
-                status="error",
-                error_message=f"User not found for email: {user_email}",
-                community_slug=community.slug,
-                request_id=request.id,
-            )
             raise ManualImportRequired(
                 message=f"User not found.",
                 field=legacy_comment_id,
+                subfield="user_email",
                 value=user_email,
                 stage="load",
                 recid=legacy_recid,
@@ -221,8 +206,9 @@ class CDSCommentsLoad(Load):
         self.report_logger.add_comment_log(
             legacy_recid=legacy_recid,
             legacy_comment_id=legacy_comment_id,
-            new_comment_id=event.id,
             status="success",
+            new_comment_id=event.id,
+            parent_comment_id=parent_comment_id,
             community_slug=community.slug,
             request_id=request.id,
         )
@@ -233,8 +219,7 @@ class CDSCommentsLoad(Load):
         self,
         legacy_recid,
         record,
-        community,
-        creator_user_id,
+        parent,
         comments=None,
     ):
         """Create an accepted community submission request."""
@@ -244,9 +229,12 @@ class CDSCommentsLoad(Load):
             )
             return None
 
+        community = parent.communities.default
+        record_owner_id = parent.access.owned_by.owner_id
+
         # Resolve entities for references
         creator_ref = ResolverRegistry.reference_entity(
-            {"user": str(creator_user_id)}, raise_=True
+            {"user": str(record_owner_id)}, raise_=True
         )
         receiver_ref = ResolverRegistry.reference_entity(
             {"community": str(community.id)}, raise_=True
@@ -292,6 +280,15 @@ class CDSCommentsLoad(Load):
                     )
                     self.LEGACY_REPLY_LINK_MAP[reply.get("comment_id")] = reply_event.id
 
+            # Set this request ID in the `rdm_parents_community` which would be null for these migrated records
+            # This is normally executed by the accept action in the request service
+            parent_to_request_relation = (
+                parent.communities._m2m_model_cls.query.filter_by(
+                    record_id=parent.id, community_id=community.id
+                ).one()
+            )
+            parent_to_request_relation.request_id = request.id
+
             # Commit at the end so that rollback can be done if any error occurs not only for the request but also for the comments in the middle
             uow.commit()
 
@@ -303,8 +300,7 @@ class CDSCommentsLoad(Load):
         parent_pid = get_pid_by_legacy_recid(recid)
         oldest_record = self.get_oldest_record(parent_pid.pid_value)
         parent = RDMParent.pid.resolve(parent_pid.pid_value)
-        community = parent.communities.default
-        record_owner_id = parent.access.owned_by.owner_id
+
         # Skip if it is already migrated
         search_result = current_requests_service.search(
             identity=system_identity,
@@ -319,7 +315,7 @@ class CDSCommentsLoad(Load):
             self.logger.info(f"Dry loading legacy comments for recid: {recid}")
             return None
         request = self.create_accepted_community_submission_request(
-            recid, oldest_record, community, record_owner_id, comments
+            recid, oldest_record, parent, comments
         )
         return request
 
@@ -328,26 +324,27 @@ class CDSCommentsLoad(Load):
         if entry:
             recid, comments = entry
             try:
-                self._process_legacy_comments_for_recid(recid, comments)
-            except ManualImportRequired as ex:
-                self.report_logger.add_comment_log(
-                    legacy_recid=recid,
-                    legacy_comment_id=ex.field,
-                    new_comment_id=None,
-                    status="error",
-                    error_message=ex.message,
-                    community_slug=None,
-                    request_id=None,
+                request = self._process_legacy_comments_for_recid(recid, comments)
+                self.logger.info(
+                    f"Successfully processed legacy comments for recid: {recid} to request: {request.id}"
                 )
+            except ManualImportRequired as ex:
                 error_message = (
                     f"Error: {ex.message} | "
+                    f"Field: {ex.subfield} | "
                     f"Value: {ex.value} | "
                     f"Recid: {recid} | "
                     f"Comment ID: {ex.field}"
                 )
+                self.report_logger.add_comment_log(
+                    legacy_recid=recid,
+                    legacy_comment_id=ex.field,
+                    status="error",
+                    error_message=error_message,
+                )
                 self.logger.error(error_message)
             except Exception as ex:
-                self.logger.error(f"Error: {ex} | Recid: {recid}", exc_info=1)
+                self.logger.error(f"Error: {ex} | Recid: {recid}")
 
     def _cleanup(self, *args, **kwargs):
         """Cleanup the entries."""
