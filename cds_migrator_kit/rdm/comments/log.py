@@ -18,6 +18,7 @@ class CommentsLogger:
     """Migrator comments logger."""
 
     REPORT_COLUMNS = [
+        "recid",
         "legacy_comment_url",
         "new_comment_deeplink",
         "status",
@@ -36,6 +37,7 @@ class CommentsLogger:
             fmt="%(asctime)s %(levelname)-8s %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )
         logger = logging.getLogger("comments-migrator")
+        logger.setLevel(logging.DEBUG)
         # Info to file
         fh_info = logging.FileHandler(self.log_dir / "info.log")
         fh_info.setFormatter(formatter)
@@ -94,36 +96,40 @@ class CommentsLogger:
         self,
         legacy_recid,
         legacy_comment_id,
-        new_comment_id,
         status,
-        error_message,
-        community_slug,
-        request_id,
+        new_comment_id=None,
+        parent_comment_id=None,
+        community_slug=None,
+        request_id=None,
+        error_message=None,
     ):
         """Add a comment record to the migration CSV report.
 
         :param legacy_recid: Legacy record ID.
         :param legacy_comment_id: Legacy comment ID.
-        :param new_comment_id: The new system's comment ID.
         :param status: Migration status.
-        :param error_message: Error message.
+        :param new_comment_id: The new system's comment ID.
+        :param parent_comment_id: The ID of the parent comment.
         :param community_slug: The slug of the community.
         :param request_id: The ID of the associated request in the new system.
-        :param comments_ui_base_url: If given, used to construct legacy and new deeplink.
+        :param error_message: Error message.
         """
         # Compose links for legacy and new comments
         legacy_comment_url = (
             f"https://cds.cern.ch/record/{legacy_recid}/comments#C{legacy_comment_id}"
         )
-        new_comment_deeplink = (
-            (
-                f"{current_app.config['CDS_MIGRATOR_KIT_SITE_UI_URL']}/communities/{community_slug}/requests/{request_id}#commentevent-{new_comment_id}"
+        if new_comment_id:
+            comment_id = (
+                f"{parent_comment_id}_{new_comment_id}"
+                if parent_comment_id
+                else new_comment_id
             )
-            if new_comment_id
-            else None
-        )
+            new_comment_deeplink = f"{current_app.config['CDS_MIGRATOR_KIT_SITE_UI_URL']}/communities/{community_slug}/requests/{request_id}#commentevent-{comment_id}"
+        else:
+            new_comment_deeplink = None
 
         data = {
+            "recid": legacy_recid,
             "legacy_comment_url": legacy_comment_url,
             "new_comment_deeplink": new_comment_deeplink,
             "status": status,

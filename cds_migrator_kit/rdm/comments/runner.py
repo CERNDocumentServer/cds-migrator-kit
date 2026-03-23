@@ -43,6 +43,7 @@ class CommentsRunner:
             self.logger.get_logger().exception(
                 f"Stream {self.stream.name} failed.", exc_info=1
             )
+        self.logger.finalize()
 
 
 class CommenterRunner:
@@ -55,7 +56,7 @@ class CommenterRunner:
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
-        self.logger = CommentsLogger(self.log_dir)
+        self.logger = CommentsLogger(self.log_dir).get_logger()
 
         self.stream = Stream(
             stream_definition.name,
@@ -71,4 +72,7 @@ class CommenterRunner:
 
     def run(self):
         """Run commenters ETL stream."""
-        self.stream.run()
+        try:
+            self.stream.run()
+        except Exception as e:
+            self.logger.exception(f"Stream {self.stream.name} failed.", exc_info=1)

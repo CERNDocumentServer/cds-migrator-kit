@@ -301,18 +301,18 @@ def comments_run(filepath, dirpath, collection, dry_run=False):
     required=True,
 )
 @click.option(
-    "--missing-users-filepath",
+    "--missing-users-dir",
     help="Path to the people.csv file containing person_id for missing users.",
     default=None,
 )
 @with_appcontext
-def commenters_run(filepath, users_dir_path, dry_run=False):
+def commenters_run(filepath, missing_users_dir, dry_run=False):
     """Pre-create commenters accounts."""
     log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "comments"
     runner = CommenterRunner(
         stream_definition=CommenterStreamDefinition,
         filepath=filepath,
-        missing_users_dir=users_dir_path,
+        missing_users_dir=missing_users_dir,
         log_dir=log_dir,
         dry_run=dry_run,
     )

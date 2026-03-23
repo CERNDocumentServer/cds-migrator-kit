@@ -14,6 +14,8 @@ import re
 
 from invenio_accounts.models import User
 from invenio_rdm_migrator.load.base import Load
+from invenio_users_resources.proxies import current_users_service
+from invenio_users_resources.records.api import UserAggregate
 from sqlalchemy.exc import NoResultFound
 
 cli_logger = logging.getLogger("migrator")
@@ -59,6 +61,8 @@ class CDSSubmitterLoad(Load):
         except NoResultFound:
             if not self.dry_run:
                 user_id = self._create_owner(email)
+                user_record = UserAggregate.get_record(user_id)
+                current_users_service.indexer.create(user_record)
                 return user_id
 
     def _create_owner(self, email_addr):
