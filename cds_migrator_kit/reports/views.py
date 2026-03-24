@@ -139,12 +139,13 @@ def download_results(collection):
         download_name=f"{collection}_results_report.zip",
     )
 
-
 @blueprint.route("/results/<collection>/comments")
 def comments(collection):
     """Render a basic view."""
     comments = CommentsLogger.get_comments_report(collection)
+    errored = len([comment for comment in comments if comment.get("status") == "error"])
     return render_template(
         "cds_migrator_kit_records/comments.html",
         comments=comments,
+        errored=errored,
     )

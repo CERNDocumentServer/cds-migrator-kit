@@ -16,6 +16,8 @@ from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_requests.proxies import current_events_service, current_requests_service
+from invenio_search import current_search, current_search_client
+from invenio_users_resources.records.api import UserAggregate
 
 from cds_migrator_kit.base_minter import legacy as legacy_minter
 from cds_migrator_kit.rdm.comments.runner import CommenterRunner, CommentsRunner
@@ -101,60 +103,6 @@ def migrated_records_with_comments(test_app, community, uploader, db, add_pid):
     return records_created
 
 
-def test_create_users_from_metadata(
-    temp_dir,
-    db,
-):
-    """Test creating users from users_metadata.json."""
-    # Run commenters runner
-    log_dir = os.path.join(temp_dir, "logs")
-    runner = CommenterRunner(
-        stream_definition=CommenterStreamDefinition,
-        filepath=os.path.join(
-            os.path.dirname(__file__), "data", "users", "missing_users.json"
-        ),
-        missing_users_dir=os.path.join(os.path.dirname(__file__), "data", "users"),
-        log_dir=log_dir,
-        dry_run=False,
-    )
-    runner.run()
-
-    # Verify users were created
-    user1 = User.query.filter_by(email="submitter13@cern.ch").one_or_none()
-    user2 = User.query.filter_by(email="submitter10@gmail.com").one_or_none()
-
-    assert user1 is not None
-    assert user2 is not None
-
-
-def test_create_users_dry_run(
-    temp_dir,
-    db,
-):
-    """Test creating users in dry-run mode."""
-    # Run commenters runner in dry-run mode
-    log_dir = os.path.join(temp_dir, "logs")
-    runner = CommenterRunner(
-        stream_definition=CommenterStreamDefinition,
-        filepath=os.path.join(
-            os.path.dirname(__file__), "data", "users", "missing_users.json"
-        ),
-        missing_users_dir=os.path.join(os.path.dirname(__file__), "data", "users"),
-        log_dir=log_dir,
-        dry_run=True,
-    )
-    runner.run()
-
-    # Verify users were NOT created in dry-run mode
-    user1 = User.query.filter_by(email="submitter13@cern.ch").one_or_none()
-    user2 = User.query.filter_by(email="submitter10@gmail.com").one_or_none()
-
-    # In dry-run mode, users should not be created
-    # For now, we just verify the runner completes without errors
-    assert user1 is None
-    assert user2 is None
-
-
 def test_migrate_comments_from_metadata(
     temp_dir,
     migrated_records_with_comments,
@@ -181,6 +129,7 @@ def test_migrate_comments_from_metadata(
         filepath=os.path.join(
             os.path.dirname(__file__), "data", "comments", "comments_metadata.json"
         ),
+        collection="test-comments",
         dirpath=comments_dir,
         log_dir=log_dir,
         dry_run=False,
@@ -326,6 +275,7 @@ def test_migrate_comments_dry_run(temp_dir):
         filepath=os.path.join(
             os.path.dirname(__file__), "data", "comments", "comments_metadata.json"
         ),
+        collection="test-comments",
         dirpath=comments_dir,
         log_dir=log_dir,
         dry_run=True,
@@ -339,3 +289,64 @@ def test_migrate_comments_dry_run(temp_dir):
         q="",
     )
     assert request.total == 3  # Already created ones in the non dry-run mode
+
+
+def test_create_users_from_metadata(
+    temp_dir,
+    db,
+):
+    """Test creating users from users_metadata.json."""
+    # Run commenters runner
+    log_dir = os.path.join(temp_dir, "logs")
+    runner = CommenterRunner(
+        stream_definition=CommenterStreamDefinition,
+        filepath=os.path.join(
+            os.path.dirname(__file__), "data", "users", "missing_users.json"
+        ),
+        missing_users_dir=os.path.join(os.path.dirname(__file__), "data", "users"),
+        log_dir=log_dir,
+        dry_run=False,
+    )
+    runner.run()
+
+    # Verify users were created
+    user1 = User.query.filter_by(email="submitter13@cern.ch").one_or_none()
+    user2 = User.query.filter_by(email="submitter10@gmail.com").one_or_none()
+
+    assert user1 is not None
+    assert user2 is not None
+
+    # Check if users are indexed
+    current_search.flush_and_refresh(UserAggregate.index._name)
+    search_result = current_search_client.search(
+        index=UserAggregate.index._name,
+    )
+    assert search_result["hits"]["total"]["value"] == 2
+
+
+def test_create_users_dry_run(
+    temp_dir,
+    db,
+):
+    """Test creating users in dry-run mode."""
+    # Run commenters runner in dry-run mode
+    log_dir = os.path.join(temp_dir, "logs")
+    runner = CommenterRunner(
+        stream_definition=CommenterStreamDefinition,
+        filepath=os.path.join(
+            os.path.dirname(__file__), "data", "users", "missing_users.json"
+        ),
+        missing_users_dir=os.path.join(os.path.dirname(__file__), "data", "users"),
+        log_dir=log_dir,
+        dry_run=True,
+    )
+    runner.run()
+
+    # Verify users were NOT created in dry-run mode
+    user1 = User.query.filter_by(email="submitter13@cern.ch").one_or_none()
+    user2 = User.query.filter_by(email="submitter10@gmail.com").one_or_none()
+
+    # In dry-run mode, users should not be created
+    # For now, we just verify the runner completes without errors
+    assert user1 is None
+    assert user2 is None

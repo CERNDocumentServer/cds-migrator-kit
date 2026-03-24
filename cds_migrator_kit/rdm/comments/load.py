@@ -9,8 +9,8 @@
 
 import json
 import os
+from datetime import datetime, timezone
 
-import arrow
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from flask import current_app
 from invenio_access.permissions import system_identity
@@ -25,9 +25,11 @@ from invenio_requests.customizations.event_types import CommentEventType, LogEve
 from invenio_requests.proxies import current_events_service, current_requests_service
 from invenio_requests.records.api import RequestEventFormat
 from invenio_requests.resolvers.registry import ResolverRegistry
+from invenio_users_resources.proxies import current_users_service
+from invenio_users_resources.records.api import UserAggregate
 
 from cds_migrator_kit.errors import ManualImportRequired
-from cds_migrator_kit.rdm.comments.log import CommentsLogger
+from cds_migrator_kit.users.load import CDSSubmitterLoad
 
 
 class CDSCommentsLoad(Load):
@@ -196,7 +198,9 @@ class CDSCommentsLoad(Load):
                 recid=legacy_recid,
                 priority="critical",
             )
-        created_at = arrow.get(data.get("created_at")).datetime.replace(tzinfo=None)
+        created_at = datetime.strptime(
+            data.get("created_at"), "%Y-%m-%d %H:%M:%S"
+        ).replace(tzinfo=timezone.utc)
         event.model.created = created_at
         event.model.version_id = 0
 
@@ -258,7 +262,7 @@ class CDSCommentsLoad(Load):
             request = request_item._record
             request.status = "accepted"
             request.number = f"lrecid:{legacy_recid}"
-            created_at = arrow.get(record["created"]).datetime.replace(tzinfo=None)
+            created_at = datetime.fromisoformat(record["created"])
             request.model.created = created_at
 
             self.logger.info(
@@ -326,7 +330,7 @@ class CDSCommentsLoad(Load):
             try:
                 request = self._process_legacy_comments_for_recid(recid, comments)
                 self.logger.info(
-                    f"Successfully processed legacy comments for recid: {recid} to request: {request.id}"
+                    f"Successfully processed legacy comments for recid: {recid} to request: {request.id if request else None}"
                 )
             except ManualImportRequired as ex:
                 error_message = (
@@ -344,8 +348,22 @@ class CDSCommentsLoad(Load):
                 )
                 self.logger.error(error_message)
             except Exception as ex:
-                self.logger.error(f"Error: {ex} | Recid: {recid}")
+                self.logger.error(f"Error: {ex} | Recid: {recid}", exc_info=1)
 
     def _cleanup(self, *args, **kwargs):
         """Cleanup the entries."""
         pass
+
+
+class CDSCommentersLoad(CDSSubmitterLoad):
+    """CDSCommentersLoad."""
+
+    def _load(self, entry):
+        """Load commenters."""
+        user_id = self._owner(entry)
+        if user_id:
+            user_record = UserAggregate.get_record(user_id)
+            current_users_service.indexer.index(user_record)
+            self.logger.info(f"Created user commenter: {user_id}")
+        else:
+            self.logger.error(f"Failed to create user commenter: {entry}")
