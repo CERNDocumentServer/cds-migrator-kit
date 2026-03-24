@@ -136,8 +136,3 @@ class CommentsLogger:
             "error_message": error_message,
         }
         self._csv_writer.writerow(data)
-
-    def finalize(self):
-        """Close file handlers."""
-        if self._csv_file:
-            self._csv_file.close()

@@ -43,7 +43,6 @@ class CommentsRunner:
             self.logger.get_logger().exception(
                 f"Stream {self.stream.name} failed.", exc_info=1
             )
-        self.logger.finalize()
 
 
 class CommenterRunner:
