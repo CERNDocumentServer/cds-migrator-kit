@@ -110,3 +110,15 @@ records:
         - "77617386-632c-4b86-8dd2-68de77ae0018"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hr_restricted/duplicated_pids.json
+  fap:
+    data_dir: cds_migrator_kit/rdm/data/fap
+    tmp_dir: cds_migrator_kit/rdm/tmp/fap
+    log_dir: cds_migrator_kit/rdm/log/fap
+    restricted: "True"
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/fap/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/fap/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - ""
