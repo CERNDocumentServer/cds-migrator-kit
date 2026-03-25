@@ -18,7 +18,9 @@ class CommentsLogger:
     """Migrator comments logger."""
 
     REPORT_COLUMNS = [
+        "id",
         "recid",
+        "legacy_comment_id",
         "legacy_comment_url",
         "new_comment_deeplink",
         "status",
@@ -94,6 +96,7 @@ class CommentsLogger:
 
     def add_comment_log(
         self,
+        id,
         legacy_recid,
         legacy_comment_id,
         status,
@@ -129,7 +132,9 @@ class CommentsLogger:
             new_comment_deeplink = None
 
         data = {
+            "id": id,
             "recid": legacy_recid,
+            "legacy_comment_id": legacy_comment_id,
             "legacy_comment_url": legacy_comment_url,
             "new_comment_deeplink": new_comment_deeplink,
             "status": status,

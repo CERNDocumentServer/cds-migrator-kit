@@ -9,14 +9,15 @@
 {%- block page_body %}
 
   <h2>
-    Comments Migration Report | <a id="filter-error" href="#">Errored: {{ errored }} </a>
+    Comments Migration Report | <a id="filter-error" href="#">Errored: {{ errored }} </a> | Total: {{ comments|length }}
   </h2>
   <table class="table table-bordered">
     <thead class="thead-dark">
       <tr>
+        <th scope="col" style="position: sticky; top:0;">#</th>
         <th scope="col" style="position: sticky; top:0;">Legacy Recid</th>
-        <th scope="col" style="position: sticky; top:0;">Legacy Comment URL</th>
-        <th scope="col" style="position: sticky; top:0;">New Comment Deeplink</th>
+        <th scope="col" style="position: sticky; top:0;">Legacy Comments</th>
+        <th scope="col" style="position: sticky; top:0;">Migrated Comments</th>
         <th scope="col" style="position: sticky; top:0;">Status</th>
         <th scope="col" style="position: sticky; top:0;">Error Message</th>
       </tr>
@@ -32,12 +33,17 @@
             {% endif %}
           >
             <td>
-              {{ comment.recid }}
+              {{ comment.id }}
+            </td>
+            <td>
+            <a href="{{ url_for('cds_migrator_kit_records.comments_by_recid', collection=collection, recid=comment.recid) }}">
+                {{ comment.recid }}
+            </a>
             </td>
             <td>
               {% if comment.legacy_comment_url %}
                 <a href="{{ comment.legacy_comment_url }}" target="_blank">
-                  View Legacy Comment
+                  View legacy comment ({{ comment.legacy_comment_id }})
                 </a>
               {% else %}
                 N/A
@@ -46,7 +52,7 @@
             <td>
               {% if comment.new_comment_deeplink %}
                 <a href="{{ comment.new_comment_deeplink }}" target="_blank">
-                  View New Comment
+                  View migrated comment
                 </a>
               {% else %}
                 N/A
