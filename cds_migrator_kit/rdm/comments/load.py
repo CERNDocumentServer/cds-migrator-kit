@@ -80,6 +80,7 @@ class CDSCommentsLoad(Load):
         community,
         uow,
         legacy_recid,
+        count,
         parent_comment_id=None,
     ):
         """Create a comment event."""
@@ -208,6 +209,8 @@ class CDSCommentsLoad(Load):
         uow.register(RecordCommitOp(event, indexer=current_events_service.indexer))
 
         self.report_logger.add_comment_log(
+            id=count
+            + 1,  # For each request, the report logger will have id 1, 2, .. for the comments
             legacy_recid=legacy_recid,
             legacy_comment_id=legacy_comment_id,
             status="success",
@@ -247,6 +250,8 @@ class CDSCommentsLoad(Load):
             {"record": record["id"]}, raise_=True
         )
 
+        count = 0
+
         with UnitOfWork() as uow:
             request_item = current_requests_service.create(
                 system_identity,
@@ -271,8 +276,9 @@ class CDSCommentsLoad(Load):
 
             for comment_data in comments:
                 comment_event = self.create_event(
-                    request, comment_data, community, uow, legacy_recid
+                    request, comment_data, community, uow, legacy_recid, count
                 )
+                count += 1
                 for reply in comment_data.get("replies", []):
                     reply_event = self.create_event(
                         request,
@@ -280,9 +286,11 @@ class CDSCommentsLoad(Load):
                         community,
                         uow,
                         legacy_recid,
+                        count=count,
                         parent_comment_id=comment_event.id,
                     )
                     self.LEGACY_REPLY_LINK_MAP[reply.get("comment_id")] = reply_event.id
+                    count += 1
 
             # Set this request ID in the `rdm_parents_community` which would be null for these migrated records
             # This is normally executed by the accept action in the request service
@@ -295,6 +303,9 @@ class CDSCommentsLoad(Load):
 
             # Commit at the end so that rollback can be done if any error occurs not only for the request but also for the comments in the middle
             uow.commit()
+        self.logger.info(
+            f"Successfully migrated {count} comments for request: {request.id} from recid: {legacy_recid}"
+        )
 
         return request
 
@@ -328,10 +339,7 @@ class CDSCommentsLoad(Load):
         if entry:
             recid, comments = entry
             try:
-                request = self._process_legacy_comments_for_recid(recid, comments)
-                self.logger.info(
-                    f"Successfully processed legacy comments for recid: {recid} to request: {request.id if request else None}"
-                )
+                self._process_legacy_comments_for_recid(recid, comments)
             except ManualImportRequired as ex:
                 error_message = (
                     f"Error: {ex.message} | "
@@ -341,6 +349,7 @@ class CDSCommentsLoad(Load):
                     f"Comment ID: {ex.field}"
                 )
                 self.report_logger.add_comment_log(
+                    id=None,
                     legacy_recid=recid,
                     legacy_comment_id=ex.field,
                     status="error",
