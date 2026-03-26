@@ -7,7 +7,6 @@
 
 """CDS-RDM migration load module."""
 
-import json
 import os
 from datetime import datetime, timezone
 
@@ -57,7 +56,10 @@ class CDSCommentsLoad(Load):
             self.dirpath, str(recid), str(comment_id)
         )
         if os.path.exists(attached_files_directory):
-            return os.listdir(attached_files_directory)
+            return [
+                os.path.join(attached_files_directory, file)
+                for file in os.listdir(attached_files_directory)
+            ]
         return []
 
     def get_oldest_record(self, parent_pid_value):
@@ -86,11 +88,15 @@ class CDSCommentsLoad(Load):
         """Create a comment event."""
         legacy_comment_id = data.get("comment_id")
         self.logger.info(
-            "Creating event for legacy recid ID<{}> request ID<{}> comment ID<{}> parent_comment ID<{}>".format(
+            "Creating event for legacy recid ID<{}> request ID<{}> comment ID<{}>".format(
                 legacy_recid,
                 request.id,
                 legacy_comment_id,
-                "self" if not parent_comment_id else parent_comment_id,
+            )
+            + (
+                " parent comment ID<{}>".format(parent_comment_id)
+                if parent_comment_id
+                else ""
             )
         )
 
@@ -103,7 +109,6 @@ class CDSCommentsLoad(Load):
         }
 
         comment_status = data.get("status")
-        event_type = CommentEventType
         if comment_status == "da":
             comment_payload["payload"]["content"] = "comment was deleted by the author."
             comment_payload["payload"]["event"] = "comment_deleted"
@@ -114,33 +119,76 @@ class CDSCommentsLoad(Load):
             ] = "comment was deleted by the moderator."
             comment_payload["payload"]["event"] = "comment_deleted"
             event_type = LogEventType
+        else:
+            # Normal comment, add other links and files according to the data
+            event_type = CommentEventType
+            if data.get("file_relation"):
+                file_relation = data.get("file_relation")
+                file_id = file_relation.get("file_id")
+                version = file_relation.get("version")
+                record_version = self.all_record_versions.get(version, None)
+                # If the comment is attached to a record file, add a link to the file in the content
+                if record_version:
+                    record_url = (
+                        current_app.config["CDS_MIGRATOR_KIT_SITE_UI_URL"]
+                        + "/records/"
+                        + record_version["id"]
+                        + f"?preview_file={file_id}"
+                    )
+                    version_link_html = f"<p><a href='{record_url}'>See related record version {version}</a></p>"
+                    comment_payload["payload"]["content"] = (
+                        version_link_html + "\n" + comment_payload["payload"]["content"]
+                    )
+
+            attached_files = self.get_attached_files_for_comment(
+                legacy_recid, legacy_comment_id
+            )
+            if attached_files:
+                request.files.enabled = True
+                if request.files.bucket is None:
+                    request.files.create_bucket()
+                comment_payload["payload"]["files"] = []
+
+                for file in attached_files:
+                    filename = os.path.basename(file)
+                    unique_key = f"{legacy_comment_id}_{filename}"
+                    self.logger.info("Adding file<{}> to the event.".format(unique_key))
+                    try:
+                        with open(file, "rb") as fp:
+                            request.files[unique_key] = (
+                                fp,
+                                {"metadata": {"description": "MIGRATED"}},
+                            )
+                            request.files[unique_key].model.data = {
+                                "original_filename": filename
+                            }
+                        comment_payload["payload"]["files"].append(
+                            {"file_id": str(request.files[unique_key].file.id)}
+                        )
+                    except Exception as e:
+                        self.logger.error(
+                            "Error adding file<{}> to the event: {}".format(
+                                unique_key, e
+                            )
+                        )
+                        raise ManualImportRequired(
+                            message=f"Error adding file<{unique_key}> to the event: {e}",
+                            field=legacy_comment_id,
+                            subfield="files",
+                            value=file,
+                            stage="load",
+                            recid=legacy_recid,
+                            priority="critical",
+                        )
 
         event = current_events_service.record_cls.create(
             {}, request=request.model, request_id=str(request.id), type=event_type
         )
-
-        # If the comment is attached to a record file, add a link to the file in the content
-        if data.get("file_relation"):
-            file_relation = data.get("file_relation")
-            file_id = file_relation.get("file_id")
-            version = file_relation.get("version")
-            record_version = self.all_record_versions.get(version, None)
-            if record_version:
-                record_url = (
-                    current_app.config["CDS_MIGRATOR_KIT_SITE_UI_URL"]
-                    + "/records/"
-                    + record_version["id"]
-                    + f"?preview_file={file_id}"
-                )
-                version_link_html = f"<p><a href='{record_url}'>See related record version {version}</a></p>"
-                comment_payload["payload"]["content"] = (
-                    version_link_html + "\n" + comment_payload["payload"]["content"]
-                )
+        event.update(comment_payload)
 
         if parent_comment_id:
             self.logger.info(
-                "Found parent event<{}> for reply event<{}>. Setting parent_id.".format(
-                    event.id,
+                "Found parent event<{}> for reply event. Setting parent_id.".format(
                     parent_comment_id,
                 )
             )
@@ -153,7 +201,6 @@ class CDSCommentsLoad(Load):
                 self.logger.info(
                     "Adding deep link to the content for the deeply nested reply event<{}>.".format(
                         mentioned_event_id,
-                        event.id,
                     )
                 )
                 deep_link = (
@@ -165,24 +212,6 @@ class CDSCommentsLoad(Load):
                     deep_link_html + "\n" + comment_payload["payload"]["content"]
                 )
 
-        # TODO: Add attached files to the event
-        # https://github.com/CERNDocumentServer/cds-migrator-kit/issues/381
-        # For now, if attached files are found, raise ManualImportRequired error
-        attached_files = self.get_attached_files_for_comment(
-            legacy_recid, legacy_comment_id
-        )
-        if attached_files:
-            raise ManualImportRequired(
-                message=f"Attached files found.",
-                field=legacy_comment_id,
-                subfield="attached_files",
-                value=json.dumps(attached_files),
-                stage="load",
-                recid=legacy_recid,
-                priority="critical",
-            )
-
-        event.update(comment_payload)
         user_email = data.get("user_email")
         user = User.query.filter_by(email=user_email).one_or_none()
         if user:
@@ -304,7 +333,7 @@ class CDSCommentsLoad(Load):
             # Commit at the end so that rollback can be done if any error occurs not only for the request but also for the comments in the middle
             uow.commit()
         self.logger.info(
-            f"Successfully migrated {count} comments for request: {request.id} from recid: {legacy_recid}"
+            f"Successfully migrated {count} comment(s) for request: {request.id} from recid: {legacy_recid}"
         )
 
         return request
