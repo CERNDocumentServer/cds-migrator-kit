@@ -30,8 +30,8 @@ LEGACY_RECD_ID_LIST = [12345, 23456, 34567, 45678]
 """
 Legacy recid list to be used in the tests.
 Testcases to be used in the tests:
-    - 12345: No attached files, no comments related to any file: Normal case
-    - 23456: With attached files: ManualImportRequired error is raised
+    - 12345: No attached files, no comments related to any file: Easy case
+    - 23456: With attached files: Request is created with attached file
     - 34567: Unknown user (not in users_metadata.json): No request is created
     - 45678: Deeply nested comments related to files: Normal case with flatted replies
 (Also to show the errors before doesn't affect other testcases)
@@ -139,7 +139,7 @@ def test_migrate_comments_from_metadata(
     current_requests_service.record_cls.index.refresh()
     current_events_service.record_cls.index.refresh()
 
-    # 12345: No attached files, no comments related to any file: Normal case
+    # 12345: No attached files, no comments related to any file: Easy case
     record_id = migrated_records_with_comments[12345]["id"]
     request_result = current_requests_service.search(
         identity=system_identity,
@@ -164,13 +164,23 @@ def test_migrate_comments_from_metadata(
     assert replies[1]["payload"]["event"] == "comment_deleted"
     assert "user" in replies[1]["created_by"]
 
-    # 23456: With attached files: ManualImportRequired error is raised
+    # 23456: With attached files
     record_id = migrated_records_with_comments[23456]["id"]
     request_result = current_requests_service.search(
         identity=system_identity,
         q=f'topic.record:"{record_id}"',
     )
-    assert request_result.total == 0
+    assert request_result.total == 1
+    request = list(request_result.hits)[0]
+    assert request["number"] == "lrecid:23456"
+    assert request["files"]["enabled"] == True
+    comments_result = current_events_service.search(
+        identity=system_identity,
+        request_id=request["id"],
+    )
+    assert comments_result.total == 1
+    comments = list(comments_result.hits)
+    assert len(comments[0]["payload"]["files"]) == 1
 
     # 34567: Unknown user (not in users_metadata.json): No request is created
     record_id = migrated_records_with_comments[34567]["id"]
@@ -254,12 +264,12 @@ def test_migrate_comments_from_metadata(
     user = User.query.filter_by(id=user_id).one_or_none()
     assert user.email == "unknown@example.com"
 
-    # Verify the total requests are 3 (so no duplicates are created in the second run)
+    # Verify the total requests are 4 (so no duplicates are created in the second run)
     request_result = current_requests_service.search(
         identity=system_identity,
         q="",
     )
-    assert request_result.total == 3
+    assert request_result.total == 4
 
 
 def test_migrate_comments_dry_run(temp_dir):
@@ -288,7 +298,7 @@ def test_migrate_comments_dry_run(temp_dir):
         identity=system_identity,
         q="",
     )
-    assert request.total == 3  # Already created ones in the non dry-run mode
+    assert request.total == 4  # Already created ones in the non dry-run mode
 
 
 def test_create_users_from_metadata(
