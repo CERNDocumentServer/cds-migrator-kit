@@ -157,6 +157,7 @@ def url_files(self, key, value):
                     "nonpublic_note": format_field(value.get("x")),
                     "md5_checksum": format_field(value.get("w")),
                     "source": format_field(value.get("2")),
+                    "description": format_field(value.get("i")),
                 }.items()
                 if v
             }
@@ -165,7 +166,7 @@ def url_files(self, key, value):
         indico_link = {}
 
         # Try to get event id
-        match_id = re.search(r"(?:ida=|confId=|event/)([\w\d]+)", url)
+        match_id = re.search(r"(?:ida=|confId=|confid=|event/)([\w\d]+)", url)
         if match_id:
             event_id = match_id.group(1)
             if event_id:
@@ -453,7 +454,12 @@ def additional_titles(self, key, value):
             if lang == "Titre français":
                 additional_title["lang"] = "fr"
             # Transform as AlternativeTitle
-            elif lang not in ["Previous title", "Also quoted as"]:
+            elif lang not in [
+                "Previous title",
+                "Also quoted as",
+                "Former title",
+                "Original title",
+            ]:
                 raise UnexpectedValue(field=key, subfield="i", value=lang)
 
     if volume:

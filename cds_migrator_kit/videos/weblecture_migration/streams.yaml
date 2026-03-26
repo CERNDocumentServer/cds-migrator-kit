@@ -9,6 +9,15 @@ records:
     transform:
       files_dump_dir: /path_to/afs_files/
       eos_file_paths_dir: cds_migrator_kit/videos/weblecture_migration/data/file_paths/
+  digitized-lectures:
+    data_dir: cds_migrator_kit/videos/weblecture_migration/data/
+    tmp_dir: cds_migrator_kit/videos/weblecture_migration/tmp
+    log_dir: cds_migrator_kit/videos/weblecture_migration/log
+    extract:
+      dirpath: cds_migrator_kit/videos/weblecture_migration/data/digitized-lectures/dump/
+    transform:
+      files_dump_dir: /path_to/afs_files/
+      eos_file_paths_dir: cds_migrator_kit/videos/weblecture_migration/data/file_paths/
 submitters:
     data_dir: cds_migrator_kit/videos/weblecture_migration/data/users
     tmp_dir: cds_migrator_kit/videos/weblecture_migration/tmp/users
