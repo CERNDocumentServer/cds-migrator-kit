@@ -165,6 +165,8 @@ def app_config(app_config):
     app_config["CDS_MIGRATOR_KIT_LOGS_PATH"] = logs_dir
     app_config["RDM_CUSTOM_FIELDS"] = CUSTOM_FIELDS
     app_config["CDS_MIGRATOR_KIT_ENV"] = "test"
+    app_config["CDS_MIGRATOR_KIT_SITE_UI_URL"] = "https://localhost:5000"
+    app_config["CDS_MIGRATOR_KIT_SITE_API_URL"] = "https://localhost:5000/api"
 
     return app_config
 

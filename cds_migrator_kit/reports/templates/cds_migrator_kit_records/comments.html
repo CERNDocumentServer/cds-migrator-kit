@@ -1,0 +1,76 @@
+{#
+  Copyright (C) 2026 CERN.
+  CDS-Migrator-Kit is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
+#}
+
+{%- extends config.CDS_MIGRATOR_KIT_BASE_TEMPLATE %}
+
+{%- block page_body %}
+
+  <h2>
+    Comments Migration Report | <a id="filter-error" href="#">Errored: {{ errored }} </a> | Total: {{ comments|length }}
+  </h2>
+  <table class="table table-bordered">
+    <thead class="thead-dark">
+      <tr>
+        <th scope="col" style="position: sticky; top:0;">#</th>
+        <th scope="col" style="position: sticky; top:0;">Legacy Recid</th>
+        <th scope="col" style="position: sticky; top:0;">Legacy Comments</th>
+        <th scope="col" style="position: sticky; top:0;">Migrated Comments</th>
+        <th scope="col" style="position: sticky; top:0;">Status</th>
+        <th scope="col" style="position: sticky; top:0;">Error Message</th>
+      </tr>
+    </thead>
+    <tbody class="table-hover">
+      {% if comments %}
+        {% for comment in comments %}
+          <tr
+            {% if comment.status == "success" %}
+              class="table-success"
+            {% elif comment.status == "error" %}
+              class="table-danger"
+            {% endif %}
+          >
+            <td>
+              {{ comment.id }}
+            </td>
+            <td>
+            <a href="{{ url_for('cds_migrator_kit_records.comments_by_recid', collection=collection, recid=comment.recid) }}">
+                {{ comment.recid }}
+            </a>
+            </td>
+            <td>
+              {% if comment.legacy_comment_url %}
+                <a href="{{ comment.legacy_comment_url }}" target="_blank">
+                  View legacy comment ({{ comment.legacy_comment_id }})
+                </a>
+              {% else %}
+                N/A
+              {% endif %}
+            </td>
+            <td>
+              {% if comment.new_comment_deeplink %}
+                <a href="{{ comment.new_comment_deeplink }}" target="_blank">
+                  View migrated comment
+                </a>
+              {% else %}
+                N/A
+              {% endif %}
+            </td>
+            <td>
+              {{ comment.status or 'N/A' }}
+            </td>
+            <td style="white-space: pre-line;">
+              {{ comment.error_message or '' }}
+            </td>
+          </tr>
+        {% endfor %}
+      {% else %}
+        <tr>
+          <td colspan="4" class="text-center">No comment migration logs found.</td>
+        </tr>
+      {% endif %}
+    </tbody>
+  </table>
+{%- endblock %}
