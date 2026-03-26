@@ -34,8 +34,8 @@ from cds_migrator_kit.reports.log import (
     MigrationProgressLogger,
     RecordStateLogger,
 )
-from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.identifiers import (
-    transform_legacy_urls,
+from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.multiple_video import (
+    update_metadata_multiple_video_record,
 )
 
 from .helpers import (
@@ -341,38 +341,10 @@ class CDSVideosLoad(Load):
             media_files = self._get_files(record["files"], json_data.get("files", []))
             master_file_id = media_files["master_path"].split("/")[-1]
 
-            # Use the correct metadata for each record
-            event_id = record.get("event_id")
-            url = record.get("url")
-            date = record["date"]
-            location = record.get("location")
-
-            metadata = common_metadata.copy()
-            related_identifiers = list(metadata.get("related_identifiers", []))
-            if event_id:
-                # Insert event_id at the beginning
-                related_identifiers.insert(
-                    0,
-                    {
-                        "scheme": "Indico",
-                        "identifier": str(event_id),
-                        "relation_type": "IsPartOf",
-                    },
-                )
-            if url:
-                url = transform_legacy_urls(url, type="indico")
-                url_identifier = {
-                    "scheme": "URL",
-                    "identifier": url,
-                    "relation_type": "IsPartOf",
-                }
-                if url_identifier not in related_identifiers:
-                    related_identifiers.append(url_identifier)
-
-            metadata["related_identifiers"] = related_identifiers
-            metadata["date"] = date
-            if location:
-                metadata["location"] = location
+            # Update metadata for multiple video record
+            metadata = update_metadata_multiple_video_record(record, common_metadata)
+            # Mint report number if matched with video
+            report_number = metadata.get("report_number", None)
 
             # Create video and flow
             video_deposit, video_deposit_id, bucket_id, payload = (

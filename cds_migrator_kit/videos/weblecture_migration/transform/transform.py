@@ -50,6 +50,7 @@ from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quali
 from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quality.multiple_video import (
     transform_multiple_video_record,
     transform_multiple_video_wihtout_indico,
+    try_to_match_metadata,
 )
 
 cli_logger = logging.getLogger("migrator")
@@ -300,7 +301,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             ### Returns:
             - `set[str]`: A set of date strings.
             """
-            items = json_data.get(key, [])
+            items = get_values_in_json(json_data, key, type=list)
             if subkey:
                 return {
                     item[subkey]["date"]
@@ -318,6 +319,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 or get_values_in_json(json_data, "publication_date")
                 or guess_dates(json_data, "url_files", subkey="indico")
                 | guess_dates(json_data, "notes")
+                or get_values_in_json(json_data, "imprint_date")
             )
             # If multiple video record use lecture_infos or url_files
             lecture_infos = [
@@ -331,6 +333,25 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 and "date" in item["indico"]
                 and "event_id" in item["indico"]
             ]
+            if json_data.get("legacy_recid") in [319681, 319687]:
+                # Couldn't match date and video. Use the first date and add them to curation
+                legacy_dates = get_values_in_json(
+                    json_data.get("_curation", {}), "legacy_dates", type=list
+                )
+                legacy_dates.extend(dates_set)
+                json_data["_curation"]["legacy_dates"] = legacy_dates
+                dates_set = [sorted(dates_set)[0]]
+
+            # TODO: update after migrator fix
+            if not dates_set:
+                dates_set = [json_data.get("lecture_created")]
+                self.migration_logger.add_information(
+                    json_data.get("recid"),
+                    state={
+                        "message": "Lecture created date used!",
+                        "value": json_data.get("lecture_created"),
+                    },
+                )
 
             # Return the valid date
             if len(dates_set) >= 1 and not self.has_multiple_master:
@@ -353,9 +374,10 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
         def description(json_data):
             """Reformat the description for the cds-videos data model."""
-            if not json_data.get("description"):
+            description = json_data.get("description", "")
+            if not description:
                 return json_data.get("title").get("title")
-            return json_data.get("description")
+            return description
 
         def format_contributors(json_data):
             """
@@ -394,7 +416,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
         def notes(json_data):
             """Get the notes."""
-            notes = entry.get("notes")
+            notes = get_values_in_json(json_data, "notes", type=list)
             if notes:
                 note_strings = [note.get("note") for note in notes]
                 return "\n".join(note_strings)
@@ -448,7 +470,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         def get_report_number(json_data):
             """Return the report number."""
             report_numbers = get_values_in_json(json_data, "report_number", type=list)
-            if len(report_numbers) > 1:
+            if len(report_numbers) >= 1:
                 # If report number exists put it in curation
                 report_number = report_numbers[0]
                 return report_numbers, self.check_pid_exists(
@@ -459,7 +481,9 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         def get_keywords(json_data):
             """Return keywords."""
             keywords = json_data.get("keywords", [])
-            subject_categories = json_data.get("subject_categories", [])
+            subject_categories = get_values_in_json(
+                json_data, "subject_categories", type=list
+            )
             subject_indicators = json_data.get("subject_indicators", [])
 
             all_keywords = [
@@ -578,7 +602,9 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             """Return _curation."""
             _curation = json_data.get("_curation", {})
             # Add volumes
-            additional_titles = json_data.get("additional_titles", [])
+            additional_titles = get_values_in_json(
+                json_data, "additional_titles", type=list
+            )
             volumes = [item["volume"] for item in additional_titles if "volume" in item]
             if volumes:
                 _curation["volumes"] = volumes
@@ -594,7 +620,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
         def get_additional_titles(json_data):
             """Return additional_titles."""
-            tag_246 = json_data.get("additional_titles", {})
+            tag_246 = get_values_in_json(json_data, "additional_titles", type=list)
             _titles = [item for item in tag_246 if "title" in item]
             additional_titles = []
             for title_item in _titles:
@@ -626,10 +652,10 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             """Generate access permissions based on restrictions."""
             # Update permissions
             update = [current_app.config["WEBLECTURES_MIGRATION_SYSTEM_USER"]]
-            submitter = json_data.get("submitter")
+            submitter = json_data.get("submitters", [])
             if submitter:
                 # Add submitter to update list
-                update.append(submitter)
+                update.extend(submitter)
             collections = get_collections(json_data)
             if "Lectures::CERN Accelerator School" in collections:
                 update.extend(current_app.config["CAS_LECTURES_ACCESS"])
@@ -643,6 +669,13 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 access["read"] = all_emails
             return access
 
+        def get_language(json_data):
+            """Return language."""
+            language = json_data.get("language")
+            if not language:
+                raise MissingRequiredField(message="Language is missing!")
+            return language
+
         record_dates = reformat_date(entry)
         # Date will be None if record has multiple masters
         record_date = record_dates[0] if not self.has_multiple_master else None
@@ -650,7 +683,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             "title": entry["title"],
             "description": description(entry),
             "contributors": format_contributors(entry),
-            "language": entry.get("language"),
+            "language": get_language(entry),
             "date": record_date,
             "publication_date": publication_date(entry) or record_date,
             "keywords": get_keywords(entry),
@@ -726,6 +759,7 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
         }
         if self.has_multiple_master:
             record_json_output["is_multiple_video_record"] = True
+            self.multiple_video_record_entries["recid"] = json_data["legacy_recid"]
             try:
                 mapped_multiple_video_record, common = transform_multiple_video_record(
                     self.multiple_video_record_entries
@@ -747,6 +781,10 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                     )
                 else:
                     raise e
+            mapped_multiple_video_record = sorted(
+                mapped_multiple_video_record,
+                key=lambda r: r["files"]["master_path"],
+            )
             if len(mapped_multiple_video_record) > 10:
                 self.migration_logger.add_information(
                     json_data["recid"],
@@ -803,6 +841,35 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             metadata["related_identifiers"] = related_identifiers
             record_json_output["metadata"] = metadata
             record_json_output["multiple_video_record"] = mapped_multiple_video_record
+
+            # Try to match metadata for multiple video record
+            curation = metadata.get("_curation", {})
+            tracked_fields = {
+                "digitized_description": "Digitized description matched!",
+                "digitized_language": "Digitized language matched!",
+                "digitized_keywords": "Digitized keywords matched!",
+                "legacy_report_number": "Legacy report number matched!",
+            }
+
+            if any(field in curation for field in tracked_fields):
+                mapped_multiple_video_record, new_curation = try_to_match_metadata(
+                    mapped_multiple_video_record, curation
+                )
+
+                for field, message in tracked_fields.items():
+                    if curation.get(field) != new_curation.get(field):
+                        self.migration_logger.add_information(
+                            json_data["recid"],
+                            {
+                                "message": message,
+                                "value": field,
+                            },
+                        )
+                metadata["_curation"] = new_curation
+                record_json_output["metadata"] = metadata
+                record_json_output["multiple_video_record"] = (
+                    mapped_multiple_video_record
+                )
 
         return {
             "created": self._created(record_dump),
