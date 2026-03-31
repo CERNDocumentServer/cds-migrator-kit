@@ -1,6 +1,6 @@
 """
 This script is used to get the comments from the legacy system and save them to a json file.
-It also dumps the users metadata into valid_users.json and missing_users.json files.
+It also dumps the users metadata into active_commentors.json and missing_commentors_from_ldap.json files.
 """
 
 """
@@ -9,7 +9,7 @@ It also dumps the users metadata into valid_users.json and missing_users.json fi
 3. Map legacy user id to cdsrdm user id
 4. Create comments metadata
 5. Save comments metadata to json file
-6. Dump the users metadata into valid_users.json and missing_users.json files.
+6. Dump the users metadata into active_commentors.json and missing_commentors_from_ldap.json files.
 """
 
 import json
@@ -21,10 +21,11 @@ from invenio.search_engine import search_pattern
 from invenio.webcomment_dblayer import get_comment_to_bibdoc_relations
 
 ENV = "dev"
-BASE_OUTPUT_DIR = f"/eos/media/cds/cds-rdm/{ENV}/migration/"
-COMMENTS_METADATA_FILEPATH = os.path.join(
-    BASE_OUTPUT_DIR, "comments", "comments_metadata.json"
-)
+BASE_OUTPUT_DIR = "/eos/media/cds/cds-rdm/{0}/migration/".format(ENV)
+COMMENTS_METADATA_DIR = os.path.join(BASE_OUTPUT_DIR, "comments")
+if not os.path.exists(COMMENTS_METADATA_DIR):
+    os.makedirs(COMMENTS_METADATA_DIR)
+COMMENTS_METADATA_FILEPATH = os.path.join(COMMENTS_METADATA_DIR, "comments_metadata.json")
 
 collection_queries = [
     "980__a:CNLISSUE -980:DELETED -980:HIDDEN -980__a:DUMMY",
@@ -175,7 +176,7 @@ comments_metadata = {}
 }
 """
 
-users_metadata = []
+users_metadata = set()
 """
 [(user_id, user_email, user_nickname, user_note, user_last_login), ...]
 """
@@ -221,7 +222,7 @@ for i, recid in enumerate(recids_with_comments):
     )
 
     for comment in comments:
-        users_metadata.append(
+        users_metadata.add(
             (
                 comment["id_user"],
                 comment["email"],
@@ -264,6 +265,7 @@ for i, recid in enumerate(recids_with_comments):
         comments_metadata[recid].append(comment_data)
     print("Successfully processed comment(s) for record<{}>!!!".format(recid))
 
+print("Creating {0} file...".format(COMMENTS_METADATA_FILEPATH))
 with open(COMMENTS_METADATA_FILEPATH, "w") as f:
     json.dump(comments_metadata, f)
 """
@@ -274,14 +276,14 @@ This file will be read and run by the CommentsRunner to migrate the comments.
 The following snippet is taken from the `dump_users.py` script in the `production_scripts` repository:
 https://gitlab.cern.ch/cds-team/production_scripts/-/blob/master/cds-rdm/migration/dump_users.py?ref_type=heads
 
-It is used to dump the users metadata as valid_users.json and missing_users.json files.
+It is used to dump the users metadata as active_commentors.json and missing_commentors_from_ldap.json files.
 
-After running this script, place the "active_users.json" and "missing_users.json" files in the "cds_migrator_kit/rdm/data/users/" folder along with "people.csv" file.
+After running this script, place the "active_commentors.json" and "missing_commentors_from_ldap.json" files in the "cds_migrator_kit/rdm/data/users/" folder along with "people.csv" file.
 """
 
-OUTPUT_DIR = os.path.join(BASE_OUTPUT_DIR, "users")
-USERS_FILEPATH = os.path.join(OUTPUT_DIR, "active_users.json")
-MISSING_USERS_FILEPATH = os.path.join(OUTPUT_DIR, "missing_users.json")
+OUTPUT_DIR = os.path.join(COMMENTS_METADATA_DIR, "users")
+USERS_FILEPATH = os.path.join(OUTPUT_DIR, "active_commentors.json")
+MISSING_USERS_FILEPATH = os.path.join(OUTPUT_DIR, "missing_commentors_from_ldap.json")
 
 if not os.path.exists(OUTPUT_DIR):
     os.makedirs(OUTPUT_DIR)
@@ -289,7 +291,7 @@ if not os.path.exists(OUTPUT_DIR):
 
 def dump_users():
     """
-    Dump the users metadata into valid_users.json and missing_users.json files.
+    Dump the users metadata into active_commentors.json and missing_commentors_from_ldap.json files.
     """
 
     def get_uid_from_ldap_user(ldap_user):
@@ -307,8 +309,8 @@ def dump_users():
             return None
 
     def _dump(recs):
-        valid_users = []
-        missing_users = []
+        valid_users = set()
+        missing_users = set()
 
         for rec in recs:
             # record example: (
@@ -332,17 +334,19 @@ def dump_users():
                     record["department"] = department
                 else:
                     print("No department for {}".format(email))
-                valid_users.append(record)
+                valid_users.add(record)
             else:
-                missing_users.append(record)
+                missing_users.add(record)
 
         return valid_users, missing_users
 
     valid_users, missing_users = _dump(users_metadata)
     with open(USERS_FILEPATH, "w") as fp:
-        json.dump(valid_users, fp, indent=2)
+        json.dump(list(valid_users), fp, indent=2)
 
     if missing_users:
-        print("Missing users found {0}".format(len(missing_users)))
+        print("Missing users found {0}. Creating {1} file...".format(len(missing_users), MISSING_USERS_FILEPATH))
         with open(MISSING_USERS_FILEPATH, "w") as fp:
-            json.dump(missing_users, fp, indent=2)
+            json.dump(list(missing_users), fp, indent=2)
+
+dump_users()

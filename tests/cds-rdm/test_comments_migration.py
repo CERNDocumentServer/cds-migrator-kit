@@ -310,10 +310,10 @@ def test_create_users_from_metadata(
     log_dir = os.path.join(temp_dir, "logs")
     runner = CommenterRunner(
         stream_definition=CommenterStreamDefinition,
-        filepath=os.path.join(
-            os.path.dirname(__file__), "data", "users", "missing_users.json"
+        filename="missing_commentors_from_ldap.json",
+        missing_users_dir=os.path.join(
+            os.path.dirname(__file__), "data", "comments", "users"
         ),
-        missing_users_dir=os.path.join(os.path.dirname(__file__), "data", "users"),
         log_dir=log_dir,
         dry_run=False,
     )
@@ -343,10 +343,10 @@ def test_create_users_dry_run(
     log_dir = os.path.join(temp_dir, "logs")
     runner = CommenterRunner(
         stream_definition=CommenterStreamDefinition,
-        filepath=os.path.join(
-            os.path.dirname(__file__), "data", "users", "missing_users.json"
+        filename="missing_commentors_from_ldap.json",
+        missing_users_dir=os.path.join(
+            os.path.dirname(__file__), "data", "comments", "users"
         ),
-        missing_users_dir=os.path.join(os.path.dirname(__file__), "data", "users"),
         log_dir=log_dir,
         dry_run=True,
     )

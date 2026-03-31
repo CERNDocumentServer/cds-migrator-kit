@@ -296,22 +296,22 @@ def comments_run(filepath, dirpath, collection, dry_run=False):
     is_flag=True,
 )
 @click.option(
-    "--filepath",
-    help="Path to the users metadata json file.",
+    "--filename",
+    help="Name of the missing commentors metadata json file.",
     required=True,
 )
 @click.option(
     "--missing-users-dir",
-    help="Path to the people.csv file containing person_id for missing users.",
+    help="Path to the directory containing people.csv (contains person_id) and missing_commentors_from_ldap.json files.",
     default=None,
 )
 @with_appcontext
-def commenters_run(filepath, missing_users_dir, dry_run=False):
+def commenters_run(filename, missing_users_dir, dry_run=False):
     """Pre-create commenters accounts."""
     log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "comments"
     runner = CommenterRunner(
         stream_definition=CommenterStreamDefinition,
-        filepath=filepath,
+        filename=filename,
         missing_users_dir=missing_users_dir,
         log_dir=log_dir,
         dry_run=dry_run,
