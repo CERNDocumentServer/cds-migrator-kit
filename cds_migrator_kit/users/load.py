@@ -29,11 +29,13 @@ class CDSSubmitterLoad(Load):
         dry_run=False,
         logger=logging.getLogger("users"),
         user_api_cls=None,
+        missing_ldap_users_filename="missing_users.json",
     ):
         """Constructor."""
         self.dry_run = dry_run
         self.missing_users_dir = missing_users_dir
         self.missing_users_filename = missing_users_filename
+        self.missing_ldap_users_filename = missing_ldap_users_filename
         self.dry_run = dry_run
         self.logger = logger
         self.user_api_cls = user_api_cls
@@ -80,7 +82,7 @@ class CDSSubmitterLoad(Load):
 
         def get_person_old_db(email):
             missing_users_dump = os.path.join(
-                self.missing_users_dir, "missing_users.json"
+                self.missing_users_dir, self.missing_ldap_users_filename
             )
             with open(missing_users_dump) as json_file:
                 missing = json.load(json_file)

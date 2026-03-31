@@ -8,6 +8,7 @@
 """CDS-Migrator-Kit comments runner module."""
 
 from pathlib import Path
+import os
 
 from invenio_rdm_migrator.streams import Stream
 
@@ -49,7 +50,7 @@ class CommenterRunner:
     """ETL streams runner dedicated to pre-create commenters accounts."""
 
     def __init__(
-        self, stream_definition, filepath, missing_users_dir, log_dir, dry_run
+        self, stream_definition, filename, missing_users_dir, log_dir, dry_run
     ):
         """Constructor."""
         self.log_dir = Path(log_dir)
@@ -59,11 +60,14 @@ class CommenterRunner:
 
         self.stream = Stream(
             stream_definition.name,
-            extract=stream_definition.extract_cls(filepath),
+            extract=stream_definition.extract_cls(
+                os.path.join(missing_users_dir, filename)
+            ),
             transform=stream_definition.transform_cls(),
             load=stream_definition.load_cls(
                 dry_run=dry_run,
                 missing_users_dir=missing_users_dir,
+                missing_ldap_users_filename=filename,
                 logger=self.logger,
                 user_api_cls=CDSMigrationUserAPI,
             ),
