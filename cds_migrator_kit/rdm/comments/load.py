@@ -331,6 +331,9 @@ class CDSCommentsLoad(Load):
             parent_to_request_relation.request_id = request.id
 
             # Commit at the end so that rollback can be done if any error occurs not only for the request but also for the comments in the middle
+            uow.register(
+                RecordCommitOp(request, indexer=current_requests_service.indexer)
+            )
             uow.commit()
         self.logger.info(
             f"Successfully migrated {count} comment(s) for request: {request.id} from recid: {legacy_recid}"

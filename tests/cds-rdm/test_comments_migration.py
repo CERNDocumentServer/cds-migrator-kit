@@ -148,6 +148,7 @@ def test_migrate_comments_from_metadata(
     assert request_result.total == 1
     request = list(request_result.hits)[0]
     assert request["number"] == "lrecid:12345"
+    assert request["status"] == "accepted"
     # Verify comments were created as request events
     comments_result = current_events_service.search(
         identity=system_identity,
@@ -164,6 +165,11 @@ def test_migrate_comments_from_metadata(
     assert replies[1]["payload"]["event"] == "comment_deleted"
     assert "user" in replies[1]["created_by"]
 
+    # Check the request has correct values in the database
+    request_in_db = current_requests_service.read(system_identity, request["id"])
+    assert request_in_db["number"] == "lrecid:12345"
+    assert request_in_db["status"] == "accepted"
+
     # 23456: With attached files
     record_id = migrated_records_with_comments[23456]["id"]
     request_result = current_requests_service.search(
@@ -174,6 +180,7 @@ def test_migrate_comments_from_metadata(
     request = list(request_result.hits)[0]
     assert request["number"] == "lrecid:23456"
     assert request["files"]["enabled"] == True
+    assert request["status"] == "accepted"
     comments_result = current_events_service.search(
         identity=system_identity,
         request_id=request["id"],
@@ -181,6 +188,11 @@ def test_migrate_comments_from_metadata(
     assert comments_result.total == 1
     comments = list(comments_result.hits)
     assert len(comments[0]["payload"]["files"]) == 1
+
+    # Check the request has correct values in the database
+    request_in_db = current_requests_service.read(system_identity, request["id"])
+    assert request_in_db["number"] == "lrecid:23456"
+    assert request_in_db["status"] == "accepted"
 
     # 34567: Unknown user (not in users_metadata.json): No request is created
     record_id = migrated_records_with_comments[34567]["id"]
@@ -199,6 +211,7 @@ def test_migrate_comments_from_metadata(
     assert request_result.total == 1
     request = list(request_result.hits)[0]
     assert request["number"] == "lrecid:45678"
+    assert request["status"] == "accepted"
     comments_result = current_events_service.search(
         identity=system_identity,
         request_id=request["id"],
@@ -232,6 +245,11 @@ def test_migrate_comments_from_metadata(
     )
     assert "user" in replies[1]["created_by"]
 
+    # Check the request has correct values in the database
+    request_in_db = current_requests_service.read(system_identity, request["id"])
+    assert request_in_db["number"] == "lrecid:45678"
+    assert request_in_db["status"] == "accepted"
+
     # Now create the missing user to check idempotency of the migration runner
     user3 = User(email="unknown@example.com", active=True)
     db.session.add(user3)
@@ -251,6 +269,7 @@ def test_migrate_comments_from_metadata(
     assert request_result.total == 1
     request = list(request_result.hits)[0]
     assert request["number"] == "lrecid:34567"
+    assert request["status"] == "accepted"
     comments_result = current_events_service.search(
         identity=system_identity,
         request_id=request["id"],
@@ -259,6 +278,11 @@ def test_migrate_comments_from_metadata(
     comments = list(comments_result.hits)
     assert comments[0]["payload"]["content"] == "This is a comment with an unknown user"
     assert "user" in comments[0]["created_by"]
+
+    # Check the request has correct values in the database
+    request_in_db = current_requests_service.read(system_identity, request["id"])
+    assert request_in_db["number"] == "lrecid:34567"
+    assert request_in_db["status"] == "accepted"
 
     user_id = comments[0]["created_by"]["user"]
     user = User.query.filter_by(id=user_id).one_or_none()

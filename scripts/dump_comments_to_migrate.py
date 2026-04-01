@@ -21,7 +21,8 @@ from invenio.search_engine import search_pattern
 from invenio.webcomment_dblayer import get_comment_to_bibdoc_relations
 
 ENV = "dev"
-BASE_OUTPUT_DIR = "/eos/media/cds/cds-rdm/{0}/migration/".format(ENV)
+COLLECTION = "it"
+BASE_OUTPUT_DIR = "/eos/media/cds/cds-rdm/{0}/migration/{1}/".format(ENV, COLLECTION)
 COMMENTS_METADATA_DIR = os.path.join(BASE_OUTPUT_DIR, "comments")
 if not os.path.exists(COMMENTS_METADATA_DIR):
     os.makedirs(COMMENTS_METADATA_DIR)
