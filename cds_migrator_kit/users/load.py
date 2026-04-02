@@ -12,6 +12,7 @@ import logging
 import os.path
 import re
 
+from flask import current_app
 from invenio_accounts.models import User
 from invenio_rdm_migrator.load.base import Load
 from sqlalchemy.exc import NoResultFound
@@ -128,7 +129,10 @@ class CDSSubmitterLoad(Load):
         elif person_old_db:
             names = "".join(person_old_db["displayname"].split())
             username = names.lower().replace(".", "")
-            if not username:
+            # Validate username, if not valid, generate a new prefixed username from email
+            if not re.fullmatch(
+                current_app.config["ACCOUNTS_USERNAME_REGEX"], username
+            ):
                 username = f'MIGRATED{email_addr.split("@")[0].replace(".", "")}'
                 username = re.sub(r"\W+", "", username)
             displayname = person_old_db["displayname"]
@@ -148,9 +152,15 @@ class CDSSubmitterLoad(Load):
             # and return that user as source of truth ( we assume auth service is most
             # up to date)
             if existing_identity:
+                logger_users.info(
+                    f"User {email_addr} already exists with person ID {person_id}"
+                )
                 return existing_identity.id_user
 
         try:
+            logger_users.info(
+                f"Creating user {email_addr}, {displayname}, {username}, {person_id}, {json.dumps(extra_data)}"
+            )
             user = user_api.create_user(
                 email_addr,
                 name=displayname,

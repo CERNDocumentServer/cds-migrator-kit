@@ -67,6 +67,11 @@ THEME_FRONTPAGE_TITLE = _("cds-migrator-kit")
 #: Frontpage template.
 THEME_FRONTPAGE_TEMPLATE = "cds_migrator_kit/frontpage.html"
 
+# Invenio-Accounts configuration
+# ==============================
+# Regex to validate username: https://github.com/inveniosoftware/invenio-accounts/blob/79ed7fc79c42790c53376fe02ca990c8bccfb3dd/invenio_accounts/config.py#L367-L382
+ACCOUNTS_USERNAME_REGEX = r"^[a-zA-Z][a-zA-Z0-9-_]{2,255}$"
+
 # Email configuration
 # ===================
 #: Email address for support.

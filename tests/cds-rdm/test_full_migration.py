@@ -210,10 +210,11 @@ def orcid_id(record, orcid_name_data):
     remote_account = RemoteAccount.query.filter_by(user_id=user_identity.id_user).one()
     assert hasattr(remote_account, "extra_data")
     assert remote_account.extra_data == {
+        "department": "IT",
         "migration": {
             "source": "PEOPLE COLLECTION, PERSON_ID FOUND",
             "note": "MIGRATED INACTIVE ACCOUNT",
-        }
+        },
     }
 
     for identifier in dict_rec["metadata"]["creators"][0]["person_or_org"][
@@ -498,11 +499,12 @@ def test_full_migration_stream(
             author_with_inspire(loaded_rec)
 
     # Check if remote account has the correct metadata
-    remote_account_metadata()
+    # Check if user profile has the correct metadata
+    user_metadata()
 
 
-def remote_account_metadata():
-    """Checks for remote account extra_data."""
+def user_metadata():
+    """Checks for user profile and remote account extra_data."""
     user = User.query.filter_by(email="submitter13@cern.ch").one()
     assert user is not None
 
@@ -514,6 +516,8 @@ def remote_account_metadata():
             "note": "MIGRATED INACTIVE ACCOUNT",
         }
     }
+
+    assert user.user_profile == {"full_name": "Submitter 13"}
 
     user = User.query.filter_by(email="submitter16@cern.ch").one()
     assert user is not None
@@ -527,6 +531,9 @@ def remote_account_metadata():
         }
     }
 
+    # No username was generated, so the full name generated from email
+    assert user.user_profile == {"full_name": "Submitter16"}
+
     user = User.query.filter_by(email="submitter11@cern.ch").one()
     assert user is not None
 
@@ -539,14 +546,24 @@ def remote_account_metadata():
         }
     }
 
+    assert user.user_profile == {"full_name": "Submitter Eleven"}
+
     user = User.query.filter_by(email="submitter15@cern.ch").one()
     assert user is not None
 
     remote_account = RemoteAccount.query.filter_by(user_id=user.id).one()
     assert hasattr(remote_account, "extra_data")
     assert remote_account.extra_data == {
+        "department": "IT",
         "migration": {
             "source": "PEOPLE COLLECTION, PERSON_ID FOUND",
             "note": "MIGRATED INACTIVE ACCOUNT",
-        }
+        },
+    }
+
+    # All metadata is added to the user profile
+    assert user.user_profile == {
+        "full_name": "Mendoza Diego",
+        "person_id": "11115",
+        "department": "IT",
     }
