@@ -42,7 +42,10 @@ class CDSRecordDump:
         """Get first record creation date."""
         # modification datetime of first revision is the creation date of the whole record
         # this assumption is based on the hstRECORD dump from invenio-migrator module
-        return self.data["record"][0]["modification_datetime"]
+        # for older records first revision is not the creation of record
+        # so we added creation_date field to dump and it's getting it from bibrec 
+        # https://github.com/inveniosoftware/invenio-migrator/blob/master/invenio_migrator/legacy/records.py#L216
+        return self.data["creation_date"]
 
     def prepare_revisions(self):
         """Prepare revisions."""
