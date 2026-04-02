@@ -96,7 +96,12 @@ def validate_copyright(self, key, holder, year):
 @model.over("related_id", "^962__", override=True)
 @for_each_value
 def related_id(self, key, value):
-    """Translates tag 962."""
+    """
+    Overridden version of the `presented_at` rule.
+
+    This rule uses the new `related_id` key so that only tag 962 handling is customized,
+    without overriding all rules for related identifiers.
+    """
     pagination = value.get("k", "").strip()
     # Only 2 records has this field: 300427, 317239
     if pagination and pagination != "no pagination":
@@ -104,10 +109,12 @@ def related_id(self, key, value):
     new_related_id = presented_at(self, key, value)
     if new_related_id:
         rel_id = new_related_id[0]
+        rel_id.pop("resource_type", None)
         rel_ids = self.get("related_identifiers", [])
         if rel_id not in rel_ids:
             rel_ids.append(rel_id)
             self["related_identifiers"] = rel_ids
+    # Related identifier is already added, ignore this key
     raise IgnoreKey("related_id")
 
 
@@ -418,6 +425,7 @@ def creation_date(self, key, value):
 @for_each_value
 def action_note(self, key, value):
     """Translates action note (digitized information)."""
+
     def format_field(value, subfield):
         val = value.get(subfield)
         if isinstance(val, (list, tuple)):

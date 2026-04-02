@@ -495,6 +495,12 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
             unique_keywords = []
             for kw in all_keywords:
                 name = kw["name"]
+                if name == "XX":
+                    self.migration_logger.add_information(
+                        json_data["recid"],
+                        {"message": "Keyword XX found and ignored!", "value": name},
+                    )
+                    continue
                 if name not in seen:
                     seen.add(name)
                     unique_keywords.append(kw)
