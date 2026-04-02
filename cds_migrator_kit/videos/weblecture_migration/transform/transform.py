@@ -342,14 +342,14 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                 json_data["_curation"]["legacy_dates"] = legacy_dates
                 dates_set = [sorted(dates_set)[0]]
 
-            # TODO: update after migrator fix
+            # TODO: remove this part after digitized lecturemedia migration
             if not dates_set:
-                dates_set = [json_data.get("lecture_created")]
+                dates_set = [json_data["creation_date"]]
                 self.migration_logger.add_information(
                     json_data.get("recid"),
                     state={
                         "message": "Lecture created date used!",
-                        "value": json_data.get("lecture_created"),
+                        "value": json_data["creation_date"],
                     },
                 )
 
@@ -749,6 +749,8 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
 
         # Generate media files before metadata, it'll set if record has multiple masters
         media_files = self._media_files(json_data)
+        creation_date = self._created(record_dump)
+        json_data["creation_date"] = creation_date.date().isoformat()
         record_json_output = {
             "metadata": self._metadata(json_data),
             "created": self._created(record_dump),
