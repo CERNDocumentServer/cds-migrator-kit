@@ -498,11 +498,12 @@ def test_full_migration_stream(
             author_with_inspire(loaded_rec)
 
     # Check if remote account has the correct metadata
-    remote_account_metadata()
+    # Check if user profile has the correct metadata
+    user_metadata()
 
 
-def remote_account_metadata():
-    """Checks for remote account extra_data."""
+def user_metadata():
+    """Checks for user profile and remote account extra_data."""
     user = User.query.filter_by(email="submitter13@cern.ch").one()
     assert user is not None
 
@@ -514,6 +515,8 @@ def remote_account_metadata():
             "note": "MIGRATED INACTIVE ACCOUNT",
         }
     }
+
+    assert user.user_profile == {"full_name": "Submitter 13"}
 
     user = User.query.filter_by(email="submitter16@cern.ch").one()
     assert user is not None
@@ -527,6 +530,8 @@ def remote_account_metadata():
         }
     }
 
+    assert user.user_profile == {"full_name": "Submitter16"}
+
     user = User.query.filter_by(email="submitter11@cern.ch").one()
     assert user is not None
 
@@ -539,6 +544,8 @@ def remote_account_metadata():
         }
     }
 
+    assert user.user_profile == {"full_name": "Submitter Eleven"}
+
     user = User.query.filter_by(email="submitter15@cern.ch").one()
     assert user is not None
 
@@ -550,3 +557,5 @@ def remote_account_metadata():
             "note": "MIGRATED INACTIVE ACCOUNT",
         }
     }
+
+    assert user.user_profile == {"full_name": "Mendoza Diego", "person_id": "11115"}

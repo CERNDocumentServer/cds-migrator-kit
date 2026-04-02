@@ -83,14 +83,21 @@ class MigrationUserAPI(ABC):
                 "person_id": person_id,
             }
         if name:
+            profile_data.update({"full_name": name})
             if "department" in extra_data:
                 profile_data.update({"department": extra_data["department"]})
-            profile = deepcopy(user.user_profile)
-            profile.update(profile_data)
-            user.user_profile = profile
-            db.session.add(user)
+        else:
+            # Create the full name from the email
+            profile_data.update(
+                {"full_name": email.split("@")[0].replace(".", " ").capitalize()}
+            )
+
+        profile = deepcopy(user.user_profile)
+        profile.update(profile_data)
+        user.user_profile = profile
+        db.session.add(user)
 
         remote_account = self.create_invenio_remote_account(user_id, extra_data)
         db.session.add(remote_account)
-
+        db.session.commit()
         return user
