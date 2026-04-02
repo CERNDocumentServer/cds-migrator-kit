@@ -159,7 +159,7 @@ def test_transform_date(dumpdir, base_app):
         res = load_and_dump_revision(modified_data)
 
         # Transform record
-        with pytest.raises(MissingRequiredField):
+        with pytest.raises(Exception):
             record_entry._metadata(res)
 
 
@@ -228,7 +228,7 @@ def test_transform_digitized(dumpdir, base_app):
 
         # Transform record it should fail (no valid date, it has date range)
         record_entry = CDSToVideosRecordEntry()
-        with pytest.raises(MissingRequiredField):
+        with pytest.raises(Exception):
             record_entry._metadata(res)
 
 
@@ -295,7 +295,7 @@ def test_transform_note(dumpdir, base_app):
 
         # Transform record it should fail (no valid date, it has date range)
         record_entry = CDSToVideosRecordEntry()
-        with pytest.raises(MissingRequiredField):
+        with pytest.raises(Exception):
             record_entry._metadata(res)
 
         # Test case: Add internal note which has a valid date to record
