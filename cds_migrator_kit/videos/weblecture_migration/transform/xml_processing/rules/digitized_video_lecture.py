@@ -104,6 +104,7 @@ def related_id(self, key, value):
     new_related_id = presented_at(self, key, value)
     if new_related_id:
         rel_id = new_related_id[0]
+        rel_id.pop("resource_type", None)
         rel_ids = self.get("related_identifiers", [])
         if rel_id not in rel_ids:
             rel_ids.append(rel_id)
