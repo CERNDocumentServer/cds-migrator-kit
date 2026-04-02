@@ -797,10 +797,25 @@ def related_identifiers_787(self, key, value):
             "relation_type": {"id": "references"},
             "resource_type": {"id": "publication-conferencepaper"},
         },
+        "corresponding video": {
+            "relation_type": {"id": "references"},
+            # TODO: do we need new resource type for video?
+            "resource_type": {"id": "audio"},
+        },
+        "manuscript": {
+            "relation_type": {"id": "isderivedfrom"},
+            "resource_type": {"id": "publication-preprint"},
+        },
     }
 
     if recid:
         if description:
+            if description not in relation_map.keys():
+                raise UnexpectedValue(
+                    f"Unexpected relation description {description}",
+                    field=key,
+                    value=value,
+                )
             new_id = {
                 "identifier": recid,
                 "scheme": "cds",
