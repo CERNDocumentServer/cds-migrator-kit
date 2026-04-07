@@ -41,10 +41,12 @@ from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quali
 from .helpers import (
     copy_additional_files,
     copy_frames,
+    create_afs_file_objects_to_record,
     create_flow,
     create_project,
     create_video,
     extract_metadata,
+    get_afs_file_objects_in_record,
     publish_project,
     publish_video_record,
     transcode_task,
@@ -336,9 +338,21 @@ class CDSVideosLoad(Load):
 
         multiple_video_record = json_data.get("multiple_video_record")
 
+        # Get AFS files
+        afs_files = json_data.get("files", [])
+        afs_file_objects = []
+        if afs_files:
+            self.migration_logger.add_information(
+                entry["record"]["recid"],
+                {
+                    "message": "AFS files found in the multiple video record",
+                    "value": afs_files,
+                },
+            )
+
         for record in multiple_video_record:
             # Combine ceph and afs files
-            media_files = self._get_files(record["files"], json_data.get("files", []))
+            media_files = self._get_files(record["files"], afs_files)
             master_file_id = media_files["master_path"].split("/")[-1]
 
             # Update metadata for multiple video record
@@ -352,6 +366,10 @@ class CDSVideosLoad(Load):
                     project_deposit, metadata, media_files, submitter
                 )
             )
+
+            # Create the afs file objects to the record from first created record
+            if afs_files and afs_file_objects:
+                create_afs_file_objects_to_record(afs_file_objects, bucket_id)
 
             # Run tasks and publish video
             published_video = self._run_tasks_and_publish_video(
@@ -379,6 +397,20 @@ class CDSVideosLoad(Load):
                     "videos_record_uuid": record_uuid,
                 }
             )
+
+            # Get the afs_file objects from the created record
+            if afs_files and not afs_file_objects:
+                afs_file_objects = get_afs_file_objects_in_record(
+                    published_video["_files"], afs_files
+                )
+                if not afs_file_objects:
+                    self.migration_logger.add_information(
+                        entry["record"]["recid"],
+                        {
+                            "message": "AFS file objects not found for the multiple video record",
+                            "value": afs_files,
+                        },
+                    )
 
         # Publish project
         published_project = publish_project(deposit_id=project_deposit_id)
