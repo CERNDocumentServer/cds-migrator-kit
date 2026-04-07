@@ -52,7 +52,7 @@ class DigitizedVideoLecture(CdsOverdo):
         "curated_copyright": {},
         "lecture_infos": [],
         "_curation": {
-            "preservation_values": [],
+            "digitized_preservation": [],
         },
         "contributors": [],
         "alternate_identifiers": [],

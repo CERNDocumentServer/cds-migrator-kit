@@ -460,9 +460,9 @@ def action_note(self, key, value):
         }.items()
         if v
     }
-    preservation_values = self["_curation"].get("preservation_values", [])
-    preservation_values.append(preservation_entry)
-    self["_curation"]["preservation_values"] = preservation_values
+    digitized_preservation = self["_curation"].get("digitized_preservation", [])
+    digitized_preservation.append(preservation_entry)
+    self["_curation"]["digitized_preservation"] = digitized_preservation
     raise IgnoreKey("action_note")
 
 
