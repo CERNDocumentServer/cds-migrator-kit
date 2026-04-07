@@ -571,7 +571,7 @@ def copy_additional_files(bucket_id, additional_files):
 
         # It'll log if copying fail
         if not obj:
-            return
+            continue
 
         # Add tags to the additional file
         ObjectVersionTag.create_or_update(obj, "context_type", "additional_file")
@@ -609,3 +609,32 @@ def upload_poster(bucket_id, poster_path):
     _create_tags(obj)
     ObjectVersionTag.create_or_update(obj, "context_type", "poster")
     ObjectVersionTag.create_or_update(obj, "media_type", "image")
+
+
+def get_afs_file_objects_in_record(record_files, afs_files):
+    """Get the afs file objects from the record files."""
+    afs_file_objects = []
+    for afs_file in afs_files:
+        file_name = os.path.basename(afs_file).split(";")[0]
+        file_object = next(
+            (file for file in record_files if file["key"] == file_name), None
+        )
+        if file_object:
+            afs_file_objects.append(
+                {
+                    "key": file_object["key"],
+                    "file_id": file_object["file_id"],
+                }
+            )
+    return afs_file_objects
+
+
+def create_afs_file_objects_to_record(afs_file_objects, record_bucket_id):
+    """Create the afs file objects."""
+    for afs_file_object in afs_file_objects:
+        obj = ObjectVersion.create(
+            bucket=record_bucket_id,
+            key=afs_file_object["key"],
+            _file_id=afs_file_object["file_id"],
+        )
+        ObjectVersionTag.create_or_update(obj, "context_type", "additional_file")
