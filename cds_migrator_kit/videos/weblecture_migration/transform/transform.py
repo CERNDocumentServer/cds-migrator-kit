@@ -157,7 +157,12 @@ class CDSToVideosRecordEntry(RDMRecordEntry):
                     value=f"Tried: {possible_paths}",
                     priority="critical",
                 )
-            record_files.append(found_path)
+            record_files.append(
+                {
+                    "key": k,
+                    "path": found_path,
+                }
+            )
 
         return record_files
 

@@ -611,8 +611,9 @@ def upload_poster(bucket_id, poster_path):
     ObjectVersionTag.create_or_update(obj, "media_type", "image")
 
 
-def get_afs_file_objects_in_record(record_files, afs_files):
+def get_afs_file_objects_in_record(record_files, afs_files_dict):
     """Get the afs file objects from the record files."""
+    afs_files = [afs_file["path"] for afs_file in afs_files_dict]
     afs_file_objects = []
     for afs_file in afs_files:
         file_name = os.path.basename(afs_file).split(";")[0]
@@ -638,3 +639,15 @@ def create_afs_file_objects_to_record(afs_file_objects, record_bucket_id):
             _file_id=afs_file_object["file_id"],
         )
         ObjectVersionTag.create_or_update(obj, "context_type", "additional_file")
+
+
+def copy_afs_files_as_additional(bucket_id, afs_files):
+    """Copy the afs files to the bucket."""
+    for afs_file in afs_files:
+        file_name = afs_file["key"]
+        file_path = afs_file["path"]
+        obj = move_file_to_bucket(bucket_id, file_path, file_name=file_name)
+        if not obj:
+            continue
+        ObjectVersionTag.create_or_update(obj, "context_type", "additional_file")
+        _create_tags(obj)

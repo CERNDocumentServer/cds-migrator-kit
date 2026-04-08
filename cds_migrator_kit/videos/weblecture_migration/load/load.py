@@ -40,6 +40,7 @@ from cds_migrator_kit.videos.weblecture_migration.transform.xml_processing.quali
 
 from .helpers import (
     copy_additional_files,
+    copy_afs_files_as_additional,
     copy_frames,
     create_afs_file_objects_to_record,
     create_flow,
@@ -115,7 +116,7 @@ class CDSVideosLoad(Load):
             raise ManualImportRequired(f"No submitter found", stage="load")
         return submitter
 
-    def _get_files(self, media_files, afs_files=[]):
+    def _get_files(self, media_files):
         """Get lecturemedia files."""
         if self.dry_run:
             # Use dummy files for loading; existence is already checked in the transform stage.
@@ -158,7 +159,6 @@ class CDSVideosLoad(Load):
                     logger_files.warning(f"Removed unsupported file: {path}")
             media_files["additional_files"] = filtered
 
-        media_files.setdefault("additional_files", []).extend(afs_files)
         return media_files
 
     def reserve_report_number(self, video_deposit, report_number):
@@ -221,6 +221,7 @@ class CDSVideosLoad(Load):
         bucket_id,
         payload,
         media_files,
+        afs_files,
         report_number,
     ):
         """
@@ -242,6 +243,8 @@ class CDSVideosLoad(Load):
 
         additional_files = media_files["additional_files"]
         copy_additional_files(str(bucket_id), additional_files)
+
+        copy_afs_files_as_additional(str(bucket_id), afs_files)
 
         # Index deposit
         index_deposit_project(video_deposit_id)
@@ -268,7 +271,7 @@ class CDSVideosLoad(Load):
         # Get transformed media files
         ceph_files = entry.get("record", {}).get("json", {}).get("media_files", {})
         afs_files = entry.get("record", {}).get("json", {}).get("files", [])
-        media_files = self._get_files(ceph_files, afs_files)
+        media_files = self._get_files(ceph_files)
 
         # Owner
         submitter = self._get_submitter(entry)
@@ -295,6 +298,7 @@ class CDSVideosLoad(Load):
             bucket_id,
             payload,
             media_files,
+            afs_files,
             report_number,
         )
 
@@ -352,7 +356,7 @@ class CDSVideosLoad(Load):
 
         for record in multiple_video_record:
             # Combine ceph and afs files
-            media_files = self._get_files(record["files"], afs_files)
+            media_files = self._get_files(record["files"])
             master_file_id = media_files["master_path"].split("/")[-1]
 
             # Update metadata for multiple video record
@@ -378,6 +382,7 @@ class CDSVideosLoad(Load):
                 bucket_id,
                 payload,
                 media_files,
+                afs_files,
                 report_number,
             )
 
