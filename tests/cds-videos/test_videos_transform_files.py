@@ -103,7 +103,10 @@ def test_transform_afs_files(base_app):
             files_dump_dir=files_dump_dir, eos_file_paths_dir=""
         )
         transform_entry = transform._transform(data[2])
-        afs_files = transform_entry.get("record", {}).get("json", {}).get("files", [])
+        afs_files_dict = (
+            transform_entry.get("record", {}).get("json", {}).get("files", [])
+        )
+        afs_files = [afs_file["path"] for afs_file in afs_files_dict]
 
         # Check if afs files are transformed correctly
         assert len(afs_files) == 1
@@ -117,9 +120,9 @@ def test_transform_afs_files(base_app):
             transform_entry.get("record", {}).get("json", {}).get("media_files", {})
         )
         afs_files = transform_entry.get("record", {}).get("json", {}).get("files", [])
-        files = load_entry._get_files(media_files, afs_files)
-        # Check if afs files are added as additional files
+        files = load_entry._get_files(media_files)
+        # Afs files handled separately
         additional_files = files.get("additional_files", [])
-        assert additional_files[-1].endswith(
+        assert not additional_files[-1].endswith(
             "tests/cds-videos/data/files/afs/g2/25389/AT00000495.pdf;1"
         )
