@@ -199,6 +199,13 @@ def url_files(self, key, value):
     nonpublic_note = value.get("x")
     if nonpublic_note:
         url_file["url_file"]["nonpublic_note"] = nonpublic_note
+    # Ignore broken preprint urls
+    # Ignore CDS file URLs they're already added in the files field
+    if url and (
+        "preprints.cern.ch" in url
+        or f"/cds.cern.ch/record/{self['recid']}/files" in url
+    ):
+        raise IgnoreKey("url_files")
     return url_file
 
 
