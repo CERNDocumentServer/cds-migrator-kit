@@ -613,12 +613,11 @@ def upload_poster(bucket_id, poster_path):
 
 def get_afs_file_objects_in_record(record_files, afs_files_dict):
     """Get the afs file objects from the record files."""
-    afs_files = [afs_file["path"] for afs_file in afs_files_dict]
+    afs_file_keys = [afs_file["key"] for afs_file in afs_files_dict]
     afs_file_objects = []
-    for afs_file in afs_files:
-        file_name = os.path.basename(afs_file).split(";")[0]
+    for file_key in afs_file_keys:
         file_object = next(
-            (file for file in record_files if file["key"] == file_name), None
+            (file for file in record_files if file["key"] == file_key), None
         )
         if file_object:
             afs_file_objects.append(
