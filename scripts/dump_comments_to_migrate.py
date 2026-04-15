@@ -21,12 +21,14 @@ from invenio.search_engine import search_pattern
 from invenio.webcomment_dblayer import get_comment_to_bibdoc_relations
 
 ENV = "dev"
-COLLECTION = "it"
+COLLECTION = "it_dep"
 BASE_OUTPUT_DIR = "/eos/media/cds/cds-rdm/{0}/migration/{1}/".format(ENV, COLLECTION)
 COMMENTS_METADATA_DIR = os.path.join(BASE_OUTPUT_DIR, "comments")
 if not os.path.exists(COMMENTS_METADATA_DIR):
     os.makedirs(COMMENTS_METADATA_DIR)
-COMMENTS_METADATA_FILEPATH = os.path.join(COMMENTS_METADATA_DIR, "comments_metadata.json")
+COMMENTS_METADATA_FILEPATH = os.path.join(
+    COMMENTS_METADATA_DIR, "comments_metadata.json"
+)
 
 collection_queries = [
     "980__a:CNLISSUE -980:DELETED -980:HIDDEN -980__a:DUMMY",
@@ -310,8 +312,8 @@ def dump_users():
             return None
 
     def _dump(recs):
-        valid_users = set()
-        missing_users = set()
+        valid_users = []
+        missing_users = []
 
         for rec in recs:
             # record example: (
@@ -335,19 +337,24 @@ def dump_users():
                     record["department"] = department
                 else:
                     print("No department for {}".format(email))
-                valid_users.add(record)
+                valid_users.append(record)
             else:
-                missing_users.add(record)
+                missing_users.append(record)
 
         return valid_users, missing_users
 
     valid_users, missing_users = _dump(users_metadata)
     with open(USERS_FILEPATH, "w") as fp:
-        json.dump(list(valid_users), fp, indent=2)
+        json.dump(valid_users, fp, indent=2)
 
     if missing_users:
-        print("Missing users found {0}. Creating {1} file...".format(len(missing_users), MISSING_USERS_FILEPATH))
+        print(
+            "Missing users found {0}. Creating {1} file...".format(
+                len(missing_users), MISSING_USERS_FILEPATH
+            )
+        )
         with open(MISSING_USERS_FILEPATH, "w") as fp:
-            json.dump(list(missing_users), fp, indent=2)
+            json.dump(missing_users, fp, indent=2)
+
 
 dump_users()

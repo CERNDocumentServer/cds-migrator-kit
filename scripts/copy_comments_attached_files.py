@@ -25,7 +25,11 @@ collection_name/
     |-- recid/
         |-- comment_id (or reply_comment_id)/
             |-- This is where the attached file is copied to
-    |-- ...
+    |-- users/
+        |-- people.csv
+        |-- active_commentors.json
+        |-- missing_commentors_from_ldap.json
+
 (We keep the recid folder to avoid confusion with the files folder and in case different comments contain the same file name)
 (We keep the comment_id (or reply_comment_id) folder to avoid confusion with the files folder and in case different comments contain the same file name)
 """
