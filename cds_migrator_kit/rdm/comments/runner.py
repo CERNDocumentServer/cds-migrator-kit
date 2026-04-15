@@ -7,8 +7,8 @@
 
 """CDS-Migrator-Kit comments runner module."""
 
-from pathlib import Path
 import os
+from pathlib import Path
 
 from invenio_rdm_migrator.streams import Stream
 

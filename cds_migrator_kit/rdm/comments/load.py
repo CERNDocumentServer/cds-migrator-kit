@@ -26,6 +26,7 @@ from invenio_requests.records.api import RequestEventFormat
 from invenio_requests.resolvers.registry import ResolverRegistry
 from invenio_users_resources.proxies import current_users_service
 from invenio_users_resources.records.api import UserAggregate
+from sqlalchemy.exc import NoResultFound
 
 from cds_migrator_kit.errors import ManualImportRequired
 from cds_migrator_kit.users.load import CDSSubmitterLoad
@@ -399,12 +400,24 @@ class CDSCommentsLoad(Load):
 class CDSCommentersLoad(CDSSubmitterLoad):
     """CDSCommentersLoad."""
 
-    def _load(self, entry):
-        """Load commenters."""
-        user_id = self._owner(entry)
-        if user_id:
+    def _owner(self, json_entry):
+        """Fetch or create user commenter, overrids the parent method."""
+        email = json_entry.get("submitter")
+        if not email:
+            return
+        try:
+            user = User.query.filter_by(email=email).one()
+            self.logger.info(f"User commenter already exists: {user.id}")
+        except NoResultFound:
+            if self.dry_run:
+                self.logger.info(f"Dry running user commenter creation: {email}")
+                return
+            user_id = self._create_owner(email)
+            if not user_id:
+                self.logger.error(f"Failed to create user commenter: {email}")
+                return
             user_record = UserAggregate.get_record(user_id)
             current_users_service.indexer.index(user_record)
-            self.logger.info(f"Created user commenter: {user_id}")
-        else:
-            self.logger.error(f"Failed to create user commenter: {entry}")
+            self.logger.info(
+                f"Successfully created and indexed user commenter: {user_id}"
+            )
