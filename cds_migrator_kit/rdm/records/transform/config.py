@@ -34,6 +34,12 @@ IDENTIFIERS_SCHEMES_TO_DROP = [
     "WAI01",
     "KEK",
     "ATLATL",
+    "HOLALE",
+    "UNCOVER",
+    "INTINT",
+    "KEKSCAN",
+    "ALIALI",
+    "AIS.FOUNDATION.EXPERIMENTS"
 ]
 IDENTIFIERS_VALUES_TO_DROP = "oai:arXiv.org"
 
@@ -51,6 +57,8 @@ RECOGNISED_KEYWORD_SCHEMES = [
     "eucard",
     "inspec",
     "desy",
+    "medline",
+    "aip"
 ]
 KEYWORD_SCHEMES_TO_DROP = ["proquest", "disxa"]
 

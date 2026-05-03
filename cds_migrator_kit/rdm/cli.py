@@ -59,8 +59,18 @@ def migration():
     "--keep-logs",
     is_flag=True,
 )
+@click.option(
+    "--workers",
+    type=int,
+    default=None,
+    help=(
+        "Number of threads for parallel record transformation. "
+        "Defaults to sequential (no threads). "
+        "Can also be set per-collection in streams.yaml under transform.workers."
+    ),
+)
 @with_appcontext
-def run(collection, dry_run=False, keep_logs=False):
+def run(collection, dry_run=False, keep_logs=False, workers=None):
     """Run."""
     stream_config = current_app.config["CDS_MIGRATOR_KIT_STREAM_CONFIG"]
     runner = Runner(
@@ -70,7 +80,9 @@ def run(collection, dry_run=False, keep_logs=False):
         dry_run=dry_run,
         collection=collection,
         keep_logs=keep_logs,
+        workers=workers,
     )
+
     runner.run()
 
 
