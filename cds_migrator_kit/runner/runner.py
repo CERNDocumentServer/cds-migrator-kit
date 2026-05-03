@@ -32,7 +32,8 @@ class Runner:
             return yaml.safe_load(f)
 
     def __init__(
-        self, stream_definitions, config_filepath, dry_run, collection, keep_logs
+        self, stream_definitions, config_filepath, dry_run, collection, keep_logs,
+        workers=None,
     ):
         """Constructor."""
         config = self._read_config(config_filepath)
@@ -79,10 +80,18 @@ class Runner:
                         **stream_config[collection].get("extract", {})
                     )
                 if definition.transform_cls:
+                    transform_config = dict(
+                        stream_config[collection].get("transform", {})
+                    )
+                    # CLI --workers takes precedence over streams.yaml workers
+                    effective_workers = workers or transform_config.pop(
+                        "workers", None
+                    )
                     transform = definition.transform_cls(
+                        workers=effective_workers,
                         dry_run=dry_run,
                         collection=collection,
-                        **stream_config[collection].get("transform", {}),
+                        **transform_config,
                         restricted=self.restricted,
                         access_grants_view=self.access_grants_view,
                         migration_logger=self.migration_logger,
@@ -109,6 +118,7 @@ class Runner:
 
     def run(self):
         """Run ETL streams."""
+
         self.migration_logger.start_log()
         self.record_state_logger.start_log()
         for stream in self.streams:

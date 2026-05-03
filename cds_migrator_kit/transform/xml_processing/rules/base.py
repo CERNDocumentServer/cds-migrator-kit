@@ -146,12 +146,12 @@ def process_contributors(key, value, orcid_subfield="k"):
     return contributor
 
 
-@model.over("creators", "^100__")
+@model.over("creators", "(^100__)|(^720__)")
 @for_each_value
 @require(["a"])
 def creators(self, key, value):
     """Translates the creators field."""
-    return process_contributors(key, value)
+    return process_contributors(key, value, orcid_subfield="j")
 
 
 @model.over("contributors", "^700__")
@@ -159,7 +159,7 @@ def creators(self, key, value):
 @require(["a"])
 def contributors(self, key, value):
     """Translates contributors."""
-    return process_contributors(key, value)
+    return process_contributors(key, value, orcid_subfield="j")
 
 
 @model.over("submitter", "(^859__)")
