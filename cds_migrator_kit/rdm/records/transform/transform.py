@@ -13,12 +13,12 @@ from copy import deepcopy
 from pathlib import Path
 
 import arrow
+import yaml
 from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
 from dateutil.parser import ParserError, parse
 from flask import current_app
 from idutils import normalize_ror
 from idutils.validators import is_doi, is_ror
-from invenio_access.permissions import system_identity
 from invenio_accounts.models import User, UserIdentity
 from invenio_db import db
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
@@ -26,9 +26,8 @@ from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
 )
-from invenio_records_resources.proxies import current_service_registry
+from invenio_vocabularies.contrib.affiliations.models import AffiliationsMetadata
 from invenio_vocabularies.contrib.names.models import NamesMetadata
-from opensearchpy import RequestError
 from sqlalchemy.exc import NoResultFound
 
 from cds_migrator_kit.errors import (
@@ -49,32 +48,72 @@ from cds_migrator_kit.rdm.records.transform.config import (
     PIDS_SCHEMES_ALLOWED,
     PIDS_SCHEMES_TO_DROP,
 )
-from cds_migrator_kit.reports.log import MigrationProgressLogger, RecordStateLogger
 from cds_migrator_kit.transform.dumper import CDSRecordDump
 from cds_migrator_kit.transform.errors import LossyConversion
 
 cli_logger = logging.getLogger("migrator")
 
+_VOCAB_FILENAMES = {
+    "experiments": "experiments.yaml",
+    "departments": "departments.yaml",
+    "programmes": "programmes.yaml",
+    "accelerators": "accelerators.yaml",
+    "beams": "beams.yaml",
+}
+
+
+class VocabularyCache:
+    """Vocabulary lookup cache loaded once from YAML files at startup."""
+
+    def __init__(self, vocab_dir):
+        """Load all vocabularies from the given directory into memory."""
+        self._cache = {}
+        vocab_dir = Path(vocab_dir)
+        for vocab_type, filename in _VOCAB_FILENAMES.items():
+            self._cache[vocab_type] = self._load(vocab_dir / filename)
+
+    @staticmethod
+    def _load(filepath):
+        """Build a case-insensitive term→id lookup from a vocabulary YAML."""
+        with open(filepath) as f:
+            entries = yaml.safe_load(f)
+        lookup = {}
+        for entry in entries:
+            entry_id = entry["id"]
+            lookup[entry_id.lower()] = entry_id
+            title = entry.get("title", {}).get("en", "")
+            if title and title.lower() != entry_id.lower():
+                lookup[title.lower()] = entry_id
+        return lookup
+
+    def get(self, term, vocab_type):
+        """Return {"id": vocab_id} if term matches, else None."""
+        entry_id = self._cache[vocab_type].get(term.strip().lower())
+        return {"id": entry_id} if entry_id else None
+
+
+_vocabulary_cache = None
+
+
+def _get_vocabulary_cache():
+    global _vocabulary_cache
+    if _vocabulary_cache is None:
+        vocab_dir = current_app.config.get("CDS_MIGRATOR_KIT_VOCABULARIES_DIR")
+        if vocab_dir is None:
+            import cds_rdm
+            vocab_dir = Path(cds_rdm.__file__).parent / "app_data" / "vocabularies"
+        else:
+            vocab_dir = Path(vocab_dir)
+        _vocabulary_cache = VocabularyCache(vocab_dir)
+    return _vocabulary_cache
+
 
 def search_vocabulary(term, vocab_type):
-    """Search vocabulary utility function."""
-    service = current_service_registry.get("vocabularies")
-    if "/" in term:
-        # escape the slashes
-        term = f'"{term}"'
-    try:
-        vocabulary_result = service.search(
-            system_identity, type=vocab_type, q=f'"{term}"'
-        ).to_dict()
-        return vocabulary_result
-    except RequestError:
-        raise UnexpectedValue(
-            subfield="a",
-            value=term,
-            field=vocab_type,
-            message=f"Vocabulary {vocab_type} term {term} not valid search phrase.",
-            stage="vocabulary match",
-        )
+    """Look up a vocabulary term using the pre-loaded YAML cache.
+
+    Returns {"id": vocab_id} if found, else None.
+    """
+    return _get_vocabulary_cache().get(term, vocab_type)
 
 
 class CDSToRDMRecordEntry(RDMRecordEntry):
@@ -216,9 +255,22 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 priority="critical",
             )
 
-    def _match_affiliation(self, affiliation_name):
+    def _match_affiliation(self, affiliation_name, json_entry):
         """Match an affiliation against `CDSMigrationAffiliationMapping` db table."""
         if is_ror(affiliation_name):
+            ror = normalize_ror(affiliation_name)
+            name = AffiliationsMetadata.query.filter_by(pid=ror).one_or_none()
+            if name is None:
+                raise ManualImportRequired(
+                message="Affiliation {ror} does not exist in the AffiliationMetadata table".format(ror=ror),
+                field="validation",
+                stage="transform",
+                description="Add this affiliation",
+                recid=json_entry["recid"],
+                priority="critical",
+                value=None,
+                subfield=None,
+            )
             return {"id": normalize_ror(affiliation_name)}
         # Step 1: search in the affiliation mapping (ROR organizations)
         match = self.affiliations_mapping.query.filter_by(
@@ -268,15 +320,18 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
             for affiliation_name in affiliations:
                 try:
-                    affiliation = self._match_affiliation(affiliation_name)
-                    transformed_aff.append(affiliation)
+                    affiliation = self._match_affiliation(affiliation_name, json_entry)
+                    if affiliation not in transformed_aff:
+                        transformed_aff.append(affiliation)
                 except RecordFlaggedCuration as exc:
                     # Save not exact match affiliation and reraise to flag the record
                     self.migration_logger.add_information(
                         json_entry["recid"],
                         {"message": exc.message, "value": exc.value},
                     )
-                    transformed_aff.append(exc.value)
+                    aff = {"name": affiliation_name}
+                    if aff not in transformed_aff:
+                        transformed_aff.append({"name": affiliation_name})
             creator["affiliations"] = transformed_aff
 
         def creator_identifiers(creator):
@@ -419,6 +474,12 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 json_entry["additional_descriptions"] = additional_desc
                 json_entry.pop("table_of_content")
 
+        def subjects(json_entry):
+            _subjects = json_entry.get("subjects")
+            for subject in reversed(_subjects):
+                if subject.get("subject", "") in ["xx"]:
+                    del subject
+
         table_of_contents(json_entry)
 
         metadata = {
@@ -472,15 +533,12 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "cern:experiments", []
             )
             for experiment in experiments:
-                if experiment.lower().strip() == "not applicable":
+                if experiment.lower().strip() in ["not applicable", "xx"]:
                     continue
                 result = search_vocabulary(experiment, "experiments")
-
-                if result["hits"]["total"]:
-                    custom_fields_dict["cern:experiments"].append(
-                        {"id": result["hits"]["hits"][0]["id"]}
-                    )
-                else:
+                if result and result not in custom_fields_dict["cern:experiments"]:
+                    custom_fields_dict["cern:experiments"].append(result)
+                elif not result:
                     subj = json_output["metadata"].get("subjects", [])
                     subj.append({"subject": experiment})
                     json_output["metadata"]["subjects"] = subj
@@ -496,9 +554,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             programme = record_json.get("custom_fields", {}).get("cern:programmes")
             if programme:
                 result = search_vocabulary(programme, "programmes")
-
-                if result["hits"]["total"]:
-                    return {"id": result["hits"]["hits"][0]["id"]}
+                if result:
+                    return result
                 else:
                     raise UnexpectedValue(
                         value=programme,
@@ -517,20 +574,25 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "cern:departments", []
             )
             for department in departments:
-                result = search_vocabulary(department, "departments")
-                if result["hits"]["total"]:
-                    custom_fields_dict["cern:departments"].append(
-                        {"id": result["hits"]["hits"][0]["id"]}
-                    )
+                if "-" in department:
+                    units = department.split("-")
+                    dep = units[0]
+                else:
+                    dep = department
+                result = search_vocabulary(dep, "departments")
+                if result and result not in custom_fields_dict["cern:departments"]:
+                    custom_fields_dict["cern:departments"].append(result)
                 else:
                     subj = json_output["metadata"].get("subjects", [])
                     subj.append({"subject": department})
                     json_output["metadata"]["subjects"] = subj
+                    custom_fields_dict["cern:administrative_unit"] = department
                     raise RecordFlaggedCuration(
                         subfield="a",
                         value=department,
                         field="department",
-                        message=f"Department {department} not found. added as subject",
+                        message=f"Department {department} not found. "
+                                f"Added as unit and subject",
                         stage="vocabulary match",
                     )
 
@@ -542,13 +604,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 if accelerator.lower().strip() in ["not applicable", "xx"]:
                     continue
                 result = search_vocabulary(accelerator, "accelerators")
-                if result["hits"]["total"]:
-
-                    custom_fields_dict["cern:accelerators"].append(
-                        {"id": result["hits"]["hits"][0]["id"]}
-                    )
-
-                else:
+                if result and result not in custom_fields_dict["cern:accelerators"]:
+                    custom_fields_dict["cern:accelerators"].append(result)
+                elif not result:
                     raise UnexpectedValue(
                         subfield="a",
                         value=accelerator,
@@ -563,12 +621,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 if beam.lower().strip() == "not applicable":
                     continue
                 result = search_vocabulary(beam, "beams")
-                if result["hits"]["total"]:
-                    custom_fields_dict["cern:beams"].append(
-                        {"id": result["hits"]["hits"][0]["id"]}
-                    )
-
-                else:
+                if result and result not in custom_fields_dict["cern:beams"]:
+                    custom_fields_dict["cern:beams"].append(result)
+                elif not result:
                     raise UnexpectedValue(
                         subfield="a",
                         value=beam,
@@ -593,6 +648,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "cern:studies": json_entry.get("custom_fields", {}).get("cern:studies", []),
             "cern:beams": [],
             "cern:programmes": field_programmes(json_entry),
+            "cern:committees": json_entry.get("custom_fields", {}).get("cern:committees"),
+            "cern:oa_level": json_entry.get("custom_fields", {}).get("cern:oa_level"),
+            "cern:oa_funding_model": json_entry.get("custom_fields", {}).get("cern:oa_funding_model"),
             "thesis:thesis": json_entry.get("custom_fields", {}).get(
                 "thesis:thesis", {}
             ),
@@ -974,16 +1032,23 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         # TO implement if we decide not to go via draft publish
         return []
 
+    def _load_migrated_recids(self):
+        """Load all already-migrated legacy record IDs into a set once."""
+        return {
+            pid.pid_value
+            for pid in PersistentIdentifier.query.filter_by(
+                pid_type="lrecid",
+                status=PIDStatus.REGISTERED,
+            ).all()
+        }
+
     def should_skip(self, entry):
-        pid = PersistentIdentifier.query.filter_by(
-            pid_type="lrecid",
-            pid_value=str(entry["recid"]),
-            status=PIDStatus.REGISTERED,
-        ).one_or_none()
-        return pid is not None
+        return str(entry["recid"]) in self._migrated_recids
 
     def run(self, entries):
         """Run transformation step."""
+        self._migrated_recids = self._load_migrated_recids()
+
         for entry in entries:
             if self.should_skip(entry):
                 if current_app.config["CDS_MIGRATOR_KIT_ENV"] == "local":
