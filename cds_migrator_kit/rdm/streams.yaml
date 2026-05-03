@@ -1,115 +1,100 @@
 db_uri: postgresql://cds-rdm:cds-rdm@localhost:5432/cds-rdm
 records:
-  it:
-    data_dir: cds_migrator_kit/rdm/data/it_dep
-    tmp_dir: cds_migrator_kit/rdm/tmp/it_dep
-    log_dir: cds_migrator_kit/rdm/log/it_dep
+  aleph:
+    data_dir: cds_migrator_kit/rdm/data/lep_exp/aleph
+    tmp_dir: cds_migrator_kit/rdm/tmp/lep_exp/aleph
+    log_dir: cds_migrator_kit/rdm/log/lep_exp/aleph
     extract:
-      dirpath: cds_migrator_kit/rdm/data/it_dep/dump/
+      dirpath: cds_migrator_kit/rdm/data/lep_exp/aleph/dump/
     transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/it_dep/files/
+      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/aleph/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - "42da91cf-d476-4d09-9193-7841e03e271c"
+        - "7c568753-550b-4b48-8d76-461181973100"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
     load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/it_dep/duplicated_pids.json
-  it_meetings:
-    data_dir: cds_migrator_kit/rdm/data/it_meetings
-    tmp_dir: cds_migrator_kit/rdm/tmp/it_meetings
-    log_dir: cds_migrator_kit/rdm/log/it_meetings
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/aleph/duplicated_pids.json
+  aleph_drafts:
+    data_dir: cds_migrator_kit/rdm/data/lep_exp/aleph_drafts
+    tmp_dir: cds_migrator_kit/rdm/tmp/lep_exp/aleph_drafts
+    log_dir: cds_migrator_kit/rdm/log/lep_exp/aleph_drafts
     restricted: "True"
     extract:
-      dirpath: cds_migrator_kit/rdm/data/it_meetings/dump/
+      dirpath: cds_migrator_kit/rdm/data/lep_exp/aleph_drafts/dump/
     transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/it_meetings/files/
+      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/aleph_drafts/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - "42da91cf-d476-4d09-9193-7841e03e271c"
+        - "7c568753-550b-4b48-8d76-461181973100"
     load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/it_meetings/duplicated_pids.json
-  hr:
-    data_dir: cds_migrator_kit/rdm/data/hr
-    tmp_dir: cds_migrator_kit/rdm/tmp/hr
-    log_dir: cds_migrator_kit/rdm/log/hr
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/aleph_drafts/duplicated_pids.json
+  l3:
+    data_dir: cds_migrator_kit/rdm/data/lep_exp/l3
+    tmp_dir: cds_migrator_kit/rdm/tmp/lep_exp/l3
+    log_dir: cds_migrator_kit/rdm/log/lep_exp/l3
     extract:
-      dirpath: cds_migrator_kit/rdm/data/hr/dump/
+      dirpath: cds_migrator_kit/rdm/data/lep_exp/l3/dump/
     transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/hr/files/
+      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/l3/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - "77617386-632c-4b86-8dd2-68de77ae0018"
+        - "bb0ac2d2-b90b-498e-bf64-1986791d1032"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
     load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hr/duplicated_pids.json
-  hr_ccp:
-    data_dir: cds_migrator_kit/rdm/data/hr_ccp
-    tmp_dir: cds_migrator_kit/rdm/tmp/hr_ccp
-    log_dir: cds_migrator_kit/rdm/log/hr_ccp
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/l3/duplicated_pids.json
+  opal:
+    data_dir: cds_migrator_kit/rdm/data/lep_exp/opal
+    tmp_dir: cds_migrator_kit/rdm/tmp/lep_exp/opal
+    log_dir: cds_migrator_kit/rdm/log/lep_exp/opal
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/lep_exp/opal/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/opal/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "473e34c5-4fe1-44fc-a4c2-3305cf6adcba"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/opal/duplicated_pids.json
+  delphi:
+    data_dir: cds_migrator_kit/rdm/data/lep_exp/delphi
+    tmp_dir: cds_migrator_kit/rdm/tmp/lep_exp/delphi
+    log_dir: cds_migrator_kit/rdm/log/lep_exp/delphi
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/lep_exp/delphi/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/delphi/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "b6553d89-ea62-4a7c-9f5b-e76b5bfdb733"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/delphi/duplicated_pids.json
+  delphi_priv:
+    data_dir: cds_migrator_kit/rdm/data/lep_exp/delphi_priv
+    tmp_dir: cds_migrator_kit/rdm/tmp/lep_exp/delphi_priv
+    log_dir: cds_migrator_kit/rdm/log/lep_exp/delphi_priv
     restricted: "True"
     extract:
-      dirpath: cds_migrator_kit/rdm/data/hr_ccp/dump/
+      dirpath: cds_migrator_kit/rdm/data/lep_exp/delphi_priv/dump/
     transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/hr_ccp/files/
+      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/delphi_priv/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - "9e17f7a0-e742-4cb3-be6a-8fa84c4756e2"
+        - "b6553d89-ea62-4a7c-9f5b-e76b5bfdb733"
     load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hr_ccp/duplicated_pids.json
-  hr_admin_circ:
-    data_dir: cds_migrator_kit/rdm/data/hr_admin_circ
-    tmp_dir: cds_migrator_kit/rdm/tmp/hr_admin_circ
-    log_dir: cds_migrator_kit/rdm/log/hr_admin_circ
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/delphi_priv/duplicated_pids.json
+  committees:
+    data_dir: cds_migrator_kit/rdm/data/committees
+    tmp_dir: cds_migrator_kit/rdm/tmp/committees
+    log_dir: cds_migrator_kit/rdm/log/committees
     extract:
-      dirpath: cds_migrator_kit/rdm/data/hr_admin_circ/dump/
+      dirpath: cds_migrator_kit/rdm/data/committees/dump/
     transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/hr_admin_circ/files/
+      files_dump_dir: cds_migrator_kit/rdm/data/committees/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - "847852d1-b9de-4ebc-b302-57664dc4b6e7"
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hr_admin_circ/duplicated_pids.json
-  e_guide:
-    data_dir: cds_migrator_kit/rdm/data/e_guide
-    tmp_dir: cds_migrator_kit/rdm/tmp/e_guide
-    log_dir: cds_migrator_kit/rdm/log/e_guide
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/e_guide/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/e_guide/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "d881ff3b-3a47-4cb3-a802-deaf577e2e35"
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/e_guide/duplicated_pids.json
-  e_guide_restr:
-    data_dir: cds_migrator_kit/rdm/data/e_guide_restr
-    tmp_dir: cds_migrator_kit/rdm/tmp/e_guide_restr
-    log_dir: cds_migrator_kit/rdm/log/e_guide_restr
-    restricted: "True"
-    access_grants_view:
-      - cern-personnel
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/e_guide_restr/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/e_guide_restr/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "d881ff3b-3a47-4cb3-a802-deaf577e2e35"
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/e_guide_restr/duplicated_pids.json
-  hr_restricted:
-    data_dir: cds_migrator_kit/rdm/data/hr_restricted
-    tmp_dir: cds_migrator_kit/rdm/tmp/hr_restricted
-    log_dir: cds_migrator_kit/rdm/log/hr_restricted
-    restricted: "True"
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/hr_restricted/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/hr_restricted/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "77617386-632c-4b86-8dd2-68de77ae0018"
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hr_restricted/duplicated_pids.json
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
   fap:
     data_dir: cds_migrator_kit/rdm/data/fap
     tmp_dir: cds_migrator_kit/rdm/tmp/fap
