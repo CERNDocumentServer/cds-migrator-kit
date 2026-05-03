@@ -117,6 +117,7 @@ class MigrationProgressLogger:
 
     def read_log(self):
         """Read error log file."""
+        csv.field_size_limit(10 * 1024 * 1024)  # 10 MB
         with open(self.PROGRESS_LOG_FILEPATH, "r", newline="") as f:
             reader = csv.DictReader(f)
             for row in reader:
@@ -142,7 +143,7 @@ class MigrationProgressLogger:
             "field": f"{getattr(exc, 'field', key)} {subfield}",
             "value": getattr(exc, "value", value),
             "stage": getattr(exc, "stage", None),
-            "message": getattr(exc, "message", str(exc)),
+            "message": getattr(exc, "message", None) or str(exc),
             "priority": getattr(exc, "priority", None),
             "clean": False,
         }

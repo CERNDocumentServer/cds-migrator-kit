@@ -14,11 +14,9 @@ from copy import deepcopy
 
 import arrow
 from cds_rdm.clc_sync.models import CDSToCLCSyncModel
-from cds_rdm.components import MintAlternateIdentifierComponent
 from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from cds_rdm.minters import legacy_recid_minter
-from cds_rdm.tasks import sync_alternate_identifiers
 from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
@@ -30,6 +28,8 @@ from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_records.systemfields.relations import InvalidRelationValue
 from marshmallow import ValidationError
+from sqlalchemy.exc import IntegrityError
+from psycopg2.errors import UniqueViolation
 
 from cds_migrator_kit.errors import (
     CDSMigrationException,
@@ -79,7 +79,7 @@ class CDSRecordServiceLoad(Load):
         """Prepare the record."""
         pass
 
-    def _load_files(self, draft, entry, version_files):
+    def _load_files(self, draft, entry, version_files, uow=None):
         """Load files to draft."""
         recid = entry.get("record", {}).get("recid", {})
         identity = system_identity  # Should we create an identity for the migration?
@@ -103,6 +103,7 @@ class CDSRecordServiceLoad(Load):
                             "access": {"hidden": False},
                         }
                     ],
+                    uow=uow,
                 )
                 # TODO change to eos move or xrootd command instead of going through the app
                 # TODO leave the init part to pre-create the destination folder
@@ -127,9 +128,10 @@ class CDSRecordServiceLoad(Load):
                     draft.id,
                     file_data["key"],
                     import_legacy_files(file_data["eos_tmp_path"]),
+                    uow=uow,
                 )
                 result = current_rdm_records_service.draft_files.commit_file(
-                    identity, draft.id, file_data["key"]
+                    identity, draft.id, file_data["key"], uow=uow
                 )
                 legacy_checksum = f"md5:{file_data['checksum']}"
                 new_checksum = result.to_dict()["checksum"]
@@ -159,28 +161,20 @@ class CDSRecordServiceLoad(Load):
                 self.migration_logger.add_log(exc, record=entry)
                 raise e
 
-    def _load_parent_access(self, draft, entry):
-        """Load access rights."""
+    def _load_parent_access_and_communities(self, draft, entry):
+        """Load access rights and communities in a single parent commit."""
         parent = draft._record.parent
-        # Set parent access from entry data
-        access = entry["parent"]["json"]["access"]
-        parent.access = access
-
-        parent.commit()
-
-    def _load_record_access(self, draft, access_dict):
-        record = draft._record
-
-        record.access = access_dict["access_obj"]
-        record.commit()
-
-    def _load_communities(self, draft, entry):
-        parent = draft._record.parent
+        parent.access = entry["parent"]["json"]["access"]
         communities = entry["parent"]["json"]["communities"]["ids"]
         for community in communities:
             parent.communities.add(community)
         parent.communities.default = entry["parent"]["json"]["communities"]["default"]
         parent.commit()
+
+    def _load_record_access(self, draft, access_dict):
+        record = draft._record
+        record.access = access_dict["access_obj"]
+        record.commit()
 
     def _after_publish_update_dois(self, identity, record, entry, uow):
         """Update migrated DOIs post publish."""
@@ -391,7 +385,7 @@ class CDSRecordServiceLoad(Load):
             )
 
         record._record.model.created = creation_date
-        record._record.commit()
+        db.session.add(record._record.model)
 
     def _after_publish_mint_recid(self, record, entry, version):
         """Mint legacy ids for redirections assigned to the parent."""
@@ -414,7 +408,7 @@ class CDSRecordServiceLoad(Load):
             file.model.created = arrow.get(file_data["creation_date"]).datetime.replace(
                 tzinfo=None
             )
-            file.commit()
+            db.session.add(file.model)
 
     def _after_publish(self, identity, published_record, entry, version, uow):
         """Run fixes after record publish."""
@@ -470,11 +464,12 @@ class CDSRecordServiceLoad(Load):
             # we decided to skip it and act normal
             try:
                 draft = current_rdm_records_service.create(
-                    identity, data=entry["record"]["json"]
+                    identity, data=entry["record"]["json"], uow=uow
                 )
                 self._assign_rep_numbers(draft)
+            except (UniqueViolation, IntegrityError) as e:
+                raise ManualImportRequired(message=str(e))
             except Exception as e:
-
                 raise ManualImportRequired(message=str(e))
             if draft.errors:
                 raise ManualImportRequired(
@@ -486,11 +481,11 @@ class CDSRecordServiceLoad(Load):
                     value=draft._record.pid.pid_value,
                     subfield=None,
                 )
-            # TODO we can use unit of work when it is moved to invenio-db module
-            self._load_parent_access(draft, entry)
-            self._load_communities(draft, entry)
+            self._load_parent_access_and_communities(draft, entry)
         else:
-            draft = current_rdm_records_service.new_version(identity, draft["id"])
+            draft = current_rdm_records_service.new_version(
+                identity, draft["id"], uow=uow
+            )
             draft_dict = draft.to_dict()
             missing_data = {
                 **draft_dict,
@@ -503,11 +498,11 @@ class CDSRecordServiceLoad(Load):
                 },
             }
             draft = current_rdm_records_service.update_draft(
-                identity, draft["id"], data=missing_data
+                identity, draft["id"], data=missing_data, uow=uow
             )
 
         self._load_record_access(draft, access)
-        self._load_files(draft, entry, files)
+        self._load_files(draft, entry, files, uow=uow)
 
         return draft
 
@@ -665,6 +660,10 @@ class CDSRecordServiceLoad(Load):
         if entry:
             recid = entry.get("record", {}).get("recid", {})
             if self._should_skip_recid(recid):
+                self.migration_logger.add_information(
+                    recid, state={"message": "Record already migrated", "value": recid}
+                )
+                self.migration_logger.finalise_record(recid)
                 return
 
             self.clc_sync = deepcopy(entry.get("_clc_sync", False))
@@ -689,7 +688,15 @@ class CDSRecordServiceLoad(Load):
             except GrantCreationError as e:
                 self.migration_logger.add_log(e, record=entry)
             except (CDSMigrationException, ValidationError, InvalidRelationValue) as e:
-
+                exc = ManualImportRequired(
+                    message=str(e),
+                    field="validation",
+                    stage="load",
+                    recid=recid,
+                    priority="warning",
+                )
+                self.migration_logger.add_log(exc, record=entry)
+            except Exception as e:
                 exc = ManualImportRequired(
                     message=str(e),
                     field="validation",

@@ -36,7 +36,7 @@ class CDSMigrationException(Exception):
         self.exc = exc
         self.message = message
         self.priority = priority
-        super(CDSMigrationException, self).__init__(*args)
+        super(CDSMigrationException, self).__init__(message, *args)
 
 
 class RecordModelMissing(CDSMigrationException):
