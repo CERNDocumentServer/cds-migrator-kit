@@ -53,3 +53,113 @@ records:
         - 35699521-ba4f-4214-bf47-da5df659af16
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/bulletin_art/duplicated_pids.json
+  it:
+    data_dir: cds_migrator_kit/rdm/data/it_dep
+    tmp_dir: cds_migrator_kit/rdm/tmp/it_dep
+    log_dir: cds_migrator_kit/rdm/log/it_dep
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/it_dep/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/it_dep/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "42da91cf-d476-4d09-9193-7841e03e271c"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/it_dep/duplicated_pids.json
+  it_meetings:
+    data_dir: cds_migrator_kit/rdm/data/it_meetings
+    tmp_dir: cds_migrator_kit/rdm/tmp/it_meetings
+    log_dir: cds_migrator_kit/rdm/log/it_meetings
+    restricted: "True"
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/it_meetings/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/it_meetings/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "42da91cf-d476-4d09-9193-7841e03e271c"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/it_meetings/duplicated_pids.json
+  hr:
+    data_dir: cds_migrator_kit/rdm/data/hr
+    tmp_dir: cds_migrator_kit/rdm/tmp/hr
+    log_dir: cds_migrator_kit/rdm/log/hr
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hr/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hr/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "77617386-632c-4b86-8dd2-68de77ae0018"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hr/duplicated_pids.json
+  hr_ccp:
+    data_dir: cds_migrator_kit/rdm/data/hr_ccp
+    tmp_dir: cds_migrator_kit/rdm/tmp/hr_ccp
+    log_dir: cds_migrator_kit/rdm/log/hr_ccp
+    restricted: "True"
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hr_ccp/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hr_ccp/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "9e17f7a0-e742-4cb3-be6a-8fa84c4756e2"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hr_ccp/duplicated_pids.json
+  hr_admin_circ:
+    data_dir: cds_migrator_kit/rdm/data/hr_admin_circ
+    tmp_dir: cds_migrator_kit/rdm/tmp/hr_admin_circ
+    log_dir: cds_migrator_kit/rdm/log/hr_admin_circ
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hr_admin_circ/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hr_admin_circ/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "847852d1-b9de-4ebc-b302-57664dc4b6e7"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hr_admin_circ/duplicated_pids.json
+  e_guide:
+    data_dir: cds_migrator_kit/rdm/data/e_guide
+    tmp_dir: cds_migrator_kit/rdm/tmp/e_guide
+    log_dir: cds_migrator_kit/rdm/log/e_guide
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/e_guide/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/e_guide/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "d881ff3b-3a47-4cb3-a802-deaf577e2e35"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/e_guide/duplicated_pids.json
+  e_guide_restr:
+    data_dir: cds_migrator_kit/rdm/data/e_guide_restr
+    tmp_dir: cds_migrator_kit/rdm/tmp/e_guide_restr
+    log_dir: cds_migrator_kit/rdm/log/e_guide_restr
+    restricted: "True"
+    access_grants_view:
+      - cern-personnel
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/e_guide_restr/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/e_guide_restr/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "d881ff3b-3a47-4cb3-a802-deaf577e2e35"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/e_guide_restr/duplicated_pids.json
+  hr_restricted:
+    data_dir: cds_migrator_kit/rdm/data/hr_restricted
+    tmp_dir: cds_migrator_kit/rdm/tmp/hr_restricted
+    log_dir: cds_migrator_kit/rdm/log/hr_restricted
+    restricted: "True"
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hr_restricted/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hr_restricted/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "77617386-632c-4b86-8dd2-68de77ae0018"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hr_restricted/duplicated_pids.json

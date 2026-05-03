@@ -20,7 +20,33 @@ from ...config import (
     udc_pattern,
 )
 from ...models.base_publication_record import rdm_base_publication_model as model
+from .base import licenses as _base_licenses
 from .base import normalize
+from .base import note as _base_note
+from .base import urls as _base_urls
+
+# Unwrapped base functions (strip @for_each_value to avoid double-wrapping).
+# licenses also has @filter_values beneath @for_each_value, so two levels deep.
+_raw_licenses = _base_licenses.__wrapped__   # filter_values(raw) — handles None filtering
+_raw_note = _base_note.__wrapped__           # raw note function
+_raw_urls = _base_urls.__wrapped__           # raw urls function
+
+_FUNDING_MODEL_MAP = {
+    "scoap3": "scoap3",
+    "collective": "collective",
+    "cern-rp": "cern-rp",
+    "cern-apc": "cern-apc",
+    "other": "other",
+}
+
+# Lower number = higher priority
+_OA_LEVEL_PRIORITY = {"gold": 0, "bronze": 1, "green": 2, "closed": 3}
+
+
+def _sub(v, code):
+    """Return first string value of a MARC subfield, handling dojson tuple packing."""
+    val = force_list(v.get(code))
+    return val[0] if val else ""
 
 
 @model.over("isbns", "^020__")
@@ -97,6 +123,29 @@ def udc(self, key, value):
     raise UnexpectedValue(
         "UDC format check failed.", field=key, subfield="a", value=value
     )
+
+
+@model.over("creators", "(^110__)")
+@for_each_value
+def corpo_author(self, key, value):
+    author = value.get("a", "").strip()
+    if not author:
+        raise UnexpectedValue(subfield="a", value=value, field=key)
+    author = {"person_or_org": {"type": "organizational", "name": author}}
+    if author not in self.get("creators", []):
+        return author
+    raise IgnoreKey("creators")
+
+
+@model.over("imprint_info", "(^250__)")
+@for_each_value
+@require(["a"])
+def imprint(self, key, value):
+    """Translates additional description."""
+    _custom_fields = self.setdefault("custom_fields", {})
+    imprint = _custom_fields.setdefault("imprint:imprint", {})
+    imprint["edition"] = StringValue(value.get("a")).parse()
+    raise IgnoreKey("imprint_info")
 
 
 @model.over("publication_date", "(^260__)", override=True)
@@ -200,10 +249,13 @@ def journal(self, key, value):
             break
 
     conference_cnum = value.get("w", "")
+    conference_acronym = value.get("q", "")
+    custom_meeting_fields = _custom_fields.get("meeting:meeting", {})
     if conference_cnum:
-        custom_meeting_fields = _custom_fields.get("meeting:meeting", {})
         identifiers = custom_meeting_fields.get("identifiers", [])
         identifiers.append({"scheme": "inspire", "identifier": conference_cnum})
+    if conference_acronym:
+        custom_meeting_fields["acronym"] = conference_acronym
 
     pub_date = self.get("publication_date")
     # if we only have 773 in the record and no other journal fields,
@@ -218,6 +270,135 @@ def journal(self, key, value):
 
     _custom_fields["journal:journal"] = journal_fields
     return _custom_fields
+
+
+@model.over("_oa_license", "^540__", override=True)
+def oa_level_from_license(self, key, value):
+    """Detect OA level and funding model; also runs base license logic for rights.
+
+    540__a: license identifier ('CC BY', 'CC-BY' → gold if 540__3='publication')
+    540__f: 'Bronze' → bronze OA level;
+            'SCOAP3'|'Collective'|'CERN-RP'|'CERN-APC'|'Other' → funding model
+    540__3: 'publication' required for gold; 'preprint' alone → green
+    """
+    _custom_fields = self.get("custom_fields", {})
+    rights = self.get("rights", [])
+
+    for v in force_list(value):
+        qualifier = _sub(v, "f").strip()
+        scope = _sub(v, "3").strip().lower()
+
+        # Check ALL 'a' subfields: dojson packs repeated subfields as a tuple.
+        a_vals = force_list(v.get("a")) or ()
+        is_cc_by = any(a.strip().lower() in ["cc by", "cc-by"] for a in a_vals)
+        is_bronze = qualifier.lower() == "bronze"
+        is_publication_scope = scope == "publication"
+        is_preprint_scope = scope == "preprint"
+
+        funding_model_id = _FUNDING_MODEL_MAP.get(qualifier.lower())
+
+        current_level = (_custom_fields.get("cern:oa_level") or {}).get("id")
+        current_priority = _OA_LEVEL_PRIORITY.get(current_level, 99)
+
+        new_level = None
+        if is_cc_by and is_publication_scope:
+            new_level = "gold"
+        elif is_bronze:
+            new_level = "bronze"
+        elif is_preprint_scope:
+            new_level = "green"
+
+        if new_level and _OA_LEVEL_PRIORITY[new_level] < current_priority:
+            _custom_fields["cern:oa_level"] = {"id": new_level}
+
+        if funding_model_id and not _custom_fields.get("cern:oa_funding_model"):
+            _custom_fields["cern:oa_funding_model"] = {"id": funding_model_id}
+
+        # Base license logic: expand repeated 'a' subfields into individual calls
+        # because clean_val raises UnexpectedValue for tuple values by default.
+        for a_val in a_vals:
+            if not a_val:
+                continue
+            license_result = _raw_licenses(self, key, dict(v, a=a_val))
+            if license_result and license_result not in rights:
+                rights.append(license_result)
+
+    self["custom_fields"] = _custom_fields
+    if rights:
+        self["rights"] = rights
+    raise IgnoreKey("_oa_license")
+
+
+@model.over("_oa_annual_report", "^595__", override=True)
+def oa_level_from_annual_report(self, key, value):
+    """Detect 'For annual report' → closed OA; also runs base note logic for internal_notes.
+
+    595__a = 'For annual report': tentatively marks closed access.
+    If gold/bronze/green was already set by 540 rules, this is skipped.
+    The 8564 rule can still upgrade tentative 'closed' to green.
+    """
+    for v in force_list(value):
+        note_text = _sub(v, "a").strip().lower()
+        if note_text == "for annual report":
+            _custom_fields = self.get("custom_fields", {})
+            if not _custom_fields.get("cern:oa_level"):
+                _custom_fields["cern:oa_level"] = {"id": "closed"}
+                self["custom_fields"] = _custom_fields
+
+        # Delegate base note logic — raises IgnoreKey("internal_notes") on success
+        try:
+            _raw_note(self, key, v)
+        except IgnoreKey:
+            pass
+
+    raise IgnoreKey("_oa_annual_report")
+
+
+@model.over("_oa_url", "^8564[1_]", override=True)
+def oa_level_from_url(self, key, value):
+    """Detect green OA from preprint/manuscript file links; also runs base URL logic.
+
+    8564_y: 'preprint' or 'manuscript' → green OA level.
+    Overrides tentative 'closed' (from 595 rule) but not gold/bronze/green already set.
+    """
+    rel_ids = self.get("related_identifiers", [])
+
+    for v in force_list(value):
+        sub_y = _sub(v, "y").strip().lower()
+        if sub_y in ["preprint", "manuscript"]:
+            _custom_fields = self.get("custom_fields", {})
+            current_level = (_custom_fields.get("cern:oa_level") or {}).get("id")
+            current_priority = _OA_LEVEL_PRIORITY.get(current_level, 99)
+            if _OA_LEVEL_PRIORITY["green"] < current_priority:
+                _custom_fields["cern:oa_level"] = {"id": "green"}
+                self["custom_fields"] = _custom_fields
+
+        # Delegate base URL logic — requires self["recid"] which is always set
+        # in production (001 field), but may be absent in unit tests.
+        if "recid" in self:
+            try:
+                url_result = _raw_urls(self, key, v)
+                if url_result and url_result not in rel_ids:
+                    rel_ids.append(url_result)
+            except IgnoreKey:
+                pass
+
+    if rel_ids:
+        self["related_identifiers"] = rel_ids
+    raise IgnoreKey("_oa_url")
+
+
+@model.over("access_grants", "^506[1_]_")
+@for_each_value
+def access_grants(self, key, value):
+    """Translates access permissions (by user email or group name)."""
+    raw_identifier = value.get("d") or value.get("m") or value.get("a")
+    subject_identifier = StringValue(raw_identifier).parse()
+    if not subject_identifier:
+        raise IgnoreKey("access_grants")
+
+    permission_type = "view"
+    return {str(subject_identifier): permission_type}
 
 
 @model.over("internal_notes", "^562__")
@@ -239,6 +420,42 @@ def organisation(self, key, value):
         },
         "role": {"id": "hostinginstitution"},
     }
+
+
+# @model.over("_approvals", "^903__")
+# @for_each_value
+# def organisation(self, key, value):
+#     contributor = value.get("u", "")
+#     return {
+#         "person_or_org": {
+#             "type": "organizational",
+#             "name": contributor,
+#         },
+#         "role": {"id": "hostinginstitution"},
+#     }
+
+@model.over("dates", "^925__")
+@for_each_value
+def date(self, key, value):
+    """Translates dates."""
+    dates = self.get("dates", [])
+    valid = value.get("a")
+    if valid:
+        date = {
+            "date": valid,
+            "type": {"id": "submitted"},
+        }
+        dates.append(date)
+    withdrawn = value.get("b", "")
+    if withdrawn and "9999" not in withdrawn:
+        date = {
+            "date": withdrawn,
+            "type": {"id": "other"},
+            "description": "completed"
+        }
+        dates.append(date)
+    self["dates"] = dates
+    raise IgnoreKey("dates")
 
 
 @model.over("related_identifiers", "^962__")
@@ -279,3 +496,128 @@ def related_identifiers(self, key, value):
     if recid and new_id not in rel_ids:
         return new_id
     raise IgnoreKey("related_identifiers")
+
+
+@model.over("resource_type", "(^980__)|(^697C_)", override=True)
+def resource_type(self, key, value):
+    """Translates resource_type."""
+    value_a = value.get("a", "")
+    value_b = value.get("b", "")
+
+    ignore_res_types = ["publarda", "aleph_misc", "opal_misc", "l3_misc",
+                        "delphi_misc",
+                        "l3_papers", "delphi_papers", "opal_papers",
+                        "aleph_papers",
+                        ]
+
+    committees = {"scicommpubldrdc": "DRDC", "scicommpubleec": "EEC",
+                  "scicommpublemc": "EmC",
+                  "scicommpublisc": "ISC",
+                  "scicommpublisrc": "ISRC", "scicommpublistc": "ISTC",
+                  "scicommpubllepc": "LEPC",
+                  "scicommpublnprc": "NPRC",
+                  "scicommpublnsc": "NSC", "scicommpublphi": "PH-I",
+                  "scicommpublphiii": "PH-III",
+                  "scicommpublpsc": "PSC",
+                  "scicommpublpscc": "PSCC", "scicommpublscc": "SCC",
+                  "sc_and_ps_advisory_committee": "SC and PS Advisory Committee",
+                  "scicommpublspsc": "SPSC", "scicommpublspslc": "SPSLC",
+                  "scicommpubltcc": "TCC"}
+
+    if ((value_a and value_a.lower() in committees.keys())
+        or (value_b and value_b in committees)
+    ):
+
+        custom_fields = self.get("custom_fields", {})
+        comm_cf = custom_fields.get("cern:committees", [])
+        if value_a:
+            comm_cf.append({"id": committees[value_a.lower()]})
+        if value_b:
+            comm_cf.append({"id": committees[value_b.lower()]})
+        self["custom_fields"]["cern:committees"] = comm_cf
+        raise IgnoreKey("resource_type")
+    if ((value_a and value_a.lower() in ignore_res_types)
+        or (value_b and value_b in ignore_res_types)
+    ):
+        raise IgnoreKey("resource_type")
+
+    # first has highest priority
+    priority = {
+        v: i
+        for i, v in enumerate(
+            [
+                "conferencepaper",
+                "bookchapter",
+                "itcerntalk",
+                "slides",
+                "article",
+                "preprint",
+                "intnotetspubl",
+                "intnoteitpubl",
+                "intnotealephpriv",
+                "note",
+                "software"
+            ]
+        )
+    }
+    current = self.get("resource_type")
+
+    # Normalize both values (lowercase if not None)
+    candidates = []
+    if value_a:
+        candidates.append(value_a.lower())
+    if value_b:
+        candidates.append(value_b.lower())
+
+    if not candidates:
+        raise IgnoreKey("resource_type")  # nothing to decide on
+
+    # Select the candidate with the highest priority (lowest rank)
+    best_value = min(candidates, key=lambda v: priority.get(v, float("inf")))
+    rank = priority.get(best_value, float("inf"))
+
+    mapping = {
+        "preprint": {"id": "publication-preprint"},
+        "conferencepaper": {"id": "publication-conferencepaper"},
+        "article": {"id": "publication-article"},
+        "note": {"id": "publication-technicalnote"},
+        "brochure": {"id": "publication-brochure"},
+        "itcerntalk": {"id": "presentation"},
+        "slides": {"id": "presentation"},
+        "peri": {"id": "publication-periodical"},
+        "intnoteitpubl": {"id": "publication-technicalnote"},
+        "intnotealephpriv": {"id": "publication-technicalnote"},
+        "intnotetspubl": {"id": "publication-technicalnote"},
+        "bookchapter": {"id": "publication-section"},
+        "cnlissue": {"id": "publication-periodicalissue"},
+        "cnlarticle": {"id": "publication-periodicalarticle"},
+        "report": {"id": "publication-report"},
+        "book": {"id": "publication-book"},
+        "progress report": {"id": "publication-report"},
+        "poster": {"id": "poster"},
+        "software": {"id": "software"},
+    }
+
+    try:
+
+        mapping[best_value]
+    except KeyError:
+        if key == "697C_" and "lexi" in value_b.lower() or "lexi" in value_a.lower():
+            subjects = self.get("subjects")
+            subjects.append({"subject": value_a if value_a else value_b})
+            self["subjects"] = subjects
+            raise IgnoreKey("resource_type")
+        raise UnexpectedValue(
+            "Unknown resource type (Publications)", value=best_value, field=key
+        )
+
+    if current:
+        current_key = next((k for k, v in mapping.items() if v == current), None)
+        current_rank = priority.get(current_key, float("inf"))
+
+        if rank < current_rank:
+            return mapping[best_value]
+        else:
+            raise IgnoreKey("resource_type")
+    else:
+        return mapping[best_value]

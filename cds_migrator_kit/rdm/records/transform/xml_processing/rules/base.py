@@ -172,6 +172,8 @@ def subjects(self, key, value):
         raise IgnoreKey("subjects")
     else:
         subject_value = val_a.strip()
+        if subject_value.lower() == "xx":
+            raise IgnoreKey("subjects")
         _subjects = self.get("subjects", [])
         # invalid schema = euproject info    scheme = scheme
         if validate_subject_scheme(scheme, subfield, key) == "eu":
@@ -316,6 +318,9 @@ def report_number(self, key, value):
             raise IgnoreKey("identifiers")
         elif scheme.upper() == "CERN LIBRARY":
             raise IgnoreKey("identifiers")
+        elif scheme.startswith("SCOO"):
+            identifier = scheme
+            scheme = "other"
         else:
             raise UnexpectedValue("Missing ID value", field=key, value=value)
     new_id = {"scheme": scheme, "identifier": identifier}
@@ -420,6 +425,8 @@ def identifiers(self, key, value):
         ):
             return rel_id
         else:
+            if "HOLALE" in id_value:
+                raise IgnoreKey("identifiers")
             raise UnexpectedValue(
                 field=key, value=value, subfield="9", message="Invalid scheme"
             )
@@ -434,13 +441,18 @@ def _pids(self, key, value):
     scheme = value.get("2", "").lower()
     qualifier = value.get("q", "").lower().strip()
     identifier = value.get("a")
+    if not identifier:
+        identifier = value.get("A")
+    if not identifier:
+        raise UnexpectedValue(
+            "Missing identifier value", field=key, subfield="a", stage="transform"
+        )
     if not scheme:
         scheme = value.get("9", "").lower()
     if not scheme:
         raise UnexpectedValue(
             "Missing identifier scheme", field=key, subfield="2", stage="transform"
         )
-
     is_doi_id = is_doi(identifier)
     is_handle_id = not is_doi_id and is_handle(identifier)
     if not is_doi_id and is_handle_id and (scheme == "doi" or scheme == "urn/hdl"):
@@ -491,7 +503,7 @@ def _pids(self, key, value):
         raise IgnoreKey("_pids")
 
 
-@model.over("contributors", "^710__")
+@model.over("creators", "^710__")
 @for_each_value
 def corporate_author(self, key, value):
     """Translates corporate author."""
@@ -500,13 +512,13 @@ def corporate_author(self, key, value):
 
         if name.strip() == "CERN. Geneva":
             name = "CERN"
+        if "CERN. Geneva." in name:
+            name = name.replace("CERN. Geneva.", "CERN")
         contributor = {
             "person_or_org": {
                 "type": "organizational",
                 "name": StringValue(name).parse(),
-                "family_name": StringValue(name).parse(),
             },
-            "role": {"id": "hostinginstitution"},
         }
         return contributor
     if "5" in value:
@@ -754,7 +766,11 @@ def yellow_reports(self, key, value):
         return new_id
     if scheme.lower() == "pacs":
         raise IgnoreKey("related_identifiers")
-    if not scheme and identifier.startswith("CERN-"):
+    if not scheme and (identifier.startswith("CERN-")
+                       or identifier.startswith("EEC-")
+                       or identifier.startswith("NPRC-")
+                       or identifier.startswith("LEP-")
+    ):
         # report number
         new_id = {
             "identifier": identifier,
@@ -933,7 +949,8 @@ def note(self, key, value):
 
     _note = force_list(value.get("a", ""))
     _note_z = force_list(value.get("z", ""))
-    notes_list = _note_z + _note
+    _note_d = force_list(value.get("d", ""))
+    notes_list = _note_z + _note + _note_d
     _note_b = value.get("b", "")
     _note_c = value.get("c", "")
 
@@ -966,6 +983,7 @@ def additional_titles(self, key, value):
     """Translates additional titles."""
 
     additional_desc_text = value.get("p")
+    volume = value.get("n")
     if additional_desc_text:
         _additional_descriptions = self.get("additional_descriptions", [])
         _additional_descriptions.append(
@@ -1018,6 +1036,7 @@ def additional_titles(self, key, value):
             "lang": {"id": "eng"},
         }
         return _additional_title
+
     raise IgnoreKey("additional_titles")
 
 
