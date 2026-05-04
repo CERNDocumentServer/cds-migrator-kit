@@ -173,9 +173,7 @@ class TestCorporateAuthor:
                 "person_or_org": {
                     "type": "organizational",
                     "name": "CERN",
-                    "family_name": "CERN",
                 },
-                "role": {"id": "hostinginstitution"},
             }
         ]
 
