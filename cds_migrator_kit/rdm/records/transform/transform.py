@@ -189,8 +189,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         return {}
 
     def _pids(self, json_entry):
-        from flask import current_app
-
         DATACITE_PREFIX = current_app.config["DATACITE_PREFIX"]
 
         pids = json_entry.get("_pids", {})
@@ -234,7 +232,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         """Transform the files of a record."""
         record_dump.prepare_files()
         files = record_dump.files
-        return {"enabled": True if files else False}
+        return {"enabled": bool(files)}
 
     def _communities(self, json_entry):
         return json_entry.get("communities", [])
@@ -247,7 +245,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             user = User.query.filter_by(email=email).one()
             return user.id
         except NoResultFound:
-            return UnexpectedValue(
+            raise UnexpectedValue(
                 message=f"{email} not found - did you run user migration?",
                 stage="transform",
                 recid=json_entry["legacy_recid"],
@@ -281,10 +279,10 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             if match.curated_affiliation:
                 return match.curated_affiliation
             # Step 2: check if there is an exact match
-            elif match.ror_exact_match:
+            if match.ror_exact_match:
                 return {"id": normalize_ror(match.ror_exact_match)}
             # Step 3: check if there is not exact match
-            elif match.ror_not_exact_match:
+            if match.ror_not_exact_match:
                 _affiliation_ror_id = normalize_ror(match.ror_not_exact_match)
                 raise RecordFlaggedCuration(
                     subfield="u",
@@ -293,24 +291,15 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     message=f"Affiliation {_affiliation_ror_id} not found as an exact match, ROR id should be checked.",
                     stage="vocabulary match",
                 )
-            else:
-                # Step 4: set the originally inserted value from legacy
-                raise RecordFlaggedCuration(
-                    subfield="u",
-                    value={"name": affiliation_name},
-                    field="author",
-                    message=f"Affiliation {affiliation_name} not found as an exact match, custom value should be checked.",
-                    stage="vocabulary match",
-                )
-        else:
-            # Step 4: set the originally inserted value from legacy
-            raise RecordFlaggedCuration(
-                subfield="u",
-                value={"name": affiliation_name},
-                field="author",
-                message=f"Affiliation {affiliation_name} not found as an exact match, custom value should be checked.",
-                stage="vocabulary match",
-            )
+        # Step 4: set the originally inserted value from legacy (no match, or match
+        # found but has no ROR id of any kind)
+        raise RecordFlaggedCuration(
+            subfield="u",
+            value={"name": affiliation_name},
+            field="author",
+            message=f"Affiliation {affiliation_name} not found as an exact match, custom value should be checked.",
+            stage="vocabulary match",
+        )
 
     def _metadata(self, json_entry, record_dump):
 
@@ -480,6 +469,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 if subject.get("subject", "") in ["xx"]:
                     del subject
 
+        subjects(json_entry)
         table_of_contents(json_entry)
 
         metadata = {
@@ -582,7 +572,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 result = search_vocabulary(dep, "departments")
                 if result and result not in custom_fields_dict["cern:departments"]:
                     custom_fields_dict["cern:departments"].append(result)
-                else:
+                elif not result:
                     subj = json_output["metadata"].get("subjects", [])
                     subj.append({"subject": department})
                     json_output["metadata"]["subjects"] = subj
@@ -632,37 +622,24 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         stage="vocabulary match",
                     )
 
+        _cf = json_entry.get("custom_fields", {})
         custom_fields = {
             "cern:experiments": [],
             "cern:departments": [],
             "cern:accelerators": [],
-            "cern:administrative_unit": json_entry.get("custom_fields", {}).get(
-                "cern:administrative_unit", []
-            ),
-            "cern:projects": json_entry.get("custom_fields", {}).get(
-                "cern:projects", []
-            ),
-            "cern:facilities": json_entry.get("custom_fields", {}).get(
-                "cern:facilities", []
-            ),
-            "cern:studies": json_entry.get("custom_fields", {}).get("cern:studies", []),
+            "cern:administrative_unit": _cf.get("cern:administrative_unit", []),
+            "cern:projects": _cf.get("cern:projects", []),
+            "cern:facilities": _cf.get("cern:facilities", []),
+            "cern:studies": _cf.get("cern:studies", []),
             "cern:beams": [],
             "cern:programmes": field_programmes(json_entry),
-            "cern:committees": json_entry.get("custom_fields", {}).get("cern:committees"),
-            "cern:oa_level": json_entry.get("custom_fields", {}).get("cern:oa_level"),
-            "cern:oa_funding_model": json_entry.get("custom_fields", {}).get("cern:oa_funding_model"),
-            "thesis:thesis": json_entry.get("custom_fields", {}).get(
-                "thesis:thesis", {}
-            ),
-            "journal:journal": json_entry.get("custom_fields", {}).get(
-                "journal:journal", {}
-            ),
-            "imprint:imprint": json_entry.get("custom_fields", {}).get(
-                "imprint:imprint", {}
-            ),
-            "meeting:meeting": json_entry.get("custom_fields", {}).get(
-                "meeting:meeting", {}
-            ),
+            "cern:committees": _cf.get("cern:committees"),
+            "cern:oa_level": _cf.get("cern:oa_level"),
+            "cern:oa_funding_model": _cf.get("cern:oa_funding_model"),
+            "thesis:thesis": _cf.get("thesis:thesis", {}),
+            "journal:journal": _cf.get("journal:journal", {}),
+            "imprint:imprint": _cf.get("imprint:imprint", {}),
+            "meeting:meeting": _cf.get("meeting:meeting", {}),
         }
         try:
             field_experiments(json_entry, custom_fields)
@@ -926,57 +903,57 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         def compute_files(file_dump, versions_dict):
             legacy_path_root = Path("/opt/cdsweb/var/data/files/")
             tmp_eos_root = Path(self.files_dump_dir)
-            full_path = Path(file["full_path"])
+            full_path = Path(file_dump["full_path"])
 
-            if file["subformat"] in FILE_SUBFORMATS_TO_DROP:
+            if file_dump["subformat"] in FILE_SUBFORMATS_TO_DROP:
                 self.migration_logger.add_information(
-                    str(file["recid"]),
+                    str(file_dump["recid"]),
                     {
-                        "message": f"File subformat {file['subformat']} dropped.",
-                        "value": file["full_name"],
+                        "message": f"File subformat {file_dump['subformat']} dropped.",
+                        "value": file_dump["full_name"],
                     },
                 )
                 return
 
-            if not self.plots and file["type"] == "Plot":
+            if not self.plots and file_dump["type"] == "Plot":
                 # skip figures if configuration says so
                 self.migration_logger.add_information(
-                    str(file["recid"]),
+                    str(file_dump["recid"]),
                     {
                         "message": f"Plot file dropped.",
-                        "value": file["full_name"],
+                        "value": file_dump["full_name"],
                     },
                 )
                 return
-            if file["hidden"]:
+            if file_dump["hidden"]:
                 # skip hidden files
                 self.migration_logger.add_information(
-                    str(file["recid"]),
+                    str(file_dump["recid"]),
                     {
                         "message": f"Hidden file dropped.",
-                        "value": file["full_name"],
+                        "value": file_dump["full_name"],
                     },
                 )
 
             versions_dict[file_dump["version"]]["files"].update(
                 {
-                    file["full_name"]: {
+                    file_dump["full_name"]: {
                         "eos_tmp_path": tmp_eos_root
                         / full_path.relative_to(legacy_path_root),
-                        "id_bibdoc": file["bibdocid"],
-                        "key": file["full_name"],
+                        "id_bibdoc": file_dump["bibdocid"],
+                        "key": file_dump["full_name"],
                         "metadata": {
-                            "description": file["description"],
-                            "name": file["name"],
-                            "status": file["status"],
-                            "comment": file["comment"],
+                            "description": file_dump["description"],
+                            "name": file_dump["name"],
+                            "status": file_dump["status"],
+                            "comment": file_dump["comment"],
                         },
-                        "mimetype": file["mime"],
-                        "checksum": file["checksum"],
-                        "version": file["version"],
-                        "access": file["status"],
-                        "type": file["type"],
-                        "creation_date": arrow.get(file["creation_date"])
+                        "mimetype": file_dump["mime"],
+                        "checksum": file_dump["checksum"],
+                        "version": file_dump["version"],
+                        "access": file_dump["status"],
+                        "type": file_dump["type"],
+                        "creation_date": arrow.get(file_dump["creation_date"])
                         .replace(tzinfo=None)
                         .date()
                         .isoformat(),
