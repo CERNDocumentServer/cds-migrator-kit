@@ -530,7 +530,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "cern:experiments", []
             )
             for experiment in experiments:
-                if experiment.lower().strip() in ["not applicable", "xx"]:
+                if experiment.lower().strip() in ["not applicable", "select:"]:
                     continue
                 result = search_vocabulary(experiment, "experiments")
                 if result and result not in custom_fields_dict["cern:experiments"]:

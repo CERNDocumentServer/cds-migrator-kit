@@ -472,3 +472,14 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - ""
+  eco:
+    data_dir: cds_migrator_kit/rdm/data/eco
+    tmp_dir: cds_migrator_kit/rdm/tmp/eco
+    log_dir: cds_migrator_kit/rdm/log/eco
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/eco/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/eco/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "c8ab44fd-f130-4e52-9bff-70de14913bde"
