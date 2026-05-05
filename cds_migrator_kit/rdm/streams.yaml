@@ -689,6 +689,17 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "2ab3ab07-a634-4de8-8489-f99bc7fabec2"
+  eco:
+    data_dir: cds_migrator_kit/rdm/data/eco
+    tmp_dir: cds_migrator_kit/rdm/tmp/eco
+    log_dir: cds_migrator_kit/rdm/log/eco
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/eco/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/eco/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "c8ab44fd-f130-4e52-9bff-70de14913bde"
 comments:
   faser-drafts:
     dir_path: /migration/faser-drafts/comments/
