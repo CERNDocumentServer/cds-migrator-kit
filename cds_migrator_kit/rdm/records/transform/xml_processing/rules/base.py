@@ -155,6 +155,10 @@ def subjects(self, key, value):
 
     is_controlled_subject = key == "65017" and (scheme in CONTROLLED_SUBJECTS_SCHEMES)
 
+    # Drop other subjects
+    if val_a.lower().strip() == "other subjects":
+        raise IgnoreKey("subjects")
+
     if type(val_a) is tuple:
         # sometimes keywords are stick in one tag, so they come out as tuple
         s_values = val_a
