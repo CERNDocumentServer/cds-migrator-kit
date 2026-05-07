@@ -365,11 +365,7 @@ def title(self, key, value):
         self["additional_titles"] = alt_titles
     identifiers = self.get("identifiers", [])
     rep_num = next(
-        (
-            identifier
-            for identifier in identifiers
-            if identifier["scheme"] == "cdsrn"
-        ),
+        (identifier for identifier in identifiers if identifier["scheme"] == "cdsrn"),
         {},
     ).get("identifier")
 
@@ -391,7 +387,6 @@ def title(self, key, value):
                 suffix += f"{number_stripped})"
                 title += suffix
     return title
-
 
 
 @model.over("meeting_cf", "^773__")
