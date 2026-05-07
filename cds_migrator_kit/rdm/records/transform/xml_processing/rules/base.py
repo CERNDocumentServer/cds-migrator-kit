@@ -584,8 +584,9 @@ def title(self, key, value):
     title = StringValue(value.get("a"))
     subtitle = StringValue(value.get("b", "")).parse()
     title.required()
+    title_string = title.parse()
+    alt_titles = self.get("additional_titles", [])
     if subtitle:
-        alt_titles = self.get("additional_titles", [])
         alt_titles.append(
             {
                 "title": subtitle,
@@ -593,7 +594,18 @@ def title(self, key, value):
             }
         )
         self["additional_titles"] = alt_titles
-    return title.parse()
+    if self.get("title") and title_string:
+        alt_titles.append(
+            {
+                "title": title_string,
+                "type": {"id": "subtitle"},
+            }
+        )
+        self["additional_titles"] = alt_titles
+        raise IgnoreKey("title")
+    if title_string:
+        return title_string
+    raise IgnoreKey("title")
 
 
 @model.over("rights", "^540__")

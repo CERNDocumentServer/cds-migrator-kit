@@ -47,15 +47,14 @@ class TestTitle:
     def test_title_missing_field_returns_empty(self):
         """Test that missing title returns empty string."""
         record = {}
-        result = title(record, "245__", {})
-        # StringValue with empty value returns empty string
-        assert result == ""
+        with pytest.raises(IgnoreKey):
+            title(record, "245__", {})
 
     def test_title_empty_string_returns_empty(self):
         """Test that empty title returns empty string."""
         record = {}
-        result = title(record, "245__", {"a": ""})
-        assert result == ""
+        with pytest.raises(IgnoreKey):
+            title(record, "245__", {"a": ""})
 
     def test_title_subtitle_appends_to_existing(self):
         """Test subtitle appends to existing additional_titles."""
