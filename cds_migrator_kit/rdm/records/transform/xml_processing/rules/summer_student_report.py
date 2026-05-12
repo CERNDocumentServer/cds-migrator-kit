@@ -146,3 +146,9 @@ def additional_descriptions(self, key, value):
     if _additional_description:
         return _additional_description
     raise IgnoreKey("additional_descriptions")
+
+
+@model.over("resource_type", "^980__", override=True)
+def resource_type(self, key, value):
+    """Translates resource type."""
+    raise IgnoreKey("resource_type")

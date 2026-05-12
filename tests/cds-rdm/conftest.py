@@ -878,6 +878,28 @@ def experiments_v(app, exp_type):
             "type": "experiments",
         },
     )
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "ALICE",
+            "title": {
+                "en": "ALICE",
+            },
+            "props": {"link": "http://lhcb.web.cern.ch/lhcb/"},
+            "type": "experiments",
+        },
+    )
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "ATLAS",
+            "title": {
+                "en": "ATLAS",
+            },
+            "props": {"link": "http://lhcb.web.cern.ch/lhcb/"},
+            "type": "experiments",
+        },
+    )
     return vocab
 
 

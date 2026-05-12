@@ -13,18 +13,16 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 
 
 class ResearchModel(CdsOverdo):
-    """Translation model for MoUs."""
+    """Translation model for research."""
 
-    __query__ = (
-        '980__:L3_Papers OR 980__:INTNOTEALEPHPRIV OR 980__:OPAL_Papers OR 980__:OPAL_Misc OR 980__:DELPHI_Misc OR 980__:DELPHI_Papers OR 980__:L3_Misc OR 693__.e:L3 OR 693__.e:DELPHI OR 693__.e:OPAL OR 693__.e:ALEPH OR 690C_.a:PUBLDELPHINOTE OR 690C_.a:PRIVDELPHINOTE OR 710__.g:"ALEPH Collaboration" OR 710__.g:"Aleph Collaboration" OR 980__.a:ALEPH_Papers OR 980__.a:ALEPHDRAFT OR 037__:CERN-ALEPH-PUB-* OR 037__:CERN-ALEPH-ARCH-DATA-* -980__:DELETED -980__.c:MIGRATED -980__.a:DUMMY -690C_.a:SCICOM'
-    )
+    __query__ = '980__:L3_Papers OR 980__:INTNOTEALEPHPRIV OR 980__:OPAL_Papers OR 980__:OPAL_Misc OR 980__:DELPHI_Misc OR 980__:DELPHI_Papers OR 980__:L3_Misc OR 693__.e:L3 OR 693__.e:DELPHI OR 693__.e:OPAL OR 693__.e:ALEPH OR 690C_.a:PUBLDELPHINOTE OR 690C_.a:PRIVDELPHINOTE OR 710__.g:"ALEPH Collaboration" OR 710__.g:"Aleph Collaboration" OR 980__.a:ALEPH_Papers OR 980__.a:ALEPHDRAFT OR 037__:CERN-ALEPH-PUB-* OR 037__:CERN-ALEPH-ARCH-DATA-* OR 980__:LCD-Notes OR 980__:LCD-NOTES OR 693__.e:"DAMPE RE29" OR 037__:DIRAC-NOTE* OR 037__:DIRAC-Note* OR 037__:DIRAC-CONF* OR 037__:DIRAC-DOC* OR 037__:DIRAC-PUB* OR 693__:UA2 OR 693__:UA4 OR 693:__UA5 OR 693__:UA8 OR 980__:ANTARESCERNTALK OR (980__.a:"POSTER" AND 693__.e:ANTARES)  OR 980__:INTNOTEHARPCDPPUBL OR 980__:PRIVIMXGAM OR 980__:PRIVANTARES -980__:THESIS -037__:CERN-STUDENTS-Note-* -980__:DELETED -980__.c:MIGRATED -980__.a:DUMMY -690C_.a:SCICOM'
 
     __ignore_keys__ = {
         "0248_a",
         "0248_p",
         "0248_q",
         "0247_9",  # provenance of the DOI
-        "030__a", # TODO coden designation to drop?
+        "030__a",  # TODO coden designation to drop?
         "035__h",  # oai identifiers in 1215391
         "035__d",  # oai identifiers in 1215391
         "035__t",  # oai identifiers in 1215391
@@ -39,6 +37,7 @@ class ResearchModel(CdsOverdo):
         "037__c",  # arxiv subject
         "100__m",  # email of contributor
         "245__9",  # title provenance
+        "270__m",  # document contact email
         "300__a",  # number of pages
         "340__a",  # TODO ignore material?
         "540__3",  # TODO still ignore the material of the license?
@@ -49,6 +48,8 @@ class ResearchModel(CdsOverdo):
         "700__q",  # TODO ignore? aliteration of the name, used for searching
         "700__v",  # TODO drop?
         "773__x",  # INSPIRE publication note
+        "773__t",  # INSPIRE publication note
+        "773__0",  # from SIS: can be ignored
         "8564_8",  # file id
         "8564_s",  # bibdoc id
         "8564_x",  # icon thumbnails sizes

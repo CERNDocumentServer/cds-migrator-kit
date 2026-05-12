@@ -85,7 +85,13 @@ def suite_multi_field(record):
                 "family_name": "Juste",
                 "identifiers": [{"identifier": "2675934", "scheme": "cds"}],
             }
-        }
+        },
+        {
+            "person_or_org": {
+                "name": "RP collaboration",
+                "type": "organizational",
+            },
+        },
     ]
     assert dict_rec["metadata"]["publication_date"] == "2018-08-02"
     assert (
@@ -143,13 +149,6 @@ def suite_multi_field(record):
             "affiliations": [{"name": "CERN"}],
         },
         {
-            "person_or_org": {"type": "organizational", "name": "RP collaboration"},
-            "role": {
-                "id": "hostinginstitution",
-                "title": {"en": "Hosting institution"},
-            },
-        },
-        {
             "person_or_org": {
                 "type": "personal",
                 "name": "Casolino M.",
@@ -195,7 +194,13 @@ def orcid_id(record, orcid_name_data):
                     {"identifier": "0009-0007-7638-4652", "scheme": "orcid"},
                 ],
             }
-        }
+        },
+        {
+            "person_or_org": {
+                "name": "CERN EP Department",
+                "type": "organizational",
+            },
+        },
     ]
 
     name_from_db = NamesMetadata.query.filter_by(pid=orcid_name_data["id"]).one()
@@ -347,9 +352,10 @@ def custom_affiliation(record):
     """2041388."""
     dict_rec = record.to_dict()
     for creator in dict_rec["metadata"]["creators"]:
-        assert "affiliations" in creator
-        for affiliation in creator["affiliations"]:
-            assert "ror" != affiliation.get("scheme", None)
+        if creator["person_or_org"]["type"] == "personal":
+            assert "affiliations" in creator
+            for affiliation in creator["affiliations"]:
+                assert "ror" != affiliation.get("scheme", None)
 
 
 def contains_aleph(record):
@@ -405,18 +411,6 @@ def author_with_inspire(record):
             "affiliations": [
                 {"name": "Universitat Autonoma de Barcelona ES"},
             ],
-        },
-        {
-            "person_or_org": {
-                "name": "CERN. Geneva. EP Department",
-                "type": "organizational",
-            },
-            "role": {
-                "id": "hostinginstitution",
-                "title": {
-                    "en": "Hosting institution",
-                },
-            },
         },
     ]
 

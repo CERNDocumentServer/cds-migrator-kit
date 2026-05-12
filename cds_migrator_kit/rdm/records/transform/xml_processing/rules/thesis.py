@@ -296,7 +296,7 @@ def rec_affiliation(self, key, value):
     raise IgnoreKey("affiliations")
 
 
-@model.over("collection", "^980__")
+@model.over("resource_type", "^980__", override=True)
 @for_each_value
 def collection(self, key, value):
     col = value.get("a", "")
@@ -315,7 +315,7 @@ def collection(self, key, value):
         subjects = self.get("subjects", [])
         subjects.append({"subject": f"collection:{colb.upper()}"})
         self["subjects"] = subjects
-    raise IgnoreKey("collection")
+    raise IgnoreKey("resource_type")
 
 
 @model.over("related_identifiers", "^962_")

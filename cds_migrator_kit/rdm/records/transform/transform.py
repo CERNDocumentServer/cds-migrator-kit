@@ -101,6 +101,7 @@ def _get_vocabulary_cache():
         vocab_dir = current_app.config.get("CDS_MIGRATOR_KIT_VOCABULARIES_DIR")
         if vocab_dir is None:
             import cds_rdm
+
             vocab_dir = Path(cds_rdm.__file__).parent / "app_data" / "vocabularies"
         else:
             vocab_dir = Path(vocab_dir)
@@ -260,15 +261,17 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             name = AffiliationsMetadata.query.filter_by(pid=ror).one_or_none()
             if name is None:
                 raise ManualImportRequired(
-                message="Affiliation {ror} does not exist in the AffiliationMetadata table".format(ror=ror),
-                field="validation",
-                stage="transform",
-                description="Add this affiliation",
-                recid=json_entry["recid"],
-                priority="critical",
-                value=None,
-                subfield=None,
-            )
+                    message="Affiliation {ror} does not exist in the AffiliationMetadata table".format(
+                        ror=ror
+                    ),
+                    field="validation",
+                    stage="transform",
+                    description="Add this affiliation",
+                    recid=json_entry["recid"],
+                    priority="critical",
+                    value=None,
+                    subfield=None,
+                )
             return {"id": normalize_ror(affiliation_name)}
         # Step 1: search in the affiliation mapping (ROR organizations)
         match = self.affiliations_mapping.query.filter_by(
@@ -465,11 +468,15 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
         def subjects(json_entry):
             _subjects = json_entry.get("subjects")
-            for subject in reversed(_subjects):
-                if subject.get("subject", "") in ["xx"]:
-                    del subject
+            if _subjects:
+                for subject in reversed(_subjects):
+                    if subject.get("subject", "").lower() in ["xx", "talk"]:
+                        _subjects.remove(subject)
+                    elif subject.get("id", "").lower() in ["xx", "talk"]:
+                        _subjects.remove(subject)
+            return _subjects
 
-        subjects(json_entry)
+        _subjects = subjects(json_entry)
         table_of_contents(json_entry)
 
         metadata = {
@@ -479,7 +486,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "description": json_entry.get("description"),
             "publication_date": _publication_date(json_entry, record_dump),
             "contributors": creators(json_entry, key="contributors"),
-            "subjects": json_entry.get("subjects"),
+            "subjects": _subjects,
             "publisher": json_entry.get("publisher"),
             "additional_descriptions": json_entry.get("additional_descriptions"),
             "additional_titles": json_entry.get("additional_titles"),
@@ -582,7 +589,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         value=department,
                         field="department",
                         message=f"Department {department} not found. "
-                                f"Added as unit and subject",
+                        f"Added as unit and subject",
                         stage="vocabulary match",
                     )
 

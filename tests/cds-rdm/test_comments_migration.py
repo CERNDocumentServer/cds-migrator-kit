@@ -296,7 +296,7 @@ def test_migrate_comments_from_metadata(
     assert request_result.total == 4
 
 
-def test_migrate_comments_dry_run(temp_dir):
+def test_migrate_comments_dry_run(temp_dir, test_app, db):
     """Test migrating comments in dry-run mode."""
     # Create directory structure for attached files
     comments_dir = os.path.join(os.path.dirname(__file__), "data", "comments")

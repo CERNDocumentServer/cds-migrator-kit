@@ -770,10 +770,11 @@ def yellow_reports(self, key, value):
         return new_id
     if scheme.lower() == "pacs":
         raise IgnoreKey("related_identifiers")
-    if not scheme and (identifier.startswith("CERN-")
-                       or identifier.startswith("EEC-")
-                       or identifier.startswith("NPRC-")
-                       or identifier.startswith("LEP-")
+    if not scheme and (
+        identifier.startswith("CERN-")
+        or identifier.startswith("EEC-")
+        or identifier.startswith("NPRC-")
+        or identifier.startswith("LEP-")
     ):
         # report number
         new_id = {

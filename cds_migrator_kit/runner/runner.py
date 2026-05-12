@@ -32,7 +32,12 @@ class Runner:
             return yaml.safe_load(f)
 
     def __init__(
-        self, stream_definitions, config_filepath, dry_run, collection, keep_logs,
+        self,
+        stream_definitions,
+        config_filepath,
+        dry_run,
+        collection,
+        keep_logs,
         workers=None,
     ):
         """Constructor."""
@@ -84,9 +89,7 @@ class Runner:
                         stream_config[collection].get("transform", {})
                     )
                     # CLI --workers takes precedence over streams.yaml workers
-                    effective_workers = workers or transform_config.pop(
-                        "workers", None
-                    )
+                    effective_workers = workers or transform_config.pop("workers", None)
                     transform = definition.transform_cls(
                         workers=effective_workers,
                         dry_run=dry_run,

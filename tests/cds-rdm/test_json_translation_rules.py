@@ -42,7 +42,13 @@ def test_migrate_sspn_record(datadir, base_app):
                             {"identifier": "1111", "scheme": "cern"},
                         ],
                     }
-                }
+                },
+                {
+                    "person_or_org": {
+                        "type": "organizational",
+                        "name": "CERN EP Department",
+                    }
+                },
             ],
             "title": "Deep Learning Methods for Particle Reconstruction in the HGCal",
             "publisher": "CERN",
@@ -71,14 +77,6 @@ def test_migrate_sspn_record(datadir, base_app):
                 },
             },
             "contributors": [
-                {
-                    "person_or_org": {
-                        "type": "organizational",
-                        "name": "CERN. Geneva. EP Department",
-                        "family_name": "CERN. Geneva. EP Department",
-                    },
-                    "role": {"id": "hostinginstitution"},
-                },
                 {
                     "person_or_org": {
                         "type": "personal",
@@ -140,7 +138,13 @@ def test_migrate_record_all_fields(datadir, base_app):
                             {"identifier": "81111", "scheme": "cern"},
                         ],
                     }
-                }
+                },
+                {
+                    "person_or_org": {
+                        "type": "organizational",
+                        "name": "RP collaboration",
+                    }
+                },
             ],
             "title": "FLUKA and ActiWiz benchmark on BDF materials",
             "additional_descriptions": [
@@ -221,14 +225,6 @@ def test_migrate_record_all_fields(datadir, base_app):
                     },
                     "role": {"id": "other"},
                     "affiliations": ["CERN"],
-                },
-                {
-                    "person_or_org": {
-                        "type": "organizational",
-                        "name": "RP collaboration",
-                        "family_name": "RP collaboration",
-                    },
-                    "role": {"id": "hostinginstitution"},
                 },
                 {
                     "person_or_org": {
