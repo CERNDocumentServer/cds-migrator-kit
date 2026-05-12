@@ -13,16 +13,16 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 
 
 class ResearchCommitteeModel(CdsOverdo):
-    """Translation model for MoUs."""
+    """Translation model for research committees."""
 
-    __query__ = '980__:SCICOMMPUBLDRDC OR 980__:SCICOMMPUBLEEC OR 980__:SCICOMMPUBLEMC OR 980__:SCICOMMPUBLISC OR 980__:SCICOMMPUBLISRC OR 980__:SCICOMMPUBLISTC OR 980__:SCICOMMPUBLLEPC OR 980__:SCICOMMPUBLNPRC OR 980__:SCICOMMPUBLNSC OR 980__:SCICOMMPUBLPHI OR 980__:SCICOMMPUBLPHIII OR 980__:SCICOMMPUBLPSC OR 980__:SCICOMMPUBLPSCC OR 980__:SCICOMMPUBLSCC OR 980__.a:SC_and_PS_Advisory_Committee OR (980__:SCICOMMPUBLSPSC AND 260__.c:"0000"->"1990") OR 980__:SCICOMMPUBLSPSLC OR 980__:SCICOMMPUBLTCC -980__:DELETED -980__.c:MIGRATED -980__.a:DUMMY'
+    __query__ = '980__:SCICOMMPUBLDRDC OR 980__:SCICOMMPUBLEEC OR 980__:SCICOMMPUBLEMC OR 980__:SCICOMMPUBLISC OR 980__:SCICOMMPUBLISRC OR 980__:SCICOMMPUBLISTC OR 980__:SCICOMMPUBLLEPC OR 980__:SCICOMMPUBLNPRC OR 980__:SCICOMMPUBLNSC OR 980__:SCICOMMPUBLPHI OR 980__:SCICOMMPUBLPHIII OR 980__:SCICOMMPUBLPSC OR 980__:SCICOMMPUBLPSCC OR 980__:SCICOMMPUBLSCC OR 980__.a:SC_and_PS_Advisory_Committee OR (980__:SCICOMMPUBLSPSC AND 260__.c:"0000"->"1990") OR 980__:SCICOMMPUBLSPSLC OR 980__:SCICOMMPUBLTCC -037__:CERN-STUDENTS-Note-* -980__:THESIS -980__:thesis -980__:Thesis -980__:DELETED -980__.c:MIGRATED -980__.a:DUMMY'
 
     __ignore_keys__ = {
         "0248_a",
         "0248_p",
         "0248_q",
         "0247_9",  # provenance of the DOI
-        "030__a", # TODO coden designation to drop?
+        "030__a",  # TODO coden designation to drop?
         "035__h",  # oai identifiers in 1215391
         "035__d",  # oai identifiers in 1215391
         "035__t",  # oai identifiers in 1215391
@@ -95,7 +95,7 @@ class ResearchCommitteeModel(CdsOverdo):
 
     _default_fields = {
         "custom_fields": {},
-        "resource_type": {"id": "publication-other"}
+        "resource_type": {"id": "publication-other"},
     }
 
 

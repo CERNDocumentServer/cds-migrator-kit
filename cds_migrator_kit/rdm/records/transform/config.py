@@ -39,7 +39,7 @@ IDENTIFIERS_SCHEMES_TO_DROP = [
     "INTINT",
     "KEKSCAN",
     "ALIALI",
-    "AIS.FOUNDATION.EXPERIMENTS"
+    "AIS.FOUNDATION.EXPERIMENTS",
 ]
 IDENTIFIERS_VALUES_TO_DROP = "oai:arXiv.org"
 
@@ -58,7 +58,7 @@ RECOGNISED_KEYWORD_SCHEMES = [
     "inspec",
     "desy",
     "medline",
-    "aip"
+    "aip",
 ]
 KEYWORD_SCHEMES_TO_DROP = ["proquest", "disxa"]
 

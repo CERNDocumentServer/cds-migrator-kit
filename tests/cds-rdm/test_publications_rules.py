@@ -561,56 +561,86 @@ class TestOaLevelFromUrl:
     def test_preprint_url_sets_green(self):
         record = {"custom_fields": {}}
         with pytest.raises(IgnoreKey):
-            oa_level_from_url(record, "8564_", {"y": "preprint", "u": "http://example.com/preprint.pdf"})
+            oa_level_from_url(
+                record,
+                "8564_",
+                {"y": "preprint", "u": "http://example.com/preprint.pdf"},
+            )
         assert self._cf(record)["cern:oa_level"] == {"id": "green"}
 
     def test_manuscript_url_sets_green(self):
         record = {"custom_fields": {}}
         with pytest.raises(IgnoreKey):
-            oa_level_from_url(record, "8564_", {"y": "manuscript", "u": "http://example.com/ms.pdf"})
+            oa_level_from_url(
+                record, "8564_", {"y": "manuscript", "u": "http://example.com/ms.pdf"}
+            )
         assert self._cf(record)["cern:oa_level"] == {"id": "green"}
 
     def test_preprint_url_case_insensitive(self):
         record = {"custom_fields": {}}
         with pytest.raises(IgnoreKey):
-            oa_level_from_url(record, "8564_", {"y": "Preprint", "u": "http://example.com/preprint.pdf"})
+            oa_level_from_url(
+                record,
+                "8564_",
+                {"y": "Preprint", "u": "http://example.com/preprint.pdf"},
+            )
         assert self._cf(record)["cern:oa_level"] == {"id": "green"}
 
     def test_preprint_overrides_closed(self):
         """A preprint link should upgrade a tentative 'closed' to green."""
         record = {"custom_fields": {"cern:oa_level": {"id": "closed"}}}
         with pytest.raises(IgnoreKey):
-            oa_level_from_url(record, "8564_", {"y": "preprint", "u": "http://example.com/preprint.pdf"})
+            oa_level_from_url(
+                record,
+                "8564_",
+                {"y": "preprint", "u": "http://example.com/preprint.pdf"},
+            )
         assert self._cf(record)["cern:oa_level"] == {"id": "green"}
 
     def test_manuscript_overrides_closed(self):
         record = {"custom_fields": {"cern:oa_level": {"id": "closed"}}}
         with pytest.raises(IgnoreKey):
-            oa_level_from_url(record, "8564_", {"y": "manuscript", "u": "http://example.com/ms.pdf"})
+            oa_level_from_url(
+                record, "8564_", {"y": "manuscript", "u": "http://example.com/ms.pdf"}
+            )
         assert self._cf(record)["cern:oa_level"] == {"id": "green"}
 
     def test_preprint_does_not_override_gold(self):
         record = {"custom_fields": {"cern:oa_level": {"id": "gold"}}}
         with pytest.raises(IgnoreKey):
-            oa_level_from_url(record, "8564_", {"y": "preprint", "u": "http://example.com/preprint.pdf"})
+            oa_level_from_url(
+                record,
+                "8564_",
+                {"y": "preprint", "u": "http://example.com/preprint.pdf"},
+            )
         assert self._cf(record)["cern:oa_level"] == {"id": "gold"}
 
     def test_preprint_does_not_override_bronze(self):
         record = {"custom_fields": {"cern:oa_level": {"id": "bronze"}}}
         with pytest.raises(IgnoreKey):
-            oa_level_from_url(record, "8564_", {"y": "preprint", "u": "http://example.com/preprint.pdf"})
+            oa_level_from_url(
+                record,
+                "8564_",
+                {"y": "preprint", "u": "http://example.com/preprint.pdf"},
+            )
         assert self._cf(record)["cern:oa_level"] == {"id": "bronze"}
 
     def test_preprint_does_not_override_green(self):
         record = {"custom_fields": {"cern:oa_level": {"id": "green"}}}
         with pytest.raises(IgnoreKey):
-            oa_level_from_url(record, "8564_", {"y": "preprint", "u": "http://example.com/preprint.pdf"})
+            oa_level_from_url(
+                record,
+                "8564_",
+                {"y": "preprint", "u": "http://example.com/preprint.pdf"},
+            )
         assert self._cf(record)["cern:oa_level"] == {"id": "green"}
 
     def test_non_oa_url_label_sets_nothing(self):
         record = {"custom_fields": {}}
         with pytest.raises(IgnoreKey):
-            oa_level_from_url(record, "8564_", {"y": "fulltext", "u": "http://example.com/paper.pdf"})
+            oa_level_from_url(
+                record, "8564_", {"y": "fulltext", "u": "http://example.com/paper.pdf"}
+            )
         assert "cern:oa_level" not in self._cf(record)
 
     def test_no_y_subfield_sets_nothing(self):

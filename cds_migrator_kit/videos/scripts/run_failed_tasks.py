@@ -94,10 +94,12 @@ def find_succeded_tasks(deposit_id):
 def run_metatadata_task(failed_tasks, flow, deposit_id, record_id):
     task_names = [task[0] for task in failed_tasks]
     deposit = deposit_video_resolver(deposit_id)
-    
+
     if ExtractMetadataTask.name not in task_names:
         if deposit["_deposit"]["status"] == "draft":
-            log_success(f"ExtractMetadataTask not failed and deposit already in draft for record {record_id}.")
+            log_success(
+                f"ExtractMetadataTask not failed and deposit already in draft for record {record_id}."
+            )
             return True
         return False
 
@@ -242,7 +244,7 @@ def rerun_chapters_task(deposit_id, record_id, flow_id):
     flow = FlowMetadata.get_by_deposit(deposit_id)
     flow_id = flow.id
     payload = flow.payload.copy()
-    
+
     task = next(t for t in flow.tasks if t.name == ExtractChapterFramesTask.name)
 
     # Determine if ExtractChapterFramesTask needs to run
@@ -297,6 +299,7 @@ def load_record_ids(record_states_file_path):
 #        MAIN METHODS
 # ---------------------------
 
+
 # WEBLECTURES AYNC TASKS RUNNER
 def weblectures_tasks_runner():
     global SUCCESS_LOG_PATH, ERROR_LOG_PATH
@@ -319,11 +322,11 @@ def weblectures_tasks_runner():
 
     # Records states file created during migration
     record_states_file_path = "rdm_records_state.json"
-    
+
     all_record_ids = load_record_ids(record_states_file_path)
-    
+
     # Run in batches
-    record_ids = all_record_ids[:1000] # any subset
+    record_ids = all_record_ids[:1000]  # any subset
     total = len(record_ids)
     deposits_to_republish = []
 
@@ -338,11 +341,13 @@ def weblectures_tasks_runner():
             log_success(f"No failed tasks found for record {record_id}.")
         else:
             task_names = [task[0] for task in failed_tasks]
-            republish_needed = run_metatadata_task(failed_tasks, flow, deposit_id, record_id)
+            republish_needed = run_metatadata_task(
+                failed_tasks, flow, deposit_id, record_id
+            )
             if republish_needed:
                 deposits_to_republish.append((deposit_id, record_id))
 
-    # !! Make sure metadata tasks finished!! Run remaining tasks (frames/transcoding) async 
+    # !! Make sure metadata tasks finished!! Run remaining tasks (frames/transcoding) async
     for i, record_id in enumerate(record_ids, start=1):
         log_success(f"Processing {i}/{total} record: {record_id}")
         record = record_video_resolver(record_id)
@@ -351,15 +356,24 @@ def weblectures_tasks_runner():
         flow, failed_tasks = find_failed_tasks(deposit_id)
         task_names = [task[0] for task in failed_tasks]
         if ExtractMetadataTask.name in task_names:
-            log_error(f"ERROR: Record: {record_id} still has failed ExtractMetadataTask. Skipping further processing.")
+            log_error(
+                f"ERROR: Record: {record_id} still has failed ExtractMetadataTask. Skipping further processing."
+            )
             continue
         if not failed_tasks:
             log_success(f"No failed tasks found for record {record_id}.")
         else:
             log_success(f"Re-running failed tasks: {task_names}")
-            republish_needed = run_failed_tasks(failed_tasks, flow, deposit_id, record_id)
-            if republish_needed and (deposit_id, record_id) not in deposits_to_republish:
-                print(f"Adding deposit {deposit_id} for record {record_id} to republish list.")
+            republish_needed = run_failed_tasks(
+                failed_tasks, flow, deposit_id, record_id
+            )
+            if (
+                republish_needed
+                and (deposit_id, record_id) not in deposits_to_republish
+            ):
+                print(
+                    f"Adding deposit {deposit_id} for record {record_id} to republish list."
+                )
                 deposits_to_republish.append((deposit_id, record_id))
 
     # Re-publish records
@@ -368,7 +382,9 @@ def weblectures_tasks_runner():
         log_success(f"Processing publish {i}/{total_publish} record: {record_id}")
         deposit = deposit_video_resolver(deposit_id)
         if deposit["_deposit"]["status"] == "published":
-            log_success(f"Deposit already published for record {record_id}. Skipping publish.")
+            log_success(
+                f"Deposit already published for record {record_id}. Skipping publish."
+            )
             # continue
         flow, succeded_tasks = find_succeded_tasks(deposit_id)
         task_names = [task[0] for task in succeded_tasks]
@@ -382,12 +398,14 @@ def weblectures_tasks_runner():
                 src_bucket=deposit.bucket,
                 dst_bucket=record["_buckets"]["record"],
             )
-    
+
         if metadata_task_succeded and frames_task_succeded:
             deposit.publish(extract_chapters=False).commit()
             log_success(f"Deposit {deposit_id} published for record {record_id}.")
         else:
-            log_error(f"ERROR: Record: {record_id} has failed tasks: ExtractMetadataTask: {metadata_task_succeded} ExtractFramesTask: {frames_task_succeded}")
+            log_error(
+                f"ERROR: Record: {record_id} has failed tasks: ExtractMetadataTask: {metadata_task_succeded} ExtractFramesTask: {frames_task_succeded}"
+            )
             deposit.publish(extract_chapters=False).commit()
         db.session.commit()
 
@@ -414,11 +432,11 @@ def weblectures_chapters_async_runner():
 
     # Records states file created during migration
     record_states_file_path = "rdm_records_state.json"
-    
+
     all_record_ids = load_record_ids(record_states_file_path)
 
     # Run in batches
-    record_ids = all_record_ids[:2000] # any subset     
+    record_ids = all_record_ids[:2000]  # any subset
     total = len(record_ids)
 
     # Run chapters tasks async
@@ -455,7 +473,7 @@ def weblectures_check_task_status():
         "/tmp/weblectures_6_rdm_records_state.json",
         "/tmp/weblectures_7_rdm_records_state.json",
         "/tmp/last_lectures_rdm_records_state.json",
-        ]
+    ]
 
     all_record_ids = []
     for record_states_file_path in record_states_file_paths:
@@ -465,9 +483,9 @@ def weblectures_check_task_status():
     record_ids = all_record_ids
     total = len(record_ids)
 
-    failed_deposits = []     # stores (record_id, [task_names])
-    failed_chapters_records = [] # stores record_ids with failed chapters task
-    draft_deposits = []      # stores (record_id, deposit_id)
+    failed_deposits = []  # stores (record_id, [task_names])
+    failed_chapters_records = []  # stores record_ids with failed chapters task
+    draft_deposits = []  # stores (record_id, deposit_id)
 
     for i, record_id in enumerate(record_ids, start=1):
         if i % 100 == 0:
@@ -519,7 +537,7 @@ def weblectures_check_task_status():
         log_success(f"Republished record {record_id}.")
         db.session.commit()
 
-    # run chapters again 
+    # run chapters again
     total = len(failed_chapters_records)
     for i, record_id in enumerate(failed_chapters_records, start=1):
         log_success(f"Processing {i}/{total} record: {record_id}")

@@ -95,6 +95,29 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+  former_exp:
+    data_dir: cds_migrator_kit/rdm/data/former_experiments/public
+    tmp_dir: cds_migrator_kit/rdm/tmp/former_experiments/public
+    log_dir: cds_migrator_kit/rdm/log/former_experiments/public
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/former_experiments/public/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/former_experiments/public/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+  former_exp_restr:
+    data_dir: cds_migrator_kit/rdm/data/former_experiments/restricted
+    tmp_dir: cds_migrator_kit/rdm/tmp/former_experiments/restricted
+    log_dir: cds_migrator_kit/rdm/log/former_experiments/restricted
+    restricted: "True"
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/former_experiments/restricted/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/former_experiments/restricted/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
   fap:
     data_dir: cds_migrator_kit/rdm/data/fap
     tmp_dir: cds_migrator_kit/rdm/tmp/fap

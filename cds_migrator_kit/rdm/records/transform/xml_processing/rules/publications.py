@@ -27,9 +27,11 @@ from .base import urls as _base_urls
 
 # Unwrapped base functions (strip @for_each_value to avoid double-wrapping).
 # licenses also has @filter_values beneath @for_each_value, so two levels deep.
-_raw_licenses = _base_licenses.__wrapped__   # filter_values(raw) — handles None filtering
-_raw_note = _base_note.__wrapped__           # raw note function
-_raw_urls = _base_urls.__wrapped__           # raw urls function
+_raw_licenses = (
+    _base_licenses.__wrapped__
+)  # filter_values(raw) — handles None filtering
+_raw_note = _base_note.__wrapped__  # raw note function
+_raw_urls = _base_urls.__wrapped__  # raw urls function
 
 _FUNDING_MODEL_MAP = {
     "scoap3": "scoap3",
@@ -235,6 +237,14 @@ def funding(self, key, value):
     raise IgnoreKey("funding")
 
 
+@model.over("_approval", "(^591__)")
+def status(self, key, value):
+    _status = value.get("b", "").lower().strip()
+    if _status == "approved":
+        raise IgnoreKey("_approval")
+    raise UnexpectedValue("Unexpected status value", field=key, value=value)
+
+
 @model.over("custom_fields", "(^773__)")
 def journal(self, key, value):
     _custom_fields = self.get("custom_fields", {})
@@ -434,6 +444,7 @@ def organisation(self, key, value):
 #         "role": {"id": "hostinginstitution"},
 #     }
 
+
 @model.over("dates", "^925__")
 @for_each_value
 def date(self, key, value):
@@ -448,11 +459,7 @@ def date(self, key, value):
         dates.append(date)
     withdrawn = value.get("b", "")
     if withdrawn and "9999" not in withdrawn:
-        date = {
-            "date": withdrawn,
-            "type": {"id": "other"},
-            "description": "completed"
-        }
+        date = {"date": withdrawn, "type": {"id": "other"}, "description": "completed"}
         dates.append(date)
     self["dates"] = dates
     raise IgnoreKey("dates")
@@ -504,28 +511,42 @@ def resource_type(self, key, value):
     value_a = value.get("a", "")
     value_b = value.get("b", "")
 
-    ignore_res_types = ["publarda", "aleph_misc", "opal_misc", "l3_misc",
-                        "delphi_misc",
-                        "l3_papers", "delphi_papers", "opal_papers",
-                        "aleph_papers",
-                        ]
+    ignore_res_types = [
+        "publarda",
+        "aleph_misc",
+        "opal_misc",
+        "l3_misc",
+        "delphi_misc",
+        "l3_papers",
+        "delphi_papers",
+        "opal_papers",
+        "aleph_papers",
+        "ps212_papers",
+    ]
 
-    committees = {"scicommpubldrdc": "DRDC", "scicommpubleec": "EEC",
-                  "scicommpublemc": "EmC",
-                  "scicommpublisc": "ISC",
-                  "scicommpublisrc": "ISRC", "scicommpublistc": "ISTC",
-                  "scicommpubllepc": "LEPC",
-                  "scicommpublnprc": "NPRC",
-                  "scicommpublnsc": "NSC", "scicommpublphi": "PH-I",
-                  "scicommpublphiii": "PH-III",
-                  "scicommpublpsc": "PSC",
-                  "scicommpublpscc": "PSCC", "scicommpublscc": "SCC",
-                  "sc_and_ps_advisory_committee": "SC and PS Advisory Committee",
-                  "scicommpublspsc": "SPSC", "scicommpublspslc": "SPSLC",
-                  "scicommpubltcc": "TCC"}
+    committees = {
+        "scicommpubldrdc": "DRDC",
+        "scicommpubleec": "EEC",
+        "scicommpublemc": "EmC",
+        "scicommpublisc": "ISC",
+        "scicommpublisrc": "ISRC",
+        "scicommpublistc": "ISTC",
+        "scicommpubllepc": "LEPC",
+        "scicommpublnprc": "NPRC",
+        "scicommpublnsc": "NSC",
+        "scicommpublphi": "PH-I",
+        "scicommpublphiii": "PH-III",
+        "scicommpublpsc": "PSC",
+        "scicommpublpscc": "PSCC",
+        "scicommpublscc": "SCC",
+        "sc_and_ps_advisory_committee": "SC and PS Advisory Committee",
+        "scicommpublspsc": "SPSC",
+        "scicommpublspslc": "SPSLC",
+        "scicommpubltcc": "TCC",
+    }
 
-    if ((value_a and value_a.lower() in committees.keys())
-        or (value_b and value_b in committees)
+    if (value_a and value_a.lower() in committees.keys()) or (
+        value_b and value_b in committees
     ):
 
         custom_fields = self.get("custom_fields", {})
@@ -536,8 +557,8 @@ def resource_type(self, key, value):
             comm_cf.append({"id": committees[value_b.lower()]})
         self["custom_fields"]["cern:committees"] = comm_cf
         raise IgnoreKey("resource_type")
-    if ((value_a and value_a.lower() in ignore_res_types)
-        or (value_b and value_b in ignore_res_types)
+    if (value_a and value_a.lower() in ignore_res_types) or (
+        value_b and value_b in ignore_res_types
     ):
         raise IgnoreKey("resource_type")
 
@@ -549,14 +570,18 @@ def resource_type(self, key, value):
                 "conferencepaper",
                 "bookchapter",
                 "itcerntalk",
+                "antarescerntalk",
                 "slides",
                 "article",
                 "preprint",
                 "intnotetspubl",
                 "intnoteitpubl",
                 "intnotealephpriv",
+                "intnoteeppubl",
+                "intnotehsepubl",
                 "note",
-                "software"
+                "lcd-notes",
+                "software",
             ]
         )
     }
@@ -581,13 +606,17 @@ def resource_type(self, key, value):
         "conferencepaper": {"id": "publication-conferencepaper"},
         "article": {"id": "publication-article"},
         "note": {"id": "publication-technicalnote"},
+        "lcd-notes": {"id": "publication-technicalnote"},
         "brochure": {"id": "publication-brochure"},
         "itcerntalk": {"id": "presentation"},
+        "antarescerntalk": {"id": "presentation"},
         "slides": {"id": "presentation"},
         "peri": {"id": "publication-periodical"},
         "intnoteitpubl": {"id": "publication-technicalnote"},
         "intnotealephpriv": {"id": "publication-technicalnote"},
         "intnotetspubl": {"id": "publication-technicalnote"},
+        "intnoteeppubl": {"id": "publication-technicalnote"},
+        "intnotehsepubl": {"id": "publication-technicalnote"},
         "bookchapter": {"id": "publication-section"},
         "cnlissue": {"id": "publication-periodicalissue"},
         "cnlarticle": {"id": "publication-periodicalarticle"},
