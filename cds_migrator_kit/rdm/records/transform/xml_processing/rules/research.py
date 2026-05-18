@@ -642,6 +642,11 @@ def resource_type(self, key, value):
         "progress report": {"id": "publication-report"},
         "poster": {"id": "poster"},
         "software": {"id": "software"},
+        "scicommpubllhcc": {"id": "publication-article"},
+        # TODO: is this correct? conference note is a conference proceeding?
+        "conferencenote": {"id": "publication-conferenceproceeding"},
+        "slide": {"id": "presentation"},
+        "faser_papers": {"id": "publication-article"},
     }
 
     try:
