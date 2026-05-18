@@ -103,11 +103,25 @@ def process_contributors(key, value, orcid_subfield="k"):
         _affiliations = force_list(value.get("t", ""))
         affiliations = []
         # just to avoid the missing rule exception
-        text = value.get("u")
+        text = value.get("u") or value.get("v")
+        grid_value = None
         for aff in _affiliations:
             if aff:
+                if aff.startswith("GRID:"):
+                    grid_value = aff
+                    continue
                 aff_entry = aff.replace("ROR:", "")
-                affiliations.append(normalize_ror(aff_entry))
+                try:
+                    normalized_ror = normalize_ror(aff_entry)
+                    affiliations.append(normalized_ror)
+                except Exception:
+                    raise UnexpectedValue(field=key, subfield="t", value=aff_entry)
+        # Affiliation priority: ROR > text > error on GRID-only.
+        if not affiliations and grid_value:
+            if text:
+                affiliations = get_contributor_affiliations(value) or []
+            else:
+                raise UnexpectedValue(field=key, subfield="t", value=grid_value, message="Grid value found but no ROR value found")
     else:
         affiliations = get_contributor_affiliations(value)
 

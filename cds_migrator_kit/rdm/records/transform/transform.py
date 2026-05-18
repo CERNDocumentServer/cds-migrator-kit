@@ -604,7 +604,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "cern:accelerators", []
             )
             for accelerator in accelerators:
-                if accelerator.lower().strip() in ["not applicable", "xx"]:
+                if accelerator.lower().strip() in ["not applicable", "xx", "fermi"]:
                     continue
                 result = search_vocabulary(accelerator, "accelerators")
                 if result and result not in custom_fields_dict["cern:accelerators"]:
