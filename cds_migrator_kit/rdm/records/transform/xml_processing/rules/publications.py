@@ -22,16 +22,12 @@ from ...config import (
 from ...models.base_publication_record import rdm_base_publication_model as model
 from .base import licenses as _base_licenses
 from .base import normalize
-from .base import note as _base_note
-from .base import urls as _base_urls
 
 # Unwrapped base functions (strip @for_each_value to avoid double-wrapping).
 # licenses also has @filter_values beneath @for_each_value, so two levels deep.
 _raw_licenses = (
     _base_licenses.__wrapped__
 )  # filter_values(raw) — handles None filtering
-_raw_note = _base_note.__wrapped__  # raw note function
-_raw_urls = _base_urls.__wrapped__  # raw urls function
 
 _FUNDING_MODEL_MAP = {
     "scoap3": "scoap3",
@@ -40,9 +36,6 @@ _FUNDING_MODEL_MAP = {
     "cern-apc": "cern-apc",
     "other": "other",
 }
-
-# Lower number = higher priority
-_OA_LEVEL_PRIORITY = {"gold": 0, "bronze": 1, "green": 2, "closed": 3}
 
 
 def _sub(v, code):
@@ -284,48 +277,23 @@ def journal(self, key, value):
 
 @model.over("_oa_license", "^540__", override=True)
 def oa_level_from_license(self, key, value):
-    """Detect OA level and funding model; also runs base license logic for rights.
+    """Detect funding model; also runs base license logic for rights.
 
-    540__a: license identifier ('CC BY', 'CC-BY' → gold if 540__3='publication')
-    540__f: 'Bronze' → bronze OA level;
-            'SCOAP3'|'Collective'|'CERN-RP'|'CERN-APC'|'Other' → funding model
-    540__3: 'publication' required for gold; 'preprint' alone → green
+    540__f: 'SCOAP3'|'Collective'|'CERN-RP'|'CERN-APC'|'Other' → funding model
     """
     _custom_fields = self.get("custom_fields", {})
     rights = self.get("rights", [])
 
     for v in force_list(value):
         qualifier = _sub(v, "f").strip()
-        scope = _sub(v, "3").strip().lower()
-
-        # Check ALL 'a' subfields: dojson packs repeated subfields as a tuple.
-        a_vals = force_list(v.get("a")) or ()
-        is_cc_by = any(a.strip().lower() in ["cc by", "cc-by"] for a in a_vals)
-        is_bronze = qualifier.lower() == "bronze"
-        is_publication_scope = scope == "publication"
-        is_preprint_scope = scope == "preprint"
-
         funding_model_id = _FUNDING_MODEL_MAP.get(qualifier.lower())
-
-        current_level = (_custom_fields.get("cern:oa_level") or {}).get("id")
-        current_priority = _OA_LEVEL_PRIORITY.get(current_level, 99)
-
-        new_level = None
-        if is_cc_by and is_publication_scope:
-            new_level = "gold"
-        elif is_bronze:
-            new_level = "bronze"
-        elif is_preprint_scope:
-            new_level = "green"
-
-        if new_level and _OA_LEVEL_PRIORITY[new_level] < current_priority:
-            _custom_fields["cern:oa_level"] = {"id": new_level}
 
         if funding_model_id and not _custom_fields.get("cern:oa_funding_model"):
             _custom_fields["cern:oa_funding_model"] = {"id": funding_model_id}
 
         # Base license logic: expand repeated 'a' subfields into individual calls
         # because clean_val raises UnexpectedValue for tuple values by default.
+        a_vals = force_list(v.get("a")) or ()
         for a_val in a_vals:
             if not a_val:
                 continue
@@ -337,65 +305,6 @@ def oa_level_from_license(self, key, value):
     if rights:
         self["rights"] = rights
     raise IgnoreKey("_oa_license")
-
-
-@model.over("_oa_annual_report", "^595__", override=True)
-def oa_level_from_annual_report(self, key, value):
-    """Detect 'For annual report' → closed OA; also runs base note logic for internal_notes.
-
-    595__a = 'For annual report': tentatively marks closed access.
-    If gold/bronze/green was already set by 540 rules, this is skipped.
-    The 8564 rule can still upgrade tentative 'closed' to green.
-    """
-    for v in force_list(value):
-        note_text = _sub(v, "a").strip().lower()
-        if note_text == "for annual report":
-            _custom_fields = self.get("custom_fields", {})
-            if not _custom_fields.get("cern:oa_level"):
-                _custom_fields["cern:oa_level"] = {"id": "closed"}
-                self["custom_fields"] = _custom_fields
-
-        # Delegate base note logic — raises IgnoreKey("internal_notes") on success
-        try:
-            _raw_note(self, key, v)
-        except IgnoreKey:
-            pass
-
-    raise IgnoreKey("_oa_annual_report")
-
-
-@model.over("_oa_url", "^8564[1_]", override=True)
-def oa_level_from_url(self, key, value):
-    """Detect green OA from preprint/manuscript file links; also runs base URL logic.
-
-    8564_y: 'preprint' or 'manuscript' → green OA level.
-    Overrides tentative 'closed' (from 595 rule) but not gold/bronze/green already set.
-    """
-    rel_ids = self.get("related_identifiers", [])
-
-    for v in force_list(value):
-        sub_y = _sub(v, "y").strip().lower()
-        if sub_y in ["preprint", "manuscript"]:
-            _custom_fields = self.get("custom_fields", {})
-            current_level = (_custom_fields.get("cern:oa_level") or {}).get("id")
-            current_priority = _OA_LEVEL_PRIORITY.get(current_level, 99)
-            if _OA_LEVEL_PRIORITY["green"] < current_priority:
-                _custom_fields["cern:oa_level"] = {"id": "green"}
-                self["custom_fields"] = _custom_fields
-
-        # Delegate base URL logic — requires self["recid"] which is always set
-        # in production (001 field), but may be absent in unit tests.
-        if "recid" in self:
-            try:
-                url_result = _raw_urls(self, key, v)
-                if url_result and url_result not in rel_ids:
-                    rel_ids.append(url_result)
-            except IgnoreKey:
-                pass
-
-    if rel_ids:
-        self["related_identifiers"] = rel_ids
-    raise IgnoreKey("_oa_url")
 
 
 @model.over("access_grants", "^506[1_]_")

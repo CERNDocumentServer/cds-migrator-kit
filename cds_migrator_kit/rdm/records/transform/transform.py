@@ -641,7 +641,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "cern:beams": [],
             "cern:programmes": field_programmes(json_entry),
             "cern:committees": _cf.get("cern:committees"),
-            "cern:oa_level": _cf.get("cern:oa_level"),
             "cern:oa_funding_model": _cf.get("cern:oa_funding_model"),
             "thesis:thesis": _cf.get("thesis:thesis", {}),
             "journal:journal": _cf.get("journal:journal", {}),
