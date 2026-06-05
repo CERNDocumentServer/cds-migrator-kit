@@ -7,11 +7,10 @@ For the full list of settings and their values, see
 https://inveniordm.docs.cern.ch/reference/configuration/.
 """
 
-from pathlib import Path
-
 import json
 import os
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from cds_rdm import schemes
 from cds_rdm.clc_sync.services.components import ClcSyncComponent

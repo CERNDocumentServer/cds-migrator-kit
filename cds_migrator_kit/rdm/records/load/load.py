@@ -28,8 +28,8 @@ from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_records.systemfields.relations import InvalidRelationValue
 from marshmallow import ValidationError
-from sqlalchemy.exc import IntegrityError
 from psycopg2.errors import UniqueViolation
+from sqlalchemy.exc import IntegrityError
 
 from cds_migrator_kit.errors import (
     CDSMigrationException,

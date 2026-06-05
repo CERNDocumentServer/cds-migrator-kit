@@ -17,9 +17,7 @@ from cds_migrator_kit.rdm.records.transform.xml_processing.rules.publications im
     isbn,
     issn,
     journal,
-    oa_level_from_annual_report,
     oa_level_from_license,
-    oa_level_from_url,
     udc,
 )
 
@@ -361,106 +359,39 @@ class TestJournal:
         assert journal_info["issue"] == "5"
 
 
-class TestOaLevelFromLicense:
+class TestLicenseAndFundingFrom540:
     """Tests for oa_level_from_license (540__ rule)."""
 
     def _cf(self, record):
         return record.get("custom_fields", {})
 
-    # --- Gold ---
-
-    def test_gold_cc_by_with_publication_scope(self):
+    def test_cc_by_license_added_to_rights(self):
         record = {"custom_fields": {}}
         with pytest.raises(IgnoreKey):
             oa_level_from_license(record, "540__", {"a": "CC BY", "3": "publication"})
-        assert self._cf(record)["cern:oa_level"] == {"id": "gold"}
+        assert record["rights"] == [{"id": "cc-by"}]
+        assert "cern:oa_level" not in self._cf(record)
 
-    def test_gold_cc_hyphen_by_with_publication_scope(self):
+    def test_cc_hyphen_by_license_added_to_rights(self):
         record = {"custom_fields": {}}
         with pytest.raises(IgnoreKey):
             oa_level_from_license(record, "540__", {"a": "CC-BY", "3": "publication"})
-        assert self._cf(record)["cern:oa_level"] == {"id": "gold"}
-
-    def test_cc_by_without_publication_scope_is_not_gold(self):
-        """CC BY alone (no 540__3='publication') should not set gold."""
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_license(record, "540__", {"a": "CC BY"})
+        assert record["rights"] == [{"title": {"en": "CC-BY"}}]
         assert "cern:oa_level" not in self._cf(record)
 
-    def test_cc_by_with_preprint_scope_is_not_gold(self):
-        """CC BY with 540__3='preprint' → green, not gold."""
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_license(record, "540__", {"a": "CC BY", "3": "preprint"})
-        assert self._cf(record).get("cern:oa_level") == {"id": "green"}
-
-    def test_gold_takes_priority_over_bronze(self):
-        """Gold in second 540 tag overrides bronze already set."""
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_license(
-                record,
-                "540__",
-                [{"f": "Bronze"}, {"a": "CC BY", "3": "publication"}],
-            )
-        assert self._cf(record)["cern:oa_level"] == {"id": "gold"}
-
-    # --- Bronze ---
-
-    def test_bronze(self):
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_license(record, "540__", {"f": "Bronze"})
-        assert self._cf(record)["cern:oa_level"] == {"id": "bronze"}
-
-    def test_bronze_case_insensitive(self):
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_license(record, "540__", {"f": "bronze"})
-        assert self._cf(record)["cern:oa_level"] == {"id": "bronze"}
-
-    def test_bronze_does_not_override_gold(self):
-        record = {"custom_fields": {"cern:oa_level": {"id": "gold"}}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_license(record, "540__", {"f": "Bronze"})
-        assert self._cf(record)["cern:oa_level"] == {"id": "gold"}
-
-    # --- Green ---
-
-    def test_green_from_preprint_scope(self):
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_license(record, "540__", {"3": "Preprint"})
-        assert self._cf(record)["cern:oa_level"] == {"id": "green"}
-
-    def test_green_preprint_scope_case_insensitive(self):
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_license(record, "540__", {"3": "preprint"})
-        assert self._cf(record)["cern:oa_level"] == {"id": "green"}
-
-    def test_green_does_not_override_bronze(self):
-        record = {"custom_fields": {"cern:oa_level": {"id": "bronze"}}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_license(record, "540__", {"3": "preprint"})
-        assert self._cf(record)["cern:oa_level"] == {"id": "bronze"}
-
-    # --- No OA marker ---
-
-    def test_no_oa_marker_sets_nothing(self):
+    def test_non_standard_license_added_to_rights(self):
         record = {"custom_fields": {}}
         with pytest.raises(IgnoreKey):
             oa_level_from_license(record, "540__", {"a": "Some other license"})
+        assert record["rights"] == [{"title": {"en": "Some other license"}}]
         assert "cern:oa_level" not in self._cf(record)
-
-    # --- Funding model ---
 
     def test_funding_model_scoap3(self):
         record = {"custom_fields": {}}
         with pytest.raises(IgnoreKey):
             oa_level_from_license(record, "540__", {"f": "SCOAP3"})
         assert self._cf(record)["cern:oa_funding_model"] == {"id": "scoap3"}
+        assert "cern:oa_level" not in self._cf(record)
 
     def test_funding_model_collective(self):
         record = {"custom_fields": {}}
@@ -487,11 +418,11 @@ class TestOaLevelFromLicense:
         assert self._cf(record)["cern:oa_funding_model"] == {"id": "other"}
 
     def test_bronze_does_not_set_funding_model(self):
-        """Bronze is an OA level, not a funding model."""
         record = {"custom_fields": {}}
         with pytest.raises(IgnoreKey):
             oa_level_from_license(record, "540__", {"f": "Bronze"})
         assert "cern:oa_funding_model" not in self._cf(record)
+        assert "cern:oa_level" not in self._cf(record)
 
     def test_funding_model_not_overwritten_by_second_tag(self):
         """First funding model found wins."""
@@ -501,150 +432,3 @@ class TestOaLevelFromLicense:
                 record, "540__", [{"f": "SCOAP3"}, {"f": "Collective"}]
             )
         assert self._cf(record)["cern:oa_funding_model"] == {"id": "scoap3"}
-
-
-class TestOaLevelFromAnnualReport:
-    """Tests for oa_level_from_annual_report (595__ rule)."""
-
-    def _cf(self, record):
-        return record.get("custom_fields", {})
-
-    def test_for_annual_report_sets_closed(self):
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_annual_report(record, "595__", {"a": "For annual report"})
-        assert self._cf(record)["cern:oa_level"] == {"id": "closed"}
-
-    def test_for_annual_report_case_insensitive(self):
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_annual_report(record, "595__", {"a": "for annual report"})
-        assert self._cf(record)["cern:oa_level"] == {"id": "closed"}
-
-    def test_does_not_override_existing_gold(self):
-        record = {"custom_fields": {"cern:oa_level": {"id": "gold"}}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_annual_report(record, "595__", {"a": "For annual report"})
-        assert self._cf(record)["cern:oa_level"] == {"id": "gold"}
-
-    def test_does_not_override_existing_bronze(self):
-        record = {"custom_fields": {"cern:oa_level": {"id": "bronze"}}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_annual_report(record, "595__", {"a": "For annual report"})
-        assert self._cf(record)["cern:oa_level"] == {"id": "bronze"}
-
-    def test_does_not_override_existing_green(self):
-        record = {"custom_fields": {"cern:oa_level": {"id": "green"}}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_annual_report(record, "595__", {"a": "For annual report"})
-        assert self._cf(record)["cern:oa_level"] == {"id": "green"}
-
-    def test_other_595_note_sets_nothing(self):
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_annual_report(record, "595__", {"a": "Not for annual report"})
-        assert "cern:oa_level" not in self._cf(record)
-
-    def test_unrelated_note_sets_nothing(self):
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_annual_report(record, "595__", {"a": "Some random note"})
-        assert "cern:oa_level" not in self._cf(record)
-
-
-class TestOaLevelFromUrl:
-    """Tests for oa_level_from_url (8564 rule)."""
-
-    def _cf(self, record):
-        return record.get("custom_fields", {})
-
-    def test_preprint_url_sets_green(self):
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_url(
-                record,
-                "8564_",
-                {"y": "preprint", "u": "http://example.com/preprint.pdf"},
-            )
-        assert self._cf(record)["cern:oa_level"] == {"id": "green"}
-
-    def test_manuscript_url_sets_green(self):
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_url(
-                record, "8564_", {"y": "manuscript", "u": "http://example.com/ms.pdf"}
-            )
-        assert self._cf(record)["cern:oa_level"] == {"id": "green"}
-
-    def test_preprint_url_case_insensitive(self):
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_url(
-                record,
-                "8564_",
-                {"y": "Preprint", "u": "http://example.com/preprint.pdf"},
-            )
-        assert self._cf(record)["cern:oa_level"] == {"id": "green"}
-
-    def test_preprint_overrides_closed(self):
-        """A preprint link should upgrade a tentative 'closed' to green."""
-        record = {"custom_fields": {"cern:oa_level": {"id": "closed"}}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_url(
-                record,
-                "8564_",
-                {"y": "preprint", "u": "http://example.com/preprint.pdf"},
-            )
-        assert self._cf(record)["cern:oa_level"] == {"id": "green"}
-
-    def test_manuscript_overrides_closed(self):
-        record = {"custom_fields": {"cern:oa_level": {"id": "closed"}}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_url(
-                record, "8564_", {"y": "manuscript", "u": "http://example.com/ms.pdf"}
-            )
-        assert self._cf(record)["cern:oa_level"] == {"id": "green"}
-
-    def test_preprint_does_not_override_gold(self):
-        record = {"custom_fields": {"cern:oa_level": {"id": "gold"}}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_url(
-                record,
-                "8564_",
-                {"y": "preprint", "u": "http://example.com/preprint.pdf"},
-            )
-        assert self._cf(record)["cern:oa_level"] == {"id": "gold"}
-
-    def test_preprint_does_not_override_bronze(self):
-        record = {"custom_fields": {"cern:oa_level": {"id": "bronze"}}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_url(
-                record,
-                "8564_",
-                {"y": "preprint", "u": "http://example.com/preprint.pdf"},
-            )
-        assert self._cf(record)["cern:oa_level"] == {"id": "bronze"}
-
-    def test_preprint_does_not_override_green(self):
-        record = {"custom_fields": {"cern:oa_level": {"id": "green"}}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_url(
-                record,
-                "8564_",
-                {"y": "preprint", "u": "http://example.com/preprint.pdf"},
-            )
-        assert self._cf(record)["cern:oa_level"] == {"id": "green"}
-
-    def test_non_oa_url_label_sets_nothing(self):
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_url(
-                record, "8564_", {"y": "fulltext", "u": "http://example.com/paper.pdf"}
-            )
-        assert "cern:oa_level" not in self._cf(record)
-
-    def test_no_y_subfield_sets_nothing(self):
-        record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_url(record, "8564_", {"u": "http://example.com/paper.pdf"})
-        assert "cern:oa_level" not in self._cf(record)
