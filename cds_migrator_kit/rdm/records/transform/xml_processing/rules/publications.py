@@ -431,6 +431,7 @@ def resource_type(self, key, value):
         "opal_papers",
         "aleph_papers",
         "ps212_papers",
+        "slintnote",
     ]
 
     committees = {
@@ -477,6 +478,7 @@ def resource_type(self, key, value):
         for i, v in enumerate(
             [
                 "conferencepaper",
+                "proceedings",
                 "bookchapter",
                 "itcerntalk",
                 "antarescerntalk",
@@ -513,6 +515,7 @@ def resource_type(self, key, value):
     mapping = {
         "preprint": {"id": "publication-preprint"},
         "conferencepaper": {"id": "publication-conferencepaper"},
+        "proceedings": {"id": "publication-conferenceproceeding"},
         "article": {"id": "publication-article"},
         "note": {"id": "publication-technicalnote"},
         "lcd-notes": {"id": "publication-technicalnote"},

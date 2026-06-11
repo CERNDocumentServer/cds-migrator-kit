@@ -155,10 +155,6 @@ def subjects(self, key, value):
 
     is_controlled_subject = key == "65017" and (scheme in CONTROLLED_SUBJECTS_SCHEMES)
 
-    # Drop other subjects
-    if val_a.lower().strip() == "other subjects":
-        raise IgnoreKey("subjects")
-
     if type(val_a) is tuple:
         # sometimes keywords are stick in one tag, so they come out as tuple
         s_values = val_a
@@ -176,7 +172,7 @@ def subjects(self, key, value):
         raise IgnoreKey("subjects")
     else:
         subject_value = val_a.strip()
-        if subject_value.lower() == "xx":
+        if subject_value.lower() in ["xx", "other subjects"]:
             raise IgnoreKey("subjects")
         _subjects = self.get("subjects", [])
         # invalid schema = euproject info    scheme = scheme
@@ -314,13 +310,15 @@ def report_number(self, key, value):
     if not identifier:
         if re.findall(udc_pattern, scheme):
             raise IgnoreKey("identifiers")
-        elif scheme.startswith("CM-"):
+        elif scheme.upper().startswith("CM-"):
             # barcode, to drop
             raise IgnoreKey("identifiers")
         elif scheme.upper().startswith("P00"):
             # barcode, to drop
             raise IgnoreKey("identifiers")
         elif scheme.upper() == "CERN LIBRARY":
+            raise IgnoreKey("identifiers")
+        elif scheme.upper().startswith("B00"):
             raise IgnoreKey("identifiers")
         elif scheme.startswith("SCOO"):
             identifier = scheme
@@ -818,6 +816,10 @@ def related_identifiers_787(self, key, value):
             "relation_type": {"id": "references"},
             "resource_type": {"id": "publication-conferencepaper"},
         },
+        "article":{
+            "relation_type": {"id": "references"},
+            "resource_type": {"id": "publication-article"},
+        }
     }
 
     if recid:

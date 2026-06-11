@@ -45,6 +45,11 @@ class RecordModelMissing(CDSMigrationException):
     description = "[Record did not match any available model]"
 
 
+class MultipleModelsMatched(CDSMigrationException):
+    """Multiple models matched exception."""
+
+    description = "[Record matched multiple models]"
+
 class UnexpectedValue(CDSMigrationException):
     """The corresponding value is unexpected."""
 

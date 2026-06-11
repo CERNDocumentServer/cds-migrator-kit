@@ -10,7 +10,9 @@ import logging
 
 import arrow
 from cds_dojson.marc21.utils import create_record
+from cds_dojson.exceptions import MultipleModelsException, ModelMissingException
 
+from cds_migrator_kit.errors import MultipleModelsMatched
 from cds_migrator_kit.transform import migrator_marc21
 from cds_migrator_kit.transform.errors import LossyConversion
 
@@ -74,7 +76,12 @@ class CDSRecordDump:
 
         # exception handlers are passed in this way to avoid overriding
         # .do method implementation
-        json_converted_record = self.dojson_model.do(marc_record)
+        try:
+            json_converted_record = self.dojson_model.do(marc_record)
+        except MultipleModelsException as e:
+            raise MultipleModelsMatched(str(e))
+        except ModelMissingException as e:
+            raise MultipleModelsMatched(str(e))
 
         missing = self.dojson_model.missing(marc_record)
         if missing and self.raise_on_missing_rules:

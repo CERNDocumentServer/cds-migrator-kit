@@ -40,10 +40,10 @@ class MigrationUserAPI(ABC):
             return user
         except IntegrityError as e:
             db.session.rollback()
-            email_username = email.split("@")[0]
+            email_username, domain = email.split("@")[0]
             user = User(
                 email=email,
-                username=f"duplicated_{username}_{email_username}",
+                username=f"duplicated_{username}_{email_username}[at]{domain}",
                 active=False,
             )
             db.session.add(user)

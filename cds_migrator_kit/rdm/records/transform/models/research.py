@@ -41,6 +41,7 @@ class ResearchModel(CdsOverdo):
         "300__a",  # number of pages
         "340__a",  # TODO ignore material?
         "540__3",  # TODO still ignore the material of the license?
+        "540__9",  # TODO still ignore the material of the license?
         "542__3",  # TODO still ignore the material of the license?
         "595__i",  # TODO ??
         "695__e",  # some inspire tag
@@ -50,10 +51,12 @@ class ResearchModel(CdsOverdo):
         "773__x",  # INSPIRE publication note
         "773__t",  # INSPIRE publication note
         "773__0",  # from SIS: can be ignored
+        "773__o",  # from SIS: can be ignored
+        "773__z",  # from SIS: can be ignored
         "8564_8",  # file id
         "8564_s",  # bibdoc id
         "8564_x",  # icon thumbnails sizes
-        # "8564_y",  # file description - done by files dump
+        "8564_y",  # file description - done by files dump, sometimes these are used for open access calculation
         "8564_w",  # system field
         "913__y",  # citation
         "913__v",  # citation
