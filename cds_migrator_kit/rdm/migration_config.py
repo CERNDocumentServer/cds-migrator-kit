@@ -377,7 +377,7 @@ RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES = {
         },
         "inis": {
             "label": _("INIS"),
-            "validator": schemes.is_inspire,
+            "validator": schemes.is_inis,
             "datacite": "INIS",
         },
         "indico": {
