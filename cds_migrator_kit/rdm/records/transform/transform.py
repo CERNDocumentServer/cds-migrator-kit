@@ -907,11 +907,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                     "meta": file["status"],
                 }
 
-        def compute_files(file_dump, versions_dict):
-            legacy_path_root = Path("/opt/cdsweb/var/data/files/")
-            tmp_eos_root = Path(self.files_dump_dir)
-            full_path = Path(file_dump["full_path"])
-
+        def should_skip_file(file_dump):
             if file_dump["subformat"] in FILE_SUBFORMATS_TO_DROP:
                 self.migration_logger.add_information(
                     str(file_dump["recid"]),
@@ -920,7 +916,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                         "value": file_dump["full_name"],
                     },
                 )
-                return
+                return True
 
             if not self.plots and file_dump["type"] == "Plot":
                 # skip figures if configuration says so
@@ -931,7 +927,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                         "value": file_dump["full_name"],
                     },
                 )
-                return
+                return True
             if file_dump["hidden"]:
                 # skip hidden files
                 self.migration_logger.add_information(
@@ -941,6 +937,13 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                         "value": file_dump["full_name"],
                     },
                 )
+                return True
+            return False
+
+        def compute_files(file_dump, versions_dict):
+            legacy_path_root = Path("/opt/cdsweb/var/data/files/")
+            tmp_eos_root = Path(self.files_dump_dir)
+            full_path = Path(file_dump["full_path"])
 
             versions_dict[file_dump["version"]]["files"].update(
                 {
@@ -978,6 +981,8 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         _files = entry["files"]
         record_access = record["access"]
         for file in _files:
+            if should_skip_file(file):
+                continue
             if file["version"] not in versions:
                 versions[file["version"]] = {
                     "files": {},
@@ -996,7 +1001,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         # we need to preserve the file B for version 2 of the record
         for version in versions.keys():
             versioned_files |= versions.get(version, {}).get("files")
-            versions[version]["files"] = versioned_files
+            versions[version]["files"] = deepcopy(versioned_files)
         publication_date = record["json"]["metadata"]["publication_date"]
 
         if not versioned_files:
