@@ -74,8 +74,14 @@ def eco_report_number(self, key, value):
     if key == "088__" and "@" in identifier:
         pass
     else:
-        _identifier = report_number(self, key, value)
+        provenance = value.get("9", "")
         identifiers = self.get("identifiers", [])
+        if provenance == "submitter" and identifier.startswith("FERMILAB-POSTER"):
+            new_id = {"identifier": identifier, "scheme": "cdsrn"}
+            if new_id not in identifiers:
+                identifiers.append(new_id)
+                raise IgnoreKey("eco_report_number")
+        _identifier = report_number(self, key, value)
 
         if _identifier and _identifier not in identifiers:
             identifiers += _identifier

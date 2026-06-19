@@ -699,7 +699,7 @@ records:
       files_dump_dir: cds_migrator_kit/rdm/data/eco/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - "c8ab44fd-f130-4e52-9bff-70de14913bde"
+        - "a0cc61ae-c4c5-4a52-b2b1-c30d9195876d"
 comments:
   faser-drafts:
     dir_path: /migration/faser-drafts/comments/
