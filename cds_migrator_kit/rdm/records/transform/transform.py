@@ -35,7 +35,8 @@ from cds_migrator_kit.errors import (
     MissingRequiredField,
     RecordFlaggedCuration,
     RestrictedFileDetected,
-    UnexpectedValue, MultipleModelsMatched,
+    UnexpectedValue,
+    MultipleModelsMatched,
 )
 from cds_migrator_kit.rdm.migration_config import (
     RDM_RECORDS_IDENTIFIERS_SCHEMES,
@@ -530,7 +531,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 "cern:experiments", []
             )
             for experiment in experiments:
-                if experiment.lower().strip() in ["not applicable", "select:"]:
+                if experiment.lower().strip() in ["not applicable", "xx", "select:"]:
                     continue
                 result = search_vocabulary(experiment, "experiments")
                 if result and result not in custom_fields_dict["cern:experiments"]:
@@ -847,7 +848,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             UnexpectedValue,
             ManualImportRequired,
             MissingRequiredField,
-            MultipleModelsMatched
+            MultipleModelsMatched,
         ) as e:
             migration_logger.add_log(e, record=entry)
 
