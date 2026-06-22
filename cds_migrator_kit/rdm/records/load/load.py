@@ -61,6 +61,7 @@ class CDSRecordServiceLoad(Load):
         dry_run=False,
         legacy_pids_to_redirect=None,
         collection=None,
+        update_publication_date=True,
         migration_logger=None,
         record_state_logger=None,
     ):
@@ -69,6 +70,7 @@ class CDSRecordServiceLoad(Load):
         self.legacy_pids_to_redirect = {}
         self.clc_sync = False
         self.collection = collection
+        self.update_publication_date = update_publication_date
         self.migration_logger = migration_logger
         self.record_state_logger = record_state_logger
         if legacy_pids_to_redirect is not None:
@@ -455,7 +457,6 @@ class CDSRecordServiceLoad(Load):
         """Create and process draft before publish."""
         versions = entry["versions"]
         files = versions[version]["files"]
-        publication_date = versions[version]["publication_date"]
         access = versions[version]["access"]
 
         if version == 1 or (version > 1 and draft is None):
@@ -487,6 +488,12 @@ class CDSRecordServiceLoad(Load):
                 identity, draft["id"], uow=uow
             )
             draft_dict = draft.to_dict()
+            if not self.update_publication_date:
+                publication_date = arrow.get(
+                    entry["record"]["json"]["metadata"]["publication_date"]
+                )
+            else:
+                publication_date = versions[version]["publication_date"]
             missing_data = {
                 **draft_dict,
                 "metadata": {

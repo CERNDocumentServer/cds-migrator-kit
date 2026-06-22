@@ -35,7 +35,8 @@ from cds_migrator_kit.errors import (
     MissingRequiredField,
     RecordFlaggedCuration,
     RestrictedFileDetected,
-    UnexpectedValue, MultipleModelsMatched,
+    UnexpectedValue,
+    MultipleModelsMatched,
 )
 from cds_migrator_kit.rdm.migration_config import (
     RDM_RECORDS_IDENTIFIERS_SCHEMES,
@@ -847,7 +848,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             UnexpectedValue,
             ManualImportRequired,
             MissingRequiredField,
-            MultipleModelsMatched
+            MultipleModelsMatched,
         ) as e:
             migration_logger.add_log(e, record=entry)
 
