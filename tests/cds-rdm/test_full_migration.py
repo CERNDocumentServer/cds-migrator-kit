@@ -241,11 +241,13 @@ def multiple_versions(record, record_state):
             )
             dict_first_version = first_version.to_dict()
             # It matches record created date instead of the file creation date
-            assert dict_first_version["created"] == "2024-02-19T12:42:58+00:00"
+            assert dict_first_version["created"] == "2024-02-19T13:51:23+00:00"
+            assert dict_first_version["metadata"]["publication_date"] == "2022-08-31"
 
     assert dict_rec["versions"]["index"] == 2
     # Check that the record creation date matches the files creation date
     assert dict_rec["created"] == "2024-02-19T12:47:01+00:00"
+    assert dict_rec["metadata"]["publication_date"] == "2024-02-19"
 
 
 def multiple_versions_with_cs(record):

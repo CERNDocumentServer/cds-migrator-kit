@@ -58,9 +58,9 @@ class Runner:
                 stream_config = config.get(definition.name) or {}
                 self.data_dir = Path(stream_config[collection].get("data_dir"))
                 self.restricted = stream_config[collection].get("restricted", False)
-                self.update_publication_date = stream_config[collection].get(
-                    "update_publication_date", True
-                )
+                self.update_new_version_publication_date = stream_config[
+                    collection
+                ].get("update_new_version_publication_date", True)
                 self.access_grants_view = stream_config[collection].get(
                     "access_grants_view", False
                 )
@@ -115,7 +115,7 @@ class Runner:
                             tmp_dir=tmp_dir,
                             dry_run=dry_run,
                             collection=collection,
-                            update_publication_date=self.update_publication_date,
+                            update_new_version_publication_date=self.update_new_version_publication_date,
                             migration_logger=self.migration_logger,
                             record_state_logger=self.record_state_logger,
                             **stream_config[collection].get("load", {}),
