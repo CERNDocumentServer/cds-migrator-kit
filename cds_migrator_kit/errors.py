@@ -50,6 +50,7 @@ class MultipleModelsMatched(CDSMigrationException):
 
     description = "[Record matched multiple models]"
 
+
 class UnexpectedValue(CDSMigrationException):
     """The corresponding value is unexpected."""
 
