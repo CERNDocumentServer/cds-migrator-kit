@@ -61,7 +61,7 @@ class CDSRecordServiceLoad(Load):
         dry_run=False,
         legacy_pids_to_redirect=None,
         collection=None,
-        update_publication_date=True,
+        update_new_version_publication_date=True,
         migration_logger=None,
         record_state_logger=None,
     ):
@@ -70,7 +70,7 @@ class CDSRecordServiceLoad(Load):
         self.legacy_pids_to_redirect = {}
         self.clc_sync = False
         self.collection = collection
-        self.update_publication_date = update_publication_date
+        self.update_new_version_publication_date = update_new_version_publication_date
         self.migration_logger = migration_logger
         self.record_state_logger = record_state_logger
         if legacy_pids_to_redirect is not None:
@@ -488,7 +488,7 @@ class CDSRecordServiceLoad(Load):
                 identity, draft["id"], uow=uow
             )
             draft_dict = draft.to_dict()
-            if not self.update_publication_date:
+            if not self.update_new_version_publication_date:
                 publication_date = arrow.get(
                     entry["record"]["json"]["metadata"]["publication_date"]
                 )
@@ -534,7 +534,7 @@ class CDSRecordServiceLoad(Load):
             )
             # Run after publish fixes
             self._after_publish(identity, published_record, entry, version, uow)
-        records.append(published_record._record)
+            records.append(published_record._record)
 
         if records:
             record_state_context = self._load_record_state(legacy_recid, records)

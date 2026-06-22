@@ -116,6 +116,21 @@ def config(mocker, community, orcid_name_data):
                         "legacy_pids_to_redirect": "cds_migrator_kit/rdm/data/summer_student_reports/duplicated_pids.json"
                     },
                 },
+                "sspn_publication_date_consistency": {
+                    "data_dir": "tests/cds-rdm/data/sspn",
+                    "tmp_dir": "tests/cds-rdm/data/sspn",
+                    "log_dir": "tests/cds-rdm/data/log/sspn",
+                    "extract": {"dirpath": "tests/cds-rdm/data/sspn/dumps/"},
+                    "update_new_version_publication_date": False,
+                    "transform": {
+                        "files_dump_dir": "tests/cds-rdm/data/sspn/files/",
+                        "missing_users": "tests/cds-rdm/data/users",
+                        "communities_ids": [f"{str(community.id)}"],
+                    },
+                    "load": {
+                        "legacy_pids_to_redirect": "cds_migrator_kit/rdm/data/summer_student_reports/duplicated_pids.json"
+                    },
+                },
                 "bulletin_issue": {
                     "data_dir": "tests/cds-rdm/data/bulletin_issue",
                     "tmp_dir": "tests/cds-rdm/data/bulletin_issue",
