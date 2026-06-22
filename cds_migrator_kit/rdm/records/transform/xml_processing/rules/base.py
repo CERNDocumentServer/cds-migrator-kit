@@ -73,8 +73,8 @@ def created(self, key, value):
         source = clean_val("s", value, str)
         # h = human catalogued
         # n = script catalogued or via submission
-        if source not in ["n", "h", "m", "r"]:
-            raise UnexpectedValue(subfield="s", field=key, value=value)
+        if source not in ["n", "h", "m", "r", "d"]:
+            raise UnexpectedValue(subfield="s", field=key, value=source)
     date_values = value.get("w")
     if not date_values or not date_values[0]:
         return datetime.date.today().isoformat()
@@ -816,10 +816,14 @@ def related_identifiers_787(self, key, value):
             "relation_type": {"id": "references"},
             "resource_type": {"id": "publication-conferencepaper"},
         },
-        "article":{
+        "article": {
             "relation_type": {"id": "references"},
             "resource_type": {"id": "publication-article"},
-        }
+        },
+        "paper": {
+            "relation_type": {"id": "references"},
+            "resource_type": {"id": "publication-article"},
+        },
     }
 
     if recid:

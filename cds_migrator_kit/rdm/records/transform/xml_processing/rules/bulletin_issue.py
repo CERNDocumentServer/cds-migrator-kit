@@ -197,7 +197,7 @@ def subjects_bulletin(self, key, value):
 @for_each_value
 def urls_bulletin(self, key, value):
     content_type = value.get("x", "")
-    if content_type == "icon":
+    if "icon" in content_type:
         # ignore icon urls (conditionally ignoring by accessing the value
         url_q = value.get("q", "")
         url_u = value.get("u", "")

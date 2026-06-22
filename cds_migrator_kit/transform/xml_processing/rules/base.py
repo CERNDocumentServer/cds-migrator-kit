@@ -75,6 +75,8 @@ def languages(self, key, value):
     if lang:
         lang = lang.lower()
     try:
+        if lang == "fre":
+            lang = "fra"
         # If it's a 2-letter code
         if len(lang) == 2:
             lang_obj = pycountry.languages.get(alpha_2=lang)
