@@ -1,41 +1,35 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2025 CERN.
+# Copyright (C) 2026 CERN.
 #
 # CDS-RDM is free software; you can redistribute it and/or modify it under
 # the terms of the MIT License; see LICENSE file for more details.
 
-"""CDS-RDM CMS note model."""
-from cds_migrator_kit.rdm.records.transform.models.base_record import (
-    rdm_base_record_model,
+"""CDS-RDM Bulletin Drafts model."""
+
+from cds_migrator_kit.rdm.records.transform.models.bulletin_issue import (
+    bull_issue_model,
+)
+from cds_migrator_kit.rdm.records.transform.models.staff_association import (
+    staff_association_model,
 )
 from cds_migrator_kit.transform.overdo import CdsOverdo
 
 
-class BulletinIssueModel(CdsOverdo):
-    """Translation model for Bulletin Issue."""
+class BulletinDraftsModel(CdsOverdo):
+    """Translation model for Bulletin Drafts."""
 
     __query__ = """(
-        980__:CERN_BULLETIN_ISSUE OR
-        980__:CERN_BULLETIN_ARTICLE OR
-        980__:BULLETINGENERAL OR
-        980__:BULLETINEVENTS OR
-        980__:BULLETINANNOUNCE OR
-        980__:BULLETINBREAKING OR
-        980__:BULLETINNEWS OR
-        980__:BULLETINOFFICIAL OR
-        980__:BULLETINPENSION OR
-        980__:BULLETINTRAINING OR
-        980__:BULLETINSOCIAL
+        980__:"BULLETINSTAFFDRAFT" OR
+        980__:"BULLETINNEWSDRAFT" OR
+        980__:"BULLETINOFFICIALDRAFT" OR
+        980__:"BULLETINTRAININGDRAFT" OR
+        980__:"BULLETINANNOUNCEDRAFT" OR
+        980__:"BULLETINEVENTSDRAFT"
     )
-    -980__:BULLETINSTAFFDRAFT
-    -980__:BULLETINNEWSDRAFT
-    -980__:BULLETINOFFICIALDRAFT
-    -980__:BULLETINTRAININGDRAFT
-    -980__:BULLETINANNOUNCEDRAFT
-    -980__:BULLETINEVENTSDRAFT
     """
 
+    # Copy-pasted from bulletin issue
     __ignore_keys__ = {
         "0248_a",
         "0248_p",
@@ -44,7 +38,6 @@ class BulletinIssueModel(CdsOverdo):
         "110__a",  # corporate author, always CERN, safe to ignore
         "300__a",  # number of pages
         "336__a",  # DM metadata
-        "506__m",  # 2120833, ignored with confirmation from IR-ECO-CO
         "5831_2",  # DM tags 1054836
         "5831_5",  # DM tags
         "5831_a",  # DM tags
@@ -61,8 +54,7 @@ class BulletinIssueModel(CdsOverdo):
         "583__a",  # DM tags
         "583__c",  # DM tags
         "583__z",  # DM tags
-        "590__b",  # staff association? value, redundant with language
-        "594__a",  # specifies if the related articles menu has a separator or not (display feature)
+        "594__a",  # values: "no", "pub"
         "650172",  # scheme of subjects
         "6531_9",  # scheme of keywords
         "691__a",  # draft/online values, redundant
@@ -70,10 +62,6 @@ class BulletinIssueModel(CdsOverdo):
         "773__p",  # title of the "CERN Bulletin" series
         "773__t",  # CERN Bulletin value, redundant
         "773__y",  # year, duplicate of 260
-        "773__u",  # broken links on record 44920
-        "787__i",  # one referenced record (video in 1755835, 1754359)
-        "859__a",  # empty value
-        "856__q",  # 619830 broken link
         "8560_f",  # contact email
         "8564_8",  # file id
         "8564_s",  # bibdoc id
@@ -91,14 +79,13 @@ class BulletinIssueModel(CdsOverdo):
         "937__c",  # last modified by
         "937__s",  # last modification date
         "960__a",  # base number
-        "961__a",  # CDS modification tag # TODO
-        "961__b",  # CDS modification tag # TODO
-        "961__c",  # CDS modification tag # TODO
-        "961__h",  # CDS modification tag # TODO
-        "961__l",  # CDS modification tag # TODO
-        "961__x",  # CDS modification tag # TODO
+        "961__a",  # Curation Auditing tag
+        "961__b",  # Curation Auditing tag
+        "961__c",  # Curation Auditing tag
+        "961__h",  # Curation Auditing tag
+        "961__l",  # Curation Auditing tag
+        "961__x",  # Curation Auditing tag
         "981__a",  # duplicate record id
-        "980__b",
         # "246_1a",
         # "690C_a",
     }
@@ -109,7 +96,7 @@ class BulletinIssueModel(CdsOverdo):
     }
 
 
-bull_issue_model = BulletinIssueModel(
-    bases=(rdm_base_record_model,),
-    entry_point_group="cds_migrator_kit.migrator.rules.bulletin_issue",
+bulletin_drafts_model = BulletinDraftsModel(
+    bases=(staff_association_model, bull_issue_model,),
+    entry_point_group="cds_migrator_kit.migrator.rules.bulletin_drafts",
 )
