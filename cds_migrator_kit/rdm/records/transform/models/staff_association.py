@@ -17,7 +17,7 @@ class StaffAssociationModel(CdsOverdo):
 
     __query__ = """
         (
-            980__:BULLETINSTAFF
+            980__:"BULLETINSTAFF"
             -980__:CERN_BULLETIN_ARTICLE
             -980__:CERN_BULLETIN_ISSUE
         )
