@@ -1,11 +1,25 @@
+"""
+Migrates CERN Bulletin journals form legacy (stored as DB rows) to RDM.
+Then links the related periodical articles to the newly created periodical issue.
+
+To generate the output CSV file, run the following:
+migrate_bull_issues()
+
+The output CSV (migrated issues) file will be created in the current directory.
+
+Then, run the following to link the related articles:
+link_related_articles()
+"""
+
 import csv
-from copy import deepcopy
+import os
 
 import arrow
 from invenio_access.permissions import system_identity
 from invenio_communities.proxies import current_communities
 from invenio_db import db
 from invenio_rdm_records.proxies import current_rdm_records_service
+from invenio_search.engine import dsl
 from sqlalchemy.orm.exc import StaleDataError
 
 filepath = "CERNBulletinJournals.csv"
@@ -14,13 +28,40 @@ outfilepath = "CERNBulletinJournals_migrated.csv"
 
 
 def migrate_bull_issues():
+    migrated = load_migrated_issues()
     with open(filepath, mode="r", newline="", encoding="utf-8") as infile, open(
-        outfilepath, mode="w", newline="", encoding="utf-8"
+        outfilepath, mode="a", newline="", encoding="utf-8"
     ) as outfile:
         reader = csv.reader(infile)
         writer = csv.writer(outfile)
         for row in reader:
             id_journal, issue_number, issue_display, date_released, date_announced = row
+            if not date_released:
+                print(f"Skipping {issue_number} because date released is missing")
+                continue
+
+            if issue_number in migrated:
+                print(
+                    f"Skipping {issue_number}, already migrated as {migrated[issue_number]}"
+                )
+                continue
+
+            existing_pid = find_existing_issue_record(issue_number)
+            if existing_pid:
+                print(f"Skipping {issue_number}, found existing record {existing_pid}")
+                writer.writerow(
+                    [
+                        id_journal,
+                        issue_number,
+                        issue_display,
+                        date_released,
+                        date_announced,
+                        existing_pid,
+                    ]
+                )
+                migrated[issue_number] = existing_pid
+                continue
+
             print(f"Processing {issue_number}...")
             data = {
                 "metadata": {
@@ -91,8 +132,40 @@ def migrate_bull_issues():
                         record.id,
                     ]
                 )
+                migrated[issue_number] = record.id
             except Exception as e:
                 raise e
+
+
+def load_migrated_issues():
+    """Load already migrated issues from the output CSV."""
+    migrated = {}
+    if not os.path.exists(outfilepath):
+        return migrated
+    with open(outfilepath, mode="r", newline="", encoding="utf-8") as file:
+        reader = csv.reader(file)
+        for row in reader:
+            if len(row) < 6:
+                continue
+            issue_number, record_pid = row[1], row[5]
+            migrated[issue_number] = record_pid
+    return migrated
+
+
+def find_existing_issue_record(issue_number):
+    """Find an already created bulletin issue record by issue number."""
+    issue_number_query = issue_number.replace("/", "\\/")
+    results = current_rdm_records_service.scan(
+        system_identity,
+        q=(
+            f'metadata.additional_descriptions.description:"{issue_number_query}" '
+            "AND metadata.resource_type.id:publication-periodicalissue"
+        ),
+    )
+    hits = list(results)
+    if not hits:
+        return None
+    return hits[0]["id"]
 
 
 def link_related_articles():
@@ -107,37 +180,68 @@ def link_related_articles():
                 date_announced,
                 record_pid,
             ) = row
+            if not record_pid:
+                continue
 
-            issue_number = issue_number.replace("/", "\\/")
+            # The extra filter is used to find the related articles for the given issue number.
+            # For example, it matches the March 2026 issue with the following issue numbers in the custom field "journal:journal.issue":
+            # 2/2026-3/2026-4/2026-5/2026
+            # 02/2026-03/2026-04/2026-05/2026
+            # 2/2026-3/2026
+            # 03/2026-04/2026
+            # 03/2026
+            # 3/2026
+            extra_filter = dsl.Q(
+                "regexp",
+                **{
+                    "custom_fields.journal:journal.issue.keyword": {
+                        "value": f"(.*-)?0?{issue_number}(-.*)?",
+                        "flags": "NONE",
+                    }
+                },
+            )
             results = current_rdm_records_service.scan(
                 system_identity,
-                q=f"custom_fields.journal\:journal.issue:*{issue_number}*",
+                q="metadata.resource_type.id:publication-periodicalarticle",
+                extra_filter=extra_filter,
             )
             list_res = list(results)
             print(
                 f"Found {len(list_res)} related articles for issue {issue_number} {record_pid}"
             )
             for hit in list_res:
-                data = {
-                    "identifier": record_pid,
-                    "relation_type": {"id": "ispublishedin"},
-                    "scheme": "cds",
-                    "resource_type": {"id": "publication-periodicalissue"},
-                }
-                record = current_rdm_records_service.read(system_identity, hit["id"])
-                _draft = current_rdm_records_service.edit(system_identity, record["id"])
+                link_article_to_issue(hit["id"], record_pid)
 
-                update_data = deepcopy(_draft.data)
-                if "related_identifiers" not in update_data["metadata"]:
-                    update_data["metadata"]["related_identifiers"] = []
-                if data not in record.data["metadata"].get("related_identifiers", []):
-                    update_data["metadata"]["related_identifiers"].append(data)
-                    draft = current_rdm_records_service.update_draft(
-                        system_identity, _draft["id"], update_data
-                    )
-                    record = current_rdm_records_service.publish(
-                        system_identity, draft["id"]
-                    )
-                    print(f"Linked {hit['id']} to {record_pid}")
-                else:
-                    print(f"Skipped {hit['id']} to {record_pid}")
+
+def link_article_to_issue(hit_id, record_pid):
+    """Append an ispublishedin link to a bulletin issue if not already present."""
+    record = current_rdm_records_service.read(system_identity, hit_id)
+    related_identifiers = record.data["metadata"].get("related_identifiers", [])
+
+    existing_rel_ids = {
+        rel_id["identifier"]
+        for rel_id in related_identifiers
+        if (
+            rel_id.get("relation_type", {}).get("id") == "ispublishedin"
+            and rel_id.get("scheme") == "cds"
+            and rel_id.get("resource_type", {}).get("id") == "publication-periodicalissue"
+        )
+    }
+    if record_pid in existing_rel_ids:
+        print(f"Skipped {hit_id}, already linked to {record_pid}")
+        return
+
+    draft = current_rdm_records_service.edit(system_identity, record["id"])
+    draft.data["metadata"].setdefault("related_identifiers", []).append(
+        {
+            "identifier": record_pid,
+            "relation_type": {"id": "ispublishedin"},
+            "scheme": "cds",
+            "resource_type": {"id": "publication-periodicalissue"},
+        }
+    )
+    draft = current_rdm_records_service.update_draft(
+        system_identity, draft.id, draft.data
+    )
+    current_rdm_records_service.publish(system_identity, draft.id)
+    print(f"Linked {hit_id} to {record_pid}")
