@@ -472,3 +472,26 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - ""
+  radio_protection:
+    data_dir: cds_migrator_kit/rdm/data/radio_protection
+    tmp_dir: cds_migrator_kit/rdm/tmp/radio_protection
+    log_dir: cds_migrator_kit/rdm/log/radio_protection
+    restricted: "True"
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/radio_protection/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/radio_protection/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - ""
+  hse:
+    data_dir: cds_migrator_kit/rdm/data/hse
+    tmp_dir: cds_migrator_kit/rdm/tmp/hse
+    log_dir: cds_migrator_kit/rdm/log/hse
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hse/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hse/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - ""
