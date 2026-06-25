@@ -7,6 +7,7 @@
 
 """CDS-RDM Migration load package."""
 
+from .ep_approval_load import CDSEPApprovalRecordServiceLoad
 from .load import CDSRecordServiceLoad
 
-__all__ = ("CDSRecordServiceLoad",)
+__all__ = ("CDSEPApprovalRecordServiceLoad", "CDSRecordServiceLoad")

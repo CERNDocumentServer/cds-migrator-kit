@@ -11,7 +11,7 @@ from invenio_rdm_migrator.streams import StreamDefinition
 from cds_migrator_kit.extract.extract import LegacyExtract
 from cds_migrator_kit.rdm.records.transform.transform import CDSToRDMRecordTransform
 
-from .load import CDSRecordServiceLoad
+from .load import CDSEPApprovalRecordServiceLoad, CDSRecordServiceLoad
 
 RecordStreamDefinition = StreamDefinition(
     name="records",
@@ -20,3 +20,11 @@ RecordStreamDefinition = StreamDefinition(
     load_cls=CDSRecordServiceLoad,
 )
 """ETL stream for CDS to RDM records."""
+
+RecordEPApprovalStreamDefinition = StreamDefinition(
+    name="records",
+    extract_cls=LegacyExtract,
+    transform_cls=CDSToRDMRecordTransform,
+    load_cls=CDSEPApprovalRecordServiceLoad,
+)
+"""ETL stream for CDS to RDM records with EP approval."""

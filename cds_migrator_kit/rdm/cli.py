@@ -22,6 +22,7 @@ from cds_migrator_kit.rdm.comments.streams import (
     CommentsStreamDefinition,
 )
 from cds_migrator_kit.rdm.records.streams import (  # UserStreamDefinition,
+    RecordEPApprovalStreamDefinition,
     RecordStreamDefinition,
 )
 from cds_migrator_kit.rdm.stats.runner import RecordStatsRunner
@@ -69,12 +70,20 @@ def migration():
         "Can also be set per-collection in streams.yaml under transform.workers."
     ),
 )
+@click.option(
+    "--ep-approval",
+    is_flag=True,
+    help="Use the EP approval load stream (pre-EP draft snapshots without legacy minting).",
+)
 @with_appcontext
-def run(collection, dry_run=False, keep_logs=False, workers=None):
+def run(collection, dry_run=False, keep_logs=False, workers=None, ep_approval=False):
     """Run."""
     stream_config = current_app.config["CDS_MIGRATOR_KIT_STREAM_CONFIG"]
+    stream_definition = (
+        RecordEPApprovalStreamDefinition if ep_approval else RecordStreamDefinition
+    )
     runner = Runner(
-        stream_definitions=[RecordStreamDefinition],
+        stream_definitions=[stream_definition],
         # stream_definitions=[UserStreamDefinition],
         config_filepath=Path(stream_config).absolute(),
         dry_run=dry_run,

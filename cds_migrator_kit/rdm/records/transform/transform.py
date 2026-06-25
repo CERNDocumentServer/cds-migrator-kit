@@ -144,6 +144,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         self.access_grants_view = access_grants_view
         self.migration_logger = migration_logger
         self.record_state_logger = record_state_logger
+        self.ep_approval_request = None
         super().__init__(partial)
 
     def _created(self, entry):
@@ -531,7 +532,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "custom_fields",
             "_pids",
             "internal_notes",
+            "ep_approval",
         ]
+        self.ep_approval_request = json_entry.get("ep_approval", [])
 
         keys = deepcopy(list(json_entry.keys()))
         for item in helper_keys:
@@ -801,6 +804,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "_original_dump": entry,
             "_request_data": request_data,
             "_clc_sync": clc_sync,
+            "ep_approval": self.ep_approval_request,
         }
 
 

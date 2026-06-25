@@ -44,6 +44,7 @@ from cds_migrator_kit.errors import (
     GrantCreationError,
     ManualImportRequired,
     RecordFlaggedCuration,
+    UnexpectedValue,
 )
 
 
@@ -133,6 +134,7 @@ class CDSRecordServiceLoad(Load):
         self.dry_run = dry_run
         self.legacy_pids_to_redirect = {}
         self.clc_sync = False
+        self._finalise_on_load = True
         self.collection = collection
         self.update_new_version_publication_date = update_new_version_publication_date
         self.create_inclusion_request = create_inclusion_request
@@ -697,8 +699,13 @@ class CDSRecordServiceLoad(Load):
             record_state_context = self._load_record_state(legacy_recid, records)
             # Dump the computed record state. This is useful to migrate then the record stats
             if record_state_context:
-                self.record_state_logger.add_record_state(record_state_context)
+                if self._should_log_record_state():
+                    self.record_state_logger.add_record_state(record_state_context)
                 return record_state_context
+
+    def _should_log_record_state(self):
+        """Whether to persist record state for stats migration."""
+        return True
 
     def _dry_load(self, entry):
         current_rdm_records_service.schema.load(
@@ -835,8 +842,17 @@ class CDSRecordServiceLoad(Load):
                 del entry["_clc_sync"]
 
             try:
+                ep_approval = entry.get("record", {}).get("ep_approval")
+                if ep_approval:
+                    raise UnexpectedValue(
+                        message="EP approval records must be loaded with the EP approval stream",
+                        stage="load",
+                        recid=recid,
+                        priority="critical",
+                    )
                 if self.dry_run:
                     self._dry_load(entry)
+                    recid_state_after_load = None
                 else:
                     with UnitOfWork(db.session) as uow:
                         recid_state_after_load = self._load_versions(entry, uow)
@@ -846,8 +862,10 @@ class CDSRecordServiceLoad(Load):
                             )
                             self._after_load_clc_sync(recid_state_after_load)
                         uow.commit()
-                self.migration_logger.finalise_record(recid)
-            except ManualImportRequired as e:
+                if self._finalise_on_load:
+                    self.migration_logger.finalise_record(recid)
+                return recid_state_after_load
+            except (UnexpectedValue, ManualImportRequired) as e:
                 self.migration_logger.add_log(e, record=entry)
             except GrantCreationError as e:
                 self.migration_logger.add_log(e, record=entry)
