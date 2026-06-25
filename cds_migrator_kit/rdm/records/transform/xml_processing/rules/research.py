@@ -774,3 +774,33 @@ def resource_type(self, key, value):
             raise IgnoreKey("resource_type")
     else:
         return mapping[best_value]
+
+
+@model.over("ep_approval", "^9031_")
+@for_each_value
+def ep_approval(self, key, value):
+    """Translates EP approval status."""
+    status = value.get("s", "").strip().lower()
+    submitted_by = value.get("f", "").strip().lower()
+    date = value.get("d", "").strip()
+    deadline = value.get("e", "").strip()
+    description = value.get("a", "").strip()
+    ep_report_number = value.get("b", "").strip()
+    stamp_info = value.get("g", "").strip()
+    doc_type = value.get("c", "").strip()
+    if status not in ["waiting", "approved"]:
+        raise UnexpectedValue(subfield="a", field=key, value=value)
+    return {
+        k: v
+        for k, v in {
+            "status": status,
+            "submitted_by": submitted_by,
+            "date": date,
+            "deadline": deadline,
+            "description": description,
+            "ep_report_number": ep_report_number,
+            "stamp_info": stamp_info,
+            "doc_type": doc_type,
+        }.items()
+        if v
+    }

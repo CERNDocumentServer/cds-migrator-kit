@@ -359,6 +359,11 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {
         "validator": always_valid,
         "datacite": "CDS",
     },
+    "apprn": {
+        "label": _("Approval Report Number"),
+        "validator": schemes.is_approval_report_number,
+        "datacite": "CDS",
+    },
     "aleph": {
         "label": _("Aleph number"),
         "validator": schemes.is_aleph,
@@ -483,6 +488,9 @@ CDS_ACCESS_GROUP_MAPPINGS = {
     "EligibilityHRCirc": ["eligibility-retr-actual", "hr-web-gacepa"],
     "CERNPeopleEligibility": ["cern-personnel", "eligibility-retr-actual"],
     "FAPDepRestrFile": ["fap-dep"],
+    # Access group already added to the record as 506__m when draft created, no need to add:
+    # https://gitlab.cern.ch/cds-team/cds-legacy/-/blob/master/src/wn-cdsweb/lib/python/invenio/websubmit_functions/EPPHAPP_Test_values.py#L249-266
+    "EP Restricted Draft": [],
     # CERN E-guide restricted docs: https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showroledetails?id_role=69 CERN personnel has view rights
 }
 
@@ -523,3 +531,20 @@ _APP_RDM_STATS_AGGREGATIONS["record-view-agg"]["params"]["index_interval"] = "ye
 
 # don't generate logs for migration
 AUDIT_LOGS_ENABLED = False
+
+### EP Approval configuration only needed for local, it should use cds-rdm config for de/sandbox/prod
+# ===========================
+CDS_CERN_SCIENTIFIC_COMMUNITY_ID = "78b3c4aa-c4e6-4502-8226-67ba2d347afe"
+"""The id of the CERN Scientific community."""
+
+CDS_COMMITTEE_APPROVAL_COMMUNITIES = {
+    "dd13404c-bcd6-4b15-aeef-38d678c61ff1": {
+        "label": "EP approval",  # shown in UI buttons/headings
+        "referee_group": "cds-ph-ep-publication",  # CERN e-group slug
+        "report_number": {
+            "prefix": "CERN-EP",  # literal prefix, e.g. "CERN-EP"
+            "include_year": True,  # append the current year after prefix
+            "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
+}
