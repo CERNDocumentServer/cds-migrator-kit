@@ -27,6 +27,7 @@ from sqlalchemy.exc import NoResultFound
 
 from cds_migrator_kit.errors import (
     ManualImportRequired,
+    MissingConfiguration,
     MissingRequiredField,
     MultipleModelsMatched,
     RestrictedFileDetected,
@@ -210,6 +211,7 @@ class CDSToRDMRecordTransform:
             ManualImportRequired,
             MissingRequiredField,
             MultipleModelsMatched,
+            MissingConfiguration,
         ) as e:
             migration_logger.add_log(e, record=raw_dump_entry)
 
