@@ -6,7 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM transform step module."""
-import datetime
+
 import logging
 from collections import OrderedDict
 from copy import deepcopy
@@ -32,11 +32,12 @@ from sqlalchemy.exc import NoResultFound
 
 from cds_migrator_kit.errors import (
     ManualImportRequired,
+    MissingConfiguration,
     MissingRequiredField,
+    MultipleModelsMatched,
     RecordFlaggedCuration,
     RestrictedFileDetected,
     UnexpectedValue,
-    MultipleModelsMatched,
 )
 from cds_migrator_kit.rdm.migration_config import (
     RDM_RECORDS_IDENTIFIERS_SCHEMES,
@@ -48,6 +49,7 @@ from cds_migrator_kit.rdm.records.transform.config import (
     IDENTIFIERS_VALUES_TO_DROP,
     PIDS_SCHEMES_ALLOWED,
     PIDS_SCHEMES_TO_DROP,
+    CDS_CERN_SCIENTIFIC_RESOURCE_TYPES,
 )
 from cds_migrator_kit.transform.dumper import CDSRecordDump
 from cds_migrator_kit.transform.errors import LossyConversion
@@ -793,9 +795,32 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         self.db_state = {"affiliations": CDSMigrationAffiliationMapping}
         super().__init__(workers, throw)
 
+    def _should_add_scientific_community(self, record):
+        if self.restricted or record.get("access") != "public":
+            return False
+        resource_type_id = (
+            record.get("json", {})
+            .get("metadata", {})
+            .get("resource_type", {})
+            .get("id")
+        )
+        return resource_type_id in CDS_CERN_SCIENTIFIC_RESOURCE_TYPES
+
     def _communities_ids(self, entry, record):
         communities = record.get("communities", [])
         communities = self.communities_ids + [slug for slug in communities]
+
+        scientific_community = current_app.config.get(
+            "CDS_CERN_SCIENTIFIC_COMMUNITY_ID"
+        )
+        if not scientific_community:
+            raise MissingConfiguration(
+                "CDS_CERN_SCIENTIFIC_COMMUNITY_ID is not configured"
+            )
+        if self._should_add_scientific_community(record):
+            if scientific_community not in communities:
+                communities.append(scientific_community)
+
         if communities:
             return {"ids": communities, "default": self.communities_ids[0]}
         return {}
@@ -849,6 +874,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             ManualImportRequired,
             MissingRequiredField,
             MultipleModelsMatched,
+            MissingConfiguration,
         ) as e:
             migration_logger.add_log(e, record=entry)
 

@@ -1652,6 +1652,18 @@ def community(running_app, db):
     return comm
 
 
+@pytest.fixture()
+def cern_scientific_community(running_app, db, app):
+    """A CERN Research community fixture."""
+    comm = Community.create({})
+    comm.slug = "cern-research"
+    comm.metadata = {"title": "CERN Research"}
+    comm.commit()
+    db.session.commit()
+    app.config["CDS_CERN_SCIENTIFIC_COMMUNITY_ID"] = str(comm.id)
+    return comm
+
+
 # @pytest.fixture()
 # def users(app, db):
 #     """Create example user."""

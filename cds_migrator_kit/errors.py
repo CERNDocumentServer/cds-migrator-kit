@@ -85,3 +85,9 @@ class RecordFlaggedCuration(CDSMigrationException):
     """Record statistics error."""
 
     description = "[Record needs to be curated]"
+
+
+class MissingConfiguration(CDSMigrationException):
+    """Missing configuration exception."""
+
+    description = "[Missing configuration]"
