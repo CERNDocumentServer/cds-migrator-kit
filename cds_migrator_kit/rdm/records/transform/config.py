@@ -175,3 +175,19 @@ EXPERIMENT_ALIASES = {
 # 693__e values that are keywords rather than real experiments (curated as
 # "mots clef"), mapped to subjects instead of cern:experiments
 EXPERIMENTS_AS_SUBJECTS = ["d3", "r104", "r105a"]
+
+# Public research publication resource types that are auto-included in the CERN Research community.
+CDS_CERN_SCIENTIFIC_RESOURCE_TYPES = {
+    "publication-dissertation",  # Already included by the migrator for thesis records.
+    "publication-book",
+    "publication-section",
+    "publication-conferencepaper",
+    "publication-conferenceproceeding",
+    "publication-journal",
+    "publication-article",
+    "publication-preprint",
+    "publication-report",
+    "publication-technicalnote",
+    "publication-note",
+    "publication",
+}
