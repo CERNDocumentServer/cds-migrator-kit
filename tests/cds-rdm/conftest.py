@@ -6,6 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """Pytest fixtures."""
+
 import os
 from collections import namedtuple
 from os.path import dirname, join
