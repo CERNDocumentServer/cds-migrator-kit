@@ -469,6 +469,11 @@ CDS_MIGRATOR_KIT_VOCABULARIES_DIR = None
 """Absolute path to the vocabularies directory. Defaults to
 {instance_path}/app_data/vocabularies when None."""
 
+CDS_CERN_SCIENTIFIC_COMMUNITY_ID = os.environ.get(
+    "CDS_CERN_SCIENTIFIC_COMMUNITY_ID", None
+)
+"""Community slug or UUID for CERN Research."""
+
 CDS_ACCESS_GROUP_MAPPINGS = {
     "SSO": ["cern-accounts-primary"],
     "ITDepRestrFile": ["it-dep"],

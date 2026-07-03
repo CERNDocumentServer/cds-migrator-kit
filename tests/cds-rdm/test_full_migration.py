@@ -439,6 +439,7 @@ def test_full_migration_stream(
     superuser_identity,
     orcid_name_data,
     community,
+    cern_scientific_community,  # Fixture for the CERN Scientific community, so that it gets auto included for PUBLIC-ations.
     mocker,
     groups,
 ):
@@ -494,6 +495,8 @@ def test_full_migration_stream(
         if record["legacy_recid"] == "2294138":
             author_with_inspire(loaded_rec)
 
+        # Check if the record is also included in the CERN Scientific community since it is a publication report
+        scientific_community_inclusion(loaded_rec, cern_scientific_community.id)
     # Check if remote account has the correct metadata
     # Check if user profile has the correct metadata
     user_metadata()
@@ -563,3 +566,9 @@ def user_metadata():
         "person_id": "11115",
         "department": "IT",
     }
+
+
+def scientific_community_inclusion(record, cern_scientific_community_uuid):
+    """Checks if the record is included in the CERN Scientific community."""
+    assert str(cern_scientific_community_uuid) in record._record.parent.communities.ids
+    assert cern_scientific_community_uuid != record._record.parent.communities.default
