@@ -410,6 +410,7 @@ def archiver(UserFixture, app, db):
     user = UserFixture(
         email="archiver@inveniosoftware.org",
         password="archiver",
+        displayname="Archiver User",
         preferences={
             "visibility": "public",
             "email_visibility": "restricted",

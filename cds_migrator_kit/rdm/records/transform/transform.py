@@ -33,10 +33,10 @@ from sqlalchemy.exc import NoResultFound
 from cds_migrator_kit.errors import (
     ManualImportRequired,
     MissingRequiredField,
+    MultipleModelsMatched,
     RecordFlaggedCuration,
     RestrictedFileDetected,
     UnexpectedValue,
-    MultipleModelsMatched,
 )
 from cds_migrator_kit.rdm.migration_config import (
     RDM_RECORDS_IDENTIFIERS_SCHEMES,
@@ -720,6 +720,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         if "_clc_sync" in json_data:
             del json_data["_clc_sync"]
 
+        request_data = json_data.pop("request_data", None)
+
         record_json_output = {
             "files": self._files(record_dump),
             "pids": self._pids(json_data),
@@ -757,6 +759,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "owned_by": self._owner(json_data),
             # keep the original extracted entry for storing it
             "_original_dump": entry,
+            "_request_data": request_data,
             "_clc_sync": clc_sync,
         }
 

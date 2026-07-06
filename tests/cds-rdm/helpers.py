@@ -131,6 +131,22 @@ def config(mocker, community, orcid_name_data):
                         "legacy_pids_to_redirect": "cds_migrator_kit/rdm/data/summer_student_reports/duplicated_pids.json"
                     },
                 },
+                "lcd_restr": {
+                    "data_dir": "tests/cds-rdm/data/lep_exp",
+                    "tmp_dir": "tests/cds-rdm/data/lep_exp",
+                    "log_dir": "tests/cds-rdm/data/log/lep_exp",
+                    "extract": {"dirpath": "tests/cds-rdm/data/lep_exp/dumps/"},
+                    "restricted": "True",
+                    "create_inclusion_request": True,
+                    "transform": {
+                        "files_dump_dir": "tests/cds-rdm/data/lep_exp/files/",
+                        "missing_users": "tests/cds-rdm/data/users",
+                        "communities_ids": [f"{str(community.id)}"],
+                    },
+                    "load": {
+                        "legacy_pids_to_redirect": "tests/cds-rdm/data/lep_exp/duplicated_pids.json"
+                    },
+                },
                 "bulletin_issue": {
                     "data_dir": "tests/cds-rdm/data/bulletin_issue",
                     "tmp_dir": "tests/cds-rdm/data/bulletin_issue",

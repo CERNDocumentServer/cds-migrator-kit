@@ -33,6 +33,8 @@ class ResearchModel(CdsOverdo):
         "520__9",  # provenance of the description
         "520__h",  # provenance of the description
         "852__c",  # holdings will be taken separately
+        "583__c",  # Action note date e.g 1416779
+        "583__z",  # Action note e.g 1416779
         "852__h",
         "037__c",  # arxiv subject
         "100__m",  # email of contributor
@@ -105,5 +107,5 @@ class ResearchModel(CdsOverdo):
 
 research_model = ResearchModel(
     bases=(rdm_base_publication_model,),
-    entry_point_group="cds_migrator_kit.migrator.rdm.rules.publication",
+    entry_point_group="cds_migrator_kit.migrator.rdm.rules.research",
 )
