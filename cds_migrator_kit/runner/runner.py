@@ -61,6 +61,9 @@ class Runner:
                 self.update_new_version_publication_date = stream_config[
                     collection
                 ].get("update_new_version_publication_date", True)
+                self.create_inclusion_request = stream_config[collection].get(
+                    "create_inclusion_request", False
+                )
                 self.access_grants_view = stream_config[collection].get(
                     "access_grants_view", False
                 )
@@ -116,6 +119,7 @@ class Runner:
                             dry_run=dry_run,
                             collection=collection,
                             update_new_version_publication_date=self.update_new_version_publication_date,
+                            create_inclusion_request=self.create_inclusion_request,
                             migration_logger=self.migration_logger,
                             record_state_logger=self.record_state_logger,
                             **stream_config[collection].get("load", {}),

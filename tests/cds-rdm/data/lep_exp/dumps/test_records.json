@@ -1,0 +1,45 @@
+[
+  {
+    "files": [
+      {
+        "comment": null,
+        "status": "",
+        "version": 1,
+        "encoding": null,
+        "creation_date": "2017-11-23T16:06:45+00:00",
+        "bibdocid": 1369354,
+        "mime": "application/pdf",
+        "full_name": "NMSS_Villanueva.pdf",
+        "superformat": ".pdf",
+        "recids_doctype": [[2294138, "DEPIN_FILE", "NMSS_Villanueva.pdf"]],
+        "path": "/opt/cdsweb/var/data/files/g136/1369354/content.pdf;1",
+        "size": 1147649,
+        "license": {},
+        "modification_date": "2017-11-23T16:06:45+00:00",
+        "copyright": {},
+        "url": "http://cds.cern.ch/record/2294138/files/NMSS_Villanueva.pdf",
+        "checksum": "2942bfabb3d05332b66eb128e0842cff",
+        "description": "Access to fulltext",
+        "format": ".pdf",
+        "name": "NMSS_Villanueva",
+        "subformat": "",
+        "etag": "\"1369354.pdf1\"",
+        "recid": 2294138,
+        "flags": [],
+        "hidden": false,
+        "type": "DEPIN_FILE",
+        "full_path": "/opt/cdsweb/var/data/files/g136/1369354/content.pdf;1"
+      }
+    ],
+    "collections": null,
+    "recid": 2294138,
+    "creation_date": "2017-11-23 16:29:37",
+    "record": [
+      {
+        "marcxml": "<record>\n  <controlfield tag=\"001\">2294138</controlfield>\n  <controlfield tag=\"005\">20130814210749.0</controlfield>\n  <datafield tag=\"037\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">LCD-Note-2113-012</subfield>\n  </datafield>\n  <datafield tag=\"041\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">eng</subfield>\n  </datafield>\n  <datafield tag=\"100\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">Poss, Stephane</subfield>\n  </datafield>\n <datafield tag=\"906\" ind1=\" \" ind2=\" \">\n    <subfield code=\"p\">stwelve</subfield>\n  </datafield>\n  <datafield tag=\"700\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">Sailer, Andre</subfield>\n  </datafield>\n  <datafield tag=\"245\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">Luminosity Spectrum Reconstruction at Linear Colliders</subfield>\n  </datafield>\n  <datafield tag=\"260\" ind1=\" \" ind2=\" \">\n    <subfield code=\"c\">2013</subfield>\n  </datafield>\n  <datafield tag=\"269\" ind1=\" \" ind2=\" \">\n    <subfield code=\"b\">CERN</subfield>\n    <subfield code=\"a\">Geneva</subfield>\n    <subfield code=\"c\">2013-08-14</subfield>\n  </datafield>\n  <datafield tag=\"300\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">mult. p</subfield>\n  </datafield>\n  <datafield tag=\"520\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">A good knowledge of the luminosity spectrum is mandatory for many measurements at future e+e\u2212 colliders. As the beam-parameters determining the luminosity spectrum cannot be measured precisely, the luminosity spectrum has to be measured through a gauge process with the de- tector. The measured distributions, used to reconstruct the spectrum, depend on Initial State Radiation, cross-section, and Final State Radiation. To extract the basic luminosity spectrum, a parametric model of the luminosity spectrum is created, in this case the spectrum at the 3 TeV CLIC. The model is used in a reweighting technique to extract the luminosity spectrum from measured Bhabha event observ- ables, taking all relevant effects into account. The centre-of- mass energy spectrum is reconstructed within 5% over the full validity range of the model. The reconstructed spectrum does not result in a significant bias or systematic uncertainty in the exemplary physics benchmark process of smuon pair production.</subfield>\n  </datafield>\n  <datafield tag=\"595\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">CERN Invenio WebSubmit</subfield>\n    <subfield code=\"b\">GENSBM</subfield>\n    <subfield code=\"c\">1</subfield>\n  </datafield>\n  <datafield tag=\"591\" ind1=\" \" ind2=\" \">\n    <subfield code=\"b\">draft</subfield>\n  </datafield>\n  <datafield tag=\"690\" ind1=\"C\" ind2=\" \">\n    <subfield code=\"a\">CERN</subfield>\n  </datafield>\n   <datafield tag=\"710\" ind1=\" \" ind2=\" \">\n    <subfield code=\"g\">CERN Linear Collider Detector collaboration</subfield>\n  </datafield>\n  <datafield tag=\"856\" ind1=\"4\" ind2=\" \">\n    <subfield code=\"u\">http://cds.cern.ch/record/2294138/files/LCD-Note-2113-012.pdf</subfield>\n  </datafield>\n  <datafield tag=\"856\" ind1=\"4\" ind2=\" \">\n    <subfield code=\"u\">http://cds.cern.ch/record/2294138/files/LCD-Note-2113-012.gif?subformat=icon</subfield>\n    <subfield code=\"x\">icon</subfield>\n  </datafield>\n  <datafield tag=\"856\" ind1=\"4\" ind2=\" \">\n    <subfield code=\"u\">http://cds.cern.ch/record/2294138/files/LCD-Note-2113-012.pdf?subformat=pdfa</subfield>\n    <subfield code=\"x\">pdfa</subfield>\n  </datafield>\n  <datafield tag=\"859\" ind1=\" \" ind2=\" \">\n    <subfield code=\"f\">submitter13@cern.ch</subfield>\n  </datafield>\n  <datafield tag=\"916\" ind1=\" \" ind2=\" \">\n    <subfield code=\"s\">n</subfield>\n    <subfield code=\"w\">201333</subfield>\n  </datafield>\n  <datafield tag=\"980\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">LCD-NOTES</subfield>\n  </datafield>\n</record>",
+        "json": null,
+        "modification_datetime": "2017-11-23T16:29:37+00:00"
+      }
+    ]
+  }
+]

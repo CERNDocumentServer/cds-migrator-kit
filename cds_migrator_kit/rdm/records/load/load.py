@@ -22,11 +22,19 @@ from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
 from invenio_db import db
 from invenio_db.uow import UnitOfWork
+from invenio_i18n import _
 from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
+from invenio_rdm_records.requests import CommunityInclusion
 from invenio_records.systemfields.relations import InvalidRelationValue
+from invenio_records_resources.services.uow import RecordCommitOp
+from invenio_requests.customizations.event_types import (
+    LogEventType,
+    ReviewersUpdatedType,
+)
+from invenio_requests.proxies import current_events_service, current_requests_service
 from marshmallow import ValidationError
 from psycopg2.errors import UniqueViolation
 from sqlalchemy.exc import IntegrityError
@@ -62,6 +70,7 @@ class CDSRecordServiceLoad(Load):
         legacy_pids_to_redirect=None,
         collection=None,
         update_new_version_publication_date=True,
+        create_inclusion_request=False,
         migration_logger=None,
         record_state_logger=None,
     ):
@@ -71,6 +80,7 @@ class CDSRecordServiceLoad(Load):
         self.clc_sync = False
         self.collection = collection
         self.update_new_version_publication_date = update_new_version_publication_date
+        self.create_inclusion_request = create_inclusion_request
         self.migration_logger = migration_logger
         self.record_state_logger = record_state_logger
         if legacy_pids_to_redirect is not None:
@@ -314,7 +324,6 @@ class CDSRecordServiceLoad(Load):
                 permission=permission,
                 origin="migrated",
             )
-
             is_local_dev = current_app.config.get("CDS_MIGRATOR_KIT_ENV") == "local"
             is_valid = current_rdm_records_service.access._validate_grant_subject(
                 identity, grant
@@ -397,6 +406,92 @@ class CDSRecordServiceLoad(Load):
             # but then we get a double redirection
             legacy_recid_minter(legacy_recid, record._record.parent.model.id)
 
+    def _after_publish_add_inclusion_request(self, request_data, record, entry):
+        """Create community inclusion request after publish."""
+
+        status = request_data.get("status", "accepted")
+        reviewer_names = request_data.get("reviewers", [])
+        reviewers = User.query.filter(User._displayname.in_(reviewer_names)).all()
+        # TODO: check if reviewers are missing and log a warning
+
+        legacy_recid = entry["record"]["recid"]
+        created_at = datetime.datetime.fromisoformat(record["created"])
+
+        parent = record._record.parent
+        owner_id = parent.access.owned_by.owner_id
+        community = parent.communities.default
+
+        creator = {"user": str(owner_id)}
+        receiver = {"community": str(community.id)}
+
+        def create_event(request_model, payload, event_type, user):
+            """Create and register a request event."""
+            event = current_events_service.record_cls.create(
+                {},
+                request=request_model,
+                request_id=str(request_model.id),
+                type=event_type,
+            )
+            event.update(payload=payload)
+            event.model.created = created_at
+            event.created_by = {"user": str(user)}
+
+            uow.register(RecordCommitOp(event, indexer=current_events_service.indexer))
+
+        with UnitOfWork() as uow:
+            request_item = current_requests_service.create(
+                system_identity,
+                data={"title": record["metadata"]["title"]},
+                request_type=CommunityInclusion,
+                receiver=receiver,
+                creator=creator,
+                topic={"record": record.id},
+                uow=uow,
+            )
+
+            request = request_item._record
+            request.status = "submitted"
+            request.number = f"lrecid:{legacy_recid}"
+            request.model.created = created_at
+
+            if reviewers:
+                reviewers_payload = [{"user": str(r.id)} for r in reviewers]
+                request.reviewers = reviewers_payload
+
+                for reviewer in reviewers:
+                    create_event(
+                        request.model,
+                        {
+                            "event": "reviewers_updated",
+                            "content": _("added a reviewer"),
+                            "reviewers": [{"user": str(reviewer.id)}],
+                        },
+                        event_type=ReviewersUpdatedType,
+                        user="system",
+                    )
+
+            if status:
+                request.status = status
+                if status == "accepted":
+                    parent_to_request_relation = (
+                        parent.communities._m2m_model_cls.query.filter_by(
+                            record_id=parent.id, community_id=community.id
+                        ).one()
+                    )
+                    parent_to_request_relation.request_id = request.id
+
+                create_event(
+                    request.model,
+                    {"event": status},
+                    event_type=LogEventType,
+                    user="system",
+                )
+
+            uow.register(
+                RecordCommitOp(request, indexer=current_requests_service.indexer)
+            )
+            uow.commit()
+
     def _after_publish_update_files_created(self, record, entry, version):
         """Update the created date of the files post publish."""
         # Fix the `created` timestamp forcing the one from the legacy system
@@ -421,6 +516,12 @@ class CDSRecordServiceLoad(Load):
         self._after_publish_mint_recid(published_record, entry, version)
         self._after_publish_update_files_created(published_record, entry, version)
         self._after_publish_load_parent_access_grants(published_record, version, entry)
+        request_data = entry["record"].get("_request_data", {})
+
+        if self.create_inclusion_request and request_data:
+            self._after_publish_add_inclusion_request(
+                request_data, published_record, entry
+            )
         # db.session.commit()
 
     def _assign_rep_numbers(self, draft):
