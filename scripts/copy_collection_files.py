@@ -7,17 +7,6 @@ import sys
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
-collection = "it_meetings"
-environment = "sandbox"
-
-destination_prefix = "/eos/media/cds/cds-rdm/{0}/migration/{1}/files".format(
-    environment, collection
-)
-working_dir = "/eos/media/cds/cds-rdm/{0}/migration/{1}".format(environment, collection)
-json_dump_dir = "/eos/media/cds/cds-rdm/{0}/migration/{1}/dump".format(
-    environment, collection
-)
-
 
 def copy_collection_file(dump_files, destination_prefix, working_dir):
     file_log = open(os.path.join(working_dir, "files.log"), "wb")
@@ -72,6 +61,17 @@ def get_dump_files_paths(json_dump_dir):
         dump_files += [os.path.join(root, filename) for filename in files]
     return dump_files
 
+
+collection = "former_exp/ua2"
+environment = "dev"
+
+destination_prefix = "/eos/media/cds/cds-rdm/{0}/migration/{1}/files".format(
+    environment, collection
+)
+working_dir = "/eos/media/cds/cds-rdm/{0}/migration/{1}".format(environment, collection)
+json_dump_dir = "/eos/media/cds/cds-rdm/{0}/migration/{1}/dump".format(
+    environment, collection
+)
 
 dump_files = get_dump_files_paths(json_dump_dir)
 copy_collection_file(dump_files, destination_prefix, working_dir)
