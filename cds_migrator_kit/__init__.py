@@ -8,9 +8,18 @@
 
 """Migration tool kit from old Invenio to new Invenio."""
 
-
 from .ext import CdsMigratorKit
 
 __all__ = ("__version__", "CdsMigratorKit")
 
-__version__ = "0.1.0.dev20180000"
+# Fix for Python3.10 breaking changes
+# The underlying module `invenio-query-parser` uses MutableMapping and Sequence from collections
+# But they are moved to collections.abc starting from Python3.10
+
+import collections
+import collections.abc
+
+collections.MutableMapping = collections.abc.MutableMapping
+collections.Sequence = collections.abc.Sequence
+
+__version__ = "0.1.0.dev20260000"
