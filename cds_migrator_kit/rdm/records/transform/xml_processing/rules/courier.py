@@ -11,7 +11,7 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import clean_val
 
 from ...models.courier import courier_issue_model as model
 from .base import normalize, urls
-from .publications import journal, related_identifiers
+from .research import journal, related_identifiers
 
 
 @model.over("publication_date", "(^260__)", override=True)

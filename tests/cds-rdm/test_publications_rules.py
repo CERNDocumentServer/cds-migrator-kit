@@ -11,7 +11,7 @@ import pytest
 from dojson.errors import IgnoreKey
 
 from cds_migrator_kit.errors import UnexpectedValue
-from cds_migrator_kit.rdm.records.transform.xml_processing.rules.publications import (
+from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
     deadline_date,
     imprint_info,
     internal_notes,
@@ -434,7 +434,7 @@ class TestJournal:
           773 conf     c=119-122 w=C05-03-12  →  lathuile20050312 (962 k=119-122)
         Result must be two entries, each with both CNUM identifier and title.
         """
-        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.publications import (
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
             related_identifiers,
         )
 
