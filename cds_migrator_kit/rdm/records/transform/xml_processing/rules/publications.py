@@ -243,22 +243,27 @@ def journal(self, key, value):
     _custom_fields = self.get("custom_fields", {})
     journal_fields = _custom_fields.get("journal:journal", {})
     year = StringValue(value.get("y", "")).parse()
-    meeting_fields = ["p", "n", "v", "c"]
 
-    is_journal_year = False
-    for field in meeting_fields:
-        if field in value:
-            is_journal_year = True
-            break
+    # p/n/v are journal-specific; c alone with w is a conference proceedings artid
+    is_journal = any(f in value for f in ["p", "n", "v"])
+    is_journal_year = any(f in value for f in ["p", "n", "v", "c"])
 
     conference_cnum = value.get("w", "")
     conference_acronym = value.get("q", "")
-    custom_meeting_fields = _custom_fields.get("meeting:meeting", {})
-    if conference_cnum:
-        identifiers = custom_meeting_fields.get("identifiers", [])
-        identifiers.append({"scheme": "inspire", "identifier": conference_cnum})
-    if conference_acronym:
-        custom_meeting_fields["acronym"] = conference_acronym
+    meetings = _custom_fields.get("meeting:meeting", [])
+    if conference_cnum or conference_acronym:
+        session = StringValue(value.get("c", "")).parse()
+        new_meeting = {}
+        if conference_cnum:
+            new_meeting["identifiers"] = [
+                {"scheme": "inspire", "identifier": conference_cnum}
+            ]
+        if conference_acronym:
+            new_meeting["acronym"] = conference_acronym
+        if session:
+            new_meeting["session"] = session
+        meetings.append(new_meeting)
+        _custom_fields["meeting:meeting"] = meetings
 
     pub_date = self.get("publication_date")
     # if we only have 773 in the record and no other journal fields,
@@ -266,11 +271,14 @@ def journal(self, key, value):
     if not is_journal_year and "y" in value and not pub_date:
         self["publication_date"] = year
 
-    journal_fields["title"] = StringValue(value.get("p", "")).parse()
-    journal_fields["issue"] = StringValue(value.get("n", "")).parse()
-    journal_fields["volume"] = StringValue(value.get("v", "")).parse()
-    journal_fields["pages"] = StringValue(value.get("c", "")).parse()
-
+    # Only populate journal fields from a journal 773 (has p/n/v).
+    # A 773 with only 'c'+'w' is a conference proceedings reference and must
+    # not overwrite journal data extracted from the sibling journal 773.
+    if is_journal:
+        journal_fields["title"] = StringValue(value.get("p", "")).parse()
+        journal_fields["issue"] = StringValue(value.get("n", "")).parse()
+        journal_fields["volume"] = StringValue(value.get("v", "")).parse()
+        journal_fields["pages"] = StringValue(value.get("c", "")).parse()
     _custom_fields["journal:journal"] = journal_fields
     return _custom_fields
 
@@ -374,6 +382,27 @@ def date(self, key, value):
     raise IgnoreKey("dates")
 
 
+@model.over("dates", "^583__")
+@for_each_value
+def deadline_date(self, key, value):
+    """Translates deadline date."""
+    dates = self.get("dates", [])
+    action_note = value.get("z", "")
+    if action_note and action_note.strip().upper() != "UNKNOWN":
+        raise UnexpectedValue("Unexpected value in 583__z", field=key, value=value)
+    deadline = value.get("c", "")
+    if deadline and deadline.strip().upper() != "UNKNOWN":
+        dates.append(
+            {
+                "date": deadline,
+                "type": {"id": "other"},
+                "description": "Deadline date",
+            }
+        )
+    self["dates"] = dates
+    raise IgnoreKey("dates")
+
+
 @model.over("related_identifiers", "^962__")
 @for_each_value
 def related_identifiers(self, key, value):
@@ -382,10 +411,10 @@ def related_identifiers(self, key, value):
     artid = value.get("k", "")
     try:
         conference = value.get("n", "").lower().strip()
-        meeting_fields = self.get("custom_fields", {}).get("meeting:meeting", {})
-        if not meeting_fields.get("title"):
-            meeting_fields["title"] = conference
-        self["custom_fields"]["meeting:meeting"] = meeting_fields
+        meetings = self.get("custom_fields", {}).get("meeting:meeting", [])
+        if conference:
+            meetings.append({"title": conference})
+        self["custom_fields"]["meeting:meeting"] = meetings
     except AttributeError:
         raise UnexpectedValue(
             "related identifiers have unexpected material format",
@@ -398,7 +427,7 @@ def related_identifiers(self, key, value):
         "identifier": recid,
         "scheme": "cds",
         "relation_type": {"id": "references"},
-        "resource_type": {"id": "event"},
+        "resource_type": {"id": "publication-conferenceproceeding"},
     }
 
     if artid:
@@ -432,6 +461,7 @@ def resource_type(self, key, value):
         "aleph_papers",
         "ps212_papers",
         "slintnote",
+        "indico",
     ]
 
     committees = {
@@ -513,6 +543,7 @@ def resource_type(self, key, value):
     rank = priority.get(best_value, float("inf"))
 
     mapping = {
+        "alephdraft": {"id": "publication-other"},
         "preprint": {"id": "publication-preprint"},
         "conferencepaper": {"id": "publication-conferencepaper"},
         "proceedings": {"id": "publication-conferenceproceeding"},
@@ -521,6 +552,7 @@ def resource_type(self, key, value):
         "lcd-notes": {"id": "publication-technicalnote"},
         "brochure": {"id": "publication-brochure"},
         "itcerntalk": {"id": "presentation"},
+        "talk": {"id": "presentation"},
         "antarescerntalk": {"id": "presentation"},
         "slides": {"id": "presentation"},
         "peri": {"id": "publication-periodical"},

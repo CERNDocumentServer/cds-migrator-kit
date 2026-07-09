@@ -7,14 +7,11 @@
 
 """CDS-RDM migration rules module."""
 
-import datetime
 
 import pycountry
 from cds_dojson.marc21.fields.utils import out_strip
-from dateutil.parser import parse
-from dateutil.parser._parser import ParserError
 from dojson.errors import IgnoreKey
-from dojson.utils import filter_values, flatten, force_list
+from dojson.utils import force_list
 from idutils.normalizers import normalize_ror
 
 from cds_migrator_kit.errors import UnexpectedValue
@@ -26,7 +23,6 @@ from ..quality.contributors import (
     get_contributor_role,
 )
 from ..quality.decorators import (
-    filter_list_values,
     for_each_value,
     require,
     strip_output,

@@ -12,6 +12,7 @@ from dojson.errors import IgnoreKey
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.publications import (
+    deadline_date,
     imprint_info,
     internal_notes,
     isbn,
@@ -357,6 +358,200 @@ class TestJournal:
         journal_info = result.get("journal:journal", {})
         assert journal_info["title"] == "Journal"
         assert journal_info["issue"] == "5"
+
+    def test_journal_not_overwritten_by_conference_773(self):
+        """Journal fields from a journal 773 must survive a sibling conference 773.
+
+        Record 836244 has two 773 fields in its latest revision:
+          - {p, v, n, c, w, y} → journal reference (Acta Phys. Pol. B 37, 3 pp.875-882)
+          - {0, c, w}          → conference proceedings reference (artid 119-122)
+        Before the fix the second 773 silently overwrote title/issue/volume with ""
+        and replaced pages with the conference artid "119-122".
+        """
+        record = {}
+        # First 773: journal reference
+        result = journal(
+            record,
+            "773__",
+            {
+                "c": "875-882",
+                "n": "3",
+                "p": "Acta Phys. Pol. B",
+                "v": "37",
+                "w": "C05-08-30",
+                "y": "2006",
+            },
+        )
+        record["custom_fields"] = result
+
+        # Second 773: conference proceedings reference (no p / n / v)
+        result = journal(
+            record,
+            "773__",
+            {"0": "1260605", "c": "119-122", "w": "C05-03-12"},
+        )
+
+        journal_info = result.get("journal:journal", {})
+        assert journal_info["title"] == "Acta Phys. Pol. B"
+        assert journal_info["volume"] == "37"
+        assert journal_info["issue"] == "3"
+        assert journal_info["pages"] == "875-882"
+
+        # Both conference cnums must be stored as separate meeting entries
+        meetings = result.get("meeting:meeting", [])
+        all_identifiers = [
+            id_entry for m in meetings for id_entry in m.get("identifiers", [])
+        ]
+        assert {"scheme": "inspire", "identifier": "C05-08-30"} in all_identifiers
+        assert {"scheme": "inspire", "identifier": "C05-03-12"} in all_identifiers
+
+    def test_conference_only_773_does_not_set_journal_fields(self):
+        """A 773 with only c+w (no p/n/v) must not populate journal:journal fields."""
+        record = {}
+        result = journal(
+            record,
+            "773__",
+            {"0": "1260605", "c": "119-122", "w": "C05-03-12"},
+        )
+
+        journal_info = result.get("journal:journal", {})
+        assert journal_info.get("title") is None
+        assert journal_info.get("volume") is None
+        assert journal_info.get("issue") is None
+        assert journal_info.get("pages") is None
+
+        meetings = result.get("meeting:meeting", [])
+        all_identifiers = [
+            id_entry for m in meetings for id_entry in m.get("identifiers", [])
+        ]
+        assert {"scheme": "inspire", "identifier": "C05-03-12"} in all_identifiers
+
+    def test_two_meetings_merged_with_titles_from_962(self):
+        """Each 962 title is merged into the matching 773 meeting entry via artid.
+
+        Record 836244 layout:
+          773 journal  c=875-882 w=C05-08-30  →  warsaw20050831  (962 k=875-882)
+          773 conf     c=119-122 w=C05-03-12  →  lathuile20050312 (962 k=119-122)
+        Result must be two entries, each with both CNUM identifier and title.
+        """
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.publications import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+
+        # 773 processing
+        cf = journal(
+            record,
+            "773__",
+            {
+                "c": "875-882",
+                "n": "3",
+                "p": "Acta Phys. Pol. B",
+                "v": "37",
+                "w": "C05-08-30",
+                "y": "2006",
+            },
+        )
+        record["custom_fields"] = cf
+        cf = journal(
+            record, "773__", {"0": "1260605", "c": "119-122", "w": "C05-03-12"}
+        )
+        record["custom_fields"] = cf
+
+        # 962 processing (simulate side-effect; return value goes to related_identifiers)
+        meetings = record["custom_fields"].get("meeting:meeting", [])
+
+        def _merge(artid, title):
+            nonlocal meetings
+            if artid:
+                for m in meetings:
+                    if m.get("_artid") == artid:
+                        m["title"] = title
+                        del m["_artid"]
+                        return
+            meetings.append({"title": title})
+
+        _merge("119-122", "lathuile20050312")
+        _merge("875-882", "warsaw20050831")
+
+        assert len(meetings) == 2
+        warsaw = next(m for m in meetings if m.get("title") == "warsaw20050831")
+        lathuile = next(m for m in meetings if m.get("title") == "lathuile20050312")
+
+        assert warsaw["identifiers"] == [
+            {"scheme": "inspire", "identifier": "C05-08-30"}
+        ]
+        assert lathuile["identifiers"] == [
+            {"scheme": "inspire", "identifier": "C05-03-12"}
+        ]
+
+        # No leftover _artid fields
+        assert all("_artid" not in m for m in meetings)
+
+
+class TestDeadlineDate:
+    """Test deadline_date function from publications.py (583__ rule)."""
+
+    def test_deadline_date_added(self):
+        """Test that 583__c value is stored as a deadline date."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            deadline_date(record, "583__", {"c": "2021-05-15"})
+        assert record["dates"] == [
+            {
+                "date": "2021-05-15",
+                "type": {"id": "other"},
+                "description": "Deadline date",
+            }
+        ]
+
+    def test_deadline_date_unknown_ignored(self):
+        """Test that UNKNOWN 583__c value is not stored."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            deadline_date(record, "583__", {"c": "UNKNOWN"})
+        assert record["dates"] == []
+
+    def test_deadline_date_missing_c_ignored(self):
+        """Test that missing 583__c is not stored."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            deadline_date(record, "583__", {})
+        assert record["dates"] == []
+
+    def test_deadline_date_appends_to_existing_dates(self):
+        """Test that deadline date is appended to existing dates list."""
+        record = {"dates": [{"date": "2020-01-01", "type": {"id": "submitted"}}]}
+        with pytest.raises(IgnoreKey):
+            deadline_date(record, "583__", {"c": "2021-05-15"})
+        assert record["dates"] == [
+            {"date": "2020-01-01", "type": {"id": "submitted"}},
+            {
+                "date": "2021-05-15",
+                "type": {"id": "other"},
+                "description": "Deadline date",
+            },
+        ]
+
+    def test_deadline_date_z_unknown_allowed(self):
+        """Test that 583__z UNKNOWN is allowed and does not raise."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            deadline_date(record, "583__", {"c": "2021-05-15", "z": "UNKNOWN"})
+        assert record["dates"] == [
+            {
+                "date": "2021-05-15",
+                "type": {"id": "other"},
+                "description": "Deadline date",
+            }
+        ]
+
+    def test_deadline_date_z_present_raises_unexpected_value(self):
+        """Test that a non-UNKNOWN 583__z raises UnexpectedValue."""
+        record = {}
+        with pytest.raises(UnexpectedValue):
+            deadline_date(record, "583__", {"c": "2021-05-15", "z": "Action taken"})
 
 
 class TestLicenseAndFundingFrom540:
