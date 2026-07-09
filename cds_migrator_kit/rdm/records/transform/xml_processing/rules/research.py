@@ -435,7 +435,14 @@ def related_identifiers(self, key, value):
         conference = value.get("n", "").lower().strip()
         meetings = self.get("custom_fields", {}).get("meeting:meeting", [])
         if conference:
-            meetings.append({"title": conference})
+            matching_meeting = next(
+                (m for m in meetings if artid and m.get("session") == artid),
+                None,
+            )
+            if matching_meeting is not None:
+                matching_meeting["title"] = conference
+            else:
+                meetings.append({"title": conference})
         self["custom_fields"]["meeting:meeting"] = meetings
     except AttributeError:
         raise UnexpectedValue(
