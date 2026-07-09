@@ -11,6 +11,7 @@ from cds_migrator_kit.errors import UnexpectedValue
 
 from ...models.bulletin_drafts import bulletin_drafts_model as model
 
+
 @model.over("resource_type", "^980__", override=True)
 def resource_type(self, key, value):
     """Translates resource_type for bulletin drafts."""

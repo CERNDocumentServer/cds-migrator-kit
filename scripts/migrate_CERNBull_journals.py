@@ -224,7 +224,8 @@ def link_article_to_issue(hit_id, record_pid):
         if (
             rel_id.get("relation_type", {}).get("id") == "ispublishedin"
             and rel_id.get("scheme") == "cds"
-            and rel_id.get("resource_type", {}).get("id") == "publication-periodicalissue"
+            and rel_id.get("resource_type", {}).get("id")
+            == "publication-periodicalissue"
         )
     }
     if record_pid in existing_rel_ids:

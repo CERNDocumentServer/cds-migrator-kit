@@ -19,7 +19,7 @@ from .base import (
     subjects,
     urls,
 )
-from .publications import journal, related_identifiers
+from .research import journal, related_identifiers
 
 
 @model.over("access_grants", "^506[1_]_")

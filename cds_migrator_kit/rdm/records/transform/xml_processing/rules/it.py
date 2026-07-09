@@ -18,9 +18,9 @@ from .base import normalize
 from .base import note as base_internal_notes
 from .base import subjects as base_subjects
 from .base import urls
-from .publications import imprint_info as base_publication_imprint_info
-from .publications import journal as base_journal
-from .publications import related_identifiers as base_publications_related_identifiers
+from .research import imprint_info as base_publication_imprint_info
+from .research import journal as base_journal
+from .research import related_identifiers as base_publications_related_identifiers
 
 
 @model.over("access_grants", "^506[1_]_")

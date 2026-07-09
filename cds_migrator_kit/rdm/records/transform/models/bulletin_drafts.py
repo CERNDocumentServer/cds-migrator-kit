@@ -97,6 +97,9 @@ class BulletinDraftsModel(CdsOverdo):
 
 
 bulletin_drafts_model = BulletinDraftsModel(
-    bases=(staff_association_model, bull_issue_model,),
+    bases=(
+        staff_association_model,
+        bull_issue_model,
+    ),
     entry_point_group="cds_migrator_kit.migrator.rules.bulletin_drafts",
 )
