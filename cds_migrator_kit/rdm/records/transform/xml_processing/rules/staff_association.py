@@ -20,7 +20,7 @@ from cds_migrator_kit.transform.xml_processing.rules.base import (
 
 from ...models.staff_association import staff_association_model as model
 from .bulletin_issue import collection
-from .publications import internal_notes
+from .research import internal_notes
 
 model.over("internal_notes", "^562__")(internal_notes)
 model.over("additional_titles", "(^242__)")(additional_titles)
