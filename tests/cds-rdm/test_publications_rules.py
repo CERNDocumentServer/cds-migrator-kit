@@ -433,6 +433,9 @@ class TestJournal:
           773 journal  c=875-882 w=C05-08-30  →  warsaw20050831  (962 k=875-882)
           773 conf     c=119-122 w=C05-03-12  →  lathuile20050312 (962 k=119-122)
         Result must be two entries, each with both CNUM identifier and title.
+        The merge is done by matching 962's artid ('k') against the 'session'
+        field already set on the meeting entry by the 773 rule (from its 'c'
+        subfield) - no temporary field is needed.
         """
         from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
             related_identifiers,
@@ -459,21 +462,15 @@ class TestJournal:
         )
         record["custom_fields"] = cf
 
-        # 962 processing (simulate side-effect; return value goes to related_identifiers)
-        meetings = record["custom_fields"].get("meeting:meeting", [])
+        # 962 processing
+        related_identifiers(
+            record, "962__", {"b": "836243", "k": "119-122", "n": "lathuile20050312"}
+        )
+        related_identifiers(
+            record, "962__", {"b": "836246", "k": "875-882", "n": "warsaw20050831"}
+        )
 
-        def _merge(artid, title):
-            nonlocal meetings
-            if artid:
-                for m in meetings:
-                    if m.get("_artid") == artid:
-                        m["title"] = title
-                        del m["_artid"]
-                        return
-            meetings.append({"title": title})
-
-        _merge("119-122", "lathuile20050312")
-        _merge("875-882", "warsaw20050831")
+        meetings = record["custom_fields"]["meeting:meeting"]
 
         assert len(meetings) == 2
         warsaw = next(m for m in meetings if m.get("title") == "warsaw20050831")
@@ -486,8 +483,22 @@ class TestJournal:
             {"scheme": "inspire", "identifier": "C05-03-12"}
         ]
 
-        # No leftover _artid fields
-        assert all("_artid" not in m for m in meetings)
+        # No leftover session fields exposed beyond their intended use
+        assert all("session" in m for m in meetings)
+
+    def test_962_title_appended_when_no_matching_session(self):
+        """A 962 title with no matching 773 session becomes a standalone meeting."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+        related_identifiers(
+            record, "962__", {"b": "836243", "k": "999-999", "n": "unrelated meeting"}
+        )
+
+        meetings = record["custom_fields"]["meeting:meeting"]
+        assert meetings == [{"title": "unrelated meeting"}]
 
 
 class TestDeadlineDate:
