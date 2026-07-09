@@ -21,18 +21,13 @@ import re
 
 from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
-from dojson.utils import force_list
 from edtf import EDTFParseException, parse_edtf, text_to_edtf
-from idutils.normalizers import normalize_isbn, normalize_issn
-from isbnlib import NotValidISBNError
 
-from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.errors import UnexpectedValue, MissingRequiredField
 from cds_migrator_kit.rdm.records.transform.models.thesis import thesis_model as model
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
-    filter_list_values,
     for_each_value,
     require,
-    strip_output,
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
 from cds_migrator_kit.transform.xml_processing.rules.base import process_contributors
@@ -42,7 +37,6 @@ from ...config import (
     ALLOWED_THESIS_COLLECTIONS,
     FORMER_COLLECTION_TAGS_TO_KEEP,
     IGNORED_THESIS_COLLECTIONS,
-    udc_pattern,
 )
 from .base import normalize
 
@@ -281,7 +275,7 @@ def funding(self, key, value):
     raise IgnoreKey("funding")
 
 
-@model.over("affiliations", "^901__")
+@model.over("affiliations", "^901__", override_tag=True)
 @for_each_value
 def rec_affiliation(self, key, value):
     affiliation = value.get("u", "")
@@ -364,3 +358,22 @@ def related_identifiers(self, key, value):
     if new_id not in rel_ids:
         return new_id
     raise IgnoreKey("related_identifiers")
+
+
+@model.over("contributors", "^906__", override_tag=True)
+@for_each_value
+def supervisor(self, key, value):
+    """Translates supervisor."""
+    supervisor = StringValue(value.get("p")).parse()
+    if not supervisor:
+        raise MissingRequiredField(field=key, subfield="p", priority="warning")
+    contributor = {
+        "person_or_org": {
+            "type": "personal",
+            "name": supervisor,
+            "family_name": supervisor,
+        },
+        "role": {"id": "supervisor"},
+    }
+
+    return contributor

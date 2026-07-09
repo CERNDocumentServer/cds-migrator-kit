@@ -20,6 +20,21 @@ class CdsOverdo(Overdo):
     rectype = None
     _default_fields = None
 
+    def over(self, name, *source_tags, override_tag=False, **kwargs):
+        """Register creator rule.
+
+        :param override_tag: if ``True``, remove any existing rule matching
+            one of ``source_tags`` before registering, regardless of its
+            output field ``name``. Use this instead of cds-dojson's
+            ``override=True`` when the new rule reuses an output field name
+            (e.g. "contributors") that other, unrelated rules for different
+            tags also write to - ``override=True`` there matches by output
+            name too, and would silently drop those unrelated rules as well.
+        """
+        if override_tag:
+            self.rules[:] = [rule for rule in self.rules if rule[0] not in source_tags]
+        return super().over(name, *source_tags, **kwargs)
+
     def do(
         self,
         blob,

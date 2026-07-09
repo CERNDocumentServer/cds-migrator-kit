@@ -51,7 +51,7 @@ def contact_person(self, key, value):
     return contributor
 
 
-@model.over("contributors", "^906__")
+@model.over("contributors", "^906__", override_tag=True)
 @for_each_value
 def supervisor(self, key, value):
     """Translates supervisor."""
