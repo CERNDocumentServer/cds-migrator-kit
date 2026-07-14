@@ -400,17 +400,21 @@ def test_additional_descriptions_function_missing_field():
 def test_title_staff_rules_extraction():
     """Test title extraction for Staff Rules from report numbers."""
     record = {}
-    result = rep_num(record, "037__", {"a": "CERN-STAFF-RULES-ED01"})
+    with pytest.raises(IgnoreKey):
+        rep_num(record, "037__", {"a": "CERN-STAFF-RULES-ED01"})
     # Should set the title on the record
     assert record.get("title") == "Staff Rules and Regulations ed. 01"
-    # Should also return identifier
-    assert result is not None
+    # Should also store the identifier
+    assert record["identifiers"] == [
+        {"identifier": "CERN-STAFF-RULES-ED01", "scheme": "cdsrn"}
+    ]
 
 
 def test_title_staff_rules_with_revision():
     """Test title extraction for Staff Rules with revision suffix."""
     record = {}
-    result = rep_num(record, "037__", {"a": "CERN-STAFF-RULES-ED02-REV1"})
+    with pytest.raises(IgnoreKey):
+        rep_num(record, "037__", {"a": "CERN-STAFF-RULES-ED02-REV1"})
     assert record.get("title") == "Staff Rules and Regulations ed. 02"
 
 
@@ -418,7 +422,8 @@ def test_title_circular_alternative_titles():
     """Test alternative title generation for circulars."""
     # Test Administrative Circular
     record = {}
-    result = rep_num(record, "037__", {"a": "CERN-ADMIN-CIRCULAR-1-REV0"})
+    with pytest.raises(IgnoreKey):
+        rep_num(record, "037__", {"a": "CERN-ADMIN-CIRCULAR-1-REV0"})
     assert "additional_titles" in record
     assert any(
         t["title"] == "Administrative Circular No.1"
@@ -427,7 +432,8 @@ def test_title_circular_alternative_titles():
 
     # Test Operational Circular
     record = {}
-    result = rep_num(record, "037__", {"a": "CERN-OPER-CIRCULAR-2-REV0"})
+    with pytest.raises(IgnoreKey):
+        rep_num(record, "037__", {"a": "CERN-OPER-CIRCULAR-2-REV0"})
     assert "additional_titles" in record
     assert any(
         t["title"] == "Operational Circular No.2" for t in record["additional_titles"]
@@ -435,7 +441,8 @@ def test_title_circular_alternative_titles():
 
     # Test with revision
     record = {}
-    result = rep_num(record, "037__", {"a": "CERN-ADMIN-CIRCULAR-3-REV2"})
+    with pytest.raises(IgnoreKey):
+        rep_num(record, "037__", {"a": "CERN-ADMIN-CIRCULAR-3-REV2"})
     assert "additional_titles" in record
     assert any(
         "Administrative Circular No.3 (Rev 2)" in t["title"]

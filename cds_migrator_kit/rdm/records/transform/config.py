@@ -14,13 +14,17 @@ PIDS_SCHEMES_ALLOWED = ["DOI"]
 
 # stores the identifiers found in PIDs field in the alternative identifiers instead
 PID_SCHEMES_TO_STORE_IN_IDENTIFIERS = [
+    "CDSRN",
+]
+
+PID_SCHEMES_TO_STORE_IN_RELATED_IDENTIFIERS = [
     "ARXIV",
     "HDL",
-    "HAL" "HANDLE",
+    "HAL",
+    "HANDLE",
     "URN",
     "INIS",
     "CERCER",
-    "CDSRN",
 ]
 
 IDENTIFIERS_SCHEMES_TO_DROP = [

@@ -409,9 +409,12 @@ class TestReportNumber:
     def test_report_number_basic(self):
         """Test basic report number."""
         record = {}
-        result = report_number(record, "037__", {"a": "CERN-THESIS-2021-001"})
-        # Default scheme for report numbers is 'cdsrn'
-        assert result == [{"identifier": "CERN-THESIS-2021-001", "scheme": "cdsrn"}]
+        with pytest.raises(IgnoreKey):
+            report_number(record, "037__", {"a": "CERN-THESIS-2021-001"})
+        # Default scheme for report numbers is 'cdsrn', stored in identifiers
+        assert record["identifiers"] == [
+            {"identifier": "CERN-THESIS-2021-001", "scheme": "cdsrn"}
+        ]
 
     def test_report_number_arxiv(self):
         """Test arXiv report number."""
