@@ -67,6 +67,7 @@ class Runner:
                 self.access_grants_view = stream_config[collection].get(
                     "access_grants_view", False
                 )
+                self.plots = stream_config[collection].get("plots", False)
                 self.data_dir.mkdir(parents=True, exist_ok=True)
 
                 self.tmp_dir = Path(stream_config[collection].get("tmp_dir"))
@@ -103,6 +104,7 @@ class Runner:
                         **transform_config,
                         restricted=self.restricted,
                         access_grants_view=self.access_grants_view,
+                        plots=self.plots,
                         migration_logger=self.migration_logger,
                         record_state_logger=self.record_state_logger,
                     )
