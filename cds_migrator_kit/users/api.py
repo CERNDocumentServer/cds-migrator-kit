@@ -7,6 +7,7 @@
 
 """cds-migrator-kit user api."""
 
+import re
 from abc import ABC, abstractmethod
 from copy import deepcopy
 
@@ -40,10 +41,12 @@ class MigrationUserAPI(ABC):
             return user
         except IntegrityError as e:
             db.session.rollback()
-            email_username, domain = email.split("@")[0]
+            email_username, domain = email.split("@")
+            email_username = re.sub(r"\W+", "", email_username)
+            domain = re.sub(r"\W+", "", domain)
             user = User(
                 email=email,
-                username=f"duplicated_{username}_{email_username}[at]{domain}",
+                username=f"duplicated_{username}_{email_username}at{domain}",
                 active=False,
             )
             db.session.add(user)
