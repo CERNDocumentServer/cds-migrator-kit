@@ -414,6 +414,14 @@ def deadline_date(self, key, value):
         raise UnexpectedValue("Unexpected value in 583__z", field=key, value=value)
     deadline = value.get("c", "")
     if deadline and deadline.strip().upper() != "UNKNOWN":
+        try:
+            deadline = normalize(deadline)
+        except (ParserError, TypeError) as e:
+            raise UnexpectedValue(
+                field=key,
+                value=value,
+                message=f"Can't parse provided deadline date. Value: {deadline}",
+            )
         dates.append(
             {
                 "date": deadline,
@@ -425,10 +433,40 @@ def deadline_date(self, key, value):
     raise IgnoreKey("dates")
 
 
-@model.over("related_identifiers", "^962__")
+@model.over("related_identifiers", "(^962__)|(^518__)")
 @for_each_value
 def related_identifiers(self, key, value):
-    """Translates related identifiers."""
+    """Translates related identifiers and meeting date (518__r/__d)."""
+    if key.startswith("518"):
+        meeting_date_d = value.get("d", "").strip()
+        meeting_date_r = value.get("r", "").strip()
+        meeting_date = meeting_date_d or meeting_date_r
+        if not meeting_date:
+            raise IgnoreKey("related_identifiers")
+
+        meetings = self.get("custom_fields", {}).get("meeting:meeting", [])
+        if len(meetings) > 1:
+            raise UnexpectedValue(
+                "Can't determine which meeting the 518__r/d date belongs to, "
+                "more than one meeting present",
+                field=key,
+                value=value,
+            )
+        try:
+            meeting_date = normalize(meeting_date)
+        except (ParserError, TypeError):
+            if meeting_date.upper() == "CERN":
+                # not a parseable date (e.g. "CERN") - ignore silently
+                raise IgnoreKey("related_identifiers")
+            raise UnexpectedValue("Can't parse meeting date (518__")
+        # 518 is processed before 962, so the meeting entry doesn't exist yet -
+        # create the first (only) meeting entry for 962 to fill in later.
+        if not meetings:
+            meetings.append({})
+        meetings[0]["dates"] = meeting_date
+        self["custom_fields"]["meeting:meeting"] = meetings
+        raise IgnoreKey("related_identifiers")
+
     recid = value.get("b")
     artid = value.get("k", "")
     try:
@@ -441,6 +479,11 @@ def related_identifiers(self, key, value):
             )
             if matching_meeting is not None:
                 matching_meeting["title"] = conference
+            elif len(meetings) == 1 and "title" not in meetings[0]:
+                # first meeting entry was created by 518 (dates only, no
+                # session/title yet) - fill it in instead of appending a
+                # duplicate entry
+                meetings[0]["title"] = conference
             else:
                 meetings.append({"title": conference})
         self["custom_fields"]["meeting:meeting"] = meetings

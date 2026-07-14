@@ -501,6 +501,137 @@ class TestJournal:
         assert meetings == [{"title": "unrelated meeting"}]
 
 
+class TestMeetingDateFrom518:
+    """Test meeting date (518__r/__d) handling in related_identifiers.
+
+    518 always precedes 962 in the record, so the meeting:meeting entry
+    doesn't exist yet when 518 is processed - the first entry is created
+    then, and 962 must later fill itself into that same first entry rather
+    than appending a duplicate.
+    """
+
+    def test_meeting_date_from_518_r_creates_first_meeting(self):
+        """518__r is normalized to EDTF and creates the first meeting entry."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+        with pytest.raises(IgnoreKey):
+            related_identifiers(record, "518__", {"r": "May 2021"})
+
+        meetings = record["custom_fields"]["meeting:meeting"]
+        assert meetings == [{"dates": "2021-05"}]
+
+    def test_meeting_date_from_518_d_fallback(self):
+        """518__d is used when 518__r is absent."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+        with pytest.raises(IgnoreKey):
+            related_identifiers(record, "518__", {"d": "2022-11-21"})
+
+        meetings = record["custom_fields"]["meeting:meeting"]
+        assert meetings == [{"dates": "2022-11-21"}]
+
+    def test_meeting_date_d_takes_precedence_over_r(self):
+        """518__d is preferred over 518__r when both are present."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+        with pytest.raises(IgnoreKey):
+            related_identifiers(record, "518__", {"d": "2022-11-21", "r": "May 2021"})
+
+        meetings = record["custom_fields"]["meeting:meeting"]
+        assert meetings == [{"dates": "2022-11-21"}]
+
+    def test_meeting_date_ignored_when_cern(self):
+        """A non-date 'CERN' value is ignored silently, no error raised."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+        with pytest.raises(IgnoreKey):
+            related_identifiers(record, "518__", {"r": "CERN"})
+
+        assert record["custom_fields"].get("meeting:meeting", []) == []
+
+    def test_meeting_date_raises_when_not_a_date(self):
+        """A non-date, non-CERN value raises UnexpectedValue."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+        with pytest.raises(UnexpectedValue):
+            related_identifiers(record, "518__", {"r": "not-a-valid-date"})
+
+    def test_meeting_date_missing_subfields_ignored(self):
+        """No r or d subfield present - silently ignored."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+        with pytest.raises(IgnoreKey):
+            related_identifiers(record, "518__", {"a": "unrelated subfield"})
+
+        assert record["custom_fields"].get("meeting:meeting", []) == []
+
+    def test_meeting_date_raises_when_multiple_meetings_already_present(self):
+        """Defensive guard: ambiguous target if more than one meeting exists."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {
+            "custom_fields": {
+                "meeting:meeting": [{"title": "meeting one"}, {"title": "meeting two"}]
+            }
+        }
+        with pytest.raises(UnexpectedValue):
+            related_identifiers(record, "518__", {"r": "May 2021"})
+
+    def test_518_then_962_merges_title_into_same_first_meeting(self):
+        """962 with no session match fills the 518-created first entry."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+        with pytest.raises(IgnoreKey):
+            related_identifiers(record, "518__", {"r": "May 2021"})
+
+        related_identifiers(record, "962__", {"b": "836243", "n": "some conference"})
+
+        meetings = record["custom_fields"]["meeting:meeting"]
+        assert meetings == [{"dates": "2021-05", "title": "some conference"}]
+
+    def test_518_then_two_962_creates_second_entry_for_extra_meeting(self):
+        """A second, unrelated 962 title doesn't overwrite the first entry."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+        with pytest.raises(IgnoreKey):
+            related_identifiers(record, "518__", {"r": "May 2021"})
+
+        related_identifiers(record, "962__", {"b": "836243", "n": "conference one"})
+        related_identifiers(record, "962__", {"b": "836244", "n": "conference two"})
+
+        meetings = record["custom_fields"]["meeting:meeting"]
+        assert meetings == [
+            {"dates": "2021-05", "title": "conference one"},
+            {"title": "conference two"},
+        ]
+
+
 class TestDeadlineDate:
     """Test deadline_date function from publications.py (583__ rule)."""
 
@@ -563,6 +694,25 @@ class TestDeadlineDate:
         record = {}
         with pytest.raises(UnexpectedValue):
             deadline_date(record, "583__", {"c": "2021-05-15", "z": "Action taken"})
+
+    def test_deadline_date_text_format_normalized(self):
+        """Test that a non-EDTF 583__c value is normalized to EDTF."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            deadline_date(record, "583__", {"c": "May 2021"})
+        assert record["dates"] == [
+            {
+                "date": "2021-05",
+                "type": {"id": "other"},
+                "description": "Deadline date",
+            }
+        ]
+
+    def test_deadline_date_invalid_raises_unexpected_value(self):
+        """Test that an unparseable 583__c value raises UnexpectedValue."""
+        record = {}
+        with pytest.raises(UnexpectedValue):
+            deadline_date(record, "583__", {"c": "not-a-valid-date"})
 
 
 class TestLicenseAndFundingFrom540:

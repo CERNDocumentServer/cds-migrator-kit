@@ -68,7 +68,7 @@ def _(x):  # needed to avoid start time failure with lazy strings
 # https://flask.palletsprojects.com/en/2.1.x/config/#SEND_FILE_MAX_AGE_DEFAULT
 SEND_FILE_MAX_AGE_DEFAULT = 300
 RDM_RECORDS_MAX_FILES_COUNT = (
-    100  # temporarily, until we decide what we do with figures
+    150  # temporarily, until we decide what we do with figures
 )
 
 # SECURITY WARNING: keep the secret key used in production secret!
@@ -386,6 +386,11 @@ RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES = {
             "datacite": "INDICO",
         },
         "hal": {"label": "HAL", "validator": schemes.is_hal, "datacite": "HAL"},
+        "edms": {
+            "label": _("EDMS"),
+            "validator": schemes.is_edms,
+            "datacite": "EDMS"
+        },
     },
     # keep internal identifiers' schemes for internal record relations
     **RDM_RECORDS_IDENTIFIERS_SCHEMES,
