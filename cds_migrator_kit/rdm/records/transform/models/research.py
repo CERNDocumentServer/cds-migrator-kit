@@ -29,6 +29,7 @@ class ResearchModel(CdsOverdo):
         "035__u",  # oai identifiers in 1215391
         "035__m",  # oai identifiers in 1215391
         "035__z",  # oai identifiers in 1215391
+        "336__a",  # redundant field
         "500__9",  # provenance of the note
         "520__9",  # provenance of the description
         "520__h",  # provenance of the description
