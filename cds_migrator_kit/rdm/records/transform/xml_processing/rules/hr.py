@@ -289,7 +289,12 @@ def translated_description(self, key, value):
 
 
 @model.over(
-    "identifiers", "(^035__)|(^037__)|(^088__)|(^8564_)|(^970__)", override=True
+    "identifiers",
+    "^035__",
+    "(^037__)|(^088__)",
+    "^8564[1_]",
+    "^970__",
+    override_tag=True,
 )
 @for_each_value
 def rep_num(self, key, value):

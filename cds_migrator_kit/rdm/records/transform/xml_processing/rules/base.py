@@ -15,7 +15,7 @@ from urllib.parse import ParseResult, urlparse
 from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
-from idutils.validators import is_doi, is_handle, is_urn
+from idutils.validators import is_arxiv, is_doi, is_handle, is_urn
 from invenio_accounts.models import User
 
 from cds_migrator_kit.errors import UnexpectedValue
@@ -30,6 +30,7 @@ from cds_migrator_kit.rdm.records.transform.config import (
     PID_SCHEMES_TO_STORE_IN_IDENTIFIERS,
     RECOGNISED_KEYWORD_SCHEMES,
     udc_pattern,
+    PID_SCHEMES_TO_STORE_IN_RELATED_IDENTIFIERS,
 )
 from cds_migrator_kit.rdm.records.transform.models.base_record import (
     rdm_base_record_model as model,
@@ -257,17 +258,21 @@ def record_restriction(self, key, value):
         )
 
 
-@model.over("identifiers", "(^037__)|(^088__)")
+@model.over("related_identifiers", "(^037__)|(^088__)")
 @for_each_value
 def report_number(self, key, value):
     """Translates report_number fields."""
 
     identifier = value.get("a", "")
     identifier = StringValue(identifier).parse()
-    existing_ids = self.get("identifiers", [])
+    existing_ids = self.get("related_identifiers", [])
     scheme = value.get("2")
     provenance = value.get("9", "")
-    if provenance.lower() == "arxiv" or identifier.startswith("arXiv:"):
+    if (
+        provenance.lower() == "arxiv"
+        or identifier.startswith("arXiv:")
+        or is_arxiv(identifier)
+    ):
         scheme = "arxiv"
         identifier = identifier.replace("oai:arXiv.org:", "arXiv:")
         related_works = self.get("related_identifiers", [])
@@ -295,7 +300,11 @@ def report_number(self, key, value):
             scheme = "handle"
         if scheme == "arXiv:reportnumber":
             scheme = "cdsrn"
-        if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
+        if (
+            scheme.upper()
+            in PID_SCHEMES_TO_STORE_IN_RELATED_IDENTIFIERS
+            + PID_SCHEMES_TO_STORE_IN_IDENTIFIERS
+        ):
             scheme = scheme.lower()
     if key == "037__" and "n" in value:
         # this means we have URN/HAL schema (only one record in thesis)
@@ -309,25 +318,31 @@ def report_number(self, key, value):
     # if there is no identifier it means something else was stored in __9
     if not identifier:
         if re.findall(udc_pattern, scheme):
-            raise IgnoreKey("identifiers")
+            raise IgnoreKey("related_identifiers")
         elif scheme.upper().startswith("CM-"):
             # barcode, to drop
-            raise IgnoreKey("identifiers")
+            raise IgnoreKey("related_identifiers")
         elif scheme.upper().startswith("P00"):
             # barcode, to drop
-            raise IgnoreKey("identifiers")
+            raise IgnoreKey("related_identifiers")
         elif scheme.upper() == "CERN LIBRARY":
-            raise IgnoreKey("identifiers")
+            raise IgnoreKey("related_identifiers")
         elif scheme.upper().startswith("B00"):
-            raise IgnoreKey("identifiers")
+            raise IgnoreKey("related_identifiers")
         elif scheme.startswith("SCOO"):
             identifier = scheme
             scheme = "other"
         else:
             raise UnexpectedValue("Missing ID value", field=key, value=value)
     new_id = {"scheme": scheme, "identifier": identifier}
+    if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
+        existing_ids = self.get("identifiers", [])
+        if new_id not in existing_ids:
+            existing_ids.append(new_id)
+            self["identifiers"] = existing_ids
+            raise IgnoreKey("related_identifiers")
     if new_id in existing_ids:
-        raise IgnoreKey("identifiers")
+        raise IgnoreKey("related_identifiers")
     return new_id
 
 
@@ -411,7 +426,7 @@ def identifiers(self, key, value):
         }
 
     if id_value:
-        if rel_id["scheme"] in RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES:
+        if rel_id["scheme"] in RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES.keys():
             rel_id.update(
                 {
                     "relation_type": {"id": "isvariantformof"},
@@ -422,7 +437,7 @@ def identifiers(self, key, value):
             self["related_identifiers"] = related_works
             raise IgnoreKey("identifiers")
 
-        elif rel_id["scheme"] in RDM_RECORDS_IDENTIFIERS_SCHEMES and (
+        elif rel_id["scheme"] in RDM_RECORDS_IDENTIFIERS_SCHEMES.keys() and (
             rel_id not in self.get("identifiers", [])
         ):
             return rel_id
