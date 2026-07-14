@@ -410,7 +410,12 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             return _creators
 
         def _resource_type(entry):
-            return entry["resource_type"]
+            try:
+                return entry["resource_type"]
+            except KeyError:
+                raise MissingRequiredField(
+                    message="resource_type", field="980"
+                )
 
         def _publication_date(entry, dump_record):
             pub_date = entry.get("publication_date")
@@ -436,7 +441,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         field="identifiers",
                         value=item,
                         subfield="9",
-                        message="IDENTIFIER SCHEME INVALID",
+                        message="IDENTIFIER SCHEME MISSING",
                         priority="warning",
                         stage="transform",
                     )
