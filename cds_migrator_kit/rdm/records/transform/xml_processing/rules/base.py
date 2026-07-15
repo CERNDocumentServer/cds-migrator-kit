@@ -10,6 +10,8 @@
 import datetime
 import logging
 import re
+from idutils.normalizers import normalize_isbn
+from isbnlib import NotValidISBNError
 from urllib.parse import ParseResult, urlparse
 
 from dateutil.parser import ParserError, parse
@@ -341,6 +343,8 @@ def report_number(self, key, value):
             existing_ids.append(new_id)
             self["identifiers"] = existing_ids
             raise IgnoreKey("related_identifiers")
+    new_id["relation_type"] = {"id": "isvariantformof"}
+    new_id["resource_type"] = {"id": "publication-other"}
     if new_id in existing_ids:
         raise IgnoreKey("related_identifiers")
     return new_id
@@ -361,6 +365,29 @@ def aleph_number(self, key, value):
         return {"scheme": "aleph", "identifier": aleph}
     else:
         raise IgnoreKey("identifiers")
+
+
+@model.over("related_identifiers", "(^020__)", override_tag=True)
+@for_each_value
+def isbn(self, key, value):
+    _isbn = StringValue(value.get("a", "")).parse()
+    _isbn_material = StringValue(value.get("u", "")).parse()
+    if _isbn:
+        try:
+            _isbn = normalize_isbn(_isbn)
+
+        except NotValidISBNError as e:
+            raise UnexpectedValue("Not a valid ISBN.", field=key, value=value)
+
+        new_id = {
+            "identifier": _isbn,
+            "scheme": "isbn",
+            "relation_type": {"id": "isversionof"},
+            "resource_type": {"id": "publication-book"}
+        }
+        if new_id not in self.get("related_identifiers", []):
+            return new_id
+    raise IgnoreKey("related_identifiers")
 
 
 @model.over("identifiers", "^035__")
@@ -441,6 +468,8 @@ def identifiers(self, key, value):
             rel_id not in self.get("identifiers", [])
         ):
             return rel_id
+        elif not scheme:
+            raise IgnoreKey("identifiers")
         else:
             if "HOLALE" in id_value:
                 raise IgnoreKey("identifiers")
@@ -903,21 +932,36 @@ def related_identifiers_787(self, key, value):
     raise IgnoreKey("related_identifiers")
 
 
-@model.over("related_identifiers", "^775_")
+@model.over("related_identifiers", "^775_", override_tag=True)
 @for_each_value
 def related_identifiers(self, key, value):
     """Translates related identifiers."""
-    description = value.get("b")
-    year = value.get("c")
     recid = value.get("w")
+    volume_note = value.get("n")
     rel_ids = self.get("related_identifiers", [])
+
+    if not recid:
+        raise IgnoreKey("related_identifiers")
+
+    if volume_note:
+        if not re.search(r"v\.?\s*\d+", volume_note, re.IGNORECASE):
+            raise UnexpectedValue(
+                "Missing volume indication in 775__n",
+                field=key,
+                subfield="n",
+                value=value,
+            )
+        resource_type = {"id": "publication-book"}
+    else:
+        resource_type = {"id": "publication-other"}
+
     new_id = {
         "identifier": recid,
         "scheme": "cds",
         "relation_type": {"id": "references"},
-        "resource_type": {"id": "other"},
+        "resource_type": resource_type,
     }
-    if recid and new_id not in rel_ids:
+    if new_id not in rel_ids:
         return new_id
     raise IgnoreKey("related_identifiers")
 
