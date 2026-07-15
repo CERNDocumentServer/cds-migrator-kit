@@ -1,4 +1,5 @@
 import re
+from datetime import datetime
 
 from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
@@ -187,6 +188,22 @@ def internal_notes(self, key, value):
     return internal_notes
 
 
+@model.over("additional_descriptions", "^691__")
+@for_each_value
+@require(["a"])
+def abbreviation(self, key, value):
+    """Translates 691__a abbreviation into an additional description."""
+    description_text = value.get("a")
+    if not description_text:
+        raise IgnoreKey("additional_descriptions")
+    return {
+        "description": f"Abbreviation: {description_text}",
+        "type": {
+            "id": "other",
+        },
+    }
+
+
 @model.over("funding", "(^536__)")
 def funding(self, key, value):
     _custom_fields = self.get("custom_fields", {})
@@ -321,6 +338,61 @@ def journal(self, key, value):
         journal_fields["pages"] = StringValue(value.get("c", "")).parse()
     _custom_fields["journal:journal"] = journal_fields
     return _custom_fields
+
+
+@model.over("custom_fields", "(^111__)|(^711__)", override_tag=True)
+def meeting(self, key, value):
+    """Translates meeting name entries (111__, 711__) into meeting:meeting.
+
+    111__a -> title, 111__c -> place, 111__g -> acronym. 111__d -> dates; if
+    missing, fall back to 111__9 (parsed as YYYYMMDD), then to 111__f (a bare
+    year). 711__a -> title, but only if no meeting entry with that title
+    already exists (711 is an added entry, often duplicating the 111
+    conference name).
+    """
+    _custom_fields = self.get("custom_fields", {})
+    meetings = _custom_fields.get("meeting:meeting", [])
+
+    if key.startswith("111"):
+        title = StringValue(value.get("a", "")).parse()
+        place = StringValue(value.get("c", "")).parse()
+        date_recon = StringValue(value.get("9", "")).parse()
+        if date_recon:
+            try:
+                date_recon = datetime.strptime(date_recon, "%Y%m%d").strftime(
+                    "%Y-%m-%d"
+                )
+            except ValueError:
+                raise UnexpectedValue(
+                    "Can't parse meeting date (111__9)",
+                    field=key,
+                    subfield="9",
+                    value=value,
+                )
+        date_year = StringValue(value.get("f", "")).parse()
+        dates = StringValue(value.get("d", "")).parse() or date_recon or date_year
+        acronym = StringValue(value.get("g", "")).parse()
+
+        new_meeting = {}
+        if title:
+            new_meeting["title"] = title
+        if place:
+            new_meeting["place"] = place
+        if dates:
+            new_meeting["dates"] = dates
+        if acronym:
+            new_meeting["acronym"] = acronym
+        if new_meeting:
+            meetings.append(new_meeting)
+    else:
+        title = StringValue(value.get("a", "")).parse()
+        if title and not any(m.get("title") == title for m in meetings):
+            meetings.append({"title": title})
+
+    if meetings:
+        _custom_fields["meeting:meeting"] = meetings
+    self["custom_fields"] = _custom_fields
+    raise IgnoreKey("custom_fields")
 
 
 @model.over("_oa_license", "^540__", override=True)

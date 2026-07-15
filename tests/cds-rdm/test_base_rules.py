@@ -13,10 +13,12 @@ from dojson.errors import IgnoreKey
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
     custom_fields_693,
+    isbn,
     normalize,
     note,
     recid,
     record_restriction,
+    related_identifiers,
     urls,
 )
 
@@ -285,6 +287,148 @@ class TestUrls:
         result = urls(record, "8564_", {"x": "https://custom.com"}, subfield="x")
         # URLs are converted to http
         assert result[0]["identifier"] == "http://custom.com"
+
+
+class TestIsbnRelatedIdentifiers:
+    """Test isbn function (020__ rule) from base.py."""
+
+    def test_isbn13_normalized_and_added(self):
+        """Test that a valid ISBN-13 is normalized and added to related_identifiers."""
+        record = {}
+        result = isbn(record, "020__", {"a": "978-3-16-148410-0"})
+        assert result == [
+            {
+                "identifier": "978-3-16-148410-0",
+                "scheme": "isbn",
+                "relation_type": {"id": "isversionof"},
+                "resource_type": {"id": "publication-book"},
+            }
+        ]
+
+    def test_isbn10_converted_to_isbn13(self):
+        """Test that a valid ISBN-10 is converted to its ISBN-13 form."""
+        record = {}
+        result = isbn(record, "020__", {"a": "0-306-40615-2"})
+        assert result == [
+            {
+                "identifier": "978-0-306-40615-7",
+                "scheme": "isbn",
+                "relation_type": {"id": "isversionof"},
+                "resource_type": {"id": "publication-book"},
+            }
+        ]
+
+    def test_isbn_missing_subfield_a_ignored(self):
+        """Test that 020__ without subfield 'a' is ignored."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            isbn(record, "020__", {})
+
+    def test_isbn_empty_subfield_a_ignored(self):
+        """Test that 020__a with an empty value is ignored."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            isbn(record, "020__", {"a": ""})
+
+    def test_isbn_no_existing_related_identifiers_does_not_raise(self):
+        """Regression test: isbn() must not fail on a record that has no
+        related_identifiers key yet (the common case for the first related
+        identifier found on a record)."""
+        record = {}
+        result = isbn(record, "020__", {"a": "978-3-16-148410-0"})
+        assert result[0]["identifier"] == "978-3-16-148410-0"
+
+    def test_isbn_no_duplicate(self):
+        """Test that an already-present ISBN is not added twice."""
+        record = {
+            "related_identifiers": [
+                {
+                    "identifier": "978-3-16-148410-0",
+                    "scheme": "isbn",
+                    "relation_type": {"id": "isversionof"},
+                    "resource_type": {"id": "publication-book"},
+                }
+            ]
+        }
+        with pytest.raises(IgnoreKey):
+            isbn(record, "020__", {"a": "978-3-16-148410-0"})
+
+    def test_isbn_malformed_value_does_not_raise(self):
+        """Documents current behavior: normalize_isbn() does not raise for
+        malformed input, so malformed ISBNs end up with an empty identifier
+        instead of triggering the UnexpectedValue branch."""
+        record = {}
+        result = isbn(record, "020__", {"a": "123"})
+        assert result[0]["identifier"] == ""
+
+
+class TestRelatedIdentifiers775:
+    """Test related_identifiers function (775 field) from base.py."""
+
+    def test_775_no_volume_note_sets_publication_other(self):
+        """Test that missing 775__n results in resource_type publication-other."""
+        record = {}
+        result = related_identifiers(record, "775__", {"w": "123456"})
+        assert result == [
+            {
+                "identifier": "123456",
+                "scheme": "cds",
+                "relation_type": {"id": "references"},
+                "resource_type": {"id": "publication-other"},
+            }
+        ]
+
+    def test_775_volume_note_dot_notation_sets_publication_book(self):
+        """Test that 775__n with 'v.1' notation results in publication-book."""
+        record = {}
+        result = related_identifiers(record, "775__", {"w": "123456", "n": "v.1"})
+        assert result == [
+            {
+                "identifier": "123456",
+                "scheme": "cds",
+                "relation_type": {"id": "references"},
+                "resource_type": {"id": "publication-book"},
+            }
+        ]
+
+    def test_775_volume_note_no_dot_notation_sets_publication_book(self):
+        """Test that 775__n with 'v2' notation results in publication-book."""
+        record = {}
+        result = related_identifiers(record, "775__", {"w": "123456", "n": "v2"})
+        assert result[0]["resource_type"] == {"id": "publication-book"}
+
+    def test_775_volume_note_with_space_sets_publication_book(self):
+        """Test that 775__n with 'v. 3' notation results in publication-book."""
+        record = {}
+        result = related_identifiers(record, "775__", {"w": "123456", "n": "v. 3"})
+        assert result[0]["resource_type"] == {"id": "publication-book"}
+
+    def test_775_note_without_volume_indication_raises_error(self):
+        """Test that 775__n without volume indication raises UnexpectedValue."""
+        record = {}
+        with pytest.raises(UnexpectedValue):
+            related_identifiers(record, "775__", {"w": "123456", "n": "some note"})
+
+    def test_775_no_recid_ignored(self):
+        """Test that missing 775__w is ignored."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            related_identifiers(record, "775__", {"n": "v.1"})
+
+    def test_775_no_duplicate(self):
+        """Test that duplicate related identifiers are not added twice."""
+        record = {
+            "related_identifiers": [
+                {
+                    "identifier": "123456",
+                    "scheme": "cds",
+                    "relation_type": {"id": "references"},
+                    "resource_type": {"id": "publication-other"},
+                }
+            ]
+        }
+        with pytest.raises(IgnoreKey):
+            related_identifiers(record, "775__", {"w": "123456"})
 
 
 class TestNote:

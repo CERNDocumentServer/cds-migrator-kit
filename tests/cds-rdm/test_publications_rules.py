@@ -12,12 +12,14 @@ from dojson.errors import IgnoreKey
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+    abbreviation,
     deadline_date,
     imprint_info,
     internal_notes,
     isbn,
     issn,
     journal,
+    meeting,
     oa_level_from_license,
     udc,
 )
@@ -884,6 +886,226 @@ class TestDeadlineDate:
         record = {}
         with pytest.raises(UnexpectedValue):
             deadline_date(record, "583__", {"c": "not-a-valid-date"})
+
+
+class TestAbbreviation:
+    """Test abbreviation function from research.py (691__a rule)."""
+
+    def test_abbreviation_added_as_additional_description(self):
+        """Test that 691__a is translated into an additional description."""
+        record = {}
+        result = abbreviation(record, "691__", {"a": "CMS"})
+        assert result == [
+            {
+                "description": "Abbreviation: CMS",
+                "type": {"id": "other"},
+            }
+        ]
+
+    def test_abbreviation_appends_to_existing_additional_descriptions(self):
+        """Test that 691__a is appended to an existing additional_descriptions list."""
+        record = {
+            "additional_descriptions": [
+                {"description": "Some other note", "type": {"id": "other"}}
+            ]
+        }
+        result = abbreviation(record, "691__", {"a": "CMS"})
+        assert result == [
+            {
+                "description": "Abbreviation: CMS",
+                "type": {"id": "other"},
+            }
+        ]
+
+    def test_abbreviation_missing_a_ignored(self):
+        """Test that 691__ without subfield 'a' is ignored."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            abbreviation(record, "691__", {})
+
+    def test_abbreviation_empty_a_ignored(self):
+        """Test that 691__a with an empty value is ignored."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            abbreviation(record, "691__", {"a": ""})
+
+
+class TestMeetingFrom111And711:
+    """Tests for meeting (111__/711__ rule) - builds meeting:meeting custom field."""
+
+    def test_111_full_fields_creates_meeting_entry(self):
+        """Test that 111__a/c/d/g populate title/place/dates/acronym."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            meeting(
+                record,
+                "111__",
+                {
+                    "a": "Lectures at Fermilab on SUSY",
+                    "c": "Batavia, IL, USA",
+                    "d": "10 Mar 2000",
+                    "f": "2000",
+                    "g": "batavia20000310",
+                },
+            )
+        assert record["custom_fields"]["meeting:meeting"] == [
+            {
+                "title": "Lectures at Fermilab on SUSY",
+                "place": "Batavia, IL, USA",
+                "dates": "10 Mar 2000",
+                "acronym": "batavia20000310",
+            }
+        ]
+
+    def test_111_falls_back_to_f_when_d_missing(self):
+        """Test that 111__f is used for dates when 111__d is absent."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            meeting(
+                record,
+                "111__",
+                {"a": "Some Meeting", "c": "Geneva", "f": "2000", "g": "ABC"},
+            )
+        meeting_entry = record["custom_fields"]["meeting:meeting"][0]
+        assert meeting_entry["dates"] == "2000"
+
+    def test_111_d_takes_precedence_over_f(self):
+        """Test that 111__d is preferred over 111__f when both are present."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            meeting(
+                record,
+                "111__",
+                {"a": "Some Meeting", "d": "10 Mar 2000", "f": "2000"},
+            )
+        meeting_entry = record["custom_fields"]["meeting:meeting"][0]
+        assert meeting_entry["dates"] == "10 Mar 2000"
+
+    def test_111_falls_back_to_9_when_d_missing(self):
+        """Test that 111__9 (YYYYMMDD) is used for dates when 111__d is absent."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            meeting(
+                record,
+                "111__",
+                {"a": "Some Meeting", "f": "2000", "9": "20000310"},
+            )
+        meeting_entry = record["custom_fields"]["meeting:meeting"][0]
+        assert meeting_entry["dates"] == "2000-03-10"
+
+    def test_111_d_takes_precedence_over_9(self):
+        """Test that 111__d is preferred over 111__9 when both are present."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            meeting(
+                record,
+                "111__",
+                {"a": "Some Meeting", "d": "10 Mar 2000", "9": "20000310"},
+            )
+        meeting_entry = record["custom_fields"]["meeting:meeting"][0]
+        assert meeting_entry["dates"] == "10 Mar 2000"
+
+    def test_111_9_takes_precedence_over_f(self):
+        """Test that 111__9 is preferred over 111__f (a bare year) when both
+        are present and 111__d is absent."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            meeting(
+                record,
+                "111__",
+                {"a": "Some Meeting", "f": "2000", "9": "20000310"},
+            )
+        meeting_entry = record["custom_fields"]["meeting:meeting"][0]
+        assert meeting_entry["dates"] == "2000-03-10"
+
+    def test_111_invalid_9_raises_error(self):
+        """Test that an unparseable 111__9 raises UnexpectedValue."""
+        record = {}
+        with pytest.raises(UnexpectedValue):
+            meeting(record, "111__", {"a": "Some Meeting", "9": "not-a-date"})
+
+    def test_111_without_dates_omits_dates_key(self):
+        """Test that no 'dates' key is set when both 111__d and 111__f are absent."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            meeting(record, "111__", {"a": "Some Meeting"})
+        meeting_entry = record["custom_fields"]["meeting:meeting"][0]
+        assert "dates" not in meeting_entry
+
+    def test_111_without_title_omits_title_key(self):
+        """Test that a 111 field without subfield 'a' creates an entry with
+        no 'title' key rather than dropping the other subfields."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            meeting(record, "111__", {"c": "Geneva"})
+        assert record["custom_fields"]["meeting:meeting"] == [{"place": "Geneva"}]
+
+    def test_711_adds_new_title_when_no_matching_meeting_exists(self):
+        """Test that 711__a creates a new meeting entry when its title is new."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            meeting(record, "711__", {"a": "Joint Experimental Theoretical Seminar"})
+        assert record["custom_fields"]["meeting:meeting"] == [
+            {"title": "Joint Experimental Theoretical Seminar"}
+        ]
+
+    def test_711_skips_duplicate_title(self):
+        """Test that 711__a is not added again when a meeting with the same
+        title already exists (e.g. duplicating the 111 conference name)."""
+        record = {
+            "custom_fields": {
+                "meeting:meeting": [{"title": "SUSY at DELPHI", "place": "Geneva"}]
+            }
+        }
+        with pytest.raises(IgnoreKey):
+            meeting(record, "711__", {"a": "SUSY at DELPHI"})
+        assert record["custom_fields"]["meeting:meeting"] == [
+            {"title": "SUSY at DELPHI", "place": "Geneva"}
+        ]
+
+    def test_111_then_two_711_only_adds_distinct_titles(self):
+        """Reproduces record 436657: 111 sets the full title, and only the
+        711 entry with a distinct title is appended as a new meeting."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            meeting(
+                record,
+                "111__",
+                {
+                    "a": "Lectures at Fermilab on SUSY at DELPHI, LEP200 and LEP-2000 and LEP-Legacy",
+                    "c": "Batavia, IL, USA",
+                    "d": "10 Mar 2000",
+                    "g": "batavia20000310",
+                },
+            )
+        with pytest.raises(IgnoreKey):
+            meeting(
+                record,
+                "711__",
+                {"a": "SUSY at DELPHI, LEP200 and LEP-2000 and LEP-Legacy"},
+            )
+        with pytest.raises(IgnoreKey):
+            meeting(
+                record,
+                "711__",
+                {"a": "Joint Experimental Theoretical Physics Seminar"},
+            )
+        meetings = record["custom_fields"]["meeting:meeting"]
+        assert len(meetings) == 3
+        titles = [m["title"] for m in meetings]
+        assert (
+            "Lectures at Fermilab on SUSY at DELPHI, LEP200 and LEP-2000 and LEP-Legacy"
+            in titles
+        )
+        assert "SUSY at DELPHI, LEP200 and LEP-2000 and LEP-Legacy" in titles
+        assert "Joint Experimental Theoretical Physics Seminar" in titles
+
+    def test_711_without_title_no_meeting_added(self):
+        """Test that a 711 field without subfield 'a' produces no meeting entry."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            meeting(record, "711__", {})
+        assert record["custom_fields"].get("meeting:meeting", []) == []
 
 
 class TestLicenseAndFundingFrom540:
