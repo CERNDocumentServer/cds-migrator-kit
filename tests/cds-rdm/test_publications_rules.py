@@ -106,6 +106,29 @@ class TestIsbn:
         assert isbn_rel["relation_type"]["id"] == "isvariantformof"
         assert isbn_rel["resource_type"]["id"] == "publication-book"
 
+    def test_isbn_no_duplicate(self):
+        """Test that an already-present ISBN is not added twice."""
+        record = {
+            "related_identifiers": [
+                {
+                    "identifier": "978-3-16-148410-0",
+                    "scheme": "isbn",
+                    "relation_type": {"id": "isvariantformof"},
+                    "resource_type": {"id": "publication-book"},
+                }
+            ]
+        }
+        with pytest.raises(IgnoreKey):
+            isbn(record, "020__", {"a": "978-3-16-148410-0"})
+        assert record["related_identifiers"] == [
+            {
+                "identifier": "978-3-16-148410-0",
+                "scheme": "isbn",
+                "relation_type": {"id": "isvariantformof"},
+                "resource_type": {"id": "publication-book"},
+            }
+        ]
+
 
 class TestIssn:
     """Test issn function from publications.py."""

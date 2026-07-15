@@ -45,7 +45,7 @@ def _sub(v, code):
     return val[0] if val else ""
 
 
-@model.over("isbns", "^020__")
+@model.over("isbns", "^020__", override_tag=True)
 def isbn(self, key, value):
     _custom_fields = self.get("custom_fields", {})
     _isbn = StringValue(value.get("a", "")).parse()
@@ -57,34 +57,24 @@ def isbn(self, key, value):
         except NotValidISBNError as e:
             raise UnexpectedValue("Not a valid ISBN.", field=key, value=value)
         is_cern_isbn = _isbn.startswith("978-92-9083")
-        thesis_fields = _custom_fields.get("imprint:imprint", {})
-        thesis_fields["isbn"] = _isbn
-        _custom_fields["imprint:imprint"] = thesis_fields
+        imprint_fields = _custom_fields.get("imprint:imprint", {})
+        imprint_fields["isbn"] = _isbn
+        _custom_fields["imprint:imprint"] = imprint_fields
 
-        if is_cern_isbn:
-            # TODO, should we have ISBN as internal?
-            destination = "related_identifiers"
-            new_id = {
-                "identifier": _isbn,
-                "scheme": "isbn",
-                "relation_type": {"id": "isvariantformof"},
-                "resource_type": {"id": "publication-book"},
-            }
-        else:
-            destination = "related_identifiers"
-            new_id = {
-                "identifier": _isbn,
-                "scheme": "isbn",
-                "relation_type": {"id": "isvariantformof"},
-                "resource_type": {"id": "publication-book"},
-            }
+        destination = "related_identifiers"
+        new_id = {
+            "identifier": _isbn,
+            "scheme": "isbn",
+            "relation_type": {"id": "isvariantformof"},
+            "resource_type": {"id": "publication-book"},
+        }
         ids = self.get(destination, [])
 
         if new_id not in ids:
             ids.append(new_id)
         self[destination] = ids
     self["custom_fields"] = _custom_fields
-    raise IgnoreKey("custom_fields")
+    raise IgnoreKey("isbns")
 
 
 @model.over("related_identifiers", "(^022__)")

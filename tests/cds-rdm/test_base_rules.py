@@ -13,7 +13,6 @@ from dojson.errors import IgnoreKey
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
     custom_fields_693,
-    isbn,
     normalize,
     note,
     recid,
@@ -287,79 +286,6 @@ class TestUrls:
         result = urls(record, "8564_", {"x": "https://custom.com"}, subfield="x")
         # URLs are converted to http
         assert result[0]["identifier"] == "http://custom.com"
-
-
-class TestIsbnRelatedIdentifiers:
-    """Test isbn function (020__ rule) from base.py."""
-
-    def test_isbn13_normalized_and_added(self):
-        """Test that a valid ISBN-13 is normalized and added to related_identifiers."""
-        record = {}
-        result = isbn(record, "020__", {"a": "978-3-16-148410-0"})
-        assert result == [
-            {
-                "identifier": "978-3-16-148410-0",
-                "scheme": "isbn",
-                "relation_type": {"id": "isversionof"},
-                "resource_type": {"id": "publication-book"},
-            }
-        ]
-
-    def test_isbn10_converted_to_isbn13(self):
-        """Test that a valid ISBN-10 is converted to its ISBN-13 form."""
-        record = {}
-        result = isbn(record, "020__", {"a": "0-306-40615-2"})
-        assert result == [
-            {
-                "identifier": "978-0-306-40615-7",
-                "scheme": "isbn",
-                "relation_type": {"id": "isversionof"},
-                "resource_type": {"id": "publication-book"},
-            }
-        ]
-
-    def test_isbn_missing_subfield_a_ignored(self):
-        """Test that 020__ without subfield 'a' is ignored."""
-        record = {}
-        with pytest.raises(IgnoreKey):
-            isbn(record, "020__", {})
-
-    def test_isbn_empty_subfield_a_ignored(self):
-        """Test that 020__a with an empty value is ignored."""
-        record = {}
-        with pytest.raises(IgnoreKey):
-            isbn(record, "020__", {"a": ""})
-
-    def test_isbn_no_existing_related_identifiers_does_not_raise(self):
-        """Regression test: isbn() must not fail on a record that has no
-        related_identifiers key yet (the common case for the first related
-        identifier found on a record)."""
-        record = {}
-        result = isbn(record, "020__", {"a": "978-3-16-148410-0"})
-        assert result[0]["identifier"] == "978-3-16-148410-0"
-
-    def test_isbn_no_duplicate(self):
-        """Test that an already-present ISBN is not added twice."""
-        record = {
-            "related_identifiers": [
-                {
-                    "identifier": "978-3-16-148410-0",
-                    "scheme": "isbn",
-                    "relation_type": {"id": "isversionof"},
-                    "resource_type": {"id": "publication-book"},
-                }
-            ]
-        }
-        with pytest.raises(IgnoreKey):
-            isbn(record, "020__", {"a": "978-3-16-148410-0"})
-
-    def test_isbn_malformed_value_does_not_raise(self):
-        """Documents current behavior: normalize_isbn() does not raise for
-        malformed input, so malformed ISBNs end up with an empty identifier
-        instead of triggering the UnexpectedValue branch."""
-        record = {}
-        result = isbn(record, "020__", {"a": "123"})
-        assert result[0]["identifier"] == ""
 
 
 class TestRelatedIdentifiers775:

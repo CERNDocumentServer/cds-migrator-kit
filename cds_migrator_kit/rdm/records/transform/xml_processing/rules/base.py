@@ -10,8 +10,6 @@
 import datetime
 import logging
 import re
-from idutils.normalizers import normalize_isbn
-from isbnlib import NotValidISBNError
 from urllib.parse import ParseResult, urlparse
 
 from dateutil.parser import ParserError, parse
@@ -30,9 +28,9 @@ from cds_migrator_kit.rdm.records.transform.config import (
     IDENTIFIERS_SCHEMES_TO_DROP,
     KEYWORD_SCHEMES_TO_DROP,
     PID_SCHEMES_TO_STORE_IN_IDENTIFIERS,
+    PID_SCHEMES_TO_STORE_IN_RELATED_IDENTIFIERS,
     RECOGNISED_KEYWORD_SCHEMES,
     udc_pattern,
-    PID_SCHEMES_TO_STORE_IN_RELATED_IDENTIFIERS,
 )
 from cds_migrator_kit.rdm.records.transform.models.base_record import (
     rdm_base_record_model as model,
@@ -365,29 +363,6 @@ def aleph_number(self, key, value):
         return {"scheme": "aleph", "identifier": aleph}
     else:
         raise IgnoreKey("identifiers")
-
-
-@model.over("related_identifiers", "(^020__)", override_tag=True)
-@for_each_value
-def isbn(self, key, value):
-    _isbn = StringValue(value.get("a", "")).parse()
-    _isbn_material = StringValue(value.get("u", "")).parse()
-    if _isbn:
-        try:
-            _isbn = normalize_isbn(_isbn)
-
-        except NotValidISBNError as e:
-            raise UnexpectedValue("Not a valid ISBN.", field=key, value=value)
-
-        new_id = {
-            "identifier": _isbn,
-            "scheme": "isbn",
-            "relation_type": {"id": "isversionof"},
-            "resource_type": {"id": "publication-book"}
-        }
-        if new_id not in self.get("related_identifiers", []):
-            return new_id
-    raise IgnoreKey("related_identifiers")
 
 
 @model.over("identifiers", "^035__")
