@@ -413,9 +413,22 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             try:
                 return entry["resource_type"]
             except KeyError:
-                raise MissingRequiredField(
-                    message="resource_type", field="980"
-                )
+                raise MissingRequiredField(message="resource_type", field="980")
+
+        def _title(entry, resource_type):
+            title = entry.get("title")
+            if title:
+                return title
+            # 245 (title) is sometimes absent on conference proceedings
+            # records; fall back to the conference name (111__a) stored on
+            # the first meeting entry.
+            if resource_type.get("id") == "publication-conferenceproceeding":
+                meetings = entry.get("custom_fields", {}).get("meeting:meeting", [])
+                for meeting_entry in meetings:
+                    meeting_title = meeting_entry.get("title")
+                    if meeting_title:
+                        return meeting_title
+            return title
 
         def _publication_date(entry, dump_record):
             pub_date = entry.get("publication_date")
@@ -485,10 +498,11 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         _subjects = subjects(json_entry)
         table_of_contents(json_entry)
 
+        _resource_type_value = _resource_type(json_entry)
         metadata = {
             "creators": creators(json_entry),
-            "title": json_entry.get("title"),
-            "resource_type": _resource_type(json_entry),
+            "title": _title(json_entry, _resource_type_value),
+            "resource_type": _resource_type_value,
             "description": json_entry.get("description"),
             "publication_date": _publication_date(json_entry, record_dump),
             "contributors": creators(json_entry, key="contributors"),
