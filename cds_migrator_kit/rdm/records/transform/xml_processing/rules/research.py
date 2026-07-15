@@ -257,6 +257,24 @@ def journal(self, key, value):
     journal_fields = _custom_fields.get("journal:journal", {})
     year = StringValue(value.get("y", "")).parse()
 
+    if "z" in value:
+        try:
+            normalized_isbn = normalize_isbn(value.get("z"))
+        except (NotValidISBNError, TypeError):
+            raise UnexpectedValue("Invalid ISBN in 773__z", field=key, value=value)
+        if not normalized_isbn:
+            raise UnexpectedValue("Invalid ISBN in 773__z", field=key, value=value)
+        isbn_related_id = {
+            "identifier": normalized_isbn,
+            "scheme": "isbn",
+            "relation_type": {"id": "references"},
+            "resource_type": {"id": "publication-book"},
+        }
+        related_ids = self.get("related_identifiers", [])
+        if isbn_related_id not in related_ids:
+            related_ids.append(isbn_related_id)
+        self["related_identifiers"] = related_ids
+
     # p/n/v are journal-specific; c alone with w is a conference proceedings artid
     is_journal = any(f in value for f in ["p", "n", "v"])
     is_journal_year = any(f in value for f in ["p", "n", "v", "c"])
@@ -277,12 +295,21 @@ def journal(self, key, value):
             new_meeting["session"] = session
         meetings.append(new_meeting)
         _custom_fields["meeting:meeting"] = meetings
+    # it's not a meeting or journal, save the c value to check with 962__k
+    elif not is_journal and value.get("c"):
+        # if journal_fields are already set(multiple 773) raise an error
+        if journal_fields:
+            raise UnexpectedValue("Journal fields already set", field=key, value=value)
+        journal_fields["pages"] = StringValue(value.get("c", "")).parse()
 
     pub_date = self.get("publication_date")
     # if we only have 773 in the record and no other journal fields,
     # it is not journal date
-    if not is_journal_year and "y" in value and not pub_date:
-        self["publication_date"] = year
+    if not is_journal_year and "y" in value:
+        if not pub_date:
+            self["publication_date"] = year
+        elif pub_date != year:
+            raise UnexpectedValue("Publication date mismatch", field=key, value=value)
 
     # Only populate journal fields from a journal 773 (has p/n/v).
     # A 773 with only 'c'+'w' is a conference proceedings reference and must
@@ -472,7 +499,7 @@ def related_identifiers(self, key, value):
     try:
         conference = value.get("n", "").lower().strip()
         meetings = self.get("custom_fields", {}).get("meeting:meeting", [])
-        if conference:
+        if conference and conference != "book":
             matching_meeting = next(
                 (m for m in meetings if artid and m.get("session") == artid),
                 None,
@@ -494,13 +521,21 @@ def related_identifiers(self, key, value):
             value=value,
         )
     rel_ids = self.get("related_identifiers", [])
-
+    res_type = "publication-conferenceproceeding"
+    if value.get("n", "").lower().strip() == "book":
+        res_type = "publication-book"
     new_id = {
         "identifier": recid,
         "scheme": "cds",
         "relation_type": {"id": "references"},
-        "resource_type": {"id": "publication-conferenceproceeding"},
+        "resource_type": {"id": res_type},
     }
+    journal_fields = self.get("custom_fields", {}).get("journal:journal", {})
+    if journal_fields:
+        # check if the only field is pages and ignore the journal field if it is the same as the artid
+        if len(journal_fields.keys()) == 1 and "pages" in journal_fields:
+            if artid and artid == journal_fields["pages"]:
+                self.get("custom_fields", {}).pop("journal:journal")
 
     if artid:
         artid_from_773 = (
@@ -643,8 +678,7 @@ def resource_type(self, key, value):
         "poster": {"id": "poster"},
         "software": {"id": "software"},
         "scicommpubllhcc": {"id": "publication-article"},
-        # TODO: is this correct? conference note is a conference proceeding?
-        "conferencenote": {"id": "publication-conferenceproceeding"},
+        "conferencenote": {"id": "publication-conferencenote"},
         "slide": {"id": "presentation"},
         "faser_papers": {"id": "publication-article"},
     }

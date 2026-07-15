@@ -23,7 +23,7 @@ from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
 from edtf import EDTFParseException, parse_edtf, text_to_edtf
 
-from cds_migrator_kit.errors import UnexpectedValue, MissingRequiredField
+from cds_migrator_kit.errors import MissingRequiredField, UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.models.thesis import thesis_model as model
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
