@@ -359,6 +359,45 @@ class TestJournal:
         assert journal_info["title"] == "Journal"
         assert journal_info["issue"] == "5"
 
+    def test_773_z_isbn_adds_book_related_identifier(self):
+        """A valid 773__z creates one normalized ISBN book relation."""
+        record = {}
+
+        journal(record, "773__", {"0": "123456", "z": "9789811280177"})
+
+        assert len(record["related_identifiers"]) == 1
+        related_id = record["related_identifiers"][0]
+        assert related_id["identifier"].replace("-", "") == "9789811280177"
+        assert related_id["scheme"] == "isbn"
+        assert related_id["resource_type"] == {"id": "publication-book"}
+
+    def test_773_invalid_isbn_raises_unexpected_value(self):
+        """An invalid 773__z is reported as an invalid ISBN."""
+        with pytest.raises(UnexpectedValue, match="Invalid ISBN in 773__z"):
+            journal({}, "773__", {"z": "abcdefg"})
+
+    def test_773_acronym_only_creates_meeting_without_session(self):
+        """A 773__q creates a meeting even when c and w are absent."""
+        result = journal({}, "773__", {"q": "CHEP"})
+
+        assert result["meeting:meeting"] == [{"acronym": "CHEP"}]
+        assert result["journal:journal"] == {}
+
+    def test_773_sets_publication_date_if_missing(self):
+        """A year in 773 adds a publication date if missing."""
+        record = {}
+
+        journal(record, "773__", {"y": "2023"})
+
+        assert record["publication_date"] == "2023"
+
+    def test_773_rejects_conflicting_publication_date(self):
+        """A 773 year cannot contradict an existing publication date."""
+        record = {"publication_date": "2022"}
+
+        with pytest.raises(UnexpectedValue, match="Publication date mismatch"):
+            journal(record, "773__", {"y": "2023", "w": "C23-05-08"})
+
     def test_journal_not_overwritten_by_conference_773(self):
         """Journal fields from a journal 773 must survive a sibling conference 773.
 
@@ -500,6 +539,121 @@ class TestJournal:
         meetings = record["custom_fields"]["meeting:meeting"]
         assert meetings == [{"title": "unrelated meeting"}]
 
+    def test_962_book_with_different_artid_is_not_duplicate(self):
+        """A mismatched book leaves titleless journal data rejected by transform."""
+        from cds_migrator_kit.rdm.records.transform.transform import (
+            CDSToRDMRecordEntry,
+        )
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+        record["custom_fields"] = journal(
+            record,
+            "773__",
+            {"c": "281-287", "y": "2023"},
+        )
+
+        result = related_identifiers(
+            record, "962__", {"b": "123456", "k": "other-pages", "n": "book"}
+        )
+
+        assert result[0]["identifier"] == "123456"
+        assert result[0]["scheme"] == "cds"
+        assert result[0]["resource_type"] == {"id": "publication-other"}
+        assert record["custom_fields"]["meeting:meeting"] == []
+
+        record["resource_type"] = "publication-other"
+        with pytest.raises(UnexpectedValue, match="Title is missing in journal field"):
+            CDSToRDMRecordEntry()._custom_fields(record, {"metadata": {}})
+
+    def test_matching_962_removes_temporary_773_c(self):
+        """Matching 962__k consumes the temporary value stored from 773__c."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+        record["custom_fields"] = journal(
+            record, "773__", {"c": "281-287", "y": "2023", "0": "123456"}
+        )
+
+        result = related_identifiers(
+            record, "962__", {"b": "123456", "k": "281-287", "n": "book"}
+        )
+
+        assert result[0]["identifier"] == "123456"
+        assert result[0]["resource_type"] == {"id": "publication-book"}
+        assert record["custom_fields"]["meeting:meeting"] == []
+        # it's added in journal rule and removed in related_identifiers rule
+        assert "journal:journal" not in record["custom_fields"]
+
+    def test_matching_962_adds_title_to_773_meeting(self):
+        """A matching 962 adds its title to the meeting created from 773."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+        record["custom_fields"] = journal(
+            record,
+            "773__",
+            {"c": "281-287", "w": "C23-05-08"},
+        )
+
+        result = related_identifiers(
+            record, "962__", {"b": "123456", "k": "281-287", "n": "CHEP 2023"}
+        )
+
+        assert result[0]["resource_type"] == {"id": "publication-conferenceproceeding"}
+        assert record["custom_fields"]["meeting:meeting"] == [
+            {
+                "identifiers": [{"scheme": "inspire", "identifier": "C23-05-08"}],
+                "session": "281-287",
+                "title": "chep 2023",
+            }
+        ]
+
+    def test_962_artid_different_from_journal_pages_is_other_publication(self):
+        """A 962 artid differing from real journal pages is publication-other."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+        record["custom_fields"] = journal(
+            record, "773__", {"p": "Journal", "c": "10-20"}
+        )
+
+        result = related_identifiers(
+            record,
+            "962__",
+            {"b": "123456", "k": "30-40", "n": "meeting publication title"},
+        )
+
+        assert result[0]["resource_type"] == {"id": "publication-other"}
+        assert record["custom_fields"]["journal:journal"]["pages"] == "10-20"
+        assert record["custom_fields"]["meeting:meeting"] == [
+            {"title": "meeting publication title"}
+        ]
+
+    def test_962_matching_real_journal_pages_preserves_journal(self):
+        """A page match does not remove a complete journal field."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {"custom_fields": {}}
+        record["custom_fields"] = journal(
+            record, "773__", {"p": "Journal", "c": "10-20"}
+        )
+
+        result = related_identifiers(record, "962__", {"b": "123456", "k": "10-20"})
+
+        assert result[0]["resource_type"] == {"id": "publication-conferenceproceeding"}
+        assert record["custom_fields"]["journal:journal"]["title"] == "Journal"
+
 
 class TestMeetingDateFrom518:
     """Test meeting date (518__r/__d) handling in related_identifiers.
@@ -535,6 +689,23 @@ class TestMeetingDateFrom518:
 
         meetings = record["custom_fields"]["meeting:meeting"]
         assert meetings == [{"dates": "2022-11-21"}]
+
+    def test_meeting_date_updates_single_existing_meeting(self):
+        """518 adds its date to the only existing meeting."""
+        from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
+            related_identifiers,
+        )
+
+        record = {
+            "custom_fields": {"meeting:meeting": [{"title": "existing conference"}]}
+        }
+
+        with pytest.raises(IgnoreKey):
+            related_identifiers(record, "518__", {"r": "May 2021"})
+
+        assert record["custom_fields"]["meeting:meeting"] == [
+            {"title": "existing conference", "dates": "2021-05"}
+        ]
 
     def test_meeting_date_d_takes_precedence_over_r(self):
         """518__d is preferred over 518__r when both are present."""
