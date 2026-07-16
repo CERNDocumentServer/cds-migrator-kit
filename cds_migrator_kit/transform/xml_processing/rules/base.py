@@ -58,6 +58,16 @@ def title(self, key, value):
 def description(self, key, value):
     """Translates description."""
     description_text = StringValue(value.get("a")).parse()
+    if self.get("description") and description_text:
+        additional_descriptions = self.get("additional_descriptions", [])
+        additional_descriptions.append(
+            {
+                "description": description_text,
+                "type": {"id": "other"},
+            }
+        )
+        self["additional_descriptions"] = additional_descriptions
+        raise IgnoreKey("description")
     return description_text
 
 
