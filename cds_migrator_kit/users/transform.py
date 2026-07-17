@@ -37,7 +37,8 @@ class SubmitterTransform(RDMRecordTransform):
 
             timestamp, json_data = record_dump.latest_revision
             email = json_data.get("submitter")
-            return {"submitter": email}
+            reviewers = json_data.get("reviewers", [])
+            return {"submitter": email, "reviewers": reviewers}
         except Exception as e:
             cli_logger.exception(e)
 

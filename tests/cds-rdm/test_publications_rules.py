@@ -565,7 +565,9 @@ class TestJournal:
         assert meetings == [{"title": "unrelated meeting"}]
 
     def test_962_book_with_different_artid_is_not_duplicate(self):
-        """A mismatched book leaves titleless journal data rejected by transform."""
+        """A mismatched book leaves titleless journal data flagged for curation."""
+        from unittest.mock import MagicMock
+
         from cds_migrator_kit.rdm.records.transform.transform import (
             CDSToRDMRecordEntry,
         )
@@ -573,7 +575,7 @@ class TestJournal:
             related_identifiers,
         )
 
-        record = {"custom_fields": {}}
+        record = {"custom_fields": {}, "recid": 123456}
         record["custom_fields"] = journal(
             record,
             "773__",
@@ -590,8 +592,18 @@ class TestJournal:
         assert record["custom_fields"]["meeting:meeting"] == []
 
         record["resource_type"] = "publication-other"
-        with pytest.raises(UnexpectedValue, match="Title is missing in journal field"):
-            CDSToRDMRecordEntry()._custom_fields(record, {"metadata": {}})
+        migration_logger = MagicMock()
+        custom_fields = CDSToRDMRecordEntry(
+            migration_logger=migration_logger
+        )._custom_fields(record, {"metadata": {}})
+
+        # titleless journal data is dropped (falsy values are filtered out),
+        # not raised as a hard error
+        assert "journal:journal" not in custom_fields
+        migration_logger.add_information.assert_called_once()
+        recid, info = migration_logger.add_information.call_args[0]
+        assert recid == 123456
+        assert "found partial journal field" in info["message"]
 
     def test_matching_962_removes_temporary_773_c(self):
         """Matching 962__k consumes the temporary value stored from 773__c."""

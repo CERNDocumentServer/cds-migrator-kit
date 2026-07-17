@@ -19,6 +19,12 @@
 
 """CDS-RDM Summer student model."""
 
+# Registers the 906__ reviewers rule onto base_model. Must be imported here,
+# before SubmitterModel is constructed below: `bases=(base_model,)` takes a
+# snapshot of base_model.rules at construction time, and this model's own
+# entry_point_group is only collected lazily on first use - too late for a
+# rule registered there to make it into that snapshot.
+import cds_migrator_kit.rdm.users.transform.xml_processing.rules.reviewers  # noqa: E402,F401
 from cds_migrator_kit.transform.overdo import CdsOverdo
 from cds_migrator_kit.transform.xml_processing.models.base import model as base_model
 
@@ -237,7 +243,7 @@ class SubmitterModel(CdsOverdo):
         "916__z",  # issue number (bulletin)
         "925__a",  # https://cds.cern.ch/record/1032351/export/hm?ln=en
         "925__b",  # https://cds.cern.ch/record/1032351/export/hm?ln=en
-        "906__m",  # email info
+        # "906__m",  # reviewer's email, used to find/recreate their account
         "962__b",  # https://cds.cern.ch/record/450847/export/hm?ln=en
         "962__k",  # https://cds.cern.ch/record/450847/export/hm?ln=en
         "962__n",  # https://cds.cern.ch/record/450847/export/hm?ln=en
@@ -334,7 +340,7 @@ class SubmitterModel(CdsOverdo):
         "8564_u",  # exclude files but include links (filter by domain)
         "8564_x",  # Files system field
         "8564_y",  # Files
-        "906__p",  # names, is it supervisor?
+        # "906__p",  # reviewer name(s), used to find/recreate their account
         "916__n",
         "916__s",
         "916__w",
@@ -356,7 +362,7 @@ class SubmitterModel(CdsOverdo):
 
 
 submitter_model = SubmitterModel(
-    # use base rules - we don't need any other rule than 859
+    # use base rules (859__f submitter) plus the reviewers rules (903__m/p)
     bases=(base_model,),
-    entry_point_group="cds_migrator_kit.migrator.rules.base",
+    entry_point_group="cds_migrator_kit.migrator.rules.submitter",
 )
