@@ -14,6 +14,7 @@ from invenio_rdm_migrator.streams import Stream
 
 from cds_migrator_kit.rdm.affiliations.log import AffiliationsLogger
 from cds_migrator_kit.rdm.users.api import CDSMigrationUserAPI
+from cds_migrator_kit.rdm.users.log import SubmitterLogger
 
 from .transform import people_marc21, users_migrator_marc21
 
@@ -55,6 +56,9 @@ class SubmitterRunner:
         """Constructor."""
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
+
+        SubmitterLogger.initialize(self.log_dir)
+
         self.stream = Stream(
             stream_definition.name,
             extract=stream_definition.extract_cls(dirpath),
@@ -65,6 +69,7 @@ class SubmitterRunner:
                 dry_run=dry_run,
                 missing_users_dir=missing_users_dir,
                 user_api_cls=CDSMigrationUserAPI,
+                logger=SubmitterLogger.get_logger(),
             ),
         )
 

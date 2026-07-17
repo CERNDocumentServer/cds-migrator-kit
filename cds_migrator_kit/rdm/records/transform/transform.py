@@ -654,17 +654,23 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             journal = record_json.get("custom_fields", {}).get("journal:journal", {})
             if journal:
                 if not journal.get("title"):
-                    raise UnexpectedValue(
-                        subfield="a",
-                        value=journal,
-                        field="journal",
-                        message="Title is missing in journal field",
-                        stage="vocabulary match",
+                    raise RecordFlaggedCuration(
+                        message="found partial journal field, to be checked",
+                        stage="transform",
+                        field="773",
                     )
                 return journal
             return {}
 
         _cf = json_entry.get("custom_fields", {})
+        try:
+            journal = field_journal(json_entry)
+        except RecordFlaggedCuration as e:
+            self.migration_logger.add_information(
+                json_entry["recid"],
+                {"message": e.message, "value": e.value},
+            )
+            journal = {}
         custom_fields = {
             "cern:experiments": [],
             "cern:departments": [],
@@ -678,7 +684,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "cern:committees": _cf.get("cern:committees"),
             "cern:oa_funding_model": _cf.get("cern:oa_funding_model"),
             "thesis:thesis": _cf.get("thesis:thesis", {}),
-            "journal:journal": field_journal(json_entry),
+            "journal:journal": journal,
             "imprint:imprint": _cf.get("imprint:imprint", {}),
             "meeting:meeting": _cf.get("meeting:meeting", {}),
         }
