@@ -32,9 +32,9 @@ from invenio_records.systemfields.relations import InvalidRelationValue
 from invenio_records_resources.services.uow import RecordCommitOp
 from invenio_requests.customizations.event_types import (
     LogEventType,
-    ReviewersUpdatedType,
 )
 from invenio_requests.proxies import current_events_service, current_requests_service
+from invenio_requests.records.models import RequestMetadata
 from marshmallow import ValidationError
 from psycopg2.errors import UniqueViolation
 from sqlalchemy.exc import IntegrityError
@@ -44,6 +44,52 @@ from cds_migrator_kit.errors import (
     GrantCreationError,
     ManualImportRequired,
 )
+
+
+def _is_email(value):
+    """Return True if the reviewer value looks like an email address."""
+    return "@" in value
+
+
+def _parse_reviewer_name(name):
+    """Split a 'Family, Given' or 'Given Family' string into (family, given).
+
+    ``request_reviewers`` (906__p) stores names as "Given Family" (comma
+    already resolved), but legacy data can also arrive as "Family, Given".
+    """
+    name = name.strip()
+    if "," in name:
+        family, _, given = name.partition(",")
+        return family.strip(), given.strip()
+    parts = name.split()
+    if len(parts) > 1:
+        return parts[-1], " ".join(parts[:-1])
+    return name, ""
+
+
+def find_reviewer(reviewer):
+    """Resolve a reviewer string (email or name) to a User.
+
+    :param reviewer: email address, or a "Family, Given"/"Given Family" name.
+    :raises UnexpectedValue: if no matching user is found.
+    """
+    reviewer = reviewer.strip()
+    if _is_email(reviewer):
+        user = User.query.filter_by(email=reviewer).one_or_none()
+    else:
+        family_name, given_name = _parse_reviewer_name(reviewer)
+        query = User.query.filter(
+            db.func.lower(User._user_profile["family_name"].as_string())
+            == family_name.lower()
+        )
+        if given_name:
+            query = query.filter(
+                db.func.lower(User._user_profile["given_name"].as_string())
+                == given_name.lower()
+            )
+        user = query.one_or_none()
+
+    return user
 
 
 def import_legacy_files(filepath):
@@ -406,15 +452,21 @@ class CDSRecordServiceLoad(Load):
             # but then we get a double redirection
             legacy_recid_minter(legacy_recid, record._record.parent.model.id)
 
-    def _after_publish_add_inclusion_request(self, request_data, record, entry):
+    def _after_publish_add_inclusion_request(self, request_data, record, entry, uow):
         """Create community inclusion request after publish."""
+        legacy_recid = entry["record"]["recid"]
+        request_number = f"lrecid:{legacy_recid}"
+
+        # Defensive/idempotency guard: skip if a request for this record was
+        # already committed by a previous (partial) load attempt, otherwise
+        # re-creating it would violate the unique constraint on `number`.
+        if RequestMetadata.query.filter_by(number=request_number).first() is not None:
+            return
 
         status = request_data.get("status", "accepted")
         reviewer_names = request_data.get("reviewers", [])
-        reviewers = User.query.filter(User._displayname.in_(reviewer_names)).all()
-        # TODO: check if reviewers are missing and log a warning
+        reviewers = [find_reviewer(name) for name in reviewer_names]
 
-        legacy_recid = entry["record"]["recid"]
         created_at = datetime.datetime.fromisoformat(record["created"])
 
         parent = record._record.parent
@@ -438,59 +490,43 @@ class CDSRecordServiceLoad(Load):
 
             uow.register(RecordCommitOp(event, indexer=current_events_service.indexer))
 
-        with UnitOfWork() as uow:
-            request_item = current_requests_service.create(
-                system_identity,
-                data={"title": record["metadata"]["title"]},
-                request_type=CommunityInclusion,
-                receiver=receiver,
-                creator=creator,
-                topic={"record": record.id},
-                uow=uow,
-            )
+        request_item = current_requests_service.create(
+            system_identity,
+            data={"title": record["metadata"]["title"]},
+            request_type=CommunityInclusion,
+            receiver=receiver,
+            creator=creator,
+            topic={"record": record.id},
+            uow=uow,
+        )
 
-            request = request_item._record
-            request.status = "submitted"
-            request.number = f"lrecid:{legacy_recid}"
-            request.model.created = created_at
+        request = request_item._record
+        request.status = "submitted"
+        request.number = request_number
+        request.model.created = created_at
 
-            if reviewers:
-                reviewers_payload = [{"user": str(r.id)} for r in reviewers]
-                request.reviewers = reviewers_payload
+        if reviewers:
+            reviewers_payload = [{"user": str(r.id) if r else "-1"} for r in reviewers]
+            request.reviewers = reviewers_payload
 
-                for reviewer in reviewers:
-                    create_event(
-                        request.model,
-                        {
-                            "event": "reviewers_updated",
-                            "content": _("added a reviewer"),
-                            "reviewers": [{"user": str(reviewer.id)}],
-                        },
-                        event_type=ReviewersUpdatedType,
-                        user="system",
-                    )
-
-            if status:
-                request.status = status
-                if status == "accepted":
-                    parent_to_request_relation = (
-                        parent.communities._m2m_model_cls.query.filter_by(
-                            record_id=parent.id, community_id=community.id
-                        ).one()
-                    )
-                    parent_to_request_relation.request_id = request.id
-
-                create_event(
-                    request.model,
-                    {"event": status},
-                    event_type=LogEventType,
-                    user="system",
+        if status:
+            request.status = status
+            if status == "accepted":
+                parent_to_request_relation = (
+                    parent.communities._m2m_model_cls.query.filter_by(
+                        record_id=parent.id, community_id=community.id
+                    ).one()
                 )
+                parent_to_request_relation.request_id = request.id
 
-            uow.register(
-                RecordCommitOp(request, indexer=current_requests_service.indexer)
+            create_event(
+                request.model,
+                {"event": status},
+                event_type=LogEventType,
+                user="system",
             )
-            uow.commit()
+
+        uow.register(RecordCommitOp(request, indexer=current_requests_service.indexer))
 
     def _after_publish_update_files_created(self, record, entry, version):
         """Update the created date of the files post publish."""
@@ -520,7 +556,7 @@ class CDSRecordServiceLoad(Load):
 
         if self.create_inclusion_request and request_data:
             self._after_publish_add_inclusion_request(
-                request_data, published_record, entry
+                request_data, published_record, entry, uow
             )
         # db.session.commit()
 

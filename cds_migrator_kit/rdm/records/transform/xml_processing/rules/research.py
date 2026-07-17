@@ -49,7 +49,9 @@ def _sub(v, code):
 def isbn(self, key, value):
     _custom_fields = self.get("custom_fields", {})
     _isbn = StringValue(value.get("a", "")).parse()
+    _isbn_u = StringValue(value.get("u", "")).parse()
 
+    _isbn = _isbn or _isbn_u
     if _isbn:
         try:
             _isbn = normalize_isbn(_isbn)
@@ -455,13 +457,17 @@ def organisation(self, key, value):
 @for_each_value
 def request_reviewers(self, key, value):
     name = StringValue(value.get("p", "")).parse().strip()
+    email = StringValue(value.get("m", "")).parse().strip()
 
-    if "," in name:
-        last, first = (part.strip() for part in name.split(",", 1))
+    if email:
+        reviewer = email
     else:
-        last, first = name, ""
+        if "," in name:
+            last, first = (part.strip() for part in name.split(",", 1))
+        else:
+            last, first = name, ""
 
-    reviewer = " ".join(part for part in (first, last) if part)
+        reviewer = " ".join(part for part in (first, last) if part)
 
     if reviewer:
         request_data = self.setdefault("request_data", {})

@@ -5,6 +5,7 @@ records:
     tmp_dir: cds_migrator_kit/rdm/tmp/lep_exp/aleph
     log_dir: cds_migrator_kit/rdm/log/lep_exp/aleph
     plots: true
+    create_inclusion_request: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/lep_exp/aleph/dump/
     transform:
@@ -36,6 +37,7 @@ records:
     tmp_dir: cds_migrator_kit/rdm/tmp/lep_exp/l3
     log_dir: cds_migrator_kit/rdm/log/lep_exp/l3
     plots: true
+    create_inclusion_request: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/lep_exp/l3/dump/
     transform:
@@ -51,6 +53,7 @@ records:
     tmp_dir: cds_migrator_kit/rdm/tmp/lep_exp/opal
     log_dir: cds_migrator_kit/rdm/log/lep_exp/opal
     plots: true
+    create_inclusion_request: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/lep_exp/opal/dump/
     transform:
@@ -66,6 +69,7 @@ records:
     tmp_dir: cds_migrator_kit/rdm/tmp/lep_exp/delphi
     log_dir: cds_migrator_kit/rdm/log/lep_exp/delphi
     plots: true
+    create_inclusion_request: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/lep_exp/delphi/dump/
     transform:
@@ -82,6 +86,7 @@ records:
     log_dir: cds_migrator_kit/rdm/log/lep_exp/delphi_priv
     restricted: "True"
     plots: true
+    create_inclusion_request: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/lep_exp/delphi_priv/dump/
     transform:
