@@ -43,6 +43,7 @@ from cds_migrator_kit.errors import (
     CDSMigrationException,
     GrantCreationError,
     ManualImportRequired,
+    RecordFlaggedCuration,
 )
 
 
@@ -71,7 +72,8 @@ def find_reviewer(reviewer):
     """Resolve a reviewer string (email or name) to a User.
 
     :param reviewer: email address, or a "Family, Given"/"Given Family" name.
-    :raises UnexpectedValue: if no matching user is found.
+    :raises RecordFlaggedCuration: if no matching user is found, so the
+        record is flagged for manual curation instead of failing outright.
     """
     reviewer = reviewer.strip()
     if _is_email(reviewer):
@@ -88,6 +90,14 @@ def find_reviewer(reviewer):
                 == given_name.lower()
             )
         user = query.one_or_none()
+
+    if user is None:
+        raise RecordFlaggedCuration(
+            message=f"Reviewer '{reviewer}' could not be matched to an account.",
+            field="request_reviewers",
+            stage="load",
+            value=reviewer,
+        )
 
     return user
 
@@ -110,7 +120,6 @@ class CDSRecordServiceLoad(Load):
         self,
         db_uri,
         data_dir,
-        tmp_dir,
         entries=None,
         dry_run=False,
         legacy_pids_to_redirect=None,
@@ -465,7 +474,18 @@ class CDSRecordServiceLoad(Load):
 
         status = request_data.get("status", "accepted")
         reviewer_names = request_data.get("reviewers", [])
-        reviewers = [find_reviewer(name) for name in reviewer_names]
+        reviewers = []
+        for name in reviewer_names:
+            try:
+                reviewers.append(find_reviewer(name))
+            except RecordFlaggedCuration as exc:
+                self.migration_logger.add_information(
+                    legacy_recid,
+                    {"message": exc.message, "value": exc.value},
+                )
+                # keep a placeholder so the reviewer count/order is preserved;
+                # resolved to the "-1" sentinel user id below
+                reviewers.append(None)
 
         created_at = datetime.datetime.fromisoformat(record["created"])
 

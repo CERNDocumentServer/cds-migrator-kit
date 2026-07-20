@@ -1,0 +1,552 @@
+<title>CERN Internal Organisation, 1954–2026</title>
+<style>
+  :root {
+    color-scheme: light;
+    --surface:      #fcfcfb;
+    --page:         #f2f1ec;
+    --ink:          #0b0b0b;
+    --ink-2:        #52514e;
+    --muted:        #898781;
+    --hairline:     #e1e0d9;
+    --baseline:     #c3c2b7;
+    --ring:         rgba(11,11,11,0.08);
+
+    --cat-1: #2a78d6; /* physics & theory */
+    --cat-2: #1baf7a; /* accelerators & beams */
+    --cat-3: #eda100; /* computing & IT */
+    --cat-4: #008300; /* admin, finance & HR */
+    --cat-5: #4a3aa7; /* safety & infrastructure */
+    --cat-6: #e34948; /* directorate & sectors */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface:  #1a1a19;
+      --page:     #0d0d0d;
+      --ink:      #ffffff;
+      --ink-2:    #c3c2b7;
+      --muted:    #898781;
+      --hairline: #2c2c2a;
+      --baseline: #383835;
+      --ring:     rgba(255,255,255,0.08);
+
+      --cat-1: #3987e5;
+      --cat-2: #199e70;
+      --cat-3: #c98500;
+      --cat-4: #1fa41f;
+      --cat-5: #9085e9;
+      --cat-6: #e66767;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface:  #1a1a19;
+    --page:     #0d0d0d;
+    --ink:      #ffffff;
+    --ink-2:    #c3c2b7;
+    --muted:    #898781;
+    --hairline: #2c2c2a;
+    --baseline: #383835;
+    --ring:     rgba(255,255,255,0.08);
+
+    --cat-1: #3987e5;
+    --cat-2: #199e70;
+    --cat-3: #c98500;
+    --cat-4: #1fa41f;
+    --cat-5: #9085e9;
+    --cat-6: #e66767;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --surface:  #fcfcfb;
+    --page:     #f2f1ec;
+    --ink:      #0b0b0b;
+    --ink-2:    #52514e;
+    --muted:    #898781;
+    --hairline: #e1e0d9;
+    --baseline: #c3c2b7;
+    --ring:     rgba(11,11,11,0.08);
+
+    --cat-1: #2a78d6;
+    --cat-2: #1baf7a;
+    --cat-3: #eda100;
+    --cat-4: #008300;
+    --cat-5: #4a3aa7;
+    --cat-6: #e34948;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font-family: ui-sans-serif, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--cat-1); color: #fff; }
+
+  .mono {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Roboto Mono", monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 56px 28px 80px;
+  }
+
+  /* ---------- masthead ---------- */
+  .eyebrow {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-size: 34px;
+    line-height: 1.1;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    margin: 0 0 10px;
+    text-wrap: balance;
+    max-width: 20ch;
+  }
+  .dek {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--ink-2);
+    max-width: 62ch;
+    margin: 0 0 28px;
+  }
+  .dek a { color: inherit; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 22px;
+    padding: 16px 0 28px;
+    border-top: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--hairline);
+    margin-bottom: 32px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex: none;
+  }
+
+  /* ---------- chart ---------- */
+  .chart-wrap {
+    overflow-x: auto;
+    margin: 0 -4px;
+    padding: 0 4px;
+  }
+  svg { display: block; }
+
+  .group-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    fill: var(--ink-2);
+  }
+  .group-count {
+    font-size: 10px;
+    fill: var(--muted);
+  }
+  .axis-year {
+    font-size: 10.5px;
+    fill: var(--muted);
+  }
+  .row-label {
+    font-size: 11px;
+    fill: var(--ink);
+  }
+  .row-label.inverse { fill: #fff; }
+  .row-code {
+    font-weight: 700;
+  }
+  .bar {
+    cursor: pointer;
+  }
+  .bar rect.hit { fill: transparent; }
+
+  /* ---------- tooltip ---------- */
+  #tip {
+    position: fixed;
+    pointer-events: none;
+    z-index: 20;
+    background: var(--surface);
+    color: var(--ink);
+    border: 1px solid var(--hairline);
+    box-shadow: 0 8px 24px var(--ring);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    max-width: 280px;
+    opacity: 0;
+    transform: translateY(2px);
+    transition: opacity 120ms ease, transform 120ms ease;
+  }
+  #tip.show { opacity: 1; transform: translateY(0); }
+  #tip .t-code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-weight: 700;
+    font-size: 12.5px;
+  }
+  #tip .t-years {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 2px;
+  }
+  #tip .t-note {
+    color: var(--ink-2);
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid var(--hairline);
+  }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid var(--hairline);
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--muted);
+    max-width: 68ch;
+  }
+  footer a { color: var(--ink-2); }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 27px; }
+    .page { padding: 36px 16px 60px; }
+  }
+</style>
+
+<div class="page">
+  <p class="eyebrow">SIS Archives &middot; Internal Organisation</p>
+  <h1>Seventy years of reorganisation</h1>
+  <p class="dek">
+    Every department, division and sector CERN has run since its statutes came into
+    force on 29&nbsp;September 1954, reconstructed from the
+    <a href="https://sis.web.cern.ch/archives/history_CERN/internal_organisation/" target="_blank" rel="noopener">SIS historical
+    organisation charts</a> and grouped by what each unit actually did.
+  </p>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="chart-wrap">
+    <svg id="chart" xmlns="http://www.w3.org/2000/svg"></svg>
+  </div>
+
+  <footer>
+    Reconstructed from decade-by-decade organisation charts published by CERN's
+    Scientific Information Service; several code/name pairs (AT, EP, PS) were reused
+    for unrelated units at different points, and boundary years are approximate where
+    the source charts overlap two calendar years. Treat this as a reading of the
+    archive, not a primary record — consult the
+    <a href="https://sis.web.cern.ch/archives/history_CERN/internal_organisation/" target="_blank" rel="noopener">original charts</a>
+    for anything citable.
+  </footer>
+</div>
+
+<div id="tip"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var CATS = [
+    { id: 1, label: "Physics & theory",          color: "var(--cat-1)" },
+    { id: 2, label: "Accelerators & beams",       color: "var(--cat-2)" },
+    { id: 3, label: "Computing & IT",             color: "var(--cat-3)" },
+    { id: 4, label: "Admin, finance & HR",        color: "var(--cat-4)" },
+    { id: 5, label: "Safety & infrastructure",    color: "var(--cat-5)" },
+    { id: 6, label: "Directorate & sectors",      color: "var(--cat-6)" }
+  ];
+
+  var PRESENT = 2026;
+
+  // [code, name, start, end, category, note]
+  var DATA = [
+    ["TH",  "Theoretical Physics",                     1955, PRESENT, 1, "Theoretical Study until 1966; Theoretical Physics from 1966."],
+    ["NP",  "Nuclear Physics",                          1961, 1979, 1, "Folded into the 1980s Experimental Physics divisions."],
+    ["TC",  "Track Chambers",                           1961, 1979, 1, "Folded into the 1980s Experimental Physics divisions."],
+    ["EF",  "Experimental Physics Facilities",          1980, 1989, 1, ""],
+    ["EP",  "Experimental Physics",                     1980, 1989, 1, ""],
+    ["ECP", "Electronics & Computing for Physics",      1990, 1996, 1, ""],
+    ["PPE", "Particle Physics Experiment",               1990, 1997, 1, "Renamed EP in 1998."],
+    ["EP",  "Experimental Physics",                     1998, PRESENT, 1, "Continues the PPE division; split from PH in 2016."],
+    ["PH",  "Physics",                                  2004, 2015, 1, "Split into EP and TH departments in 2016."],
+
+    ["PS",  "Proton Synchrotron",                       1955, 2002, 2, "Machine PS (MPS) 1961–1965; PS division from 1966."],
+    ["SC",  "Synchro-Cyclotron",                        1955, 1979, 2, "Machine SC (MSC) 1961–1965; SC division from 1966."],
+    ["AR",  "Accelerator Research",                     1961, 1979, 2, ""],
+    ["SI",  "Synchrotron Injector",                     1968, 1975, 2, ""],
+    ["ISR", "Intersecting Storage Rings",                1966, 1983, 2, ""],
+    ["SPS", "Super Proton Synchrotron",                  1976, 1989, 2, "Merged with LEP into SL in 1990."],
+    ["LEP", "Large Electron–Positron",                   1983, 1989, 2, "Merged with SPS into SL in 1990."],
+    ["SL",  "SPS & LEP",                                 1990, 2002, 2, ""],
+    ["LHC", "Large Hadron Collider",                     1996, 2002, 2, "Elevated to its own division ahead of construction."],
+    ["AT",  "Accelerator Technologies",                  1990, 1996, 2, "Merged with MT into EST in 1996."],
+    ["MT",  "Mechanical Technologies",                   1990, 1996, 2, "Merged with AT into EST in 1996."],
+    ["EST", "Engineering Support & Technologies",        1996, 2002, 2, ""],
+    ["AB",  "Accelerators & Beams",                      2003, 2008, 2, ""],
+    ["AT",  "Accelerator Technology",                    2003, 2008, 2, "Code reused for a different, unrelated department."],
+    ["BE",  "Beams",                                     2009, PRESENT, 2, ""],
+    ["TE",  "Technology",                                2009, PRESENT, 2, ""],
+    ["EN",  "Engineering",                                2009, PRESENT, 2, ""],
+    ["SY",  "Accelerator Systems",                        2021, PRESENT, 2, ""],
+
+    ["DD",  "Data Handling",                             1961, 1989, 3, "Superseded by CN in 1990."],
+    ["CN",  "Computing & Networks",                      1990, 1996, 3, "Renamed / replaced by IT in 1997."],
+    ["IT",  "Information Technology",                    1997, PRESENT, 3, ""],
+
+    ["ADM", "Administration",                            1955, 1960, 4, ""],
+    ["FI",  "Finance",                                   1961, 2008, 4, "Renamed Finance & Procurement (FP) in 2009."],
+    ["PE",  "Personnel",                                 1961, 1997, 4, "Line continues as Human Resources (HR) from 2000."],
+    ["AS",  "Administrative Support",                    1990, 2002, 4, ""],
+    ["SPL", "Supplies, Procurement & Logistics",          1997, 2002, 4, ""],
+    ["DOC", "Documentation",                              1982, 1985, 4, ""],
+    ["MI",  "Management Information",                     1982, 1987, 4, ""],
+    ["ETT", "Education & Technology Transfer",            2000, 2002, 4, ""],
+    ["HR",  "Human Resources",                            2000, PRESENT, 4, ""],
+    ["FP",  "Finance & Procurement",                      2009, 2015, 4, "Split into FAP and IPT under the FHR sector in 2016."],
+    ["FAP", "Finance & Administrative Processes",         2016, PRESENT, 4, ""],
+    ["IPT", "Industry, Procurement & Knowledge Transfer",  2016, PRESENT, 4, ""],
+    ["SMB", "Site Management & Buildings",                 2016, PRESENT, 4, ""],
+
+    ["STS", "Scientific & Technical Services",            1955, 1960, 5, ""],
+    ["SB",  "Site & Buildings",                            1955, 1985, 5, "Renamed Technical Support (ST) in 1986."],
+    ["ENG", "Engineering",                                 1961, 1989, 5, "Distinct division from the 2009 EN department."],
+    ["HS",  "Health & Safety",                             1975, 1981, 5, "Line continues as TIS from 1983."],
+    ["ST",  "Technical Support",                           1986, 2003, 5, "Renamed TS in 2004."],
+    ["TIS", "Technical Inspection & Safety",               1983, 2002, 5, ""],
+    ["TS",  "Technical Support",                           2004, 2008, 5, ""],
+    ["GS",  "General Infrastructure Services",             2009, 2015, 5, ""],
+    ["HSE", "Health, Safety & Environment",                2010, PRESENT, 5, "DG Safety Unit."],
+
+    ["DG",  "Director-General's Units",                   1955, PRESENT, 6, "Legal Service, Council Secretariat, Communication, etc."],
+    ["DSU", "Directorate Service Unit",                    2003, 2008, 6, ""],
+    ["RCS", "Research & Computing Sector",                 2010, PRESENT, 6, ""],
+    ["ATS", "Accelerators & Technology Sector",            2010, PRESENT, 6, ""],
+    ["FHR", "Finance & Human Resources Sector",             2016, PRESENT, 6, ""],
+    ["IR",  "International Relations Sector",               2016, PRESENT, 6, ""]
+  ];
+
+  // ---------------- layout ----------------
+  var YEAR_START = 1954, YEAR_END = 2027;
+  var PX_PER_YEAR = 13;
+  var LEFT_PAD = 8, RIGHT_LABEL_MARGIN = 300;
+  var ROW_H = 25, BAR_H = 16;
+  var GROUP_GAP = 30, GROUP_HEAD_H = 24;
+  var AXIS_H = 34;
+  var TOP_PAD = 10, BOTTOM_PAD = 24;
+
+  var chartW = LEFT_PAD + (YEAR_END - YEAR_START) * PX_PER_YEAR + RIGHT_LABEL_MARGIN;
+
+  function xYear(y) { return LEFT_PAD + (y - YEAR_START) * PX_PER_YEAR; }
+
+  var groups = CATS.map(function (c) {
+    return { cat: c, rows: DATA.filter(function (d) { return d[4] === c.id; }) };
+  });
+
+  var totalH = TOP_PAD + AXIS_H;
+  groups.forEach(function (g) {
+    totalH += GROUP_HEAD_H + g.rows.length * ROW_H + GROUP_GAP;
+  });
+  totalH += BOTTOM_PAD;
+
+  var svg = document.getElementById("chart");
+  svg.setAttribute("width", chartW);
+  svg.setAttribute("height", totalH);
+  svg.setAttribute("viewBox", "0 0 " + chartW + " " + totalH);
+  svg.setAttribute("font-family", "ui-sans-serif, -apple-system, sans-serif");
+
+  var NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  // canvas for text measurement
+  var mCanvas = document.createElement("canvas");
+  var mCtx = mCanvas.getContext("2d");
+  function measure(text, font) {
+    mCtx.font = font;
+    return mCtx.measureText(text).width;
+  }
+  var LABEL_FONT = "700 11px ui-monospace, SF Mono, Menlo, Consolas, monospace";
+  var LABEL_FONT_2 = "400 11px ui-sans-serif, -apple-system, sans-serif";
+
+  // ---------------- axis ----------------
+  var axisG = el("g", { transform: "translate(0," + TOP_PAD + ")" });
+  svg.appendChild(axisG);
+  for (var y = 1960; y <= 2020; y += 10) {
+    var x = xYear(y);
+    axisG.appendChild(el("line", {
+      x1: x, x2: x, y1: AXIS_H - 6, y2: totalH - TOP_PAD - 4,
+      stroke: "var(--hairline)", "stroke-width": 1
+    }));
+    var t = el("text", { class: "axis-year mono", x: x, y: AXIS_H - 14, "text-anchor": "middle" });
+    t.textContent = y;
+    axisG.appendChild(t);
+  }
+  for (var y5 = 1955; y5 <= 2025; y5 += 5) {
+    if (y5 % 10 === 0) continue;
+    var x5 = xYear(y5);
+    axisG.appendChild(el("line", {
+      x1: x5, x2: x5, y1: AXIS_H - 6, y2: totalH - TOP_PAD - 4,
+      stroke: "var(--hairline)", "stroke-width": 1, opacity: 0.5
+    }));
+  }
+  // present marker
+  var xNow = xYear(PRESENT);
+  axisG.appendChild(el("line", {
+    x1: xNow, x2: xNow, y1: AXIS_H - 6, y2: totalH - TOP_PAD - 4,
+    stroke: "var(--baseline)", "stroke-width": 1
+  }));
+  var nowLabel = el("text", { class: "axis-year mono", x: xNow, y: AXIS_H - 14, "text-anchor": "middle" });
+  nowLabel.textContent = "today";
+  axisG.appendChild(nowLabel);
+
+  // ---------------- groups & bars ----------------
+  var tip = document.getElementById("tip");
+
+  function showTip(evt, d) {
+    var years = d[3] === PRESENT ? (d[2] + "–present") : (d[2] + "–" + d[3]);
+    tip.innerHTML =
+      '<div class="t-code mono">' + d[0] + '</div>' +
+      '<div>' + d[1] + '</div>' +
+      '<div class="t-years">' + years + '</div>' +
+      (d[5] ? '<div class="t-note">' + d[5] + '</div>' : "");
+    tip.classList.add("show");
+    moveTip(evt);
+  }
+  function moveTip(evt) {
+    var pad = 14;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var x = evt.clientX + pad, y = evt.clientY + pad;
+    if (x + tw + pad > vw) x = evt.clientX - tw - pad;
+    if (y + th + pad > vh) y = evt.clientY - th - pad;
+    tip.style.left = x + "px";
+    tip.style.top = y + "px";
+  }
+  function hideTip() { tip.classList.remove("show"); }
+
+  var cursorY = TOP_PAD + AXIS_H;
+
+  groups.forEach(function (g) {
+    var headG = el("g", { transform: "translate(0," + (cursorY + GROUP_HEAD_H - 8) + ")" });
+    headG.appendChild(el("rect", {
+      x: LEFT_PAD, y: -9, width: 10, height: 10, rx: 2,
+      fill: g.cat.color
+    }));
+    var headText = el("text", { class: "group-label", x: LEFT_PAD + 18, y: 0 });
+    headText.textContent = g.cat.label;
+    headG.appendChild(headText);
+    var countText = el("text", {
+      class: "group-count mono",
+      x: LEFT_PAD + 18 + measure(g.cat.label, "600 11px ui-sans-serif, -apple-system, sans-serif") + 10,
+      y: 0
+    });
+    countText.textContent = g.rows.length + (g.rows.length === 1 ? " unit" : " units");
+    headG.appendChild(countText);
+    headG.appendChild(el("line", {
+      x1: LEFT_PAD, x2: chartW - LEFT_PAD, y1: 10, y2: 10,
+      stroke: "var(--hairline)", "stroke-width": 1
+    }));
+    svg.appendChild(headG);
+
+    cursorY += GROUP_HEAD_H;
+
+    g.rows.forEach(function (d) {
+      var rowY = cursorY;
+      var x0 = xYear(d[2]);
+      var x1 = xYear(d[3]);
+      var w = Math.max(x1 - x0, 3);
+      var barY = rowY + (ROW_H - BAR_H) / 2;
+
+      var rowG = el("g", { class: "bar", "data-code": d[0] });
+      rowG.appendChild(el("rect", {
+        x: x0, y: barY, width: w, height: BAR_H, rx: 4, ry: 4,
+        fill: g.cat.color
+      }));
+
+      var codeLabel = d[0] + "  " + d[1];
+      var wCode = measure(d[0], LABEL_FONT);
+      var wFull = measure(codeLabel, LABEL_FONT_2) + wCode * 0 ;
+      var innerAvail = w - 14;
+      var fullInline = measure(d[0] + " " + d[1], "600 11px ui-monospace, SF Mono, Menlo, Consolas, monospace") ;
+
+      var labelText, labelX, anchor, inverse;
+      var testFont = "11px ui-sans-serif, -apple-system, sans-serif";
+      var full = d[0] + " " + d[1];
+      var fw = measure(d[0], "700 11px ui-monospace, SF Mono, Menlo, Consolas, monospace") + 6 + measure(d[1], testFont);
+
+      if (fw <= innerAvail) {
+        labelText = null; // built as tspans below
+        labelX = x0 + 7;
+        anchor = "start";
+        inverse = true;
+      } else {
+        labelX = x1 + 8;
+        anchor = "start";
+        inverse = false;
+      }
+
+      var lg = el("text", { class: "row-label" + (inverse ? " inverse" : ""), x: labelX, y: rowY + ROW_H / 2 + 4, "text-anchor": anchor });
+      var codeSpan = el("tspan", { class: "mono row-code" });
+      codeSpan.textContent = d[0];
+      lg.appendChild(codeSpan);
+      var nameSpan = el("tspan", { dx: 6 });
+      nameSpan.textContent = d[1];
+      lg.appendChild(nameSpan);
+      rowG.appendChild(lg);
+
+      rowG.appendChild(el("rect", {
+        class: "hit", x: x0 - 2, y: rowY, width: (inverse ? w : (x1 + 8 - x0 + fw + 8)) , height: ROW_H
+      }));
+
+      rowG.addEventListener("mouseenter", function (evt) { showTip(evt, d); });
+      rowG.addEventListener("mousemove", moveTip);
+      rowG.addEventListener("mouseleave", hideTip);
+
+      svg.appendChild(rowG);
+      cursorY += ROW_H;
+    });
+
+    cursorY += GROUP_GAP;
+  });
+
+  // ---------------- legend ----------------
+  var legend = document.getElementById("legend");
+  CATS.forEach(function (c) {
+    var item = document.createElement("div");
+    item.className = "legend-item";
+    var sw = document.createElement("span");
+    sw.className = "swatch";
+    sw.style.background = c.color;
+    var lbl = document.createElement("span");
+    lbl.textContent = c.label;
+    item.appendChild(sw);
+    item.appendChild(lbl);
+    legend.appendChild(item);
+  });
+})();
+</script>
