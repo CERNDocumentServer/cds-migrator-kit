@@ -2,8 +2,6 @@ db_uri: postgresql://cds-videos:cds-videos@localhost:5432/cds-videos
 records:
   weblectures:
     data_dir: cds_migrator_kit/videos/weblecture_migration/data/
-    tmp_dir: cds_migrator_kit/videos/weblecture_migration/tmp
-    log_dir: cds_migrator_kit/videos/weblecture_migration/log
     extract:
       dirpath: cds_migrator_kit/videos/weblecture_migration/data/weblectures/dump/
     transform:
@@ -11,8 +9,6 @@ records:
       eos_file_paths_dir: cds_migrator_kit/videos/weblecture_migration/data/file_paths/
   digitized-lectures:
     data_dir: cds_migrator_kit/videos/weblecture_migration/data/
-    tmp_dir: cds_migrator_kit/videos/weblecture_migration/tmp
-    log_dir: cds_migrator_kit/videos/weblecture_migration/log
     extract:
       dirpath: cds_migrator_kit/videos/weblecture_migration/data/digitized-lectures/dump/
     transform:

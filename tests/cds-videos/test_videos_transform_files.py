@@ -8,8 +8,6 @@
 
 """CDS-Videos migration tests."""
 
-from pathlib import Path
-
 import pytest
 import yaml
 
@@ -88,10 +86,8 @@ def test_transform_afs_files(base_app):
             "files_dump_dir"
         ]
         dumpdir = stream_config["records"]["weblectures"]["extract"]["dirpath"]
-        log_dir = Path(stream_config["records"]["weblectures"]["log_dir"])
-        log_dir.mkdir(parents=True, exist_ok=True)
 
-        StandardLogger.initialize(log_dir)
+        StandardLogger.initialize()
         migration_logger = MigrationProgressLogger(collection="weblectures")
         migration_logger.start_log()
 
@@ -115,7 +111,7 @@ def test_transform_afs_files(base_app):
         )
 
         # Load entry
-        load_entry = CDSVideosLoad(db_uri="", data_dir="", tmp_dir="")
+        load_entry = CDSVideosLoad(db_uri="", data_dir="")
         media_files = (
             transform_entry.get("record", {}).get("json", {}).get("media_files", {})
         )

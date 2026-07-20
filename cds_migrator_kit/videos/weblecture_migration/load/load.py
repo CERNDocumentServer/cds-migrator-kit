@@ -64,7 +64,6 @@ class CDSVideosLoad(Load):
         self,
         db_uri,
         data_dir,
-        tmp_dir,
         entries=None,
         dry_run=False,
         collection=None,  # weblectures

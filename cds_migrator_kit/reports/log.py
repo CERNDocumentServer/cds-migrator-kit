@@ -21,24 +21,15 @@ class StandardLogger:
     logger = None
 
     @classmethod
-    def initialize(cls, log_dir):
+    def initialize(cls):
         """Constructor."""
         logger_migrator = logging.getLogger("migrator-rules")
-        logger_users = logging.getLogger("users")
         logger_migrator.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
             "%(asctime)s - %(name)s - "
             "%(message)s - \n "
             "[in %(pathname)s:%(lineno)d]"
         )
-        # errors to file
-        fh = logging.FileHandler(log_dir / "error.log")
-        fh.setLevel(logging.ERROR)
-        fh.setFormatter(formatter)
-        logger_migrator.addHandler(fh)
-        fh = logging.FileHandler(log_dir / "users.log")
-        fh.setFormatter(formatter)
-        logger_users.addHandler(fh)
         # info to stream/stdout
         sh = logging.StreamHandler()
         sh.setFormatter(formatter)

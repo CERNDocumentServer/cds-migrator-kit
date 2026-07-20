@@ -10,7 +10,6 @@
 
 import copy
 from os.path import dirname, join
-from pathlib import Path
 
 import pytest
 import yaml
@@ -1316,8 +1315,6 @@ def test_transform_multi_video_record(dumpdir, base_app):
             "files_dump_dir"
         ]
         dumpdir = stream_config["records"]["weblectures"]["extract"]["dirpath"]
-        log_dir = Path(stream_config["records"]["weblectures"]["log_dir"])
-        log_dir.mkdir(parents=True, exist_ok=True)
 
         # Load test data
         data = load_json(dumpdir, "lecture.json")
