@@ -10,7 +10,6 @@
 from pathlib import Path
 
 import yaml
-from invenio_rdm_migrator.logging import FailedTxLogger, Logger
 from invenio_rdm_migrator.streams import Stream
 
 from cds_migrator_kit.reports.log import (
@@ -70,20 +69,10 @@ class Runner:
                 self.plots = stream_config[collection].get("plots", False)
                 self.data_dir.mkdir(parents=True, exist_ok=True)
 
-                self.tmp_dir = Path(stream_config[collection].get("tmp_dir"))
-                self.tmp_dir.mkdir(parents=True, exist_ok=True)
-
-                self.log_dir = Path(stream_config[collection].get("log_dir"))
-                self.log_dir.mkdir(parents=True, exist_ok=True)
-
-                Logger.initialize(self.log_dir)
-                StandardLogger.initialize(self.log_dir)
-                FailedTxLogger.initialize(self.log_dir)
+                StandardLogger.initialize()
                 # get will return a None for e.g. files:
 
-                # if loading pass source data dir, else pass tmp to dump new csv files
                 data_dir = self.data_dir
-                tmp_dir = self.tmp_dir / definition.name
                 extract = None
                 transform = None
 
@@ -117,7 +106,6 @@ class Runner:
                         definition.load_cls(
                             db_uri=self.db_uri,
                             data_dir=data_dir,
-                            tmp_dir=tmp_dir,
                             dry_run=dry_run,
                             collection=collection,
                             update_new_version_publication_date=self.update_new_version_publication_date,
@@ -138,9 +126,6 @@ class Runner:
             try:
                 stream.run(cleanup=True)
             except Exception as e:
-                Logger.get_logger().exception(
-                    f"Stream {stream.name} failed.", exc_info=1
-                )
                 self.migration_logger.add_log(e)
                 raise e
             finally:
