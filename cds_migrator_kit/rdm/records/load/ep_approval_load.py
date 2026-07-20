@@ -6,41 +6,34 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM migration load module for records with EP approval."""
+import json
 import re
 from collections import OrderedDict
 from copy import deepcopy
-from datetime import datetime, timezone
-from pathlib import Path
 
-from cds_rdm.requests.committee_approval import APPRN_PID_TYPE, CommitteeApprovalRequest
-from flask import current_app
+from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
+from cds_rdm.minters import legacy_recid_minter
 from invenio_access.permissions import system_identity
-from invenio_accounts.models import User
 from invenio_db import db
 from invenio_db.uow import UnitOfWork
 from invenio_drafts_resources.services.records.uow import ParentRecordCommitOp
-from invenio_pidstore.errors import PIDAlreadyExists
-from invenio_pidstore.models import PersistentIdentifier, PIDStatus
+from invenio_pidstore.models import PersistentIdentifier
+from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.records.api import RDMParent
-from invenio_records_resources.services.uow import RecordCommitOp
-from invenio_requests.customizations.event_types import LogEventType
-from invenio_requests.proxies import current_events_service, current_requests_service
-from invenio_requests.resolvers.registry import ResolverRegistry
 
 from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
 from cds_migrator_kit.rdm.migration_config import CDS_CERN_SCIENTIFIC_COMMUNITY_ID
 
+from .approval_request import ApprovalRequest
 from .load import CDSRecordServiceLoad
 
 EPPHAPP_FILE_TYPE = "EPPHAPP_FILE"
-EP_APPROVAL_WAITING_STATUS = "waiting"
-EP_APPROVAL_APPROVED_STATUS = "approved"
 EP_APPROVAL_REPORT_NUMBER_PREFIX = "CERN-EP"
 EP_APPROVAL_REPORT_NUMBER_RE = re.compile(r"^CERN-EP-\d{4}-\d{3}$")
 
 
-class CDSEPApprovalRecordServiceLoad(CDSRecordServiceLoad):
+class CDSEPApprovalRecordServiceLoad(Load):
     """Load records with EP approval.
 
     Splits a legacy record into two RDM records before load:
@@ -48,59 +41,32 @@ class CDSEPApprovalRecordServiceLoad(CDSRecordServiceLoad):
     - a restricted record with restricted EPPHAPP files
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.ep_approval_metadata = {
-            "title": None,
-            "experiment": None,
-            "resource_type": None,
-            "report_number": None,
-        }
-        self._ep_approval_parsed = None
-        self._load_flags = self._public_load_flags()
-
-    def _public_load_flags(self):
-        """Load flags for the public migrated record."""
-        return {
-            "mint_pids": True,
-            "mint_legacy_recid": True,
-            "save_original_dump": True,
-            "clc_sync": True,
-            "record_state": True,
-        }
-
-    def _restricted_load_flags(self):
-        """Load flags for the restricted EPPHAPP snapshot record."""
-        return {
-            "mint_pids": False,
-            "mint_legacy_recid": False,
-            "save_original_dump": False,
-            "clc_sync": False,
-            "record_state": False,
-        }
-
-    def _should_log_record_state(self):
-        return self._load_flags["record_state"]
-
-    def _after_publish_mint_recid(self, record, entry, version):
-        if self._load_flags["mint_legacy_recid"]:
-            super()._after_publish_mint_recid(record, entry, version)
-
-    def _after_publish_update_dois(self, identity, record, entry, uow):
-        if self._load_flags["mint_pids"]:
-            return super()._after_publish_update_dois(identity, record, entry, uow)
-
-    def _assign_rep_numbers(self, draft):
-        if self._load_flags["mint_pids"]:
-            super()._assign_rep_numbers(draft)
-
-    def _save_original_dumped_record(self, entry, recid_state):
-        if self._load_flags["save_original_dump"]:
-            super()._save_original_dumped_record(entry, recid_state)
-
-    def _after_load_clc_sync(self, record_state):
-        if self._load_flags["clc_sync"]:
-            super()._after_load_clc_sync(record_state)
+    def __init__(
+        self,
+        db_uri,
+        data_dir,
+        tmp_dir,
+        entries=None,
+        dry_run=False,
+        legacy_pids_to_redirect=None,
+        collection=None,
+        update_new_version_publication_date=True,
+        create_inclusion_request=False,
+        migration_logger=None,
+        record_state_logger=None,
+    ):
+        self.dry_run = dry_run
+        self.legacy_pids_to_redirect = {}
+        self.clc_sync = False
+        self.collection = collection
+        self.update_new_version_publication_date = update_new_version_publication_date
+        self.create_inclusion_request = create_inclusion_request
+        self.migration_logger = migration_logger
+        self.record_state_logger = record_state_logger
+        self.approval_request = None
+        if legacy_pids_to_redirect is not None:
+            with open(legacy_pids_to_redirect, "r") as fp:
+                self.legacy_pids_to_redirect = json.load(fp)
 
     def _load(self, entry):
         """
@@ -125,34 +91,71 @@ class CDSEPApprovalRecordServiceLoad(CDSRecordServiceLoad):
             record_json = entry.get("record", {}).get("json", {})
             metadata = record_json.get("metadata", {})
 
-            # Set the EP approval metadata
-            self.ep_approval_metadata["resource_type"] = metadata.get("resource_type")
-            self.ep_approval_metadata["title"] = metadata.get("title")
-
-            # Validate the EP approval data
-            self._validate_ep_approval(ep_approval, recid)
+            self.approval_request = ApprovalRequest(
+                ep_approval=ep_approval,
+                legacy_recid=recid,
+                title=metadata.get("title"),
+                resource_type=metadata.get("resource_type"),
+                dry_run=self.dry_run,
+            )
+            self.approval_request.validate()
 
             # Split the metadata and files
             public_entry = self._split_entry(entry, include_epphapp=False)
             restricted_entry = self._split_entry(entry, include_epphapp=True)
 
             # 1. Create restricted record
-            restricted_record_state = self._load_split_record(
-                restricted_entry, self._restricted_load_flags(), finalise=False
+            restricted_record_service = CDSRecordServiceLoad(
+                dry_run=self.dry_run,
+                collection=self.collection,
+                create_inclusion_request=self.create_inclusion_request,
+                migration_logger=self.migration_logger,
+                record_state_logger=self.record_state_logger,
+                legacy_pids_to_redirect=self.legacy_pids_to_redirect,
+                _is_final_record=False,
             )
+            restricted_record_state = restricted_record_service._load(restricted_entry)
 
             # 2. Create and approve EP approval request
-            self._create_ep_approval(restricted_record_state, legacy_recid=recid)
+            self.approval_request.create(restricted_record_state)
 
             # 3. Create public record and link both records
-            public_record_state = self._load_split_record(
-                public_entry,
-                self._public_load_flags(),
-                finalise=True,
+            public_record_service = CDSRecordServiceLoad(
+                dry_run=self.dry_run,
+                collection=self.collection,
+                create_inclusion_request=self.create_inclusion_request,
+                migration_logger=self.migration_logger,
+                record_state_logger=self.record_state_logger,
+                legacy_pids_to_redirect=self.legacy_pids_to_redirect,
+                _is_final_record=True,
             )
-            self._link_ep_approval_records(
-                restricted_record_state, public_record_state, legacy_recid=recid
-            )
+            public_record_state = public_record_service._load(public_entry)
+
+            if not self.dry_run:
+                # Link the records with related_identifiers
+                self._append_related_identifier(
+                    public_record_state["latest_version"],
+                    restricted_record_state["latest_version"],
+                    "isversionof",
+                    self.approval_request.resource_type,
+                )
+                self._append_related_identifier(
+                    restricted_record_state["latest_version"],
+                    public_record_state["latest_version"],
+                    "isvariantformof",
+                    self.approval_request.resource_type,
+                )
+
+                # 4. Link the records with related_identifiers
+                self._link_parent_ep_approvals(
+                    restricted_record_state, public_record_state, legacy_recid=recid
+                )
+
+                public_record_state["internal_version"] = restricted_record_state[
+                    "latest_version"
+                ]
+                self.record_state_logger.add_record_state(public_record_state)
+            self.migration_logger.finalise_record(recid)
         except (UnexpectedValue, ManualImportRequired) as e:
             self.migration_logger.add_log(e, record=entry)
         except Exception as e:
@@ -161,76 +164,17 @@ class CDSEPApprovalRecordServiceLoad(CDSRecordServiceLoad):
                 field="validation",
                 stage="load",
                 recid=recid,
-                priority="warning",
+                priority="critical",
             )
             self.migration_logger.add_log(exc, record=entry)
 
-    def _load_split_record(self, entry, load_flags, finalise):
-        """Load the record."""
-        self._load_flags = load_flags
-        self._finalise_on_load = finalise
-        return super()._load(entry)
-
-    def _validate_ep_approval(self, ep_approval, legacy_recid):
-        """Validate EP approval data before creating any records."""
-        waiting_entry, approved_entry, report_number = self._parse_ep_approval_history(
-            ep_approval
-        )
-
-        existing = self._existing_ep_approval_request(legacy_recid)
-        if existing:
-            raise ManualImportRequired(
-                message=f"EP approval request {existing['id']} already exists",
-                stage="load",
-                priority="critical",
-            )
-        if self._exists_apprn_pid(report_number):
-            raise ManualImportRequired(
-                message=f"APPRN PID {report_number} already exists",
-                stage="load",
-                priority="critical",
-            )
-
-        self._ep_approval_parsed = (waiting_entry, approved_entry, report_number)
-
-    def _create_ep_approval(self, restricted_record_state, legacy_recid):
-        """Create and approve EP approval request after restricted record exists."""
-        waiting_entry, approved_entry, report_number = self._ep_approval_parsed
-        publication_title = self.ep_approval_metadata["title"]
-
-        if not self.dry_run:
-            if not restricted_record_state:
-                raise UnexpectedValue(
-                    message="Restricted record is required for EP approval.",
-                    stage="load",
-                    recid=legacy_recid,
-                    priority="critical",
-                )
-            restricted_recid = restricted_record_state["latest_version"]
-            restricted_parent = RDMParent.get_record(
-                restricted_record_state["parent_object_uuid"]
-            )
-            self._create_ep_approval_request(
-                legacy_recid,
-                restricted_recid,
-                restricted_parent,
-                waiting_entry,
-                approved_entry,
-                report_number,
-                publication_title,
-            )
-            self._mint_apprn_pid(
-                report_number, restricted_record_state["latest_version_object_uuid"]
-            )
-
-    def _link_ep_approval_records(
+    def _link_parent_ep_approvals(
         self, restricted_record_state, public_record_state, legacy_recid
     ):
         """Write parent metadata and link public/restricted records."""
-        _, approved_entry, report_number = self._ep_approval_parsed
-        approval_iso = self._parse_legacy_datetime(
-            approved_entry.get("date")
-        ).isoformat()
+        approved_entry = self.approval_request.approved_entry
+        report_number = self.approval_request.report_number
+        approval_iso = self.approval_request.approved_at.isoformat()
 
         if not self.dry_run:
             if not restricted_record_state or not public_record_state:
@@ -270,182 +214,6 @@ class CDSEPApprovalRecordServiceLoad(CDSRecordServiceLoad):
                     uow,
                 )
                 uow.commit()
-            # Link the records with related_identifiers
-            self._append_related_identifier(
-                public_recid,
-                restricted_recid,
-                "isversionof",
-                self.ep_approval_metadata["resource_type"],
-            )
-            self._append_related_identifier(
-                restricted_recid,
-                public_recid,
-                "isvariantformof",
-                self.ep_approval_metadata["resource_type"],
-            )
-
-    def _parse_ep_approval_history(self, ep_approval):
-        """Return waiting/approved history entries and the report number."""
-        if len(ep_approval) != 2:
-            raise UnexpectedValue(
-                message="EP approval history has more/less than 2 entries",
-                stage="load",
-                priority="critical",
-            )
-        history = ep_approval or []
-        waiting = next(
-            (
-                item
-                for item in history
-                if item.get("status") == EP_APPROVAL_WAITING_STATUS
-            ),
-            None,
-        )
-        approved = next(
-            (
-                item
-                for item in history
-                if item.get("status") == EP_APPROVAL_APPROVED_STATUS
-            ),
-            None,
-        )
-        if not waiting:
-            raise UnexpectedValue(
-                message="EP approval history has no waiting entry",
-                stage="load",
-                priority="critical",
-            )
-        if not approved:
-            raise UnexpectedValue(
-                message="EP approval history has no approved entry",
-                stage="load",
-                priority="critical",
-            )
-
-        report_number = approved.get("ep_report_number")
-        if not report_number:
-            raise UnexpectedValue(
-                message="EP approval approved entry is missing ep_report_number",
-                stage="load",
-                priority="critical",
-            )
-        if waiting.get("ep_report_number") != report_number:
-            raise UnexpectedValue(
-                message="EP approval waiting entry has different ep_report_number than approved entry",
-                stage="load",
-                priority="critical",
-            )
-        self.ep_approval_metadata["report_number"] = report_number
-        # Check if the submitters are exists
-        self._resolve_user_by_email(waiting.get("submitted_by"), "submitter")
-        self._resolve_user_by_email(approved.get("submitted_by"), "approver")
-
-        # Check if record approved after the deadline
-        waiting_deadline = self._parse_legacy_datetime(waiting.get("deadline"))
-        approved_date = self._parse_legacy_datetime(approved.get("date"))
-        created_at = self._parse_legacy_datetime(waiting.get("date"))
-        if not created_at or not approved_date or not waiting_deadline:
-            raise UnexpectedValue(
-                message="EP approval history has missing timestamps",
-                stage="load",
-                priority="critical",
-            )
-        if waiting_deadline and approved_date > waiting_deadline:
-            raise UnexpectedValue(
-                message="Record approved after the deadline",
-                stage="load",
-                priority="critical",
-            )
-        return waiting, approved, report_number
-
-    @staticmethod
-    def _parse_legacy_datetime(value):
-        """Parse legacy EP approval timestamps into timezone-aware datetimes."""
-        if not value:
-            return None
-        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
-            try:
-                return datetime.strptime(value, fmt).replace(tzinfo=timezone.utc)
-            except ValueError:
-                continue
-        return None
-
-    def _get_ep_referee_group(self, restricted_parent):
-        """Get the EP approval referee group from the restricted record."""
-        default_community_id = restricted_parent.get("communities", {}).get("default")
-        if not default_community_id:
-            raise UnexpectedValue(
-                message="Restricted record has no default community for EP approval",
-                stage="load",
-                priority="critical",
-            )
-        ep_config = current_app.config.get(
-            "CDS_COMMITTEE_APPROVAL_COMMUNITIES", {}
-        ).get(default_community_id)
-        if not ep_config:
-            raise UnexpectedValue(
-                message=(
-                    f"Community {default_community_id} is not enrolled in "
-                    "CDS_COMMITTEE_APPROVAL_COMMUNITIES"
-                ),
-                stage="load",
-                priority="critical",
-            )
-        return ep_config["referee_group"]
-
-    def _resolve_user_by_email(self, email, role):
-        """Resolve the user by email."""
-        if not email:
-            raise UnexpectedValue(
-                message=f"EP approval {role} email is missing",
-                stage="load",
-                priority="critical",
-            )
-        user = User.query.filter_by(email=email).one_or_none()
-        if not user:
-            raise UnexpectedValue(
-                message=f"EP approval {role} user not found: {email}",
-                stage="load",
-                priority="critical",
-            )
-        return {"user": str(user.id)}
-
-    def _existing_ep_approval_request(self, legacy_recid):
-        """Check if the EP approval request already exists."""
-        number = f"lrecid:{legacy_recid}:ep-approval"
-        results = current_requests_service.search(
-            system_identity,
-            params={"q": f'number:"{number}"', "size": 1},
-        )
-        hits = list(results.hits)
-        return hits[0] if hits else None
-
-    def _exists_apprn_pid(self, report_number):
-        """Check if the APPRN PID already exists."""
-        existing = PersistentIdentifier.query.filter_by(
-            pid_type=APPRN_PID_TYPE,
-            pid_value=report_number,
-        ).one_or_none()
-        if existing:
-            return True
-        return False
-
-    def _mint_apprn_pid(self, report_number, restricted_version_uuid):
-        """Mint the APPRN PID."""
-        try:
-            PersistentIdentifier.create(
-                pid_type=APPRN_PID_TYPE,
-                pid_value=report_number,
-                object_type="rec",
-                object_uuid=str(restricted_version_uuid),
-                status=PIDStatus.REGISTERED,
-            )
-        except PIDAlreadyExists:
-            raise ManualImportRequired(
-                message=f"APPRN PID {report_number} already exists",
-                stage="load",
-                priority="critical",
-            )
 
     def _write_parent_ep_approval(
         self,
@@ -458,93 +226,6 @@ class CDSEPApprovalRecordServiceLoad(CDSRecordServiceLoad):
         pf["committee_approval"] = ep_approval
         parent["permission_flags"] = pf
         uow.register(ParentRecordCommitOp(parent))
-
-    def _create_accept_log_event(self, request, approved_entry, uow):
-        """Create the accept timeline event with the legacy approver as created_by."""
-        approver_ref = self._resolve_user_by_email(
-            approved_entry.get("submitted_by"),
-            "approver",
-        )
-
-        event = current_events_service.record_cls.create(
-            {},
-            request=request.model,
-            request_id=str(request.id),
-            type=LogEventType,
-        )
-        event.update({"payload": {"event": "accepted"}})
-        event.created_by = ResolverRegistry.resolve_entity_proxy(
-            approver_ref, raise_=True
-        )
-
-        approved_at = self._parse_legacy_datetime(approved_entry.get("date"))
-        if approved_at:
-            event.model.created = approved_at
-
-        uow.register(RecordCommitOp(event, indexer=current_events_service.indexer))
-
-    def _apply_approved_entry_to_request(
-        self, request, approved_entry, report_number, uow
-    ):
-        """Update an existing request to accepted using the legacy approved entry."""
-        payload = dict(request.get("payload") or {})
-        payload["approved_report_number"] = report_number
-        request["payload"] = payload
-        request.status = "accepted"
-
-        approved_at = self._parse_legacy_datetime(approved_entry.get("date"))
-        if approved_at:
-            request.model.updated = approved_at
-
-        self._create_accept_log_event(request, approved_entry, uow)
-
-    def _create_ep_approval_request(
-        self,
-        legacy_recid,
-        restricted_recid,
-        restricted_parent,
-        waiting_entry,
-        approved_entry,
-        report_number,
-        publication_title,
-    ):
-        """Create request from waiting entry, then update it with approved entry."""
-        expires_at = self._parse_legacy_datetime(waiting_entry.get("deadline"))
-
-        referee_group = self._get_ep_referee_group(restricted_parent)
-        with UnitOfWork() as uow:
-            request_item = current_requests_service.create(
-                system_identity,
-                data={
-                    "title": f'EP approval for "{publication_title}"',
-                    # Use the default
-                    "payload": {},
-                },
-                request_type=CommitteeApprovalRequest,
-                receiver={"group": referee_group},
-                creator=self._resolve_user_by_email(
-                    waiting_entry.get("submitted_by"), "submitter"
-                ),
-                topic={"record": restricted_recid},
-                expires_at=expires_at,
-                uow=uow,
-            )
-            request = request_item._record
-            request.number = f"lrecid:{legacy_recid}:ep-approval"
-            request.status = "submitted"
-
-            submitted_at = self._parse_legacy_datetime(waiting_entry.get("date"))
-            if submitted_at:
-                request.model.created = submitted_at
-
-            self._apply_approved_entry_to_request(
-                request, approved_entry, report_number, uow
-            )
-
-            uow.register(
-                RecordCommitOp(request, indexer=current_requests_service.indexer)
-            )
-            uow.commit()
 
     def _append_related_identifier(
         self, record_id, target_id, relation_id, resource_type
@@ -587,7 +268,7 @@ class CDSEPApprovalRecordServiceLoad(CDSRecordServiceLoad):
         if public_split:
             return True
         if EP_APPROVAL_REPORT_NUMBER_RE.match(identifier):
-            if identifier != self.ep_approval_metadata["report_number"]:
+            if identifier != self.approval_request.report_number:
                 raise UnexpectedValue(
                     message="EP report number is not the same as the approved entry",
                     stage="load",
@@ -661,6 +342,22 @@ class CDSEPApprovalRecordServiceLoad(CDSRecordServiceLoad):
         new_versions = OrderedDict()
         versioned_files = OrderedDict()
         previous_signature = None
+        has_epphapp_files = any(
+            file_data.get("type") == EPPHAPP_FILE_TYPE
+            for version_data in split.get("versions", {}).values()
+            for file_data in version_data.get("files", {}).values()
+        )
+        if include_epphapp and not has_epphapp_files:
+            self.migration_logger.add_information(
+                split["record"]["recid"],
+                {
+                    "message": (
+                        "No EPPHAPP files found; public files used for the "
+                        "restricted record."
+                    ),
+                    "value": "public files",
+                },
+            )
 
         for _, version_data in split.get("versions", {}).items():
             current_version_files = OrderedDict()
@@ -668,7 +365,11 @@ class CDSEPApprovalRecordServiceLoad(CDSRecordServiceLoad):
             for key, file_data in version_data.get("files", {}).items():
                 is_epphapp = file_data.get("type") == EPPHAPP_FILE_TYPE
 
-                if include_epphapp != is_epphapp:
+                # If there are no EPPHAPP files, use the public files for the
+                # restricted split as well.
+                if include_epphapp != is_epphapp and not (
+                    include_epphapp and not has_epphapp_files
+                ):
                     continue
 
                 if not include_epphapp and file_data.get("access"):
@@ -741,13 +442,15 @@ class CDSEPApprovalRecordServiceLoad(CDSRecordServiceLoad):
             )
 
         if not include_epphapp:
-            split["record"]["access"] = "public"
+            # Public record does not need inclusion request
+            split["record"].pop("_request_data", None)
+            split["record"]["owned_by"] = "system"
+            split["parent"]["json"]["access"]["owned_by"] = {"user": "system"}
             self._add_cern_scientific_community(split)
             # Add the approval report number to the public record metadata
-            _, _, report_number = self._ep_approval_parsed
             split["record"]["json"]["metadata"]["identifiers"].append(
                 {
-                    "identifier": report_number,
+                    "identifier": self.approval_request.report_number,
                     "scheme": "apprn",
                 }
             )
@@ -757,3 +460,21 @@ class CDSEPApprovalRecordServiceLoad(CDSRecordServiceLoad):
         self._remove_doi_pid_from_metadata(split, include_epphapp)
 
         return split
+
+    def _cleanup(self, *args, **kwargs):
+        """Post migration process."""
+        for legacy_src_pid, legacy_dest_pid in self.legacy_pids_to_redirect.items():
+            if CDSRecordServiceLoad._have_migrated_recid(legacy_src_pid):
+                continue
+            try:
+                parent_dest_pid = get_pid_by_legacy_recid(str(legacy_dest_pid))
+                assert str(parent_dest_pid.status) == "R"
+                legacy_recid_minter(legacy_src_pid, parent_dest_pid.object_uuid)
+                db.session.commit()
+                self.migration_logger.finalise_record(legacy_src_pid)
+            except Exception as exc:
+                db.session.rollback()
+                self.migration_logger.add_log(
+                    f"Failed to redirect {legacy_src_pid} to {legacy_dest_pid}: {str(exc)}",
+                    record={"recid": legacy_src_pid},
+                )

@@ -81,10 +81,15 @@
           </td>
           <td>
             {% if row["recid"] %}
+              {% set record = record_states.get(row["recid"], {}) %}
               <a href="/record/{{ collection }}/{{ row["recid"] }}">View JSON</a> |
               <a
                 href="{{ config.CDS_MIGRATOR_KIT_SITE_UI_URL }}/legacy/record/{{ row["recid"] }}">View
                 record</a>
+              {% if record.get("internal_version") %}
+                |
+                <a href="{{ config.CDS_MIGRATOR_KIT_SITE_UI_URL }}/records/{{ record["internal_version"] }}">View internal record</a>
+              {% endif %}
             {% endif %}
           </td>
         </tr>

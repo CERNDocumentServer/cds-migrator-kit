@@ -410,7 +410,11 @@ records:
         - ""
   faser-drafts:
     data_dir: cds_migrator_kit/rdm/data/faser-drafts
-    restricted: "True"
+    tmp_dir: cds_migrator_kit/rdm/tmp/faser-drafts
+    log_dir: cds_migrator_kit/rdm/log/faser-drafts
+    restricted: "True"  
+    plots: true
+    create_inclusion_request: true
     access_grants_view:
       - faser-all
     extract:
@@ -422,6 +426,10 @@ records:
         - "33af9368-5bad-45cb-9360-8c9e5dfca09f"
   faser:
     data_dir: cds_migrator_kit/rdm/data/faser
+    tmp_dir: cds_migrator_kit/rdm/tmp/faser
+    log_dir: cds_migrator_kit/rdm/log/faser
+    create_inclusion_request: true
+    plots: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/faser/dump/
     transform:
@@ -431,13 +439,46 @@ records:
         - "33af9368-5bad-45cb-9360-8c9e5dfca09f"
   faser-ep:
     data_dir: cds_migrator_kit/rdm/data/faser
+    tmp_dir: cds_migrator_kit/rdm/tmp/faser
+    log_dir: cds_migrator_kit/rdm/log/faser
+    plots: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/faser-ep/dump/
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/faser/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - "33af9368-5bad-45cb-9360-8c9e5dfca09f"
+        - "e5de962b-5e2c-408f-be69-2823fda1f732"
+  lcd_restr:
+    data_dir: cds_migrator_kit/rdm/data/lep_exp/lcd
+    tmp_dir: cds_migrator_kit/rdm/tmp/lep_exp/lcd
+    log_dir: cds_migrator_kit/rdm/log/lep_exp/lcd
+    restricted: "True"
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/lep_exp/lcd/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/lcd/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - ""
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/lcd/duplicated_pids.json
+  re29_restr:
+    data_dir: cds_migrator_kit/rdm/data/lep_exp/re29
+    tmp_dir: cds_migrator_kit/rdm/tmp/lep_exp/re29
+    log_dir: cds_migrator_kit/rdm/log/lep_exp/re29
+    restricted: "True"
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/lep_exp/re29/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/re29/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - ""
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/re29/duplicated_pids.json
   staff_association:
     data_dir: cds_migrator_kit/rdm/data/staff_association
     extract:

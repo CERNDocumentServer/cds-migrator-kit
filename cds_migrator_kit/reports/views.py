@@ -58,6 +58,13 @@ def results(collection):
         next_page = False
         logger = MigrationProgressLogger(collection=collection)
         record_logs = logger.read_log()
+        state_logger = RecordStateLogger(collection=collection, keep_logs=True)
+        state_logger._load_existing_logs()
+        record_states = {
+            str(state["legacy_recid"]): state
+            for state in state_logger._record_states
+            if state.get("legacy_recid") is not None
+        }
         template = "cds_migrator_kit_records/records.html"
         record_logs = list(record_logs)
         critical = 0
@@ -97,6 +104,7 @@ def results(collection):
             prev_page=prev_page,
             next_page=next_page,
             paginated_record_logs=paginated_record_logs,
+            record_states=record_states,
         )
     except FileNotFoundError as e:
         template = "cds_migrator_kit_records/rectype_missing.html"

@@ -47,6 +47,10 @@ def access_grants(self, key, value):
         "faser-slide",
     ]:
         raise UnexpectedValue(subfield="a", field=key, value=value)
+    raw_identifier = value.get("m")
+    subject_identifier = StringValue(raw_identifier).parse()
+    if subject_identifier:
+        return {str(subject_identifier): "view"}
     raise IgnoreKey("access_grants")
 
 
