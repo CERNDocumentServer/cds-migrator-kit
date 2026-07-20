@@ -152,6 +152,27 @@ Run the below command to migrate records in the created community from before:
 invenio migration run
 ```
 
+#### EP approval records (`--ep-approval`)
+
+EP approval records must be migrated in a **separate stream**. Do not mix them with regular records.
+
+1. **Dump** them filtered by `9031_:EPPHAPP`, for example (FASER):
+
+```bash
+inveniomigrator dump records -q '980__a:ARTICLE or 980__a:PREPRINT and 693:"FASER" not 980:CONFERENCEPAPER not 591__b:"Draft" 9031_:EPPHAPP -980:DELETED -980:HIDDEN -980__c:MIGRATED -980__a:DUMMY' --file-prefix faser-papers-cern-ep --chunk-size=1000
+```
+
+2. Configure a dedicated collection entry in `streams.yaml` pointing at that dump.
+
+3. **Migrate** with the `--ep-approval` flag (dry run first):
+
+```shell
+invenio migration run --collection faser-ep --ep-approval --dry-run
+invenio migration run --collection faser-ep --ep-approval
+```
+
+Without `--ep-approval`, the loader will reject EP approval records.
+
 ### Migrate the statistics for the successfully migrated records
 
 When the `invenio migration run` command ends it will produce a `rdm_records_state.json` file which has linked information about the migrated records and the old system. The format will be similar to below:

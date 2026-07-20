@@ -119,8 +119,9 @@ class CDSRecordServiceLoad(Load):
 
     def __init__(
         self,
-        db_uri,
-        data_dir,
+        db_uri=None,
+        data_dir=None,
+        tmp_dir=None,
         entries=None,
         dry_run=False,
         legacy_pids_to_redirect=None,
@@ -129,20 +130,24 @@ class CDSRecordServiceLoad(Load):
         create_inclusion_request=False,
         migration_logger=None,
         record_state_logger=None,
+        _is_final_record=True,
     ):
         """Constructor."""
         self.dry_run = dry_run
         self.legacy_pids_to_redirect = {}
         self.clc_sync = False
-        self._finalise_on_load = True
         self.collection = collection
         self.update_new_version_publication_date = update_new_version_publication_date
         self.create_inclusion_request = create_inclusion_request
         self.migration_logger = migration_logger
         self.record_state_logger = record_state_logger
+        self._is_final_record = _is_final_record
         if legacy_pids_to_redirect is not None:
-            with open(legacy_pids_to_redirect, "r") as fp:
-                self.legacy_pids_to_redirect = json.load(fp)
+            if isinstance(legacy_pids_to_redirect, dict):
+                self.legacy_pids_to_redirect = legacy_pids_to_redirect
+            else:
+                with open(legacy_pids_to_redirect, "r") as fp:
+                    self.legacy_pids_to_redirect = json.load(fp)
 
     def _prepare(self, entry):
         """Prepare the record."""
@@ -247,6 +252,8 @@ class CDSRecordServiceLoad(Load):
 
     def _after_publish_update_dois(self, identity, record, entry, uow):
         """Update migrated DOIs post publish."""
+        if not self._is_final_record:
+            return
         migrated_pids = entry["record"]["json"]["pids"]
         for pid_type, identifier in migrated_pids.items():
             if pid_type == "doi":
@@ -457,6 +464,8 @@ class CDSRecordServiceLoad(Load):
 
     def _after_publish_mint_recid(self, record, entry, version):
         """Mint legacy ids for redirections assigned to the parent."""
+        if not self._is_final_record:
+            return
         legacy_recid = entry["record"]["recid"]
         if record._record.versions.index == 1:
             # it seems more intuitive if we mint the lrecid for parent
@@ -583,6 +592,8 @@ class CDSRecordServiceLoad(Load):
         # db.session.commit()
 
     def _assign_rep_numbers(self, draft):
+        if not self._is_final_record:
+            return
         draft_report_nums = {}
         for index, id in enumerate(draft.data["metadata"].get("identifiers", [])):
             if id["scheme"] == "cdsrn":
@@ -699,13 +710,9 @@ class CDSRecordServiceLoad(Load):
             record_state_context = self._load_record_state(legacy_recid, records)
             # Dump the computed record state. This is useful to migrate then the record stats
             if record_state_context:
-                if self._should_log_record_state():
+                if self._is_final_record:
                     self.record_state_logger.add_record_state(record_state_context)
                 return record_state_context
-
-    def _should_log_record_state(self):
-        """Whether to persist record state for stats migration."""
-        return True
 
     def _dry_load(self, entry):
         current_rdm_records_service.schema.load(
@@ -794,6 +801,8 @@ class CDSRecordServiceLoad(Load):
 
         This is the originally extracted record before any transformation.
         """
+        if not self._is_final_record:
+            return
         _original_dump = entry["_original_dump"]
         _original_dump_model = CDSMigrationLegacyRecord(
             json=_original_dump,
@@ -803,7 +812,8 @@ class CDSRecordServiceLoad(Load):
         )
         db.session.add(_original_dump_model)
 
-    def _have_migrated_recid(self, recid):
+    @staticmethod
+    def _have_migrated_recid(recid):
         """Check if we have minted `lrecid` pid."""
         pid = PersistentIdentifier.query.filter_by(
             pid_type="lrecid",
@@ -818,6 +828,8 @@ class CDSRecordServiceLoad(Load):
         return False
 
     def _after_load_clc_sync(self, record_state):
+        if not self._is_final_record:
+            return
         if self.clc_sync:
             sync = CDSToCLCSyncModel(
                 parent_record_pid=record_state["parent_recid"],
@@ -845,7 +857,7 @@ class CDSRecordServiceLoad(Load):
                 ep_approval = entry.get("record", {}).get("ep_approval")
                 if ep_approval:
                     raise UnexpectedValue(
-                        message="EP approval records must be loaded with the EP approval stream",
+                        message="EP approval records must be loaded with the '--ep-approval' flag",
                         stage="load",
                         recid=recid,
                         priority="critical",
@@ -862,7 +874,7 @@ class CDSRecordServiceLoad(Load):
                             )
                             self._after_load_clc_sync(recid_state_after_load)
                         uow.commit()
-                if self._finalise_on_load:
+                if self._is_final_record:
                     self.migration_logger.finalise_record(recid)
                 return recid_state_after_load
             except (UnexpectedValue, ManualImportRequired) as e:
