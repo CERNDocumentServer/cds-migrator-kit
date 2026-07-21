@@ -8,7 +8,7 @@ from edtf import EDTFParseException, parse_edtf, text_to_edtf
 from idutils.normalizers import normalize_isbn, normalize_issn
 from isbnlib import NotValidISBNError
 
-from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
+from cds_migrator_kit.errors import ManualImportRequired, RecordFlaggedCuration, UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     filter_list_values,
     for_each_value,
@@ -23,6 +23,7 @@ from ...config import (
 from ...models.base_publication_record import rdm_base_publication_model as model
 from .base import licenses as _base_licenses
 from .base import normalize
+from ..quality.reviewers import find_reviewer
 
 # Unwrapped base functions (strip @for_each_value to avoid double-wrapping).
 # licenses also has @filter_values beneath @for_each_value, so two levels deep.
@@ -476,8 +477,16 @@ def request_reviewers(self, key, value):
         request_data = self.setdefault("request_data", {})
         reviewers = request_data.setdefault("reviewers", [])
 
-        if reviewer not in reviewers:
-            reviewers.append(reviewer)
+        try:
+            user = find_reviewer(reviewer)
+            reviewer_entry = {"user": str(user.id)}
+        except RecordFlaggedCuration as exc:
+            reviewer_errors = request_data.setdefault("_reviewer_errors", [])
+            reviewer_errors.append({"message": exc.message, "value": exc.value})
+            reviewer_entry = {"user": "-1"}
+
+        if reviewer_entry not in reviewers:
+            reviewers.append(reviewer_entry)
 
     raise IgnoreKey("request_reviewers")
 
