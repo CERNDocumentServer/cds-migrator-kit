@@ -441,6 +441,7 @@ records:
     data_dir: cds_migrator_kit/rdm/data/faser
     tmp_dir: cds_migrator_kit/rdm/tmp/faser
     log_dir: cds_migrator_kit/rdm/log/faser
+    create_inclusion_request: true
     plots: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/faser-ep/dump/

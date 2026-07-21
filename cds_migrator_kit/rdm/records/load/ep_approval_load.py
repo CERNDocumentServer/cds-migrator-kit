@@ -7,9 +7,6 @@
 
 """CDS-RDM migration load module for records with EP approval."""
 import json
-import re
-from collections import OrderedDict
-from copy import deepcopy
 
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from cds_rdm.minters import legacy_recid_minter
@@ -23,14 +20,10 @@ from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.records.api import RDMParent
 
 from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
-from cds_migrator_kit.rdm.migration_config import CDS_CERN_SCIENTIFIC_COMMUNITY_ID
 
 from .approval_request import ApprovalRequest
+from .ep_approval_entry import PublicEntry, RestrictedEntry
 from .load import CDSRecordServiceLoad
-
-EPPHAPP_FILE_TYPE = "EPPHAPP_FILE"
-EP_APPROVAL_REPORT_NUMBER_PREFIX = "CERN-EP"
-EP_APPROVAL_REPORT_NUMBER_RE = re.compile(r"^CERN-EP-\d{4}-\d{3}$")
 
 
 class CDSEPApprovalRecordServiceLoad(Load):
@@ -101,8 +94,16 @@ class CDSEPApprovalRecordServiceLoad(Load):
             self.approval_request.validate()
 
             # Split the metadata and files
-            public_entry = self._split_entry(entry, include_epphapp=False)
-            restricted_entry = self._split_entry(entry, include_epphapp=True)
+            public_entry = PublicEntry(
+                entry,
+                approval_request=self.approval_request,
+                migration_logger=self.migration_logger,
+            ).build()
+            restricted_entry = RestrictedEntry(
+                entry,
+                approval_request=self.approval_request,
+                migration_logger=self.migration_logger,
+            ).build()
 
             # 1. Create restricted record
             restricted_record_service = CDSRecordServiceLoad(
@@ -154,8 +155,6 @@ class CDSEPApprovalRecordServiceLoad(Load):
                 public_record_state["internal_version"] = restricted_record_state[
                     "latest_version"
                 ]
-                self.record_state_logger.add_record_state(public_record_state)
-            self.migration_logger.finalise_record(recid)
         except (UnexpectedValue, ManualImportRequired) as e:
             self.migration_logger.add_log(e, record=entry)
         except Exception as e:
@@ -249,217 +248,6 @@ class CDSEPApprovalRecordServiceLoad(Load):
         )
         current_rdm_records_service.publish(system_identity, id_=draft.id)
         return True
-
-    def _add_cern_scientific_community(self, entry):
-        """Add the CERN Scientific community to the public record parent."""
-        communities = entry.get("parent", {}).get("json", {}).get("communities", {})
-        ids = list(communities.get("ids", []))
-        if CDS_CERN_SCIENTIFIC_COMMUNITY_ID not in ids:
-            ids.append(CDS_CERN_SCIENTIFIC_COMMUNITY_ID)
-        communities["ids"] = ids
-        entry.setdefault("parent", {}).setdefault("json", {})[
-            "communities"
-        ] = communities
-
-    def _should_remove_ep_report_number(self, identifier, public_split):
-        """Return whether an EP report number should be stripped from metadata."""
-        if not identifier.startswith(EP_APPROVAL_REPORT_NUMBER_PREFIX):
-            return False
-        if public_split:
-            return True
-        if EP_APPROVAL_REPORT_NUMBER_RE.match(identifier):
-            if identifier != self.approval_request.report_number:
-                raise UnexpectedValue(
-                    message="EP report number is not the same as the approved entry",
-                    stage="load",
-                    priority="critical",
-                )
-            return True
-        return False
-
-    def _remove_ep_report_numbers_from_metadata(self, entry, include_epphapp):
-        """Strip EP report numbers from split record metadata before load."""
-        recid = entry.get("record", {}).get("recid")
-        metadata = entry.get("record", {}).get("json", {}).get("metadata", {})
-        identifiers = metadata.get("identifiers", [])
-        if not identifiers:
-            return
-
-        kept = []
-        removed = []
-        for id_entry in identifiers:
-            if id_entry.get("scheme") != "cdsrn":
-                kept.append(id_entry)
-                continue
-            identifier = id_entry.get("identifier", "")
-            if self._should_remove_ep_report_number(identifier, not include_epphapp):
-                removed.append(identifier)
-            else:
-                kept.append(id_entry)
-
-        if not removed:
-            return
-
-        metadata["identifiers"] = kept
-        split_type = "restricted" if include_epphapp else "public"
-        self.migration_logger.add_information(
-            recid,
-            {
-                "message": (
-                    f"Removed EP approval report number(s) from {split_type} " "record."
-                ),
-                "value": removed,
-            },
-        )
-
-    def _remove_doi_pid_from_metadata(self, entry, include_epphapp):
-        """Strip DOI PID from restricted EPPHAPP split record metadata before load."""
-        if not include_epphapp:
-            return
-
-        recid = entry.get("record", {}).get("recid")
-        record_json = entry.get("record", {}).get("json", {})
-        pids = record_json.get("pids")
-
-        if not pids or "doi" not in pids:
-            return
-
-        removed = pids.pop("doi")
-
-        self.migration_logger.add_information(
-            recid,
-            {
-                "message": "Removed DOI PID from restricted record.",
-                "value": removed,
-            },
-        )
-
-    def _split_entry(self, entry, include_epphapp):
-        """Return a load entry for the public or restricted EP approval split."""
-        split = deepcopy(entry)
-        split["record"].pop("ep_approval", None)
-
-        new_versions = OrderedDict()
-        versioned_files = OrderedDict()
-        previous_signature = None
-        has_epphapp_files = any(
-            file_data.get("type") == EPPHAPP_FILE_TYPE
-            for version_data in split.get("versions", {}).values()
-            for file_data in version_data.get("files", {}).values()
-        )
-        if include_epphapp and not has_epphapp_files:
-            self.migration_logger.add_information(
-                split["record"]["recid"],
-                {
-                    "message": (
-                        "No EPPHAPP files found; public files used for the "
-                        "restricted record."
-                    ),
-                    "value": "public files",
-                },
-            )
-
-        for _, version_data in split.get("versions", {}).items():
-            current_version_files = OrderedDict()
-
-            for key, file_data in version_data.get("files", {}).items():
-                is_epphapp = file_data.get("type") == EPPHAPP_FILE_TYPE
-
-                # If there are no EPPHAPP files, use the public files for the
-                # restricted split as well.
-                if include_epphapp != is_epphapp and not (
-                    include_epphapp and not has_epphapp_files
-                ):
-                    continue
-
-                if not include_epphapp and file_data.get("access"):
-                    raise UnexpectedValue(
-                        message=(
-                            "Public split contains restricted files after excluding "
-                            f"EPPHAPP files: {[key]}"
-                        ),
-                        stage="load",
-                        recid=split["record"]["recid"],
-                        priority="critical",
-                    )
-
-                current_version_files[key] = deepcopy(file_data)
-
-            if not current_version_files:
-                continue
-
-            versioned_files.update(current_version_files)
-
-            signature = tuple(
-                sorted(
-                    (
-                        key,
-                        file_data.get("checksum"),
-                        file_data.get("id_bibdoc"),
-                        file_data.get("version"),
-                        file_data.get("type"),
-                        file_data.get("access"),
-                    )
-                    for key, file_data in versioned_files.items()
-                )
-            )
-            # If the signature is the same, skip the version
-            if signature == previous_signature:
-                continue
-
-            previous_signature = signature
-
-            version_access = deepcopy(version_data.get("access", {}))
-            access_obj = deepcopy(version_access.get("access_obj", {}))
-
-            if include_epphapp:
-                access_obj["record"] = "restricted"
-                access_obj["files"] = "restricted"
-            else:
-                access_obj["record"] = "public"
-                access_obj["files"] = "public"
-                # Remove the meta field from the public version access
-                version_access.pop("meta", None)
-
-            version_access["access_obj"] = access_obj
-
-            new_version_data = deepcopy(version_data)
-            new_version_data["files"] = deepcopy(versioned_files)
-            new_version_data["access"] = version_access
-
-            new_versions[len(new_versions) + 1] = new_version_data
-
-        if not new_versions:
-            raise UnexpectedValue(
-                message=(
-                    "No EPPHAPP files found to load for EP approval restricted split"
-                    if include_epphapp
-                    else "No public files found to load for EP approval public split"
-                ),
-                stage="load",
-                recid=split["record"]["recid"],
-                priority="critical",
-            )
-
-        if not include_epphapp:
-            # Public record does not need inclusion request
-            split["record"].pop("_request_data", None)
-            split["record"]["owned_by"] = "system"
-            split["parent"]["json"]["access"]["owned_by"] = {"user": "system"}
-            self._add_cern_scientific_community(split)
-            # Add the approval report number to the public record metadata
-            split["record"]["json"]["metadata"]["identifiers"].append(
-                {
-                    "identifier": self.approval_request.report_number,
-                    "scheme": "apprn",
-                }
-            )
-
-        split["versions"] = new_versions
-        self._remove_ep_report_numbers_from_metadata(split, include_epphapp)
-        self._remove_doi_pid_from_metadata(split, include_epphapp)
-
-        return split
 
     def _cleanup(self, *args, **kwargs):
         """Post migration process."""
