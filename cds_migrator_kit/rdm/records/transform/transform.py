@@ -770,6 +770,13 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             del json_data["_clc_sync"]
 
         request_data = json_data.pop("request_data", None)
+        if request_data:
+            reviewer_errors = request_data.pop("_reviewer_errors", [])
+            for error in reviewer_errors:
+                self.migration_logger.add_information(
+                    entry["recid"],
+                    error,
+                )
 
         record_json_output = {
             "files": self._files(record_dump),

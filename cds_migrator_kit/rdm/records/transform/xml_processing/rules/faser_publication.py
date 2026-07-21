@@ -16,6 +16,7 @@ from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValu
 from cds_migrator_kit.transform.xml_processing.rules.base import process_contributors
 
 from ...models.faser_publication import faser_publication_model as model
+from .research import status as research_status
 
 
 @model.over("collection", "^690C_", override=True)
@@ -52,6 +53,16 @@ def access_grants(self, key, value):
     if subject_identifier:
         return {str(subject_identifier): "view"}
     raise IgnoreKey("access_grants")
+
+
+@model.over("_approval", "(^591__)", override=True)
+def status(self, key, value):
+    """Translates faser publication approval status."""
+    research_status(self, key, value)
+    request_data = self.setdefault("request_data", {})
+    reviewers = request_data.setdefault("reviewers", [])
+    reviewers.append({"group": "faser-all"})
+    raise IgnoreKey("_approval")
 
 
 @model.over("faser_contributors", "^700__", override=True)
