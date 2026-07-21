@@ -585,6 +585,13 @@ class CDSRecordServiceLoad(Load):
         self._after_publish_load_parent_access_grants(published_record, version, entry)
         request_data = entry["record"].get("_request_data", {})
 
+        if request_data and not self.create_inclusion_request:
+            raise ManualImportRequired(message="Detected request data, enable the requests",
+                    field="validation",
+                    stage="load",
+                    recid=entry["record"]["recid"],
+                    priority="warning",
+                    subfield=None,)
         if self.create_inclusion_request and request_data:
             self._after_publish_add_inclusion_request(
                 request_data, published_record, entry, uow
