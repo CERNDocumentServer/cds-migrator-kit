@@ -69,6 +69,8 @@ def suite_multi_field(record):
     assert dict_rec["files"]["total_bytes"] == 13264
     assert "TN_T6SamplesGammaSpecBenchmark.pdf" in dict_rec["files"]["entries"]
     assert dict_rec["custom_fields"] == {
+        "cern:departments": [{"id": "HSE", "title": {"en": "HSE"}}],
+        "cern:experiments": [{"id": "RP", "title": {"en": "RP"}}],
         "cern:studies": ["Physics Beyond Colliders"],
         "cern:projects": ["Beam Dump Facility"],
         "imprint:imprint": {
@@ -107,7 +109,6 @@ def suite_multi_field(record):
         {"subject": "FLUKA benchmark"},
         {"subject": "ActiWiz benchmark"},
         {"subject": "BDF"},
-        {"subject": "RP"},
     ]
     assert dict_rec["metadata"]["contributors"] == [
         {
@@ -269,6 +270,22 @@ def multiple_custom_fields(record):
         "cern:accelerators": [
             {"id": "CERN AD", "title": {"en": "CERN AD"}},
         ],
+        "cern:departments": [
+            {
+                "id": "EP",
+                "title": {
+                    "en": "EP",
+                },
+            },
+        ],
+        "cern:experiments": [
+            {
+                "id": "ASACUSA AD-3",
+                "title": {
+                    "en": "ASACUSA AD-3",
+                },
+            },
+        ],
         "imprint:imprint": {"place": "Geneva"},
     }
 
@@ -333,6 +350,22 @@ def irregular_exp_field(record):
         "cern:accelerators": [
             {"id": "CERN SPS", "title": {"en": "CERN SPS"}},
         ],
+        "cern:departments": [
+            {
+                "id": "PH",
+                "title": {
+                    "en": "PH",
+                },
+            },
+        ],
+        "cern:experiments": [
+            {
+                "id": "COMPASS NA58",
+                "title": {
+                    "en": "COMPASS NA58",
+                },
+            },
+        ],
         "imprint:imprint": {"place": "Geneva"},
     }
     assert "subjects" in dict_rec["metadata"]
@@ -346,7 +379,6 @@ def irregular_exp_field(record):
         {"subject": "DAQ"},
         {"subject": "FPGA"},
         {"subject": "GUI"},
-        {"subject": "COMPASS NA58"},
     ]
 
 
