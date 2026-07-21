@@ -167,6 +167,11 @@ def app_config(app_config):
     app_config["CDS_MIGRATOR_KIT_ENV"] = "test"
     app_config["CDS_MIGRATOR_KIT_SITE_UI_URL"] = "https://localhost:5000"
     app_config["CDS_MIGRATOR_KIT_SITE_API_URL"] = "https://localhost:5000/api"
+    # Overrides just experiments.yaml (kept in sync with the `experiments_v`
+    # fixture below); other vocabulary files still fall back to cds-rdm's.
+    app_config["CDS_MIGRATOR_KIT_VOCABULARIES_DIR"] = os.path.join(
+        base_path, "data", "vocabularies"
+    )
 
     return app_config
 
@@ -857,6 +862,50 @@ def exp_type(app):
 @pytest.fixture(scope="module")
 def experiments_v(app, exp_type):
     """Experiment vocabulary record."""
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "RP",
+            "title": {
+                "en": "RP",
+            },
+            "props": {"link": "http://bla.web.cern.ch/lhcb/"},
+            "type": "experiments",
+        },
+    )
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "COMPASS NA58",
+            "title": {
+                "en": "COMPASS NA58",
+            },
+            "props": {"link": "http://bla.web.cern.ch/lhcb/"},
+            "type": "experiments",
+        },
+    )
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "I216",
+            "title": {
+                "en": "I216",
+            },
+            "props": {"link": "http://bla.web.cern.ch/lhcb/"},
+            "type": "experiments",
+        },
+    )
+    vocab = vocabulary_service.create(
+        system_identity,
+        {
+            "id": "ASACUSA AD-3",
+            "title": {
+                "en": "ASACUSA AD-3",
+            },
+            "props": {"link": "http://bla.web.cern.ch/lhcb/"},
+            "type": "experiments",
+        },
+    )
     vocab = vocabulary_service.create(
         system_identity,
         {

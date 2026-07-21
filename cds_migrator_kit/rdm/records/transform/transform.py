@@ -66,12 +66,21 @@ _VOCAB_FILENAMES = {
 class VocabularyCache:
     """Vocabulary lookup cache loaded once from YAML files at startup."""
 
-    def __init__(self, vocab_dir):
-        """Load all vocabularies from the given directory into memory."""
+    def __init__(self, default_dir, override_dir=None):
+        """Load all vocabularies into memory.
+
+        For each vocabulary file, ``override_dir`` (e.g. a test-local
+        directory overriding just a subset of files) is preferred when it
+        contains that file, falling back to ``default_dir`` otherwise.
+        """
         self._cache = {}
-        vocab_dir = Path(vocab_dir)
+        default_dir = Path(default_dir)
+        override_dir = Path(override_dir) if override_dir else None
         for vocab_type, filename in _VOCAB_FILENAMES.items():
-            self._cache[vocab_type] = self._load(vocab_dir / filename)
+            filepath = default_dir / filename
+            if override_dir and (override_dir / filename).exists():
+                filepath = override_dir / filename
+            self._cache[vocab_type] = self._load(filepath)
 
     @staticmethod
     def _load(filepath):
@@ -99,14 +108,11 @@ _vocabulary_cache = None
 def _get_vocabulary_cache():
     global _vocabulary_cache
     if _vocabulary_cache is None:
-        vocab_dir = current_app.config.get("CDS_MIGRATOR_KIT_VOCABULARIES_DIR")
-        if vocab_dir is None:
-            import cds_rdm
+        import cds_rdm
 
-            vocab_dir = Path(cds_rdm.__file__).parent / "app_data" / "vocabularies"
-        else:
-            vocab_dir = Path(vocab_dir)
-        _vocabulary_cache = VocabularyCache(vocab_dir)
+        default_dir = Path(cds_rdm.__file__).parent / "app_data" / "vocabularies"
+        override_dir = current_app.config.get("CDS_MIGRATOR_KIT_VOCABULARIES_DIR")
+        _vocabulary_cache = VocabularyCache(default_dir, override_dir)
     return _vocabulary_cache
 
 
