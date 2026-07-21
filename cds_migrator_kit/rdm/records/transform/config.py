@@ -63,8 +63,9 @@ RECOGNISED_KEYWORD_SCHEMES = [
     "desy",
     "medline",
     "aip",
+    "jacow"
 ]
-KEYWORD_SCHEMES_TO_DROP = ["proquest", "disxa"]
+KEYWORD_SCHEMES_TO_DROP = ["proquest", "disxa", "inspeq"]
 
 ALLOWED_THESIS_COLLECTIONS = [
     "thesis",

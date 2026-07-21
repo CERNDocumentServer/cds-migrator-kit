@@ -851,6 +851,10 @@ def related_identifiers_787(self, key, value):
             "relation_type": {"id": "references"},
             "resource_type": {"id": "publication-article"},
         },
+        "paper": {
+            "relation_type": {"id": "references"},
+            "resource_type": {"id": "publication-article"},
+        },
         "corresponding video": {
             "relation_type": {"id": "references"},
             "resource_type": {"id": "audio"},

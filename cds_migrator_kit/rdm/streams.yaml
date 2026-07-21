@@ -266,6 +266,7 @@ records:
         - "2ca82423-148a-42b5-86ff-03336b961c8e"
   antares:
     data_dir: cds_migrator_kit/rdm/data/former_exp/antares
+    plots: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/former_exp/antares
     transform:
@@ -277,6 +278,7 @@ records:
   antares_restr:
     data_dir: cds_migrator_kit/rdm/data/former_exp/antares_restr
     restricted: "True"
+    plots: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/former_exp/antares_restr
     transform:
@@ -286,6 +288,7 @@ records:
         - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
         - "e2d2ed70-8a3c-453b-aa5b-1fa985f0906b"
   dirac:
+    plots: true
     data_dir: cds_migrator_kit/rdm/data/former_exp/dirac
     extract:
       dirpath: cds_migrator_kit/rdm/data/former_exp/dirac
@@ -296,6 +299,7 @@ records:
         - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
         - "6a289642-5378-4daf-87b5-bb58af00487a"
   harp_cdp:
+    plots: true
     data_dir: cds_migrator_kit/rdm/data/former_exp/harp_cdp
     extract:
       dirpath: cds_migrator_kit/rdm/data/former_exp/harp_cdp
@@ -306,6 +310,7 @@ records:
         - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
         - "2541c76f-6c9b-415b-9a47-e814ec01f576"
   imxgam:
+    plots: true
     data_dir: cds_migrator_kit/rdm/data/former_exp/imXgam
     restricted: "True"
     extract:
@@ -317,8 +322,10 @@ records:
         - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
         - "88a5cdf4-974a-44d4-b145-d19ee6346bb8"
   lcd_restr:
+    plots: true
     data_dir: cds_migrator_kit/rdm/data/former_exp/lcd_restr
     restricted: "True"
+    create_inclusion_request: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/former_exp/lcd_restr
     transform:
@@ -328,6 +335,8 @@ records:
         - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
         - "adc02716-780b-4bba-8e89-6316c9a11cf0"
   lcd:
+    plots: true
+    create_inclusion_request: true
     data_dir: cds_migrator_kit/rdm/data/former_exp/lcd
     extract:
       dirpath: cds_migrator_kit/rdm/data/former_exp/lcd
@@ -339,6 +348,7 @@ records:
         - "adc02716-780b-4bba-8e89-6316c9a11cf0"
   re29:
     data_dir: cds_migrator_kit/rdm/data/former_exp/re29
+    plots: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/former_exp/re29
     transform:
@@ -349,7 +359,9 @@ records:
         - "aff67e22-9027-4401-a16f-1aaac2cd2c27"
   re29_restr:
     data_dir: cds_migrator_kit/rdm/data/former_exp/re29_restr
+    plots: true
     restricted: "True"
+    create_inclusion_request: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/former_exp/re29_restr
     transform:
@@ -359,6 +371,7 @@ records:
         - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
         - "aff67e22-9027-4401-a16f-1aaac2cd2c27"
   ua2:
+    plots: true
     data_dir: cds_migrator_kit/rdm/data/former_exp/ua2
     extract:
       dirpath: cds_migrator_kit/rdm/data/former_exp/ua2
@@ -370,6 +383,7 @@ records:
         - "4040d2c7-7648-4f1a-81fa-7112fec8d130"
   ua4:
     data_dir: cds_migrator_kit/rdm/data/former_exp/ua4
+    plots: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/former_exp/ua4
     transform:
@@ -380,6 +394,7 @@ records:
         - "1b9239a7-5938-44e3-8ea8-2c530627f659"
   ua5:
     data_dir: cds_migrator_kit/rdm/data/former_exp/ua5
+    plots: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/former_exp/ua5
     transform:
@@ -389,6 +404,7 @@ records:
         - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
         - "7996b881-2420-4791-ac17-00cf3c1e7196"
   ua8:
+    plots: true
     data_dir: cds_migrator_kit/rdm/data/former_exp/ua8
     extract:
       dirpath: cds_migrator_kit/rdm/data/former_exp/ua8
@@ -410,9 +426,7 @@ records:
         - ""
   faser-drafts:
     data_dir: cds_migrator_kit/rdm/data/faser-drafts
-    tmp_dir: cds_migrator_kit/rdm/tmp/faser-drafts
-    log_dir: cds_migrator_kit/rdm/log/faser-drafts
-    restricted: "True"  
+    restricted: "True"
     plots: true
     create_inclusion_request: true
     access_grants_view:
@@ -426,8 +440,6 @@ records:
         - "33af9368-5bad-45cb-9360-8c9e5dfca09f"
   faser:
     data_dir: cds_migrator_kit/rdm/data/faser
-    tmp_dir: cds_migrator_kit/rdm/tmp/faser
-    log_dir: cds_migrator_kit/rdm/log/faser
     create_inclusion_request: true
     plots: true
     extract:
@@ -438,11 +450,11 @@ records:
       communities_ids:
         - "33af9368-5bad-45cb-9360-8c9e5dfca09f"
   faser-ep:
+    plots: true
     data_dir: cds_migrator_kit/rdm/data/faser
     tmp_dir: cds_migrator_kit/rdm/tmp/faser
     log_dir: cds_migrator_kit/rdm/log/faser
     create_inclusion_request: true
-    plots: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/faser-ep/dump/
     transform:
@@ -450,36 +462,6 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "e5de962b-5e2c-408f-be69-2823fda1f732"
-  lcd_restr:
-    data_dir: cds_migrator_kit/rdm/data/lep_exp/lcd
-    tmp_dir: cds_migrator_kit/rdm/tmp/lep_exp/lcd
-    log_dir: cds_migrator_kit/rdm/log/lep_exp/lcd
-    restricted: "True"
-    create_inclusion_request: true
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/lep_exp/lcd/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/lcd/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - ""
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/lcd/duplicated_pids.json
-  re29_restr:
-    data_dir: cds_migrator_kit/rdm/data/lep_exp/re29
-    tmp_dir: cds_migrator_kit/rdm/tmp/lep_exp/re29
-    log_dir: cds_migrator_kit/rdm/log/lep_exp/re29
-    restricted: "True"
-    create_inclusion_request: true
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/lep_exp/re29/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/re29/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - ""
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/re29/duplicated_pids.json
   staff_association:
     data_dir: cds_migrator_kit/rdm/data/staff_association
     extract:
@@ -499,14 +481,43 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "e849139c-dff5-45a7-90b1-90cdddc9c00e"
-  technical_support:
-    data_dir: cds_migrator_kit/rdm/data/technical_support
-    tmp_dir: cds_migrator_kit/rdm/tmp/technical_support
-    log_dir: cds_migrator_kit/rdm/log/technical_support
+  ts_dep:
+    plots: true
+    data_dir: cds_migrator_kit/rdm/data/dep_ts
     extract:
-      dirpath: cds_migrator_kit/rdm/data/technical_support/dump/
+      dirpath: cds_migrator_kit/rdm/data/dep_ts/dump/
     transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/technical_support/files/
+      files_dump_dir: cds_migrator_kit/rdm/data/dep_ts/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - ""
+        - "058c4659-2ad5-47c7-98ad-5e42333b09b3"
+  mt_dep:
+    plots: true
+    data_dir: cds_migrator_kit/rdm/data/dep_mt
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/dep_mt/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/dep_mt/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "f508d592-580f-4d3e-8083-d8119cac1913"
+  sb_dep:
+    plots: true
+    data_dir: cds_migrator_kit/rdm/data/dep_sb
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/dep_sb/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/dep_sb/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "87d73294-8f1f-4a63-a75e-21a87aa25980"
+  est_dep:
+    plots: true
+    data_dir: cds_migrator_kit/rdm/data/dep_est
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/dep_est/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/dep_est/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "9a9c7474-18d2-41ee-b3ec-0708139dd0ee"
