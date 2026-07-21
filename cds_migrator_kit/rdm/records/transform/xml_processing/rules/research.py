@@ -124,7 +124,7 @@ def corpo_author(self, key, value):
         return author
     raise IgnoreKey("creators")
 
-
+1
 @model.over("imprint_info", "(^250__)")
 @for_each_value
 @require(["a"])
@@ -265,6 +265,7 @@ def journal(self, key, value):
     _custom_fields = self.get("custom_fields", {})
     journal_fields = _custom_fields.get("journal:journal", {})
     year = StringValue(value.get("y", "")).parse()
+    conference_url = StringValue(value.get("u", "")).parse()
 
     if "z" in value:
         try:
@@ -294,10 +295,12 @@ def journal(self, key, value):
     if conference_cnum or conference_acronym:
         session = StringValue(value.get("c", "")).parse()
         new_meeting = {}
+        identifiers = []
+        if conference_url:
+            identifiers.append({"scheme": "URL", "identifier":  conference_url})
         if conference_cnum:
-            new_meeting["identifiers"] = [
-                {"scheme": "inspire", "identifier": conference_cnum}
-            ]
+            identifiers.append({"scheme": "inspire", "identifier": conference_cnum})
+            new_meeting["identifiers"] = identifiers
         if conference_acronym:
             new_meeting["acronym"] = conference_acronym
         if session:
@@ -638,7 +641,12 @@ def resource_type(self, key, value):
         "slintnote",
         "indico",
         "re29_papers",
+        "privimxgam",
     ]
+
+    # handles occurrences where document type should have been an experiment
+    add_experiment_for = {"lhcbcerntalk": "LHCb", "lhcb_misc": "LHCb"}
+
 
     committees = {
         "scicommpubldrdc": "DRDC",
@@ -661,10 +669,12 @@ def resource_type(self, key, value):
         "scicommpubltcc": "TCC",
     }
 
-    if (value_a and value_a.lower() in committees.keys()) or (
-        value_b and value_b in committees
-    ):
+    value_a = value_a.lower()
+    value_b = value_b.lower()
 
+    if (value_a in committees.keys()) or (
+        value_b in committees
+    ):
         custom_fields = self.get("custom_fields", {})
         comm_cf = custom_fields.get("cern:committees", [])
         if value_a:
@@ -673,9 +683,18 @@ def resource_type(self, key, value):
             comm_cf.append({"id": committees[value_b.lower()]})
         self["custom_fields"]["cern:committees"] = comm_cf
         raise IgnoreKey("resource_type")
-    if (value_a and value_a.lower() in ignore_res_types) or (
-        value_b and value_b in ignore_res_types
+
+    if (value_a.lower() in ignore_res_types) or (
+        value_b in ignore_res_types
     ):
+        raise IgnoreKey("resource_type")
+
+
+    if value_a in add_experiment_for.keys():
+        custom_field = self.get("custom_fields", {})
+        experiments = custom_field.get("cern:experiments", [])
+        experiments.append(add_experiment_for[value_a])
+        self["custom_fields"]["cern:experiments"] = experiments
         raise IgnoreKey("resource_type")
 
     # first has highest priority
@@ -696,8 +715,8 @@ def resource_type(self, key, value):
                 "intnotealephpriv",
                 "intnoteeppubl",
                 "intnotehsepubl",
+                "intnote",
                 "note",
-                "lcd-notes",
                 "software",
             ]
         )
@@ -725,7 +744,13 @@ def resource_type(self, key, value):
         "proceedings": {"id": "publication-conferenceproceeding"},
         "article": {"id": "publication-article"},
         "note": {"id": "publication-technicalnote"},
+        "intnote": {"id": "publication-technicalnote"},
         "lcd-notes": {"id": "publication-technicalnote"},
+        "privantares": {"id": "publication-technicalnote"},
+        "privantaresplot": {"id": "image-plot"},
+        "internalplot": {"id": "image-plot"},
+        "internalnote": {"id": "publication-technicalnote"},
+        "intnoteharpcdppubl": {"id": "publication-technicalnote"},
         "brochure": {"id": "publication-brochure"},
         "itcerntalk": {"id": "presentation"},
         "talk": {"id": "presentation"},
@@ -749,6 +774,7 @@ def resource_type(self, key, value):
         "conferencenote": {"id": "publication-conferencenote"},
         "slide": {"id": "presentation"},
         "faser_papers": {"id": "publication-article"},
+        "demsuppliers": {"id": "other"},
     }
 
     try:

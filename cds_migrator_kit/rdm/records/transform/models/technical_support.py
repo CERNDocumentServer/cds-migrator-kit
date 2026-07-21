@@ -23,6 +23,11 @@ class TechnicalSupportModel(CdsOverdo):
                    """
 
     __ignore_keys__ = {
+        "030__a",
+        "690c_a",
+        "595__i", # "INSPEC"  id
+        "500__9", # source of notes
+        "035__z", 
         "0248_a",
         "0248_p",
         "0248_q",

@@ -23,6 +23,7 @@ class LEPResearchModel(ResearchModel):
         "775__c", # year of volume
         "596__a", # multivolume tag
         "300__x", # drop the physical description
+        "8564_z",  # file comment, migrated via file metadata
         "0248_a",
         "0248_p",
         "0248_q",
@@ -64,7 +65,6 @@ class LEPResearchModel(ResearchModel):
         "8564_x",  # icon thumbnails sizes
         "8564_y",  # file description - done by files dump, sometimes these are used for open access calculation
         "8564_w",  # system field
-        "8564_z",  # file comment, migrated via file metadata
         "913__y",  # citation
         "913__v",  # citation
         "913__t",  # citation

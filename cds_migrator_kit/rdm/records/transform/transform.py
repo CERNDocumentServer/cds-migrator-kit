@@ -562,11 +562,11 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     subj = json_output["metadata"].get("subjects", [])
                     subj.append({"subject": experiment})
                     json_output["metadata"]["subjects"] = subj
-                    raise RecordFlaggedCuration(
+                    raise UnexpectedValue(
                         subfield="u",
                         value=experiment,
                         field="author",
-                        message=f"Experiment {experiment} not found, added as a subject",
+                        message=f"Experiment {experiment} not found",
                         stage="vocabulary match",
                     )
 

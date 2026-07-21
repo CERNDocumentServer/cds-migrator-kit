@@ -6,18 +6,19 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM CMS note model."""
-from cds_migrator_kit.rdm.records.transform.models.base_publication_record import (
-    rdm_base_publication_model,
+from cds_migrator_kit.rdm.records.transform.models.research import (
+    research_model,
 )
 from cds_migrator_kit.transform.overdo import CdsOverdo
 
 
-class ResearchModel(CdsOverdo):
+class ANTARESResearchModel(CdsOverdo):
     """Translation model for research."""
 
-    __query__ = '693__.e:"DAMPE RE29" OR 037__:DIRAC-NOTE* OR 037__:DIRAC-Note* OR 037__:DIRAC-CONF* OR 037__:DIRAC-DOC* OR 037__:DIRAC-PUB* OR 693__:UA2 OR 693__:UA4 OR 693__:UA5 OR 693__:UA8 OR 980__:INTNOTEHARPCDPPUBL OR 980__:PRIVIMXGAM -980__:THESIS -037__:CERN-STUDENTS-Note-* -980__:DELETED -980__.c:MIGRATED -980__.a:DUMMY -690C_.a:SCICOM'
+    __query__ = '980__:ANTARESCERNTALK OR (980__.a:"POSTER" AND 693__.e:ANTARES) OR 980__:PRIVANTARES -980__:THESIS -037__:CERN-STUDENTS-Note-* -980__:DELETED -980__.c:MIGRATED -980__.a:DUMMY -690C_.a:SCICOM'
 
     __ignore_keys__ = {
+        "923__r", # place of photo, present in posters but redundant
         "0248_a",
         "0248_p",
         "0248_q",
@@ -105,7 +106,7 @@ class ResearchModel(CdsOverdo):
     }
 
 
-research_model = ResearchModel(
-    bases=(rdm_base_publication_model,),
-    entry_point_group="cds_migrator_kit.migrator.rdm.rules.research",
+antares_research_model = ANTARESResearchModel(
+    bases=(research_model,),
+    entry_point_group="cds_migrator_kit.migrator.rdm.rules.small_exp",
 )

@@ -1,0 +1,39 @@
+from dateutil.parser import ParserError, parse
+from dojson.errors import IgnoreKey
+
+from cds_migrator_kit.errors import UnexpectedValue
+
+from .base import normalize
+
+from cds_migrator_kit.rdm.records.transform.models.antares import antares_research_model as model
+
+@model.over("publication_date", "(^225__)", override_tag=True)
+def imprint_info(self, key, value):
+    """Translates imprint - WARNING - also publisher and publication_date.
+
+    In case of summer student notes this field contains only date
+    but it needs to be reimplemented for the base set of rules -
+    it will contain also imprint place
+    """
+    _custom_fields = self.get("custom_fields", {})
+    imprint = _custom_fields.get("imprint:imprint", {})
+
+    publication_date_str = value.get("c")
+    _publisher = value.get("b")
+    place = value.get("a")
+    if _publisher and not self.get("publisher"):
+        self["publisher"] = _publisher
+    if place:
+        imprint["place"] = place
+    self["custom_fields"]["imprint:imprint"] = imprint
+    if publication_date_str:
+        try:
+            publication_date = normalize(publication_date_str)
+            return publication_date
+        except (ParserError, TypeError) as e:
+            raise UnexpectedValue(
+                field=key,
+                value=value,
+                message=f"Can't parse provided publication date. Value: {publication_date_str}",
+            )
+    raise IgnoreKey("publication_date")
