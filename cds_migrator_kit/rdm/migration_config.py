@@ -491,6 +491,7 @@ CDS_ACCESS_GROUP_MAPPINGS = {
     # Access group already added to the record as 506__m when draft created, no need to add:
     # https://gitlab.cern.ch/cds-team/cds-legacy/-/blob/master/src/wn-cdsweb/lib/python/invenio/websubmit_functions/EPPHAPP_Test_values.py#L249-266
     "EP Restricted Draft": [],
+    "PH-EP Restricted Draft": [],
     # CERN E-guide restricted docs: https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showroledetails?id_role=69 CERN personnel has view rights
 }
 
@@ -539,10 +540,51 @@ CDS_CERN_SCIENTIFIC_COMMUNITY_ID = "78b3c4aa-c4e6-4502-8226-67ba2d347afe"
 
 CDS_COMMITTEE_APPROVAL_COMMUNITIES = {
     "dd13404c-bcd6-4b15-aeef-38d678c61ff1": {
+        # faser
         "label": "EP approval",  # shown in UI buttons/headings
         "referee_group": "cds-ph-ep-publication",  # CERN e-group slug
         "report_number": {
-            "prefix": "CERN-EP",  # literal prefix, e.g. "CERN-EP"
+            "prefix": "CERN-TH-EP",  # literal prefix, e.g. "CERN-EP"
+            "include_year": True,  # append the current year after prefix
+            "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
+    "7c568753-550b-4b48-8d76-461181973100": {
+        # aleph
+        "label": "EP approval",  # shown in UI buttons/headings
+        "referee_group": "cds-ph-ep-publication",  # CERN e-group slug
+        "report_number": {
+            "prefix": "CERN-TH-EP",  # literal prefix, e.g. "CERN-EP"
+            "include_year": True,  # append the current year after prefix
+            "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
+    "bb0ac2d2-b90b-498e-bf64-1986791d1032": {
+        # l3
+        "label": "EP approval",  # shown in UI buttons/headings
+        "referee_group": "cds-ph-ep-publication",  # CERN e-group slug
+        "report_number": {
+            "prefix": "CERN-PH-EP",  # literal prefix, e.g. "CERN-EP"
+            "include_year": True,  # append the current year after prefix
+            "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
+    "473e34c5-4fe1-44fc-a4c2-3305cf6adcba": {
+        # opal
+        "label": "EP approval",  # shown in UI buttons/headings
+        "referee_group": "cds-ph-ep-publication",  # CERN e-group slug
+        "report_number": {
+            "prefix": "CERN-PH-EP",  # literal prefix, e.g. "CERN-EP"
+            "include_year": True,  # append the current year after prefix
+            "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
+    "b6553d89-ea62-4a7c-9f5b-e76b5bfdb733": {
+        # delphi
+        "label": "EP approval",  # shown in UI buttons/headings
+        "referee_group": "cds-ph-ep-publication",  # CERN e-group slug
+        "report_number": {
+            "prefix": "CERN-PH-EP",  # literal prefix, e.g. "CERN-EP"
             "include_year": True,  # append the current year after prefix
             "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
         },

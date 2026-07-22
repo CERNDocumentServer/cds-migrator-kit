@@ -32,10 +32,6 @@ usage() {
 
 [[ "$ACTION" == "dump" || "$ACTION" == "restore" ]] || usage
 
-if ! command -v multielasticdump &>/dev/null; then
-  echo "multielasticdump not found. Install it with: npm install -g multielasticdump" >&2
-  exit 1
-fi
 if ! command -v elasticdump &>/dev/null; then
   echo "elasticdump not found. Install it with: npm install -g elasticdump" >&2
   exit 1
@@ -57,7 +53,25 @@ case "$ACTION" in
   dump)
     mkdir -p "$DIR"
     echo "Dumping index data (no mapping/settings/alias) from $HOST to $DIR ..."
-    multielasticdump --direction=dump --input="$HOST" --output="$DIR" --includeType=data
+    # Not using multielasticdump here: it discovers indices via GET
+    # /_aliases, then checks `'error' in response` to detect an ES-style
+    # error payload. If the cluster happens to have a real index literally
+    # named "error" (e.g. invenio-logging's error log index), that check
+    # false-positives on the alias listing itself and multielasticdump exits
+    # before dumping anything. /_cat/indices isn't keyed by index name, so
+    # it's immune to that collision - dump each real index individually
+    # with plain elasticdump instead, which produces the same per-index
+    # files multielasticdump would have.
+    indices="$(curl -sf "$HOST/_cat/indices?h=index" | sort)"
+    if [[ -z "$indices" ]]; then
+      echo "No indices found at $HOST" >&2
+      exit 1
+    fi
+    while IFS= read -r index; do
+      [[ -n "$index" ]] || continue
+      echo "=== Dumping $index ==="
+      elasticdump --input="$HOST/$index" --output="$DIR/$index.json" --type=data
+    done <<<"$indices"
     ;;
   restore)
     [[ -d "$DIR" ]] || { echo "Dump directory not found: $DIR" >&2; exit 1; }

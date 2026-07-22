@@ -257,6 +257,14 @@ class CDSRecordServiceLoad(Load):
             elif specific_file_restrictions == "restricted":
                 # https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showroledetails?id_role=69
                 groups.add("cern-personnel")
+            elif specific_file_restrictions.strip().endswith(
+                "[CERN]"
+            ) and not any(
+                kw in specific_file_restrictions for kw in ("firerole:", "allow ")
+            ):
+                # bare CERN e-group name, e.g.
+                # "cds-ph-ep-publications-referee-non-lhc [CERN]"
+                groups.add(_normalize_group_name(specific_file_restrictions))
             else:
                 if not any(
                     kw in specific_file_restrictions
@@ -776,8 +784,13 @@ class CDSRecordServiceLoad(Load):
             )
             db.session.add(sync)
 
-    def _load(self, entry):
-        """Use the services to load the entries."""
+    def _load(self, entry, uow=None):
+        """Use the services to load the entries.
+
+        If ``uow`` is provided, operations are registered on it without
+        committing, so the caller can group this load atomically with other
+        operations (e.g. the EP approval record split).
+        """
         if entry:
             recid = entry.get("record", {}).get("recid", {})
             if self._should_skip_recid(recid):
@@ -803,16 +816,28 @@ class CDSRecordServiceLoad(Load):
                 if self.dry_run:
                     self._dry_load(entry)
                     recid_state_after_load = None
+                elif uow is not None:
+                    recid_state_after_load = self._load_versions(entry, uow)
+                    if recid_state_after_load:
+                        self._save_original_dumped_record(
+                            entry, recid_state_after_load
+                        )
+                        self._after_load_clc_sync(recid_state_after_load)
                 else:
-                    with UnitOfWork(db.session) as uow:
-                        recid_state_after_load = self._load_versions(entry, uow)
+                    with UnitOfWork(db.session) as inner_uow:
+                        recid_state_after_load = self._load_versions(
+                            entry, inner_uow
+                        )
                         if recid_state_after_load:
                             self._save_original_dumped_record(
                                 entry, recid_state_after_load
                             )
                             self._after_load_clc_sync(recid_state_after_load)
-                        uow.commit()
-                if self._is_final_record:
+                        inner_uow.commit()
+                if self._is_final_record and uow is None:
+                    # When an external uow is provided, the caller owns the
+                    # commit boundary and is responsible for finalising the
+                    # record only after it actually commits.
                     self.migration_logger.finalise_record(recid)
                 return recid_state_after_load
             except (UnexpectedValue, ManualImportRequired) as e:

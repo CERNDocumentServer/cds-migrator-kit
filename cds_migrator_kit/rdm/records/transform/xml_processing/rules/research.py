@@ -823,8 +823,8 @@ def ep_approval(self, key, value):
     ep_report_number = value.get("b", "").strip()
     stamp_info = value.get("g", "").strip()
     doc_type = value.get("c", "").strip()
-    if status not in ["waiting", "approved"]:
-        raise UnexpectedValue(subfield="a", field=key, value=value)
+    if status not in ["waiting", "approved", "reviewing"]:
+        raise UnexpectedValue(subfield="s", field=key, value=value)
     return {
         k: v
         for k, v in {

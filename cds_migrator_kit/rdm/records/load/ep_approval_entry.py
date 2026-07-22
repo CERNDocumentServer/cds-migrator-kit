@@ -47,6 +47,20 @@ class MetadataEntry:
     def _apply_entry_modifications(self, split):
         """Apply record/parent level modifications."""
 
+    @staticmethod
+    def _is_restricted_file(file_data):
+        """Return whether a file belongs to the restricted split.
+
+        A file is restricted either because it is an EPPHAPP draft file, or
+        because it carries its own file-level access restriction independent
+        of the EPPHAPP workflow (e.g. a record that was never restricted as
+        a whole, but ships a mix of public and individually-restricted
+        files).
+        """
+        return bool(
+            file_data.get("type") == EPPHAPP_FILE_TYPE or file_data.get("access")
+        )
+
     def _log_removed_identifiers(self, removed, split_type):
         recid = self.entry.get("record", {}).get("recid")
         self.migration_logger.add_information(
@@ -96,19 +110,8 @@ class PublicEntry(MetadataEntry):
             current_version_files = OrderedDict()
 
             for key, file_data in version_data.get("files", {}).items():
-                if file_data.get("type") == EPPHAPP_FILE_TYPE:
+                if self._is_restricted_file(file_data):
                     continue
-
-                if file_data.get("access"):
-                    raise UnexpectedValue(
-                        message=(
-                            "Public split contains restricted files after excluding "
-                            f"EPPHAPP files: {[key]}"
-                        ),
-                        stage="load",
-                        recid=split["record"]["recid"],
-                        priority="critical",
-                    )
 
                 current_version_files[key] = deepcopy(file_data)
 
@@ -192,9 +195,32 @@ class PublicEntry(MetadataEntry):
 class RestrictedEntry(MetadataEntry):
     """Build the restricted EP approval split entry."""
 
-    def _has_epphapp_files(self, split):
+    def _apply_entry_modifications(self, split):
+        self._remove_cern_scientific_community(split)
+
+    def _remove_cern_scientific_community(self, entry):
+        """Drop the CERN Scientific community from the restricted split.
+
+        The restricted record holds the internal-only EPPHAPP draft and must
+        not be discoverable via the broader community; only PublicEntry adds
+        CDS_CERN_SCIENTIFIC_COMMUNITY_ID (see _add_cern_scientific_community).
+        """
+        communities = entry.get("parent", {}).get("json", {}).get("communities", {})
+        ids = [
+            cid
+            for cid in communities.get("ids", [])
+            if cid != CDS_CERN_SCIENTIFIC_COMMUNITY_ID
+        ]
+        communities["ids"] = ids
+        if communities.get("default") == CDS_CERN_SCIENTIFIC_COMMUNITY_ID:
+            communities["default"] = ids[0] if ids else None
+        entry.setdefault("parent", {}).setdefault("json", {})[
+            "communities"
+        ] = communities
+
+    def _has_restricted_files(self, split):
         return any(
-            file_data.get("type") == EPPHAPP_FILE_TYPE
+            self._is_restricted_file(file_data)
             for version_data in split.get("versions", {}).values()
             for file_data in version_data.get("files", {}).values()
         )
@@ -203,14 +229,14 @@ class RestrictedEntry(MetadataEntry):
         new_versions = OrderedDict()
         versioned_files = OrderedDict()
         previous_signature = None
-        has_epphapp_files = self._has_epphapp_files(split)
+        has_restricted_files = self._has_restricted_files(split)
 
-        if not has_epphapp_files:
+        if not has_restricted_files:
             self.migration_logger.add_information(
                 split["record"]["recid"],
                 {
                     "message": (
-                        "No EPPHAPP files found; public files used for the "
+                        "No restricted files found; public files used for the "
                         "restricted record."
                     ),
                     "value": "public files",
@@ -221,10 +247,11 @@ class RestrictedEntry(MetadataEntry):
             current_version_files = OrderedDict()
 
             for key, file_data in version_data.get("files", {}).items():
-                is_epphapp = file_data.get("type") == EPPHAPP_FILE_TYPE
+                is_restricted = self._is_restricted_file(file_data)
 
-                # If draft file exists, use that otherwise use the public files.
-                if not is_epphapp and has_epphapp_files:
+                # If restricted files exist, use only those; otherwise fall
+                # back to using all (public) files for the restricted record.
+                if not is_restricted and has_restricted_files:
                     continue
 
                 current_version_files[key] = deepcopy(file_data)
