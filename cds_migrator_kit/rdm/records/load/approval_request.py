@@ -18,7 +18,10 @@ from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_rdm_records.records.api import RDMParent
 from invenio_records_resources.services.uow import RecordCommitOp
-from invenio_requests.customizations.event_types import LogEventType
+from invenio_requests.customizations.event_types import (
+    LogEventType,
+    ReviewersUpdatedType,
+)
 from invenio_requests.proxies import current_events_service, current_requests_service
 from invenio_requests.resolvers.registry import ResolverRegistry
 
@@ -26,6 +29,7 @@ from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
 
 EP_APPROVAL_WAITING_STATUS = "waiting"
 EP_APPROVAL_APPROVED_STATUS = "approved"
+EP_APPROVAL_REVIEWING_STATUS = "reviewing"
 
 
 class ApprovalRequest:
@@ -45,13 +49,14 @@ class ApprovalRequest:
         self.resource_type = resource_type
         self.dry_run = dry_run
         self.waiting_entry = None
+        self.reviewing_entry = None
         self.approved_entry = None
         self.report_number = None
         self.approved_at = None
 
     def validate(self):
         """Validate EP approval data before creating any records."""
-        waiting_entry, approved_entry, report_number = self._parse_history()
+        waiting_entry, approved_entry, reviewing, report_number = self._parse_history()
 
         existing = self._existing_request()
         if existing:
@@ -69,10 +74,16 @@ class ApprovalRequest:
 
         self.waiting_entry = waiting_entry
         self.approved_entry = approved_entry
+        self.reviewing_entry = reviewing
         self.report_number = report_number
 
-    def create(self, restricted_record_state):
-        """Create and approve EP approval request after restricted record exists."""
+    def create(self, restricted_record_state, uow=None):
+        """Create and approve EP approval request after restricted record exists.
+
+        If ``uow`` is provided, the request is registered on it without
+        committing, so the caller can group this atomically with other
+        operations (e.g. the public record creation and linking).
+        """
         if self.dry_run:
             return
 
@@ -91,14 +102,15 @@ class ApprovalRequest:
         self._create_request(
             restricted_recid,
             restricted_parent,
+            uow=uow,
         )
         self._mint_apprn_pid(restricted_record_state["latest_version_object_uuid"])
 
     def _parse_history(self):
         """Return waiting/approved history entries and the report number."""
-        if len(self.ep_approval) != 2:
+        if len(self.ep_approval) > 3:
             raise UnexpectedValue(
-                message="EP approval history has more/less than 2 entries",
+                message="EP approval history has more/less than 3 entries",
                 stage="load",
                 priority="critical",
             )
@@ -108,6 +120,14 @@ class ApprovalRequest:
                 item
                 for item in history
                 if item.get("status") == EP_APPROVAL_WAITING_STATUS
+            ),
+            None,
+        )
+        reviewing = next(
+            (
+                item
+                for item in history
+                if item.get("status") == EP_APPROVAL_REVIEWING_STATUS
             ),
             None,
         )
@@ -163,7 +183,7 @@ class ApprovalRequest:
                 priority="critical",
             )
 
-        return waiting, approved, report_number
+        return waiting, approved, reviewing, report_number
 
     @staticmethod
     def parse_legacy_datetime(value):
@@ -278,6 +298,43 @@ class ApprovalRequest:
 
         uow.register(RecordCommitOp(event, indexer=current_events_service.indexer))
 
+
+    def _create_reviewing_log_event(self, request, uow):
+        """Create the reviewers-updated timeline event with the legacy reviewer as created_by."""
+        if not self.reviewing_entry:
+            return
+
+        reviewer_ref = self._resolve_user_by_email(
+            self.reviewing_entry.get("submitted_by"),
+            "reviewer",
+        )
+        request.reviewers = [reviewer_ref]
+
+        event = current_events_service.record_cls.create(
+            {},
+            request=request.model,
+            request_id=str(request.id),
+            type=ReviewersUpdatedType,
+        )
+        event.update(
+            {
+                "payload": {
+                    "event": "reviewers_updated",
+                    "content": self.reviewing_entry.get("description", ""),
+                    "reviewers": [reviewer_ref],
+                }
+            }
+        )
+        event.created_by = ResolverRegistry.resolve_entity_proxy(
+            reviewer_ref, raise_=True
+        )
+
+        reviewing_at = self.parse_legacy_datetime(self.reviewing_entry.get("date"))
+        if reviewing_at:
+            event.model.created = reviewing_at
+
+        uow.register(RecordCommitOp(event, indexer=current_events_service.indexer))
+
     def _apply_approved_entry(self, request, uow):
         """Update an existing request to accepted using the legacy approved entry."""
         payload = dict(request.get("payload") or {})
@@ -291,38 +348,52 @@ class ApprovalRequest:
 
         self._create_accept_log_event(request, uow)
 
-    def _create_request(self, restricted_recid, restricted_parent):
-        """Create request from waiting entry, then update it with approved entry."""
+    def _create_request(self, restricted_recid, restricted_parent, uow=None):
+        """Create request from waiting entry, then update it with approved entry.
+
+        If ``uow`` is provided, it is used as-is and left uncommitted for the
+        caller to commit; otherwise a unit of work is created and committed
+        here.
+        """
+        if uow is not None:
+            self._build_request(restricted_recid, restricted_parent, uow)
+            return
+
+        with UnitOfWork() as inner_uow:
+            self._build_request(restricted_recid, restricted_parent, inner_uow)
+            inner_uow.commit()
+
+    def _build_request(self, restricted_recid, restricted_parent, uow):
+        """Register the request creation and its updates on the given uow."""
         expires_at = self.parse_legacy_datetime(self.waiting_entry.get("deadline"))
         referee_group = self._get_referee_group(restricted_parent)
 
-        with UnitOfWork() as uow:
-            request_item = current_requests_service.create(
-                system_identity,
-                data={
-                    "title": f'EP approval for "{self.title}"',
-                    "payload": {},
-                },
-                request_type=CommitteeApprovalRequest,
-                receiver={"group": referee_group},
-                creator=self._resolve_user_by_email(
-                    self.waiting_entry.get("submitted_by"), "submitter"
-                ),
-                topic={"record": restricted_recid},
-                expires_at=expires_at,
-                uow=uow,
-            )
-            request = request_item._record
-            request.number = f"lrecid:{self.legacy_recid}:ep-approval"
-            request.status = "submitted"
+        request_item = current_requests_service.create(
+            system_identity,
+            data={
+                "title": f'EP approval for "{self.title}"',
+                "payload": {},
+            },
+            request_type=CommitteeApprovalRequest,
+            receiver={"group": referee_group},
+            creator=self._resolve_user_by_email(
+                self.waiting_entry.get("submitted_by"), "submitter"
+            ),
+            topic={"record": restricted_recid},
+            expires_at=expires_at,
+            uow=uow,
+        )
+        request = request_item._record
+        request.number = f"lrecid:{self.legacy_recid}:ep-approval"
+        request.status = "submitted"
 
-            submitted_at = self.parse_legacy_datetime(self.waiting_entry.get("date"))
-            if submitted_at:
-                request.model.created = submitted_at
+        submitted_at = self.parse_legacy_datetime(self.waiting_entry.get("date"))
+        if submitted_at:
+            request.model.created = submitted_at
 
-            self._apply_approved_entry(request, uow)
+        self._create_reviewing_log_event(request, uow)
+        self._apply_approved_entry(request, uow)
 
-            uow.register(
-                RecordCommitOp(request, indexer=current_requests_service.indexer)
-            )
-            uow.commit()
+        uow.register(
+            RecordCommitOp(request, indexer=current_requests_service.indexer)
+        )
