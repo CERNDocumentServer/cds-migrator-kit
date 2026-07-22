@@ -569,9 +569,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     subj.append({"subject": experiment})
                     json_output["metadata"]["subjects"] = subj
                     raise UnexpectedValue(
-                        subfield="u",
+                        subfield="e",
                         value=experiment,
-                        field="author",
+                        field="693",
                         message=f"Experiment {experiment} not found",
                         stage="vocabulary match",
                     )
@@ -1017,6 +1017,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                             "description": file_dump["description"],
                             "name": file_dump["name"],
                             "status": file_dump["status"],
+                            "original_path": file_dump["path"],
                             "comment": file_dump["comment"],
                         },
                         "mimetype": file_dump["mime"],
