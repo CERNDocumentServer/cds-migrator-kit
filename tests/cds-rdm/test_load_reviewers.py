@@ -11,7 +11,7 @@ import pytest
 from invenio_accounts.testutils import create_test_user
 
 from cds_migrator_kit.errors import RecordFlaggedCuration
-from cds_migrator_kit.rdm.records.load.load import (
+from cds_migrator_kit.rdm.records.transform.xml_processing.quality.reviewers import (
     _is_email,
     _parse_reviewer_name,
     find_reviewer,

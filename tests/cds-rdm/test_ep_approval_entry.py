@@ -272,7 +272,11 @@ class TestPublicEntryVersions:
                 entry, _make_approval_request(), _make_migration_logger()
             ).build()
 
-    def test_public_raises_on_restricted_files(self):
+    def test_public_excludes_restricted_non_epphapp_files(self):
+        """A record that isn't restricted as a whole can still ship individually
+        restricted, non-EPPHAPP files (e.g. via 506__m); those must be excluded
+        from the public split (and land in RestrictedEntry instead), not raise.
+        """
         versions = OrderedDict(
             [
                 (
@@ -288,6 +292,7 @@ class TestPublicEntryVersions:
                                 "type": "Main",
                                 "creation_date": "2020-01-01",
                             },
+                            PUBLIC_FILE_KEY: _public_file(),
                         },
                         "publication_date": "2020-01-01",
                         "access": {"access_obj": {"record": None, "files": None}},
@@ -296,10 +301,13 @@ class TestPublicEntryVersions:
             ]
         )
         entry = _make_entry(versions)
-        with pytest.raises(UnexpectedValue, match="restricted files"):
-            PublicEntry(
-                entry, _make_approval_request(), _make_migration_logger()
-            ).build()
+        result = PublicEntry(
+            entry, _make_approval_request(), _make_migration_logger()
+        ).build()
+
+        files = result["versions"][1]["files"]
+        assert "restricted.pdf" not in files
+        assert PUBLIC_FILE_KEY in files
 
     def test_public_multiple_distinct_versions(self):
         versions = OrderedDict(
