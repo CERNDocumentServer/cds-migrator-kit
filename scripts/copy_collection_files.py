@@ -62,8 +62,8 @@ def get_dump_files_paths(json_dump_dir):
     return dump_files
 
 
-collection = "former_exp/ua2"
-environment = "dev"
+collection = "lep/ep/l3"
+environment = "sandbox"
 
 destination_prefix = "/eos/media/cds/cds-rdm/{0}/migration/{1}/files".format(
     environment, collection
