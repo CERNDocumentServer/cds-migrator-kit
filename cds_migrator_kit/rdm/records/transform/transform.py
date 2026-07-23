@@ -1102,8 +1102,15 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
 
         for entry in entries:
             if self.should_skip(entry):
-                if current_app.config["CDS_MIGRATOR_KIT_ENV"] == "local":
-                    current_app.logger.warning(f"Skipping entry {entry['recid']}")
+                recid = entry["recid"]
+                self.migration_logger.add_information(
+                    recid,
+                    {
+                        "message": "Record already migrated, skipping",
+                        "value": recid,
+                    },
+                )
+                self.migration_logger.finalise_record(recid)
                 continue
             try:
                 yield self._transform(entry)
