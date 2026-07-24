@@ -536,7 +536,14 @@ AUDIT_LOGS_ENABLED = False
 ### EP Approval configuration only needed for local, it should use cds-rdm config for de/sandbox/prod
 # ===========================
 CDS_CERN_SCIENTIFIC_COMMUNITY_ID = "78b3c4aa-c4e6-4502-8226-67ba2d347afe"
-"""The id of the CERN Scientific community."""
+"""The id of the CERN Scientific community.
+
+This is only a local-dev default: on other instances (sandbox/prod), set the
+``INVENIO_CDS_CERN_SCIENTIFIC_COMMUNITY_ID`` environment variable to the real
+community id for that instance. It's read via ``current_app.config`` (not a
+direct module import) specifically so that env var override works - see
+ep_approval_entry.py::_cern_scientific_community_id.
+"""
 
 CDS_COMMITTEE_APPROVAL_COMMUNITIES = {
     "dd13404c-bcd6-4b15-aeef-38d678c61ff1": {

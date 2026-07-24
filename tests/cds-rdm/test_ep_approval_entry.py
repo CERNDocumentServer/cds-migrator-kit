@@ -219,7 +219,7 @@ def _versions_public_only():
 class TestPublicEntryVersions:
     """Test that PublicEntry filters out EPPHAPP files and deduplicates versions."""
 
-    def test_public_excludes_epphapp_files(self):
+    def test_public_excludes_epphapp_files(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = PublicEntry(
             entry, _make_approval_request(), _make_migration_logger()
@@ -231,7 +231,7 @@ class TestPublicEntryVersions:
                     fdata["type"] != EPPHAPP_FILE_TYPE
                 ), f"EPPHAPP file {key} should not appear in public split"
 
-    def test_public_deduplicates_identical_versions(self):
+    def test_public_deduplicates_identical_versions(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = PublicEntry(
             entry, _make_approval_request(), _make_migration_logger()
@@ -239,7 +239,7 @@ class TestPublicEntryVersions:
 
         assert len(result["versions"]) == 1
 
-    def test_public_access_is_public(self):
+    def test_public_access_is_public(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = PublicEntry(
             entry, _make_approval_request(), _make_migration_logger()
@@ -249,7 +249,7 @@ class TestPublicEntryVersions:
             assert vdata["access"]["access_obj"]["record"] == "public"
             assert vdata["access"]["access_obj"]["files"] == "public"
 
-    def test_public_raises_when_no_public_files(self):
+    def test_public_raises_when_no_public_files(self, app):
         versions = OrderedDict(
             [
                 (
@@ -272,7 +272,7 @@ class TestPublicEntryVersions:
                 entry, _make_approval_request(), _make_migration_logger()
             ).build()
 
-    def test_public_excludes_restricted_non_epphapp_files(self):
+    def test_public_excludes_restricted_non_epphapp_files(self, app):
         """A record that isn't restricted as a whole can still ship individually
         restricted, non-EPPHAPP files (e.g. via 506__m); those must be excluded
         from the public split (and land in RestrictedEntry instead), not raise.
@@ -309,7 +309,7 @@ class TestPublicEntryVersions:
         assert "restricted.pdf" not in files
         assert PUBLIC_FILE_KEY in files
 
-    def test_public_multiple_distinct_versions(self):
+    def test_public_multiple_distinct_versions(self, app):
         versions = OrderedDict(
             [
                 (
@@ -352,7 +352,7 @@ class TestPublicEntryVersions:
 class TestRestrictedEntryVersions:
     """Test that RestrictedEntry keeps EPPHAPP files when present."""
 
-    def test_restricted_keeps_only_epphapp_when_present(self):
+    def test_restricted_keeps_only_epphapp_when_present(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = RestrictedEntry(
             entry, _make_approval_request(), _make_migration_logger()
@@ -364,7 +364,7 @@ class TestRestrictedEntryVersions:
                     fdata["type"] == EPPHAPP_FILE_TYPE
                 ), f"Non-EPPHAPP file {key} should not appear in restricted split"
 
-    def test_restricted_keeps_all_changing_epphapp_versions(self):
+    def test_restricted_keeps_all_changing_epphapp_versions(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = RestrictedEntry(
             entry, _make_approval_request(), _make_migration_logger()
@@ -372,7 +372,7 @@ class TestRestrictedEntryVersions:
 
         assert len(result["versions"]) == 4
 
-    def test_restricted_access_is_restricted(self):
+    def test_restricted_access_is_restricted(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = RestrictedEntry(
             entry, _make_approval_request(), _make_migration_logger()
@@ -382,7 +382,7 @@ class TestRestrictedEntryVersions:
             assert vdata["access"]["access_obj"]["record"] == "restricted"
             assert vdata["access"]["access_obj"]["files"] == "restricted"
 
-    def test_restricted_uses_public_files_when_no_epphapp(self):
+    def test_restricted_uses_public_files_when_no_epphapp(self, app):
         entry = _make_entry(_versions_public_only())
         logger = _make_migration_logger()
         result = RestrictedEntry(entry, _make_approval_request(), logger).build()
@@ -391,7 +391,7 @@ class TestRestrictedEntryVersions:
         assert "document.pdf" in result["versions"][1]["files"]
         logger.add_information.assert_called()
 
-    def test_restricted_raises_when_no_files_at_all(self):
+    def test_restricted_raises_when_no_files_at_all(self, app):
         versions = OrderedDict(
             [
                 (
@@ -414,7 +414,7 @@ class TestRestrictedEntryVersions:
 class TestPublicEntryIdentifiers:
     """Test identifier handling in the public split."""
 
-    def test_public_removes_cern_ep_report_numbers(self):
+    def test_public_removes_cern_ep_report_numbers(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = PublicEntry(
             entry, _make_approval_request(), _make_migration_logger()
@@ -429,7 +429,7 @@ class TestPublicEntryIdentifiers:
             for i in identifiers
         )
 
-    def test_public_keeps_non_ep_cdsrn(self):
+    def test_public_keeps_non_ep_cdsrn(self, app):
         identifiers = [
             {"identifier": RECID, "scheme": "cds"},
             {"scheme": "cdsrn", "identifier": APPROVED_REPORT_NUMBER},
@@ -452,7 +452,7 @@ class TestPublicEntryIdentifiers:
 class TestRestrictedEntryIdentifiers:
     """Test identifier handling in the restricted split."""
 
-    def test_restricted_removes_matching_cern_ep_rn(self):
+    def test_restricted_removes_matching_cern_ep_rn(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = RestrictedEntry(
             entry, _make_approval_request(), _make_migration_logger()
@@ -466,7 +466,7 @@ class TestRestrictedEntryIdentifiers:
 
         assert APPROVED_REPORT_NUMBER not in cdsrn_values
 
-    def test_restricted_keeps_draft_report_number(self):
+    def test_restricted_keeps_draft_report_number(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = RestrictedEntry(
             entry, _make_approval_request(), _make_migration_logger()
@@ -480,7 +480,7 @@ class TestRestrictedEntryIdentifiers:
 
         assert DRAFT_REPORT_NUMBER in cdsrn_values
 
-    def test_restricted_raises_on_mismatched_report_number(self):
+    def test_restricted_raises_on_mismatched_report_number(self, app):
         identifiers = [
             {"identifier": RECID, "scheme": "cds"},
             {"scheme": "cdsrn", "identifier": "CERN-EP-2020-999"},
@@ -491,7 +491,7 @@ class TestRestrictedEntryIdentifiers:
                 entry, _make_approval_request(), _make_migration_logger()
             ).build()
 
-    def test_restricted_removes_doi_pid(self):
+    def test_restricted_removes_doi_pid(self, app):
         entry = _make_entry(_versions_with_epphapp(), has_doi=True)
         result = RestrictedEntry(
             entry, _make_approval_request(), _make_migration_logger()
@@ -503,7 +503,7 @@ class TestRestrictedEntryIdentifiers:
 class TestPublicEntryModifications:
     """Test record/parent level modifications on the public split."""
 
-    def test_public_removes_request_data(self):
+    def test_public_removes_request_data(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = PublicEntry(
             entry, _make_approval_request(), _make_migration_logger()
@@ -511,7 +511,7 @@ class TestPublicEntryModifications:
 
         assert "_request_data" not in result["record"]
 
-    def test_public_sets_owned_by_system(self):
+    def test_public_sets_owned_by_system(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = PublicEntry(
             entry, _make_approval_request(), _make_migration_logger()
@@ -520,7 +520,7 @@ class TestPublicEntryModifications:
         assert result["record"]["owned_by"] == "system"
         assert result["parent"]["json"]["access"]["owned_by"] == {"user": "system"}
 
-    def test_public_adds_cern_scientific_community(self):
+    def test_public_adds_cern_scientific_community(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = PublicEntry(
             entry, _make_approval_request(), _make_migration_logger()
@@ -530,7 +530,7 @@ class TestPublicEntryModifications:
             result["parent"]["json"]["communities"]["ids"]
         )
 
-    def test_public_does_not_duplicate_community(self):
+    def test_public_does_not_duplicate_community(self, app):
         entry = _make_entry(_versions_with_epphapp())
         entry["parent"]["json"]["communities"]["ids"] = [
             "example-community",
@@ -547,7 +547,7 @@ class TestPublicEntryModifications:
 class TestEntryImmutability:
     """Ensure build() deep-copies and does not mutate the original entry."""
 
-    def test_public_build_does_not_mutate_original(self):
+    def test_public_build_does_not_mutate_original(self, app):
         entry = _make_entry(_versions_with_epphapp())
         original = deepcopy(entry)
         PublicEntry(entry, _make_approval_request(), _make_migration_logger()).build()
@@ -557,7 +557,7 @@ class TestEntryImmutability:
             == original["record"]["json"]["metadata"]["identifiers"]
         )
 
-    def test_restricted_build_does_not_mutate_original(self):
+    def test_restricted_build_does_not_mutate_original(self, app):
         entry = _make_entry(_versions_with_epphapp())
         original = deepcopy(entry)
         RestrictedEntry(
