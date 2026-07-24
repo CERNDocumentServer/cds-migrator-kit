@@ -59,7 +59,7 @@ class Runner:
                 self.restricted = stream_config[collection].get("restricted", False)
                 self.update_new_version_publication_date = stream_config[
                     collection
-                ].get("update_new_version_publication_date", True)
+                ].get("update_new_version_publication_date", False)
                 self.create_inclusion_request = stream_config[collection].get(
                     "create_inclusion_request", False
                 )

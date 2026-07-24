@@ -42,7 +42,7 @@ class CDSEPApprovalRecordServiceLoad(Load):
         dry_run=False,
         legacy_pids_to_redirect=None,
         collection=None,
-        update_new_version_publication_date=True,
+        update_new_version_publication_date=False,
         create_inclusion_request=False,
         migration_logger=None,
         record_state_logger=None,
