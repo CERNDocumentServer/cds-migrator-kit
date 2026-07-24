@@ -62,8 +62,8 @@ def get_dump_files_paths(json_dump_dir):
     return dump_files
 
 
-collection = "lep/ep/l3"
-environment = "sandbox"
+collection = "lep/aleph_drafts"
+environment = "dev"
 
 destination_prefix = "/eos/media/cds/cds-rdm/{0}/migration/{1}/files".format(
     environment, collection

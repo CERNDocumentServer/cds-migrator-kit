@@ -10,12 +10,26 @@ import re
 from collections import OrderedDict
 from copy import deepcopy
 
+from flask import current_app
+
 from cds_migrator_kit.errors import UnexpectedValue
-from cds_migrator_kit.rdm.migration_config import CDS_CERN_SCIENTIFIC_COMMUNITY_ID
 
 EPPHAPP_FILE_TYPE = "EPPHAPP_FILE"
 EP_APPROVAL_REPORT_NUMBER_PREFIX = "CERN-EP"
 EP_APPROVAL_REPORT_NUMBER_RE = re.compile(r"^CERN-EP-\d{4}-\d{3}$")
+
+
+def _cern_scientific_community_id():
+    """Return the CERN Scientific community id from the app config.
+
+    Read via ``current_app.config`` (not a direct import of
+    ``migration_config``) so environment-specific overrides (e.g. an
+    ``INVENIO_CDS_CERN_SCIENTIFIC_COMMUNITY_ID`` env var on a given instance)
+    actually take effect - a plain module-level import would be frozen to
+    whatever migration_config.py hardcodes, invisible to Flask's config
+    loading/env var override mechanism entirely.
+    """
+    return current_app.config["CDS_CERN_SCIENTIFIC_COMMUNITY_ID"]
 
 
 class MetadataEntry:
@@ -182,10 +196,11 @@ class PublicEntry(MetadataEntry):
         self._add_cern_scientific_community(split)
 
     def _add_cern_scientific_community(self, entry):
+        community_id = _cern_scientific_community_id()
         communities = entry.get("parent", {}).get("json", {}).get("communities", {})
         ids = list(communities.get("ids", []))
-        if CDS_CERN_SCIENTIFIC_COMMUNITY_ID not in ids:
-            ids.append(CDS_CERN_SCIENTIFIC_COMMUNITY_ID)
+        if community_id not in ids:
+            ids.append(community_id)
         communities["ids"] = ids
         entry.setdefault("parent", {}).setdefault("json", {})[
             "communities"
@@ -203,16 +218,15 @@ class RestrictedEntry(MetadataEntry):
 
         The restricted record holds the internal-only EPPHAPP draft and must
         not be discoverable via the broader community; only PublicEntry adds
-        CDS_CERN_SCIENTIFIC_COMMUNITY_ID (see _add_cern_scientific_community).
+        it (see _add_cern_scientific_community).
         """
+        community_id = _cern_scientific_community_id()
         communities = entry.get("parent", {}).get("json", {}).get("communities", {})
         ids = [
-            cid
-            for cid in communities.get("ids", [])
-            if cid != CDS_CERN_SCIENTIFIC_COMMUNITY_ID
+            cid for cid in communities.get("ids", []) if cid != community_id
         ]
         communities["ids"] = ids
-        if communities.get("default") == CDS_CERN_SCIENTIFIC_COMMUNITY_ID:
+        if communities.get("default") == community_id:
             communities["default"] = ids[0] if ids else None
         entry.setdefault("parent", {}).setdefault("json", {})[
             "communities"
