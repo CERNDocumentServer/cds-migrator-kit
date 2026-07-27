@@ -524,7 +524,7 @@ records:
       files_dump_dir: cds_migrator_kit/rdm/data/staff_association/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - "27b118cb-6c99-4ee3-969f-cde758a83124"
+        - "3d0a8ba2-7ec6-4016-b171-325d68e50e51"
   bulletin_drafts:
     data_dir: cds_migrator_kit/rdm/data/bulletin_drafts
     restricted: "True"
@@ -534,7 +534,7 @@ records:
       files_dump_dir: cds_migrator_kit/rdm/data/bulletin_drafts/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - "e849139c-dff5-45a7-90b1-90cdddc9c00e"
+        - "3d0a8ba2-7ec6-4016-b171-325d68e50e51"
   ts_dep:
     plots: true
     data_dir: cds_migrator_kit/rdm/data/dep_ts
