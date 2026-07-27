@@ -1,0 +1,28 @@
+[
+  {
+    "files": [],
+    "collections": null,
+    "recid": 3000001,
+    "creation_date": "2020-05-01 00:00:00",
+    "record": [
+      {
+        "marcxml": "<record>\n  <controlfield tag=\"001\">3000001</controlfield>\n  <controlfield tag=\"005\">20220323170811.0</controlfield>\n  <datafield tag=\"690\" ind1=\"C\" ind2=\" \">\n    <subfield code=\"a\">CERN</subfield>\n  </datafield>\n  <datafield tag=\"980\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">BULLETINSTAFF</subfield>\n  </datafield>\n  <datafield tag=\"260\" ind1=\" \" ind2=\" \">\n    <subfield code=\"c\">2020</subfield>\n  </datafield>\n  <datafield tag=\"245\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">Staff Association Bulletin Article</subfield>\n  </datafield>\n  <datafield tag=\"963\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">PUBLIC</subfield>\n  </datafield>\n</record>",
+        "json": null,
+        "modification_datetime": "2022-03-23T16:08:11+00:00"
+      }
+    ]
+  },
+  {
+    "files": [],
+    "collections": null,
+    "recid": 3000002,
+    "creation_date": "2021-06-01 00:00:00",
+    "record": [
+      {
+        "marcxml": "<record>\n  <controlfield tag=\"001\">3000002</controlfield>\n  <controlfield tag=\"005\">20220323170811.0</controlfield>\n  <datafield tag=\"690\" ind1=\"C\" ind2=\" \">\n    <subfield code=\"a\">CERN</subfield>\n  </datafield>\n  <datafield tag=\"980\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">BULLETINSTAFF</subfield>\n  </datafield>\n  <datafield tag=\"260\" ind1=\" \" ind2=\" \">\n    <subfield code=\"c\">2021</subfield>\n  </datafield>\n  <datafield tag=\"245\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">Staff Association Journal - Summer 2021</subfield>\n  </datafield>\n  <datafield tag=\"859\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">real.person@cern.ch</subfield>\n    <subfield code=\"f\">submitter13@cern.ch</subfield>\n  </datafield>\n  <datafield tag=\"963\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">PUBLIC</subfield>\n  </datafield>\n</record>",
+        "json": null,
+        "modification_datetime": "2022-03-23T16:08:11+00:00"
+      }
+    ]
+  }
+]

@@ -161,6 +161,22 @@ def config(mocker, community, orcid_name_data):
                         "legacy_pids_to_redirect": "tests/cds-rdm/data/bulletin_issue/duplicated_pids.json"
                     },
                 },
+                "staff_association": {
+                    "data_dir": "tests/cds-rdm/data/staff_association",
+                    "tmp_dir": "tests/cds-rdm/data/staff_association",
+                    "log_dir": "tests/cds-rdm/data/log/staff_association",
+                    "extract": {
+                        "dirpath": "tests/cds-rdm/data/staff_association/dumps/"
+                    },
+                    "transform": {
+                        "files_dump_dir": "tests/cds-rdm/data/staff_association/files/",
+                        "missing_users": "tests/cds-rdm/data/users",
+                        "communities_ids": [f"{str(community.id)}"],
+                    },
+                    "load": {
+                        "legacy_pids_to_redirect": "tests/cds-rdm/data/staff_association/duplicated_pids.json"
+                    },
+                },
             },
         },
     )
