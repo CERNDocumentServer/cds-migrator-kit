@@ -12,6 +12,7 @@ from dojson.errors import IgnoreKey
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
     additional_titles,
+    title as base_title,
 )
 from cds_migrator_kit.transform.xml_processing.quality.decorators import for_each_value
 from cds_migrator_kit.transform.xml_processing.rules.base import (
@@ -26,9 +27,21 @@ model.over("internal_notes", "^562__")(internal_notes)
 model.over("additional_titles", "(^242__)")(additional_titles)
 
 
+@model.over("title", "^245__", override=True)
+def title(self, key, value):
+    """Translates title and sets journal resource type for Staff Association Journal."""
+    title_a = value.get("a", "")
+    if "Staff Association Journal" in title_a:
+        self["resource_type"] = {"id": "publication-article"}
+    return base_title(self, key, value)
+
+
 @model.over("resource_type", "^980__", override=True)
 def resource_type(self, key, value):
     """Translates resource_type."""
+    # Title rule may have already set the resource type for Staff Association Journal (245__ runs before 980__)
+    if self.get("resource_type", {}).get("id") == "publication-article":
+        return {"id": "publication-article"}
     value = value.get("a") if "a" in value else value.get("b")
     if value:
         value = value.lower()
