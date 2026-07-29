@@ -58,11 +58,10 @@ def access_grants(self, key, value):
 @model.over("_approval", "(^591__)", override=True)
 def status(self, key, value):
     """Translates faser publication approval status."""
-    research_status(self, key, value)
     request_data = self.setdefault("request_data", {})
     reviewers = request_data.setdefault("reviewers", [])
     reviewers.append({"group": "faser-all"})
-    raise IgnoreKey("_approval")
+    research_status(self, key, value)
 
 
 @model.over("faser_contributors", "^700__", override=True)
