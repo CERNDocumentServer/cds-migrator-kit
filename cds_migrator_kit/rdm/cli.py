@@ -288,7 +288,7 @@ def comments():
 )
 @click.option(
     "--collection",
-    help="Collection name to be migrated (for logging purposes only)",
+    help="Collection name to be migrated (for logging purposes and reviewers config)",
     required=True,
 )
 @click.option(
