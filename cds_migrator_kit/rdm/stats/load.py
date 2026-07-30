@@ -88,7 +88,7 @@ class CDSRecordStatsLoad(Load):
             )
             if self.dry_run:
                 for new_doc in new_docs_generated:
-                    logger.info(json.dumps(new_doc))
+                    logger.warning(json.dumps(new_doc))
             else:
                 bulk_index_documents(self.dest_os_client, new_docs_generated, logger)
 
@@ -96,6 +96,14 @@ class CDSRecordStatsLoad(Load):
             logger.error(str(ex))
 
     def _process_legacy_events_for_recid(self, recid, rec_context, index, event_type):
+        file_ids = None
+        if event_type == "events.downloads":
+            file_ids = [
+                f["legacy_file_id"]
+                for version in rec_context.get("versions", [])
+                for f in version.get("files", [])
+            ]
+
         data = os_search(
             self.src_os_client,
             index,
@@ -105,6 +113,7 @@ class CDSRecordStatsLoad(Load):
             self.config["SRC_SEARCH_SCROLL"],
             self.LEGACY_TO_RDM_EVENTS_MAP,
             self.less_than_date,
+            file_ids=file_ids,
         )
         # Get the scroll ID
         sid = data["_scroll_id"]
@@ -142,11 +151,24 @@ class CDSRecordStatsLoad(Load):
 
     def validate_stats_for_recid(self, recid, record, event_type):
         """Validate that stats in legacy and new RDM."""
+        # For downloads, only count legacy events for files that were actually migrated
+        file_ids = None
+        if event_type == "events.downloads":
+            file_ids = [
+                f["legacy_file_id"]
+                for version in record.get("versions", [])
+                for f in version.get("files", [])
+            ]
+
         legacy_total = os_count(
             self.src_os_client,
             "cds-2*",
             q=generate_query(
-                event_type, recid, self.LEGACY_TO_RDM_EVENTS_MAP, self.less_than_date
+                event_type,
+                recid,
+                self.LEGACY_TO_RDM_EVENTS_MAP,
+                self.less_than_date,
+                file_ids=file_ids,
             ),
         )
         logger.info(
@@ -175,12 +197,14 @@ class CDSRecordStatsLoad(Load):
 
         try:
             assert legacy_total["count"] == new_total["count"]
+            file_ids_msg = f" - Legacy file_ids: {file_ids}" if file_ids is not None else ""
             logger.warning(
-                f"Successfully migrated statistics for {recid} `{event_type}` in RDM: {new_total['count']}"
+                f"Successfully migrated statistics for {recid} `{event_type}` in RDM: {new_total['count']}{file_ids_msg}"
             )
         except AssertionError as e:
+            file_ids_msg = f" file_ids: {file_ids}" if file_ids is not None else ""
             logger.warning(
-                f"Not all events of type {event_type} were migrated for record: {recid}. Legacy count: {legacy_total['count']} - RDM count: {new_total['count']}"
+                f"Not all events of type {event_type} were migrated for record: {recid}. Legacy count: {legacy_total['count']} - RDM count: {new_total['count']} -{file_ids_msg}"
             )
 
     def _load(self, entry):

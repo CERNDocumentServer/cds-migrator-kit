@@ -16,7 +16,9 @@ from opensearchpy.exceptions import OpenSearchException
 from opensearchpy.helpers import BulkIndexError, parallel_bulk
 
 
-def generate_query(doc_type, identifier, legacy_to_rdm_events_map, less_than_date):
+def generate_query(
+    doc_type, identifier, legacy_to_rdm_events_map, less_than_date, file_ids=None
+):
     """Generate legacy query based on event type."""
     q = deepcopy(legacy_to_rdm_events_map[doc_type]["query"])
     q["query"]["bool"]["must"][0]["match"]["id_bibrec"] = identifier
@@ -26,6 +28,9 @@ def generate_query(doc_type, identifier, legacy_to_rdm_events_map, less_than_dat
     dt = datetime.strptime(less_than_date, "%Y-%m-%dT%H:%M:%S")
     timestamp_ms = int(dt.timestamp() * 1000)
     q["query"]["bool"]["filter"][0]["range"]["timestamp"]["lt"] = timestamp_ms
+
+    if file_ids is not None:
+        q["query"]["bool"]["filter"].append({"terms": {"id_bibdoc": file_ids}})
 
     return q
 
@@ -39,11 +44,14 @@ def os_search(
     search_scroll,
     legacy_to_rdm_events_map,
     less_than_date,
+    file_ids=None,
 ):
     """Sear utility."""
     ex = None
     i = 0
-    q = generate_query(doc_type, identifier, legacy_to_rdm_events_map, less_than_date)
+    q = generate_query(
+        doc_type, identifier, legacy_to_rdm_events_map, less_than_date, file_ids=file_ids
+    )
     while i < 10:
         try:
             return src_os_client.search(
