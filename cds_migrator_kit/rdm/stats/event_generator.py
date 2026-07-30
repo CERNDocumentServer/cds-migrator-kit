@@ -79,8 +79,8 @@ def process_download_event(entry, rec_context, logger):
     )
     assert str(entry["id_bibrec"]) == str(rec_context["legacy_recid"])
 
-    # Find the file version and assume the record version in the new system
-    _legacy_file_version = entry["file_version"]
+    # Find the file version and assume the record version in the new system. If 0 (old events) we force to first version
+    _legacy_file_version = 1 if entry["file_version"] == 0 else entry["file_version"]
     _record_version = [
         rec for rec in rec_context["versions"] if rec["version"] == _legacy_file_version
     ]
