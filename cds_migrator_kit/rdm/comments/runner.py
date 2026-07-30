@@ -32,7 +32,10 @@ class CommentsRunner:
             extract=stream_definition.extract_cls(filepath),
             transform=stream_definition.transform_cls(),
             load=stream_definition.load_cls(
-                dirpath=dirpath, dry_run=dry_run, logger=self.logger
+                dirpath=dirpath,
+                dry_run=dry_run,
+                logger=self.logger,
+                collection=collection,
             ),
         )
 

@@ -391,11 +391,7 @@ RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES = {
             "datacite": "INDICO",
         },
         "hal": {"label": "HAL", "validator": schemes.is_hal, "datacite": "HAL"},
-        "edms": {
-            "label": _("EDMS"),
-            "validator": schemes.is_edms,
-            "datacite": "EDMS"
-        },
+        "edms": {"label": _("EDMS"), "validator": schemes.is_edms, "datacite": "EDMS"},
     },
     # keep internal identifiers' schemes for internal record relations
     **RDM_RECORDS_IDENTIFIERS_SCHEMES,
@@ -478,6 +474,11 @@ CDS_MIGRATOR_KIT_ENV = "local"
 CDS_MIGRATOR_KIT_VOCABULARIES_DIR = None
 """Absolute path to the vocabularies directory. Defaults to
 {instance_path}/app_data/vocabularies when None."""
+
+CDS_MIGRATOR_KIT_COMMENTS_REVIEWERS = {
+    "faser-ep": [{"group": "faser-all"}],
+}
+"""Per-collection reviewers to attach on migrated comment requests."""
 
 CDS_ACCESS_GROUP_MAPPINGS = {
     "SSO": ["cern-accounts-primary"],
