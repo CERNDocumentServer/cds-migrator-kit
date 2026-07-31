@@ -16,7 +16,7 @@ from sqlalchemy.exc import NoResultFound
 from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.mappers.base import RecordTransformContext
 from cds_migrator_kit.rdm.records.transform.mappers.record import AccessGrantsMapper
-from cds_migrator_kit.rdm.records.transform.config import CDS_CERN_SCIENTIFIC_RESOURCE_TYPES
+from cds_migrator_kit.rdm.records.transform.config import CERN_SCIENTIFIC_RESOURCE_TYPES
 from cds_migrator_kit.errors import MissingConfiguration
 
 EMAIL_PATTERN = re.compile(r"[^@]+@[^@]+\.[^@]+")
@@ -103,13 +103,15 @@ class RecordParent:
     def _should_add_scientific_community(self):
         if self.restricted or self.record.access_status != "public":
             return False
+        if any(file.get("status") for file in self.dojson_entry.get("files", [])):
+            return False
         resource_type_id = (
             self.record.body
             .get("metadata", {})
             .get("resource_type", {})
             .get("id")
         )
-        return resource_type_id in CDS_CERN_SCIENTIFIC_RESOURCE_TYPES
+        return resource_type_id in CERN_SCIENTIFIC_RESOURCE_TYPES
 
     def _build_communities(self):
         """Combine the configured target communities with the record's own."""
