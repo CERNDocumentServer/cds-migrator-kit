@@ -44,7 +44,7 @@ from cds_migrator_kit.rdm.migration_config import (
     VOCABULARIES_NAMES_SCHEMES,
 )
 from cds_migrator_kit.rdm.records.transform.config import (
-    CDS_CERN_SCIENTIFIC_RESOURCE_TYPES,
+    CERN_SCIENTIFIC_RESOURCE_TYPES,
     FILE_SUBFORMATS_TO_DROP,
     IDENTIFIERS_SCHEMES_TO_DROP,
     IDENTIFIERS_VALUES_TO_DROP,
@@ -855,8 +855,18 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         self.db_state = {"affiliations": CDSMigrationAffiliationMapping}
         super().__init__(workers, throw)
 
-    def _should_add_scientific_community(self, record):
+    def _should_add_scientific_community(self, entry, record):
+        """
+        Determine if the scientific community should be added to the record.
+
+        The scientific community is added if the following conditions are met:
+        - The record is public
+        - The files are public
+        - The record has a resource type in the CERN Scientific resource types
+        """
         if self.restricted or record.get("access") != "public":
+            return False
+        if any(file.get("status") for file in entry.get("files", [])):
             return False
         resource_type_id = (
             record.get("json", {})
@@ -864,7 +874,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             .get("resource_type", {})
             .get("id")
         )
-        return resource_type_id in CDS_CERN_SCIENTIFIC_RESOURCE_TYPES
+        return resource_type_id in CERN_SCIENTIFIC_RESOURCE_TYPES
 
     def _communities_ids(self, entry, record):
         communities = record.get("communities", [])
@@ -877,7 +887,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             raise MissingConfiguration(
                 "CDS_CERN_SCIENTIFIC_COMMUNITY_ID is not configured"
             )
-        if self._should_add_scientific_community(record):
+        if self._should_add_scientific_community(entry, record):
             if scientific_community not in communities:
                 communities.append(scientific_community)
 

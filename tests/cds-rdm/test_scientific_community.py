@@ -13,7 +13,7 @@ import pytest
 
 from cds_migrator_kit.errors import MissingConfiguration
 from cds_migrator_kit.rdm.records.transform.config import (
-    CDS_CERN_SCIENTIFIC_RESOURCE_TYPES,
+    CERN_SCIENTIFIC_RESOURCE_TYPES,
 )
 from cds_migrator_kit.rdm.records.transform.transform import CDSToRDMRecordTransform
 
@@ -43,6 +43,12 @@ def _test_record(
     }
 
 
+def _test_entry(files_restricted=False):
+    """Build a minimal raw dump entry for community tests."""
+    status = "restricted" if files_restricted else ""
+    return {"files": [{"status": status}]}
+
+
 @pytest.fixture
 def transform(tmp_path, community):
     """Transform instance with a collection community configured."""
@@ -61,7 +67,12 @@ class TestCommunitiesIds:
         self, transform, community, cern_scientific_community
     ):
         """Public research records are included in the CERN Scientific community."""
-        result = transform._communities_ids({}, _test_record())
+        record = _test_record()
+        record["json"]["files"] = {"enabled": True}
+        result = transform._communities_ids(
+            _test_entry(),
+            record,
+        )
 
         assert result == {
             "ids": [str(community.id), str(cern_scientific_community.id)],
@@ -73,7 +84,7 @@ class TestCommunitiesIds:
     ):
         """Collection community remains the default when CERN Scientific community is added."""
         result = transform._communities_ids(
-            {},
+            _test_entry(),
             _test_record(communities=["test-community"]),
         )
 
@@ -84,13 +95,13 @@ class TestCommunitiesIds:
             str(cern_scientific_community.id),
         ]
 
-    @pytest.mark.parametrize("resource_type", CDS_CERN_SCIENTIFIC_RESOURCE_TYPES)
+    @pytest.mark.parametrize("resource_type", CERN_SCIENTIFIC_RESOURCE_TYPES)
     def test_research_resource_types(
         self, transform, cern_scientific_community, resource_type
     ):
         """All configured public research resource types trigger inclusion."""
         result = transform._communities_ids(
-            {}, _test_record(resource_type=resource_type)
+            _test_entry(), _test_record(resource_type=resource_type)
         )
 
         assert str(cern_scientific_community.id) in result["ids"]
@@ -100,7 +111,22 @@ class TestCommunitiesIds:
         self, transform, community, cern_scientific_community
     ):
         """Restricted records are not included in the CERN Research community."""
-        result = transform._communities_ids({}, _test_record(access="restricted"))
+        result = transform._communities_ids(
+            _test_entry(), _test_record(access="restricted")
+        )
+
+        assert result == {
+            "ids": [str(community.id)],
+            "default": str(community.id),
+        }
+
+    def test_skip_restricted_files(
+        self, transform, community, cern_scientific_community
+    ):
+        """Records with restricted files are not included in the CERN Scientific community."""
+        result = transform._communities_ids(
+            _test_entry(files_restricted=True), _test_record()
+        )
 
         assert result == {
             "ids": [str(community.id)],
@@ -111,7 +137,9 @@ class TestCommunitiesIds:
         self, transform, community, cern_scientific_community
     ):
         """Non-research resource types are not included in the CERN Scientific community."""
-        result = transform._communities_ids({}, _test_record(resource_type="other"))
+        result = transform._communities_ids(
+            _test_entry(), _test_record(resource_type="other")
+        )
 
         assert result == {
             "ids": [str(community.id)],
@@ -130,7 +158,7 @@ class TestCommunitiesIds:
             migration_logger=MagicMock(),
         )
 
-        result = transform._communities_ids({}, _test_record())
+        result = transform._communities_ids(_test_entry(), _test_record())
 
         assert result == {
             "ids": [str(community.id)],
@@ -144,4 +172,4 @@ class TestCommunitiesIds:
         monkeypatch.setitem(test_app.config, "CDS_CERN_SCIENTIFIC_COMMUNITY_ID", None)
 
         with pytest.raises(MissingConfiguration):
-            transform._communities_ids({}, _test_record())
+            transform._communities_ids(_test_entry(), _test_record())

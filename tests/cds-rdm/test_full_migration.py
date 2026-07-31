@@ -516,6 +516,8 @@ def test_full_migration_stream(
         if record["legacy_recid"] == "2783104":
             file_restricted(loaded_rec)
             parent_access_fields(loaded_rec)
+            # Skip scientific community inclusion check since it has restricted files
+            continue
         if record["legacy_recid"] == "2046076":
             irregular_exp_field(loaded_rec)
         if record["legacy_recid"] == "2041388":
