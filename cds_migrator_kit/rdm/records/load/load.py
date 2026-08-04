@@ -27,7 +27,7 @@ from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
-from invenio_rdm_records.requests import CommunityInclusion
+from invenio_rdm_records.requests import CommunitySubmission
 from invenio_records.systemfields.relations import InvalidRelationValue
 from invenio_records_resources.services.uow import RecordCommitOp
 from invenio_requests.customizations.event_types import (
@@ -424,7 +424,7 @@ class CDSRecordServiceLoad(Load):
             # but then we get a double redirection
             legacy_recid_minter(legacy_recid, record._record.parent.model.id)
 
-    def _after_publish_add_inclusion_request(self, request_data, record, entry, uow):
+    def _after_publish_add_submission_request(self, request_data, record, entry, uow):
         """Create community inclusion request after publish."""
         legacy_recid = entry["record"]["recid"]
         request_number = f"lrecid:{legacy_recid}"
@@ -464,7 +464,7 @@ class CDSRecordServiceLoad(Load):
         request_item = current_requests_service.create(
             system_identity,
             data={"title": record["metadata"]["title"]},
-            request_type=CommunityInclusion,
+            request_type=CommunitySubmission,
             receiver=receiver,
             creator=creator,
             topic={"record": record.id},
@@ -532,7 +532,7 @@ class CDSRecordServiceLoad(Load):
                     priority="warning",
                     subfield=None,)
         if self.create_inclusion_request and request_data:
-            self._after_publish_add_inclusion_request(
+            self._after_publish_add_submission_request(
                 request_data, published_record, entry, uow
             )
         # db.session.commit()
