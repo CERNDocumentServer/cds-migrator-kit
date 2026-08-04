@@ -63,7 +63,7 @@ RECOGNISED_KEYWORD_SCHEMES = [
     "desy",
     "medline",
     "aip",
-    "jacow"
+    "jacow",
 ]
 KEYWORD_SCHEMES_TO_DROP = ["proquest", "disxa", "inspeq"]
 
@@ -157,3 +157,8 @@ udc_pattern = r"\b\d+(?:\.\d+)*-?\d*(?:\.\d+)*\b"
 
 
 FILE_SUBFORMATS_TO_DROP = ["pdfa", "unstamped"]
+
+# Legacy experiment names remapped to vocabulary ids before lookup
+EXPERIMENT_ALIASES = {
+    "t2k": "re13",
+}
