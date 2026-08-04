@@ -17,7 +17,7 @@ from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
 from invenio_db.uow import UnitOfWork
 from invenio_rdm_records.proxies import current_rdm_records_service
-from invenio_rdm_records.requests import CommunityInclusion
+from invenio_rdm_records.requests import CommunitySubmission
 from invenio_records_resources.services.uow import RecordCommitOp
 from invenio_requests.proxies import current_events_service, current_requests_service
 from invenio_search import current_search, current_search_client
@@ -415,7 +415,7 @@ def test_migrate_comments_onto_existing_inclusion_request(
         request_item = current_requests_service.create(
             system_identity,
             data={"title": record["metadata"]["title"]},
-            request_type=CommunityInclusion,
+            request_type=CommunitySubmission,
             receiver={"community": str(community.id)},
             creator={"user": str(parent.access.owned_by.owner_id)},
             topic={"record": record.id},
@@ -448,7 +448,7 @@ def test_migrate_comments_onto_existing_inclusion_request(
     current_events_service.record_cls.index.refresh()
 
     request_in_db = current_requests_service.read(system_identity, inclusion.id)
-    assert request_in_db["type"] == CommunityInclusion.type_id
+    assert request_in_db["type"] == CommunitySubmission.type_id
     assert (
         current_requests_service.record_cls.get_record(inclusion.id).get("reviewers")
         == expected_reviewers
