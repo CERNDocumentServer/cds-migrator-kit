@@ -10,6 +10,7 @@
 import csv
 import logging
 import os
+from pathlib import Path
 
 from flask import current_app
 
@@ -31,22 +32,32 @@ class CommentsLogger:
 
     def __init__(self, log_dir, collection=None):
         """Constructor."""
-        self.log_dir = log_dir
-        os.makedirs(self.log_dir, exist_ok=True)
+        self.log_dir = Path(log_dir)
+        self.collection = collection
+        # Per-collection file logs + CSV; shared dir when collection is unset
+        self.files_dir = (
+            self.log_dir / collection if collection else self.log_dir
+        )
+        os.makedirs(self.files_dir, exist_ok=True)
 
         # Initializes logging format and file handlers for logging module (not CSV report).
         formatter = logging.Formatter(
             fmt="%(asctime)s %(levelname)-8s %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
         )
-        logger = logging.getLogger("comments-migrator")
+        self._logger_name = (
+            f"comments-migrator-{collection}" if collection else "comments-migrator"
+        )
+        logger = logging.getLogger(self._logger_name)
         logger.setLevel(logging.DEBUG)
+        # Avoid duplicate handlers when the same collection is run again
+        logger.handlers.clear()
         # Info to file
-        fh_info = logging.FileHandler(self.log_dir / "info.log")
+        fh_info = logging.FileHandler(self.files_dir / "info.log")
         fh_info.setFormatter(formatter)
         fh_info.setLevel(logging.INFO)
         logger.addHandler(fh_info)
         # Errors to file
-        fh = logging.FileHandler(self.log_dir / "error.log")
+        fh = logging.FileHandler(self.files_dir / "error.log")
         fh.setLevel(logging.ERROR)
         fh.setFormatter(formatter)
         logger.addHandler(fh)
@@ -57,9 +68,7 @@ class CommentsLogger:
         logger.addHandler(sh)
 
         if collection:
-            self.report_dir = os.path.join(self.log_dir, collection)
-            os.makedirs(self.report_dir, exist_ok=True)
-            self.report_path = os.path.join(self.report_dir, self.REPORT_FILENAME)
+            self.report_path = os.path.join(self.files_dir, self.REPORT_FILENAME)
             # CSV report to file
             self._csv_file = open(self.report_path, "a", newline="", encoding="utf-8")
             self._csv_writer = csv.DictWriter(
@@ -74,10 +83,9 @@ class CommentsLogger:
             self.report_path = None
             self._csv_file = None
 
-    @classmethod
-    def get_logger(cls):
-        """Get migration logger."""
-        return logging.getLogger("comments-migrator")
+    def get_logger(self):
+        """Get migration logger for this collection (or shared when unset)."""
+        return logging.getLogger(self._logger_name)
 
     @classmethod
     def get_comments_report(cls, collection):
