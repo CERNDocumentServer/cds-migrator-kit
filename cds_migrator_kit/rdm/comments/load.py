@@ -351,96 +351,68 @@ class CDSCommentsLoad(Load):
 
         return count
 
-    def create_accepted_community_submission_request(
+    def migrate_comments(
         self,
         legacy_recid,
         record,
         parent,
         comments=None,
+        request=None,
     ):
-        """Create an accepted community submission request."""
+        """Migrate comments onto ``request``, creating one if ``request`` is None."""
         if not comments:
             self.logger.warning(
                 f"No comments found for record<{record['id']}>. Skipping request creation."
             )
             return None
 
-        community = parent.communities.default
-        record_owner_id = parent.access.owned_by.owner_id
-
-        # Resolve entities for references
-        creator_ref = ResolverRegistry.reference_entity(
-            {"user": str(record_owner_id)}, raise_=True
-        )
-        receiver_ref = ResolverRegistry.reference_entity(
-            {"community": str(community.id)}, raise_=True
-        )
-        topic_ref = ResolverRegistry.reference_entity(
-            {"record": record["id"]}, raise_=True
-        )
+        is_request_created = request is None
 
         with UnitOfWork() as uow:
-            request_item = current_requests_service.create(
-                system_identity,
-                data={
-                    "title": record["metadata"]["title"],
-                },
-                request_type=CommunitySubmission,
-                receiver=receiver_ref,
-                creator=creator_ref,
-                topic=topic_ref,
-                uow=uow,
-            )
-            request = request_item._record
-            request.status = "accepted"
-            request.number = f"lrecid:{legacy_recid}"
-            created_at = datetime.fromisoformat(record["created"])
-            request.model.created = created_at
+            if request is None:
+                community = parent.communities.default
+                record_owner_id = parent.access.owned_by.owner_id
+                creator_ref = ResolverRegistry.reference_entity(
+                    {"user": str(record_owner_id)}, raise_=True
+                )
+                receiver_ref = ResolverRegistry.reference_entity(
+                    {"community": str(community.id)}, raise_=True
+                )
+                topic_ref = ResolverRegistry.reference_entity(
+                    {"record": record["id"]}, raise_=True
+                )
+                request_item = current_requests_service.create(
+                    system_identity,
+                    data={"title": record["metadata"]["title"]},
+                    request_type=CommunitySubmission,
+                    receiver=receiver_ref,
+                    creator=creator_ref,
+                    topic=topic_ref,
+                    uow=uow,
+                )
+                request = request_item._record
+                request.status = "accepted"
+                request.number = f"lrecid:{legacy_recid}"
+                created_at = datetime.fromisoformat(record["created"])
+                request.model.created = created_at
+                self.logger.info(
+                    f"Created accepted community submission request<{request.id}> "
+                    f"for record<{record['id']}>."
+                )
+            else:
+                self.logger.info(
+                    f"Migrating comments onto existing request<{request.id}> "
+                    f"for recid: {legacy_recid}."
+                )
 
             self._apply_reviewers(request)
-
-            self.logger.info(
-                f"Created accepted community submission request<{request.id}> for record<{record['id']}>."
-            )
-
             count = self._add_comments_to_request(
                 request,
                 parent,
                 comments,
                 legacy_recid,
                 uow,
-                link_parent_relation=True,
-            )
-
-            # Commit at the end so that rollback can be done if any error occurs not only for the request but also for the comments in the middle
-            uow.register(
-                RecordCommitOp(request, indexer=current_requests_service.indexer)
-            )
-            uow.commit()
-        self.logger.info(
-            f"Successfully migrated {count} comment(s) for request: {request.id} from recid: {legacy_recid}"
-        )
-
-        return request
-
-    def migrate_comments_to_existing_request(
-        self, request, parent, comments, legacy_recid
-    ):
-        """Attach migrated comments to an existing community inclusion request."""
-        if not comments:
-            self.logger.warning(
-                f"No comments found for request<{request.id}>. Skipping."
-            )
-            return None
-
-        with UnitOfWork() as uow:
-            self._apply_reviewers(request)
-            self.logger.info(
-                f"Migrating comments onto existing request<{request.id}> "
-                f"for recid: {legacy_recid}."
-            )
-            count = self._add_comments_to_request(
-                request, parent, comments, legacy_recid, uow
+                link_parent_relation=is_request_created,
             )
             uow.register(
                 RecordCommitOp(request, indexer=current_requests_service.indexer)
@@ -507,13 +479,12 @@ class CDSCommentsLoad(Load):
             )
             return None
 
-        if existing_request:
-            return self.migrate_comments_to_existing_request(
-                existing_request, parent, comments, recid
-            )
-
-        return self.create_accepted_community_submission_request(
-            recid, oldest_record, parent, comments
+        return self.migrate_comments(
+            recid,
+            oldest_record,
+            parent,
+            comments=comments,
+            request=existing_request,
         )
 
     def _load(self, entry):
