@@ -171,6 +171,7 @@ CERN_SCIENTIFIC_RESOURCE_TYPES = {
     "publication-section",
     "publication-conferencepaper",
     "publication-conferenceproceeding",
+    "publication-conferencenote",
     "publication-journal",
     "publication-article",
     "publication-preprint",
