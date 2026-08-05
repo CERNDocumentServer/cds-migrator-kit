@@ -15,7 +15,7 @@ from cds_migrator_kit.rdm.records.transform.models.research import ResearchModel
 class LEPResearchModel(ResearchModel):
     """Translation model for research."""
 
-    __query__ = '980__:L3_Papers OR 980__:INTNOTEALEPHPRIV OR 980__:OPAL_Papers OR 980__:OPAL_Misc OR 980__:DELPHI_Misc OR 980__:DELPHI_Papers OR 980__:L3_Misc OR 693__.e:L3 OR 693__.e:RE4 OR 693__.e:DELPHI OR 693__.e:OPAL OR 693__.e:ALEPH OR 690C_.a:PUBLDELPHINOTE OR 690C_.a:PRIVDELPHINOTE OR 710__.g:"ALEPH Collaboration" OR 710__.g:"Aleph Collaboration" OR 980__.a:ALEPH_Papers OR 980__.a:ALEPHDRAFT OR 037__:CERN-ALEPH-PUB-* OR 088__:CERN-ALEPH-PUB-* OR 037__:CERN-ALEPH-ARCH-DATA-* OR 088__:CERN-ALEPH-ARCH-DATA-* -980__:THESIS -037__:CERN-STUDENTS-Note-* -980__:DELETED -980__.c:MIGRATED -980__.a:DUMMY -690C_.a:SCICOM'
+    __query__ = '(710__.5:SI OR 710__.5:SC OR 710__.5:SL OR 710__.5:PS OR 710__.5:MPS OR 710__.5:ISR OR 710__.5:MSC OR 710__.5:AC OR 710__.5:SPS OR 710__.5:LEP OR 710__.5:AB OR 710__.5:AR) AND (980__:ARTICLE OR 980__:PREPRINT) OR 690C_.a:ISRRunning OR 690C_.a:ISRPerForm -980__:DELETED -980__.c:MIGRATED -980__.a:DUMMY -690C_.a:SCICOM -710__.5:TS -710__.5:ST -710__.5:MT -710__.5:EST -710__.5:SB -088:CERN-ALEPH-PUB-* -693__.e:ALEPH'
 
     __ignore_keys__ = {
         "594__a", # can be ignored for this collection
@@ -110,7 +110,7 @@ class LEPResearchModel(ResearchModel):
     }
 
 
-lep_research_model = LEPResearchModel(
+ab_dep_model = LEPResearchModel(
     bases=(rdm_base_publication_model,),
     entry_point_group="cds_migrator_kit.migrator.rdm.rules.research",
 )
