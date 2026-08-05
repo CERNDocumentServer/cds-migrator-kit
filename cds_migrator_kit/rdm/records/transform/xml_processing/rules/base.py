@@ -549,6 +549,12 @@ def corporate_author(self, key, value):
             departments.append(department)
         self["custom_fields"]["cern:departments"] = departments
         raise IgnoreKey("contributors")
+    if "b" in value:
+        unit = value.get("b")
+        if unit:
+            _custom_fields = self.get("custom_fields", {})
+            _custom_fields["cern:administrative_unit"] = unit
+            self["custom_fields"] = _custom_fields
 
     raise IgnoreKey("contributors")
 
