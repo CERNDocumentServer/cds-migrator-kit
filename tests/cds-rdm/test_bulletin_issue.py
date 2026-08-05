@@ -80,8 +80,3 @@ def test_bulletin_issue(
         )
         if record["legacy_recid"] == "2234683":
             parent_related_identifier(loaded_rec)
-
-
-# FAILED tests/cds-rdm/test_access_permissions.py::test_access_permissions - assert 2 == 3
-# FAILED tests/cds-rdm/test_bulletin_issue.py::test_bulletin_issue - AssertionError: assert [{'identifier...heme': 'cds'}] == [{'identifier...heme': 'cds'}]
-# FAILED tests/cds-rdm/test_full_migration.py::test_full_migration_stream - assert 0 == 2
