@@ -15,10 +15,11 @@ IGNORE_SYSTEM_KEYS = {
     # "035__z",  # oai harvest tag
     "037__c",  # arxiv subject
     "100__m",  # email of contributor
-    # "245__9",  # Provenance of title
+    "245__9",  # Provenance of title
     # "270__m",  # Contact email
     "300__a",  # number of pages
-    # "520__9",  # Provenance of the description
+    "500__9",  # Provenance of the note
+    "520__9",  # Provenance of the description
     # "540__3",  # Material of the license
     # "540__9",  # Also material of the license
     # "542__3",  # Also material of the license
