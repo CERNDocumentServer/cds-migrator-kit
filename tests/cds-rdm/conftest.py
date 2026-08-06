@@ -168,9 +168,6 @@ def app_config(app_config):
     app_config["CDS_MIGRATOR_KIT_ENV"] = "test"
     app_config["CDS_MIGRATOR_KIT_SITE_UI_URL"] = "https://localhost:5000"
     app_config["CDS_MIGRATOR_KIT_SITE_API_URL"] = "https://localhost:5000/api"
-    app_config["CDS_MIGRATOR_KIT_COMMENTS_REVIEWERS"] = {
-        "test-comments": [{"group": "test-comments-reviewers"}],
-    }
     # Overrides just experiments.yaml (kept in sync with the `experiments_v`
     # fixture below); other vocabulary files still fall back to cds-rdm's.
     app_config["CDS_MIGRATOR_KIT_VOCABULARIES_DIR"] = os.path.join(

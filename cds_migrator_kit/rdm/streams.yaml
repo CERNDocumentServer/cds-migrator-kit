@@ -458,3 +458,17 @@ records:
         - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/dep_ab/duplicated_pids.json
+comments:
+  faser-drafts:
+    dir_path: /migration/faser-drafts/comments/
+    reviewers:
+      - {group: faser-all}
+  faser:
+    dir_path: /migration/faser/comments/
+    reviewers:
+      - {group: faser-all}
+
+  faser-ep:
+    dir_path: /migration/faser-ep/comments/
+    reviewers:
+      - {group: faser-all}
