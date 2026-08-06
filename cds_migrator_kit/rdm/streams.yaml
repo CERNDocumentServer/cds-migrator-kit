@@ -575,3 +575,37 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "d9c138bd-d39c-4797-a06c-c6f8db45f3ce"
+  ship:
+    data_dir: cds_migrator_kit/rdm/data/ship
+    create_inclusion_request: true
+    plots: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/ship/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/ship/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "7277793b-5fce-458a-a3c4-e05a6cc43c69"
+  ship-restricted:
+    data_dir: cds_migrator_kit/rdm/data/ship-restricted
+    restricted: "True"
+    plots: true
+    access_grants_view:
+      - ship-collaboration-dynamic
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/ship-restricted/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/ship-restricted/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "7277793b-5fce-458a-a3c4-e05a6cc43c69"
+  ship-ep:
+    plots: true
+    data_dir: cds_migrator_kit/rdm/data/ship
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/ship-ep/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/ship/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "7277793b-5fce-458a-a3c4-e05a6cc43c69"
