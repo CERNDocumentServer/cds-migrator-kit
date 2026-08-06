@@ -173,6 +173,50 @@ invenio migration run --collection faser-ep --ep-approval
 
 Without `--ep-approval`, the loader will reject EP approval records.
 
+#### Comments migration
+
+Configure the collection under `comments` in `streams.yaml` (`dir_path`, `reviewers`). Paths and reviewers are loaded from there when you pass `--collection`.
+
+1. Dump comments for the collection and generate commenter metadata:
+
+```shell
+# on cds-migration-01
+ipython ./scripts/dump_comments_to_migrate.py
+```
+
+Output: `comments_metadata.json`. The script also generates `missing_commentors_from_ldap.json`.
+
+**Do not rename these files** — the runners expect exactly `comments_metadata.json` under `dir_path` and `missing_commentors_from_ldap.json` under `dir_path/users/`.
+
+2. Ensure files are in place (paths should match `streams.yaml`):
+
+- `comments_metadata.json` under the collection `dir_path`
+- `people.csv` and `missing_commentors_from_ldap.json` under `dir_path/users/`
+
+```shell
+cp /eos/media/cds/cds-rdm/<env>/migration/users/people.csv /eos/media/cds/cds-rdm/<env>/migration/<collection>/comments/users/
+```
+
+3. Pre-create commenter accounts (dry run first):
+
+```shell
+# on migration pod
+invenio migration comments commenters-run --collection <COLLECTION> --dry-run
+invenio migration comments commenters-run --collection <COLLECTION>
+```
+
+After running, make sure the users are indexed and not only created in the DB.
+
+4. Migrate comments (dry run first):
+
+```shell
+# on migration pod
+invenio migration comments run --collection <COLLECTION> --dry-run
+invenio migration comments run --collection <COLLECTION>
+```
+
+The comments runner can be re-run after errors; already migrated comments are skipped.
+
 ### Migrate the statistics for the successfully migrated records
 
 When the `invenio migration run` command ends it will produce a `rdm_records_state.json` file which has linked information about the migrated records and the old system. The format will be similar to below:

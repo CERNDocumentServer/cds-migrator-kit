@@ -12,6 +12,7 @@ import os
 import tempfile
 
 import pytest
+import yaml
 from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
@@ -40,6 +41,35 @@ Testcases to be used in the tests:
     - 45678: Deeply nested comments related to files: Normal case with flatted replies
 (Also to show the errors before doesn't affect other testcases)
 """
+
+COMMENTS_DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "comments")
+
+
+def write_comments_stream_config(
+    temp_dir,
+    collection,
+    dir_path=None,
+    reviewers=None,
+):
+    """Write a temporary streams.yaml for comments collection config."""
+    config_path = os.path.join(temp_dir, "streams.yaml")
+    with open(config_path, "w") as fp:
+        yaml.safe_dump(
+            {
+                "comments": {
+                    collection: {
+                        "dir_path": dir_path or COMMENTS_DATA_DIR,
+                        "reviewers": (
+                            reviewers
+                            if reviewers is not None
+                            else [{"group": "test-comments-reviewers"}]
+                        ),
+                    }
+                }
+            },
+            fp,
+        )
+    return config_path
 
 
 @pytest.fixture
@@ -123,23 +153,17 @@ def test_migrate_comments_from_metadata(
     db.session.add(user2)
     db.session.commit()
 
-    expected_reviewers = current_app.config["CDS_MIGRATOR_KIT_COMMENTS_REVIEWERS"][
-        "test-comments"
-    ]
+    expected_reviewers = [{"group": "test-comments-reviewers"}]
 
     # Create directory structure for attached files
-    comments_dir = os.path.join(os.path.dirname(__file__), "data", "comments")
-    os.makedirs(comments_dir, exist_ok=True)
+    os.makedirs(COMMENTS_DATA_DIR, exist_ok=True)
 
     # Run comments runner
     log_dir = os.path.join(temp_dir, "logs")
     runner = CommentsRunner(
         stream_definition=CommentsStreamDefinition,
-        filepath=os.path.join(
-            os.path.dirname(__file__), "data", "comments", "comments_metadata.json"
-        ),
+        config_filepath=write_comments_stream_config(temp_dir, "test-comments"),
         collection="test-comments",
-        dirpath=comments_dir,
         log_dir=log_dir,
         dry_run=False,
     )
@@ -316,18 +340,14 @@ def test_migrate_comments_from_metadata(
 def test_migrate_comments_dry_run(temp_dir, test_app, db):
     """Test migrating comments in dry-run mode."""
     # Create directory structure for attached files
-    comments_dir = os.path.join(os.path.dirname(__file__), "data", "comments")
-    os.makedirs(comments_dir, exist_ok=True)
+    os.makedirs(COMMENTS_DATA_DIR, exist_ok=True)
 
     # Run comments runner in dry-run mode
     log_dir = os.path.join(temp_dir, "logs")
     runner = CommentsRunner(
         stream_definition=CommentsStreamDefinition,
-        filepath=os.path.join(
-            os.path.dirname(__file__), "data", "comments", "comments_metadata.json"
-        ),
+        config_filepath=write_comments_stream_config(temp_dir, "test-comments"),
         collection="test-comments",
-        dirpath=comments_dir,
         log_dir=log_dir,
         dry_run=True,
     )
@@ -348,10 +368,8 @@ def test_create_users_from_metadata(
     log_dir = os.path.join(temp_dir, "logs")
     runner = CommenterRunner(
         stream_definition=CommenterStreamDefinition,
-        filename="missing_commentors_from_ldap.json",
-        missing_users_dir=os.path.join(
-            os.path.dirname(__file__), "data", "comments", "users"
-        ),
+        config_filepath=write_comments_stream_config(temp_dir, "test-comments"),
+        collection="test-comments",
         log_dir=log_dir,
         dry_run=False,
     )
@@ -381,10 +399,8 @@ def test_create_users_dry_run(
     log_dir = os.path.join(temp_dir, "logs")
     runner = CommenterRunner(
         stream_definition=CommenterStreamDefinition,
-        filename="missing_commentors_from_ldap.json",
-        missing_users_dir=os.path.join(
-            os.path.dirname(__file__), "data", "comments", "users"
-        ),
+        config_filepath=write_comments_stream_config(temp_dir, "test-comments"),
+        collection="test-comments",
         log_dir=log_dir,
         dry_run=True,
     )
@@ -407,9 +423,7 @@ def test_migrate_comments_onto_existing_inclusion_request(
     legacy_recid = 12345
     record = migrated_records_with_comments[legacy_recid]
     parent = record._record.parent
-    expected_reviewers = current_app.config["CDS_MIGRATOR_KIT_COMMENTS_REVIEWERS"][
-        "test-comments"
-    ]
+    expected_reviewers = [{"group": "test-comments-reviewers"}]
 
     with UnitOfWork() as uow:
         request_item = current_requests_service.create(
@@ -433,13 +447,11 @@ def test_migrate_comments_onto_existing_inclusion_request(
     db.session.add(User(email="submitter10@gmail.com", active=True))
     db.session.commit()
 
-    comments_dir = os.path.join(os.path.dirname(__file__), "data", "comments")
     log_dir = os.path.join(temp_dir, "logs")
     runner = CommentsRunner(
         stream_definition=CommentsStreamDefinition,
-        filepath=os.path.join(comments_dir, "comments_metadata.json"),
+        config_filepath=write_comments_stream_config(temp_dir, "test-comments"),
         collection="test-comments",
-        dirpath=comments_dir,
         log_dir=log_dir,
         dry_run=False,
     )
@@ -547,9 +559,12 @@ def test_migrate_comments_ep_targets_internal_version(
 
     CommentsRunner(
         stream_definition=CommentsStreamDefinition,
-        filepath=metadata_path,
-        collection="faser-ep",
-        dirpath=temp_dir,
+        config_filepath=write_comments_stream_config(
+            temp_dir,
+            "test-collection",
+            dir_path=temp_dir,
+        ),
+        collection="test-collection",
         log_dir=os.path.join(temp_dir, "logs"),
         dry_run=False,
     ).run()

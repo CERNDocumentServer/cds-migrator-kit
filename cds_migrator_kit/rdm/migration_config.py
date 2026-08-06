@@ -475,13 +475,6 @@ CDS_MIGRATOR_KIT_VOCABULARIES_DIR = None
 """Absolute path to the vocabularies directory. Defaults to
 {instance_path}/app_data/vocabularies when None."""
 
-CDS_MIGRATOR_KIT_COMMENTS_REVIEWERS = {
-    "faser-ep": [{"group": "faser-all"}],
-    "faser": [{"group": "faser-all"}],
-    "faser-drafts": [{"group": "faser-all"}],
-}
-"""Per-collection reviewers to attach on migrated comment requests."""
-
 CDS_ACCESS_GROUP_MAPPINGS = {
     "SSO": ["cern-accounts-primary"],
     "ITDepRestrFile": ["it-dep"],

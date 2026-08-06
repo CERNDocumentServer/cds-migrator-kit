@@ -282,28 +282,18 @@ def comments():
     is_flag=True,
 )
 @click.option(
-    "--filepath",
-    help="Path to the comments metadata json file.",
-    required=True,
-)
-@click.option(
     "--collection",
-    help="Collection name to be migrated (for logging purposes and reviewers config)",
-    required=True,
-)
-@click.option(
-    "--dirpath",
-    help="Path to the record-wise comments directory containing attached files.",
+    help="Collection name to be migrated (paths loaded from streams.yaml).",
     required=True,
 )
 @with_appcontext
-def comments_run(filepath, dirpath, collection, dry_run=False):
-    """Migrate the comments for the records in `filepath`."""
+def run(collection, dry_run=False):
+    """Migrate the comments for the given collection."""
+    stream_config = current_app.config["CDS_MIGRATOR_KIT_STREAM_CONFIG"]
     log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "comments"
     runner = CommentsRunner(
         stream_definition=CommentsStreamDefinition,
-        filepath=filepath,
-        dirpath=dirpath,
+        config_filepath=Path(stream_config).absolute(),
         log_dir=log_dir,
         collection=collection,
         dry_run=dry_run,
@@ -317,24 +307,20 @@ def comments_run(filepath, dirpath, collection, dry_run=False):
     is_flag=True,
 )
 @click.option(
-    "--filename",
-    help="Name of the missing commentors metadata json file.",
+    "--collection",
+    help="Collection name whose commenters should be pre-created (paths loaded from streams.yaml).",
     required=True,
 )
-@click.option(
-    "--missing-users-dir",
-    help="Path to the directory containing people.csv (contains person_id) and missing_commentors_from_ldap.json files.",
-    default=None,
-)
 @with_appcontext
-def commenters_run(filename, missing_users_dir, dry_run=False):
-    """Pre-create commenters accounts."""
+def commenters_run(collection, dry_run=False):
+    """Pre-create commenters accounts for the given collection."""
+    stream_config = current_app.config["CDS_MIGRATOR_KIT_STREAM_CONFIG"]
     log_dir = Path(current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]) / "comments"
     runner = CommenterRunner(
         stream_definition=CommenterStreamDefinition,
-        filename=filename,
-        missing_users_dir=missing_users_dir,
+        config_filepath=Path(stream_config).absolute(),
         log_dir=log_dir,
+        collection=collection,
         dry_run=dry_run,
     )
     runner.run()

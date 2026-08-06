@@ -45,11 +45,13 @@ class CDSCommentsLoad(Load):
         logger,
         dry_run=False,
         collection=None,
+        reviewers=None,
     ):
         """Constructor."""
         self.dirpath = dirpath  # The directory path where the attached files are stored
         self.dry_run = dry_run
         self.collection = collection
+        self.reviewers = reviewers or []
         self.logger = logger.get_logger()
         self.report_logger = logger
         self.all_record_versions = {}
@@ -256,13 +258,14 @@ class CDSCommentsLoad(Load):
         return event
 
     def _configured_reviewers(self):
-        """Return configured reviewers for the current collection, if any."""
-        return (
-            current_app.config.get("CDS_MIGRATOR_KIT_COMMENTS_REVIEWERS", {}).get(
-                self.collection
-            )
-            or []
-        )
+        """Return configured reviewers from streams.yaml for this collection."""
+        reviewers = []
+        for reviewer in self.reviewers:
+            if isinstance(reviewer, str):
+                reviewers.append({"group": reviewer})
+            else:
+                reviewers.append(reviewer)
+        return reviewers
 
     def _get_existing_request(self, legacy_recid):
         """Return the request with number ``lrecid:{legacy_recid}``, if any."""
