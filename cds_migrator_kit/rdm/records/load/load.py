@@ -780,7 +780,8 @@ class CDSRecordServiceLoad(Load):
             sync = CDSToCLCSyncModel(
                 parent_record_pid=record_state["parent_recid"],
                 status="P",
-                auto_sync=False,
+                # With auto_sync=True, it will be synced to the corresponding CLC record automatically on publish
+                auto_sync=True,
             )
             db.session.add(sync)
 
