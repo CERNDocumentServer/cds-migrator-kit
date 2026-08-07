@@ -1153,13 +1153,17 @@ class TestLicenseAndFundingFrom540:
 
     def test_cc_by_license_added_to_rights(self):
         record = {"custom_fields": {}}
-        result = oa_level_from_license(record, "540__", {"a": "CC BY", "3": "publication"})
+        result = oa_level_from_license(
+            record, "540__", {"a": "CC BY", "3": "publication"}
+        )
         assert {"id": "cc-by"} in result
         assert "cern:oa_level" not in self._cf(record)
 
     def test_cc_hyphen_by_license_added_to_rights(self):
         record = {"custom_fields": {}}
-        result = oa_level_from_license(record, "540__", {"a": "CC-BY", "3": "publication"})
+        result = oa_level_from_license(
+            record, "540__", {"a": "CC-BY", "3": "publication"}
+        )
         assert {"title": {"en": "CC-BY"}} in result
         assert "cern:oa_level" not in self._cf(record)
 
