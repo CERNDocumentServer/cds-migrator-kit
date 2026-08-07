@@ -633,18 +633,52 @@ def title(self, key, value):
     raise IgnoreKey("title")
 
 
+_FUNDING_MODEL_MAP = {
+    "scoap3": "scoap3",
+    "collective": "collective",
+    "cern-rp": "cern-rp",
+    "cern-apc": "cern-apc",
+    "other": "other",
+}
+
+
 @model.over("rights", "^540__")
 @for_each_value
 @filter_values
 def licenses(self, key, value):
-    """Translates license fields."""
+    """Translates license fields.
+
+    Handles:
+      540__a — license identifier
+      540__b — copyright holder (sets self["copyright"])
+      540__u — license URL
+      540__f — OA funding model (SCOAP3, CERN-RP, CERN-APC, Collective, Other)
+    """
     ARXIV_LICENSE = "arxiv.org/licenses/nonexclusive-distrib/1.0/"
     _license = dict()
     license_url = clean_val("u", value, str)
     license_id = clean_val("a", value, str)
+
     if "b" in value:
         imposing = value.get("b")
         self["copyright"] = f"© {imposing}.".strip()
+
+    # OA funding model from 540__f
+    qualifier = value.get("f") or ""
+    if isinstance(qualifier, tuple):
+        qualifier = qualifier[0]
+    qualifier = qualifier.strip().lower()
+    funding_model_id = _FUNDING_MODEL_MAP.get(qualifier)
+    if funding_model_id:
+        _custom_fields = self.get("custom_fields", {})
+        if not _custom_fields.get("cern:oa_funding_model"):
+            _custom_fields["cern:oa_funding_model"] = {"id": funding_model_id}
+            self["custom_fields"] = _custom_fields
+
+    if not license_id:
+        # 540__f/b without a license id — side effects (funding model, copyright) already applied
+        raise UnexpectedValue("License title missing", field=key, subfield="a", value=value)
+
     # 2897660, 2694245, 684383
     if license_id in [
         "CC BY-NC-ND 3.0 US",
@@ -655,12 +689,8 @@ def licenses(self, key, value):
         return {
             "title": {"en": license_id},
             "link": license_url,
-            # "description": description,
         }
-    if not license_id:
-        raise UnexpectedValue(
-            "License title missing", field=key, subfield="a", value=value
-        )
+
     license_id.lower()
     is_standard_license = True
     is_arxiv = "arxiv" in license_id
