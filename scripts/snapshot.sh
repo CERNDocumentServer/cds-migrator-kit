@@ -83,6 +83,20 @@ case "$ACTION" in
       echo "Restore failed (postgres exit=$pg_status, opensearch exit=$os_status)" >&2
       exit 1
     fi
+
+    echo "=== Fixing files_location URI for this machine ==="
+    # Derive instance data path from the cds-rdm venv activate script path:
+    # .../cds-rdm/.venv/bin/activate -> .../cds-rdm/.venv/var/instance/data
+    CDS_RDM_VENV_DIR="$(dirname "$(dirname "$CDS_RDM_VENV_ACTIVATE")")"
+    INSTANCE_DATA_PATH="$CDS_RDM_VENV_DIR/var/instance/data"
+    mkdir -p "$INSTANCE_DATA_PATH"
+    DB_USER="${POSTGRES_USER:-cds-rdm}"
+    DB_NAME="${POSTGRES_DB:-cds-rdm}"
+    CONTAINER_ID="${DB_CONTAINER:-$(docker ps --format '{{.ID}}\t{{.Image}}' | awk -F'\t' '$2 ~ /^postgres(:|$)/{print $1; exit}')}"
+    docker exec "$CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" \
+      -c "UPDATE files_location SET uri = '$INSTANCE_DATA_PATH' WHERE name = 'default-location';"
+    echo "files_location.uri set to: $INSTANCE_DATA_PATH"
+
     echo "Snapshot '$NAME' restored."
     ;;
 esac
