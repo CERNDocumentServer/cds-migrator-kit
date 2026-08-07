@@ -373,6 +373,38 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "e5de962b-5e2c-408f-be69-2823fda1f732"
+  isolde:
+    data_dir: cds_migrator_kit/rdm/data/isolde
+    plots: true
+    preferred_model: isolde  # set to resolve MultipleModelsMatched as warning instead of error
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/isolde/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/isolde/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "1c46ceab-af68-4502-a436-cdf5a4cfbbe0"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/isolde/duplicated_pids.json
+  staff_association:
+    data_dir: cds_migrator_kit/rdm/data/staff_association
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/staff_association/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/staff_association/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "3d0a8ba2-7ec6-4016-b171-325d68e50e51"
+  bulletin_drafts:
+    data_dir: cds_migrator_kit/rdm/data/bulletin_drafts
+    restricted: "True"
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/bulletin_drafts/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/bulletin_drafts/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "3d0a8ba2-7ec6-4016-b171-325d68e50e51"
   ts_dep:
     plots: true
     data_dir: cds_migrator_kit/rdm/data/dep_ts

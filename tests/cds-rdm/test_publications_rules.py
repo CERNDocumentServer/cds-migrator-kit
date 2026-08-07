@@ -11,6 +11,9 @@ import pytest
 from dojson.errors import IgnoreKey
 
 from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
+    licenses as oa_level_from_license,
+)
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
     abbreviation,
     deadline_date,
@@ -20,8 +23,11 @@ from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import
     issn,
     journal,
     meeting,
+<<<<<<< HEAD
     oa_level_from_license,
     resource_type,
+=======
+>>>>>>> 16871dc (feat(isolde): add ISOLDE migration rules, model and stream configuration)
     udc,
 )
 
@@ -1145,66 +1151,63 @@ class TestMeetingFrom111And711:
 
 
 class TestLicenseAndFundingFrom540:
-    """Tests for oa_level_from_license (540__ rule)."""
+    """Tests for the 540__ licenses rule (now in base)."""
 
     def _cf(self, record):
         return record.get("custom_fields", {})
 
     def test_cc_by_license_added_to_rights(self):
         record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_license(record, "540__", {"a": "CC BY", "3": "publication"})
-        assert record["rights"] == [{"id": "cc-by"}]
+        result = oa_level_from_license(record, "540__", {"a": "CC BY", "3": "publication"})
+        assert {"id": "cc-by"} in result
         assert "cern:oa_level" not in self._cf(record)
 
     def test_cc_hyphen_by_license_added_to_rights(self):
         record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_license(record, "540__", {"a": "CC-BY", "3": "publication"})
-        assert record["rights"] == [{"title": {"en": "CC-BY"}}]
+        result = oa_level_from_license(record, "540__", {"a": "CC-BY", "3": "publication"})
+        assert {"title": {"en": "CC-BY"}} in result
         assert "cern:oa_level" not in self._cf(record)
 
     def test_non_standard_license_added_to_rights(self):
         record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
-            oa_level_from_license(record, "540__", {"a": "Some other license"})
-        assert record["rights"] == [{"title": {"en": "Some other license"}}]
+        result = oa_level_from_license(record, "540__", {"a": "Some other license"})
+        assert {"title": {"en": "Some other license"}} in result
         assert "cern:oa_level" not in self._cf(record)
 
     def test_funding_model_scoap3(self):
         record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
+        with pytest.raises(UnexpectedValue):
             oa_level_from_license(record, "540__", {"f": "SCOAP3"})
         assert self._cf(record)["cern:oa_funding_model"] == {"id": "scoap3"}
         assert "cern:oa_level" not in self._cf(record)
 
     def test_funding_model_collective(self):
         record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
+        with pytest.raises(UnexpectedValue):
             oa_level_from_license(record, "540__", {"f": "Collective"})
         assert self._cf(record)["cern:oa_funding_model"] == {"id": "collective"}
 
     def test_funding_model_cern_rp(self):
         record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
+        with pytest.raises(UnexpectedValue):
             oa_level_from_license(record, "540__", {"f": "CERN-RP"})
         assert self._cf(record)["cern:oa_funding_model"] == {"id": "cern-rp"}
 
     def test_funding_model_cern_apc(self):
         record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
+        with pytest.raises(UnexpectedValue):
             oa_level_from_license(record, "540__", {"f": "CERN-APC"})
         assert self._cf(record)["cern:oa_funding_model"] == {"id": "cern-apc"}
 
     def test_funding_model_other(self):
         record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
+        with pytest.raises(UnexpectedValue):
             oa_level_from_license(record, "540__", {"f": "Other"})
         assert self._cf(record)["cern:oa_funding_model"] == {"id": "other"}
 
     def test_bronze_does_not_set_funding_model(self):
         record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
+        with pytest.raises(UnexpectedValue):
             oa_level_from_license(record, "540__", {"f": "Bronze"})
         assert "cern:oa_funding_model" not in self._cf(record)
         assert "cern:oa_level" not in self._cf(record)
@@ -1212,7 +1215,7 @@ class TestLicenseAndFundingFrom540:
     def test_funding_model_not_overwritten_by_second_tag(self):
         """First funding model found wins."""
         record = {"custom_fields": {}}
-        with pytest.raises(IgnoreKey):
+        with pytest.raises(UnexpectedValue):
             oa_level_from_license(
                 record, "540__", [{"f": "SCOAP3"}, {"f": "Collective"}]
             )
