@@ -149,8 +149,8 @@ class MigrationProgressLogger:
         """
         if recid in self._temp_state_cache:
             new_state = deepcopy(self._temp_state_cache[recid])
-            new_state["message"] = f"{new_state['message']}\n{state['message']}"
-            new_state["value"] = f"{new_state['value']}\n{state['value']}"
+            new_state["message"] = f"{new_state.get('message', '')}\n{state.get('message', '')}"
+            new_state["value"] = f"{new_state.get('value', '')}\n{state.get('value', '')}"
             state = new_state
         self._temp_state_cache[recid] = state
 

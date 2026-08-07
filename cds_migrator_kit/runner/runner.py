@@ -67,6 +67,7 @@ class Runner:
                     "access_grants_view", False
                 )
                 self.plots = stream_config[collection].get("plots", False)
+                self.preferred_model = stream_config[collection].get("preferred_model", None)
                 self.data_dir.mkdir(parents=True, exist_ok=True)
 
                 StandardLogger.initialize()
@@ -94,6 +95,7 @@ class Runner:
                         restricted=self.restricted,
                         access_grants_view=self.access_grants_view,
                         plots=self.plots,
+                        preferred_model=self.preferred_model,
                         migration_logger=self.migration_logger,
                         record_state_logger=self.record_state_logger,
                     )

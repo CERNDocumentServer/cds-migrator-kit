@@ -8,6 +8,7 @@
 """CDS-RDM transform step module."""
 import datetime
 import logging
+import re
 from collections import OrderedDict
 from copy import deepcopy
 from pathlib import Path
@@ -144,6 +145,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         migration_logger=None,
         record_state_logger=None,
         access_grants_view=None,
+        preferred_model=None,
     ):
         """Constructor."""
         self.missing_users_dir = missing_users_dir
@@ -155,6 +157,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         self.access_grants_view = access_grants_view
         self.migration_logger = migration_logger
         self.record_state_logger = record_state_logger
+        self.preferred_model = preferred_model
         self.ep_approval_request = None
         super().__init__(partial)
 
@@ -771,9 +774,26 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         """Transform a record single entry."""
         record_dump = CDSRecordDump(
             entry,
+            preferred_model=self.preferred_model,
         )
 
         record_dump.prepare_revisions()
+
+        if record_dump.multiple_models_warning:
+            w = record_dump.multiple_models_warning
+            recid = entry.get("recid") or entry.get("record", {}).get("recid")
+            matched = re.findall(r"\['(\w+)',", w.message or "")
+            self.migration_logger.add_information(
+                str(recid),
+                {
+                    "type": w.type,
+                    "error": w.description,
+                    "message": w.message,
+                    "value": ", ".join(matched),
+                    "priority": "warning",
+                },
+            )
+
         timestamp, json_data = record_dump.latest_revision
 
         self._verify_publication_date(entry, json_data)
@@ -853,6 +873,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         migration_logger=None,
         record_state_logger=None,
         access_grants_view=None,
+        preferred_model=None,
     ):
         """Constructor."""
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
@@ -865,6 +886,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         self.plots = plots
         self.migration_logger = migration_logger
         self.record_state_logger = record_state_logger
+        self.preferred_model = preferred_model
         self.db_state = {"affiliations": CDSMigrationAffiliationMapping}
         super().__init__(workers, throw)
 
@@ -939,6 +961,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             access_grants_view=self.access_grants_view,
             migration_logger=self.migration_logger,
             record_state_logger=self.record_state_logger,
+            preferred_model=self.preferred_model,
         ).transform(entry)
 
     def _draft(self, entry):
