@@ -361,7 +361,12 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {
     },
     "apprn": {
         "label": _("Approval Report Number"),
-        "validator": schemes.is_approval_report_number,
+        # always_valid: old-format apprn (e.g. CERN-EP-83-001) don't follow the
+        # YYYY convention but are still migrated as apprn. Post-migration,
+        # only super-admins can edit those records. New submissions on the
+        # production app use the strict is_approval_report_number validator.
+        # TODO: change this according to https://github.com/CERNDocumentServer/cds-rdm/pull/917
+        "validator": always_valid,
         "datacite": "CDS",
     },
     "aleph": {
