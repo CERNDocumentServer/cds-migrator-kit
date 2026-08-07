@@ -45,4 +45,5 @@ IGNORE_SYSTEM_KEYS = {
     "999C6a",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
     "999C6t",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
     "999C6v",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
+    "999C5d",  # old INSPIRE attr
 }

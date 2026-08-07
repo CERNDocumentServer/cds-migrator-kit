@@ -102,9 +102,9 @@ json_dump_dir = "/tmp/"
 
 redirect_map = search_dups(collection_q)
 # This map is calculated manually and it should be adjusted per collection
-MANUAL_REDIRECT_MAP = {"2913580": 2913581, "2907803": 2907804, "2909209": 2909210}
+# MANUAL_REDIRECT_MAP = {"2913580": 2913581, "2907803": 2907804, "2909209": 2909210}
 
-redirect_map.update(MANUAL_REDIRECT_MAP)
+# redirect_map.update(MANUAL_REDIRECT_MAP)
 
 with open("{}/legacy_pids_to_redirect.json".format(json_dump_dir), "w+") as fp:
     json.dump(redirect_map, fp)

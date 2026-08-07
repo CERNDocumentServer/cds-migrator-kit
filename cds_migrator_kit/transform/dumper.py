@@ -11,6 +11,7 @@ import logging
 import arrow
 from cds_dojson.exceptions import ModelMissingException, MultipleModelsException
 from cds_dojson.marc21.utils import create_record
+from cds_dojson.matcher import _load_models
 
 from cds_migrator_kit.errors import MultipleModelsMatched
 from cds_migrator_kit.transform import migrator_marc21
@@ -29,6 +30,7 @@ class CDSRecordDump:
         latest_only=True,
         dojson_model=migrator_marc21,
         raise_on_missing_rules=True,
+        preferred_model=None,
     ):
         """Initialize."""
         self.data = data
@@ -38,6 +40,8 @@ class CDSRecordDump:
         self.latest_revision = None
         self.files = None
         self.raise_on_missing_rules = raise_on_missing_rules
+        self.preferred_model = preferred_model
+        self.multiple_models_warning = None
 
     @property
     def first_created(self):
@@ -69,21 +73,45 @@ class CDSRecordDump:
 
         self.files = files
 
+    def _resolve_preferred_model(self, exc_message):
+        """Resolve to the preferred model by name when multiple models match.
+
+        Returns the model instance if found, otherwise None.
+        """
+        models = _load_models(self.dojson_model.entry_point_models)
+        for name, model, _ in models:
+            if name == self.preferred_model:
+                return model
+        return None
+
     def _prepare_revision(self, data):
         timestamp = arrow.get(data["modification_datetime"]).datetime
 
         marc_record = create_record(data["marcxml"])
 
-        # exception handlers are passed in this way to avoid overriding
-        # .do method implementation
+        resolved_model = None
         try:
             json_converted_record = self.dojson_model.do(marc_record)
         except MultipleModelsException as e:
-            raise MultipleModelsMatched(str(e))
+            if self.preferred_model:
+                resolved_model = self._resolve_preferred_model(str(e))
+                if resolved_model is None:
+                    raise MultipleModelsMatched(
+                        message=f"preferred_model '{self.preferred_model}' not found among matched models. {e}"
+                    )
+                json_converted_record = resolved_model.do(marc_record)
+                self.multiple_models_warning = MultipleModelsMatched(
+                    message=str(e),
+                    priority="warning",
+                )
+            else:
+                raise MultipleModelsMatched(str(e))
         except ModelMissingException as e:
             raise MultipleModelsMatched(str(e))
 
-        missing = self.dojson_model.missing(marc_record)
+        # Use the resolved model for missing() to avoid re-triggering the matcher
+        missing_checker = resolved_model if resolved_model else self.dojson_model
+        missing = missing_checker.missing(marc_record)
         if missing and self.raise_on_missing_rules:
             cli_logger.warning(missing)
             raise LossyConversion(missing=missing)
