@@ -23,6 +23,10 @@ from cds_migrator_kit.rdm.migration_config import (
     RDM_RECORDS_IDENTIFIERS_SCHEMES,
     RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES,
 )
+from cds_migrator_kit.rdm.records.load.ep_approval_entry import (
+    EP_APPROVAL_REPORT_NUMBER_RE,
+)
+
 from cds_migrator_kit.rdm.records.transform.config import (
     CONTROLLED_SUBJECTS_SCHEMES,
     IDENTIFIERS_SCHEMES_TO_DROP,
@@ -334,6 +338,13 @@ def report_number(self, key, value):
             scheme = "other"
         else:
             raise UnexpectedValue("Missing ID value", field=key, value=value)
+    if scheme == "cdsrn" and identifier:
+        if EP_APPROVAL_REPORT_NUMBER_RE.match(identifier):
+            cli_logger.info(
+                f"[apprn] Found approval report number {identifier!r} — storing as apprn"
+            )
+            scheme = "apprn"
+
     new_id = {"scheme": scheme, "identifier": identifier}
     if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
         existing_ids = self.get("identifiers", [])

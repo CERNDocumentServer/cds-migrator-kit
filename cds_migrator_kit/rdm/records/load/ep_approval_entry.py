@@ -16,7 +16,7 @@ from cds_migrator_kit.errors import UnexpectedValue
 
 EPPHAPP_FILE_TYPE = "EPPHAPP_FILE"
 EP_APPROVAL_REPORT_NUMBER_PREFIX = "CERN-EP"
-EP_APPROVAL_REPORT_NUMBER_RE = re.compile(r"^CERN-EP-\d{4}-\d{3}$")
+EP_APPROVAL_REPORT_NUMBER_RE = re.compile(r"^CERN-(?:PH-)?EP-\d{2,4}-\d+$")
 
 
 def _cern_scientific_community_id():
