@@ -23,6 +23,8 @@ from cds_migrator_kit.rdm.migration_config import (
     RDM_RECORDS_IDENTIFIERS_SCHEMES,
     RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES,
 )
+from flask import current_app
+
 from cds_migrator_kit.rdm.records.transform.config import (
     CONTROLLED_SUBJECTS_SCHEMES,
     IDENTIFIERS_SCHEMES_TO_DROP,
@@ -334,6 +336,29 @@ def report_number(self, key, value):
             scheme = "other"
         else:
             raise UnexpectedValue("Missing ID value", field=key, value=value)
+    # Detect EP committee approval report numbers (e.g. CERN-EP-2026-001,
+    # CERN-PH-EP-2012-369) and store them as apprn identifiers so the
+    # EP approval workflow can pick them up.  Only the specific prefixes
+    # configured in CDS_COMMITTEE_APPROVAL_COMMUNITIES qualify — the generic
+    # is_approval_report_number() regex is too broad and would also match
+    # CERN-THESIS-*, CERN-ISOLDE-*, etc.
+    if scheme == "cdsrn" and identifier:
+        # Detect EP approval numbers by checking against the prefixes configured
+        # in CDS_COMMITTEE_APPROVAL_COMMUNITIES — single source of truth, no
+        # separate constant to maintain.
+        _ep_prefixes = {
+            cfg["report_number"]["prefix"]
+            for cfg in current_app.config.get(
+                "CDS_COMMITTEE_APPROVAL_COMMUNITIES", {}
+            ).values()
+            if "report_number" in cfg
+        }
+        if any(identifier.upper().startswith(p.upper() + "-") for p in _ep_prefixes):
+            cli_logger.info(
+                f"[apprn] Found approval report number {identifier!r} — storing as apprn"
+            )
+            scheme = "apprn"
+
     new_id = {"scheme": scheme, "identifier": identifier}
     if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
         existing_ids = self.get("identifiers", [])

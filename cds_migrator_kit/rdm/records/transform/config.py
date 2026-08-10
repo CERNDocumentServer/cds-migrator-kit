@@ -15,6 +15,7 @@ PIDS_SCHEMES_ALLOWED = ["DOI"]
 # stores the identifiers found in PIDs field in the alternative identifiers instead
 PID_SCHEMES_TO_STORE_IN_IDENTIFIERS = [
     "CDSRN",
+    "APPRN",  # EP committee approval report numbers e.g. CERN-EP-2026-001
 ]
 
 PID_SCHEMES_TO_STORE_IN_RELATED_IDENTIFIERS = [

@@ -379,6 +379,7 @@ records:
   isolde:
     data_dir: cds_migrator_kit/rdm/data/isolde
     plots: true
+    create_inclusion_request: true
     preferred_model: isolde  # set to resolve MultipleModelsMatched as warning instead of error
     extract:
       dirpath: cds_migrator_kit/rdm/data/isolde/dump/
