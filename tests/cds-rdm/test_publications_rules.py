@@ -23,11 +23,7 @@ from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import
     issn,
     journal,
     meeting,
-<<<<<<< HEAD
-    oa_level_from_license,
     resource_type,
-=======
->>>>>>> 16871dc (feat(isolde): add ISOLDE migration rules, model and stream configuration)
     udc,
 )
 

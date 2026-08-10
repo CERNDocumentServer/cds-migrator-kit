@@ -365,7 +365,6 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {
         # YYYY convention but are still migrated as apprn. Post-migration,
         # only super-admins can edit those records. New submissions on the
         # production app use the strict is_approval_report_number validator.
-        # TODO: change this according to https://github.com/CERNDocumentServer/cds-rdm/pull/917
         "validator": always_valid,
         "datacite": "CDS",
     },
@@ -596,6 +595,16 @@ CDS_COMMITTEE_APPROVAL_COMMUNITIES = {
             "prefix": "CERN-PH-EP",  # literal prefix, e.g. "CERN-EP"
             "include_year": True,  # append the current year after prefix
             "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
+    "1c46ceab-af68-4502-a436-cdf5a4cfbbe0": {
+        # isolde
+        "label": "EP approval",
+        "referee_group": "cds-ph-ep-publication",
+        "report_number": {
+            "prefix": "CERN-EP",
+            "include_year": True,
+            "counter_digits": 3,
         },
     },
 }
