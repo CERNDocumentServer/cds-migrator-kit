@@ -873,6 +873,10 @@ def related_identifiers_787(self, key, value):
             "relation_type": {"id": "isderivedfrom"},
             "resource_type": {"id": "publication-report"},
         },
+        "preprint": {
+            "relation_type": {"id": "references"},
+            "resource_type": {"id": "publication-preprint"},
+        },
     }
 
     if recid:
