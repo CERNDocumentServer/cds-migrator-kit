@@ -343,7 +343,6 @@ records:
   faser-drafts:
     data_dir: cds_migrator_kit/rdm/data/faser-drafts
     restricted: "True"
-    plots: true
     create_inclusion_request: true
     access_grants_view:
       - faser-all
@@ -357,7 +356,6 @@ records:
   faser:
     data_dir: cds_migrator_kit/rdm/data/faser
     create_inclusion_request: true
-    plots: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/faser/dump/
     transform:
@@ -366,7 +364,6 @@ records:
       communities_ids:
         - "33af9368-5bad-45cb-9360-8c9e5dfca09f"
   faser-ep:
-    plots: true
     data_dir: cds_migrator_kit/rdm/data/faser
     create_inclusion_request: true
     extract:
