@@ -458,6 +458,160 @@ records:
         - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/dep_ab/duplicated_pids.json
+  ac_dep:
+    data_dir: cds_migrator_kit/rdm/data/dep_ac
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/dep_ac/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/dep_ac/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "dfebd855-d156-4428-9b08-fe8ab8171799"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/dep_ab/duplicated_pids.json
+  ar_dep:
+    data_dir: cds_migrator_kit/rdm/data/dep_ar
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/dep_ar/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/dep_ar/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "2bf2998b-b310-4f36-9344-71e47560ae16"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/dep_ar/duplicated_pids.json
+  isr_dep:
+    data_dir: cds_migrator_kit/rdm/data/dep_isr
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/dep_isr/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/dep_isr/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "c2fdb4ec-201c-4ec7-a9f0-23e4380a3fce"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/dep_ab/duplicated_pids.json
+  lep_dep:
+    data_dir: cds_migrator_kit/rdm/data/dep_lep
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/dep_lep/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/dep_lep/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "f49a960d-94bf-432c-9ce6-c2fb9115ff9a"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/dep_lep/duplicated_pids.json
+  ps_dep:
+    data_dir: cds_migrator_kit/rdm/data/dep_ps
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/dep_ps/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/dep_ps/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "5b634108-c93c-4740-af5c-31fb32e548eb"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/dep_ps/duplicated_pids.json
+  sc_dep:
+    data_dir: cds_migrator_kit/rdm/data/dep_sc
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/dep_sc/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/dep_sc/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "369f4c3d-10fc-41e3-8cce-681fad5fcafe"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/dep_sc/duplicated_pids.json
+  si_dep:
+    data_dir: cds_migrator_kit/rdm/data/dep_si
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/dep_si/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/dep_si/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "db44a69b-babc-48e8-9c03-29436b5bff07"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/dep_si/duplicated_pids.json
+  sl_dep:
+    data_dir: cds_migrator_kit/rdm/data/dep_sl
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/dep_sl/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/dep_sl/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "bcc34ae6-3a02-44cd-b08d-316a9d3e27e6"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/dep_sl/duplicated_pids.json
+  sps_dep:
+    data_dir: cds_migrator_kit/rdm/data/dep_sps
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/dep_sps/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/dep_sps/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "4bdb0cb3-b5f0-4383-a621-44b6e287438a"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/dep_sps/duplicated_pids.json
+  mps_div:
+    data_dir: cds_migrator_kit/rdm/data/div_mps
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/div_mps/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/div_mps/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "510206fb-2f80-44ee-8944-57f5dcfae5f0"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/div_mps/duplicated_pids.json
+  msc_div:
+    data_dir: cds_migrator_kit/rdm/data/div_msc
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/div_msc/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/div_msc/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "7bd98561-4985-434a-aed1-74301f865c24"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/div_msc/duplicated_pids.json
 comments:
   faser-drafts:
     dir_path: /migration/faser-drafts/comments/
