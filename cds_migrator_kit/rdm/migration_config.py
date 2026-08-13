@@ -500,7 +500,8 @@ RDM_RECORDS_SERVICE_COMPONENTS = [
     # SubjectsValidationComponent,
     *DefaultRecordsComponents,
     CDSResourcePublication,
-    ClcSyncComponent,
+    # Component disabled to not trigger due to auto=True and the sync task is triggered manually in migration code
+    # ClcSyncComponent,
     # component disabled, this part is handled separately in migration code
     # due to two conflicting DB updates causing StaleDataError
     # MintAlternateIdentifierComponent,
