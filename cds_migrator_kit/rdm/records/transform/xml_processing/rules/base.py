@@ -483,6 +483,7 @@ def _pids(self, key, value):
         # if we have a qualifier for one of these two, we know it references
         # an external resource (checked in DB and individually on records)
         # if qualifier == ebook, it references itself, so qualifier is not needed
+        # if it's a doi, we should also need to keep it as external doi
         if qualifier == "thesis":
             qualifier = "publication-thesis"
         related_works = self.get("related_identifiers", [])
@@ -502,6 +503,9 @@ def _pids(self, key, value):
             if new_id not in related_works:
                 related_works.append(new_id)
             self["related_identifiers"] = related_works
+            if is_doi_id or scheme == "doi":
+                pid_dict["doi"] = {"identifier": identifier}
+                self["_pids"] = pid_dict
         raise IgnoreKey("_pids")
 
     if scheme.upper() in PID_SCHEMES_TO_STORE_IN_IDENTIFIERS:
@@ -870,7 +874,7 @@ def related_identifiers_787(self, key, value):
             "resource_type": {"id": "publication-periodicalarticle"},
         },
         "report": {
-            "relation_type": {"id": "isderivedfrom"},
+            "relation_type": {"id": "references"},
             "resource_type": {"id": "publication-report"},
         },
         "preprint": {
