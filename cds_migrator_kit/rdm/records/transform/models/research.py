@@ -15,7 +15,7 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 class ResearchModel(CdsOverdo):
     """Translation model for research."""
 
-    __query__ = '693__.e:"DAMPE RE29" OR 037__:DIRAC-NOTE* OR 037__:DIRAC-Note* OR 037__:DIRAC-CONF* OR 037__:DIRAC-DOC* OR 037__:DIRAC-PUB* OR 693__:UA2 OR 693__:UA4 OR 693__:UA5 OR 693__:UA8 OR 980__:INTNOTEHARPCDPPUBL OR 980__:PRIVIMXGAM -980__:THESIS -037__:CERN-STUDENTS-Note-* -980__:DELETED -980__.c:MIGRATED -980__.a:DUMMY -690C_.a:SCICOM'
+    __query__ = '693__.e:"DAMPE RE29" OR 037__:DIRAC-NOTE* OR 037__:DIRAC-Note* OR 037__:DIRAC-CONF* OR 037__:DIRAC-DOC* OR 037__:DIRAC-PUB* OR 693__:UA2 OR 693__:UA4 OR 693__:UA5 OR 693__:UA8 OR 980__:INTNOTEHARPCDPPUBL OR 980__:PRIVIMXGAM -980__:THESIS -037__:CERN-STUDENTS-Note-* -980__:DELETED -980__.a:DUMMY -690C_.a:SCICOM'
 
     __ignore_keys__ = {
         "0248_a",

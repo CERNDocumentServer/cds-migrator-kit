@@ -609,6 +609,28 @@ records:
         - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/div_msc/duplicated_pids.json
+  lhcf:
+    data_dir: cds_migrator_kit/rdm/data/lhcf
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/lhcf/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/lhcf/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "88a105fe-4713-493b-b555-6ab398599d21"
+  lhcf-ep:
+    data_dir: cds_migrator_kit/rdm/data/lhcf-ep
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/lhcf-ep/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/lhcf-ep/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "88a105fe-4713-493b-b555-6ab398599d21"
 comments:
   faser-drafts:
     dir_path: /migration/faser-drafts/comments/

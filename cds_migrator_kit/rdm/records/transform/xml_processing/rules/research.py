@@ -784,6 +784,10 @@ def resource_type(self, key, value):
         "slide": {"id": "presentation"},
         "faser_papers": {"id": "publication-article"},
         "demsuppliers": {"id": "other"},
+        "lhcf_papers": {"id": "publication-article"},
+        "lhcf_proc": {"id": "publication-conferenceproceeding"},
+        "lhcf_reports": {"id": "publication-report"},
+        "conferencepapers": {"id": "publication-conferencepaper"},
     }
 
     try:
