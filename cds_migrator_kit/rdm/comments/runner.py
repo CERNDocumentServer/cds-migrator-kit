@@ -10,29 +10,45 @@
 import os
 from pathlib import Path
 
+import yaml
 from invenio_rdm_migrator.streams import Stream
 
 from cds_migrator_kit.rdm.comments.log import CommentsLogger
 from cds_migrator_kit.rdm.users.api import CDSMigrationUserAPI
 
 
+def read_config(filepath):
+    """Read config from file."""
+    with open(filepath) as f:
+        return yaml.safe_load(f)
+
+
 class CommentsRunner:
     """ETL streams runner."""
 
     def __init__(
-        self, stream_definition, filepath, dirpath, log_dir, collection, dry_run
+        self, stream_definition, config_filepath, log_dir, collection, dry_run
     ):
         """Constructor."""
+        config = read_config(config_filepath)
+        collection_config = config["comments"][collection]
+
         self.log_dir = Path(log_dir)
 
         self.logger = CommentsLogger(self.log_dir, collection)
+        collection_dirpath=collection_config["dir_path"]
+        comments_metadata_filepath = os.path.join(collection_dirpath, "comments_metadata.json")
 
         self.stream = Stream(
             stream_definition.name,
-            extract=stream_definition.extract_cls(filepath),
+            extract=stream_definition.extract_cls(comments_metadata_filepath),
             transform=stream_definition.transform_cls(),
             load=stream_definition.load_cls(
-                dirpath=dirpath, dry_run=dry_run, logger=self.logger
+                dirpath=collection_dirpath,
+                dry_run=dry_run,
+                logger=self.logger,
+                collection=collection,
+                reviewers=collection_config.get("reviewers", []),
             ),
         )
 
@@ -50,9 +66,15 @@ class CommenterRunner:
     """ETL streams runner dedicated to pre-create commenters accounts."""
 
     def __init__(
-        self, stream_definition, filename, missing_users_dir, log_dir, dry_run
+        self, stream_definition, config_filepath, log_dir, collection, dry_run
     ):
         """Constructor."""
+        config = read_config(config_filepath)
+        collection_config = config["comments"][collection]
+        dirpath=collection_config["dir_path"]
+        missing_users_dir = os.path.join(dirpath, "users")
+        filename = "missing_commentors_from_ldap.json"
+
         self.log_dir = Path(log_dir)
         self.log_dir.mkdir(parents=True, exist_ok=True)
 

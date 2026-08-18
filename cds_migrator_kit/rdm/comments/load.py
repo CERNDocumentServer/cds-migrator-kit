@@ -23,6 +23,7 @@ from invenio_records_resources.services.uow import RecordCommitOp
 from invenio_requests.customizations.event_types import CommentEventType, LogEventType
 from invenio_requests.proxies import current_events_service, current_requests_service
 from invenio_requests.records.api import RequestEventFormat
+from invenio_requests.records.models import RequestEventModel, RequestMetadata
 from invenio_requests.resolvers.registry import ResolverRegistry
 from invenio_users_resources.proxies import current_users_service
 from invenio_users_resources.records.api import UserAggregate
@@ -43,10 +44,14 @@ class CDSCommentsLoad(Load):
         dirpath,
         logger,
         dry_run=False,
+        collection=None,
+        reviewers=None,
     ):
         """Constructor."""
         self.dirpath = dirpath  # The directory path where the attached files are stored
         self.dry_run = dry_run
+        self.collection = collection
+        self.reviewers = reviewers or []
         self.logger = logger.get_logger()
         self.report_logger = logger
         self.all_record_versions = {}
@@ -252,78 +257,94 @@ class CDSCommentsLoad(Load):
 
         return event
 
-    def create_accepted_community_submission_request(
-        self,
-        legacy_recid,
-        record,
-        parent,
-        comments=None,
-    ):
-        """Create an accepted community submission request."""
-        if not comments:
-            self.logger.warning(
-                f"No comments found for record<{record['id']}>. Skipping request creation."
-            )
+    def _configured_reviewers(self):
+        """Return configured reviewers from streams.yaml for this collection."""
+        reviewers = []
+        for reviewer in self.reviewers:
+            if isinstance(reviewer, str):
+                reviewers.append({"group": reviewer})
+            else:
+                reviewers.append(reviewer)
+        return reviewers
+
+    def _get_existing_request(self, legacy_recid):
+        """Return the request with number ``lrecid:{legacy_recid}``, if any."""
+        model = RequestMetadata.query.filter_by(
+            number=f"lrecid:{legacy_recid}"
+        ).one_or_none()
+        if model is None:
             return None
+        return current_requests_service.record_cls.get_record(model.id)
 
+    def _request_has_migrated_comments(self, request):
+        """Return True if migrated comment events already exist on the request."""
+        if RequestEventModel.query.filter_by(
+            request_id=request.id, type=CommentEventType.type_id
+        ).first():
+            return True
+
+        # Deleted legacy comments are stored as log events
+        for row in RequestEventModel.query.filter_by(
+            request_id=request.id, type=LogEventType.type_id
+        ):
+            payload = (row.json or {}).get("payload") or {}
+            if payload.get("event") == "comment_deleted":
+                return True
+        return False
+
+    def _apply_reviewers(self, request):
+        """Add configured reviewers that are not already on the request."""
+        configured = self._configured_reviewers()
+        if not configured:
+            return
+
+        existing = list(request.get("reviewers") or [])
+        added = []
+        for reviewer in configured:
+            if reviewer not in existing:
+                existing.append(reviewer)
+                added.append(reviewer)
+
+        if not added:
+            self.logger.info(
+                f"Configured reviewers already present on request<{request.id}>."
+            )
+            return
+
+        request.reviewers = existing
+        self.logger.info(
+            f"Added reviewers {added} on request<{request.id}> "
+            f"for collection<{self.collection}>."
+        )
+
+    def _add_comments_to_request(
+        self, request, parent, comments, legacy_recid, uow, link_parent_relation=False
+    ):
+        """Create comment/reply events on an existing request."""
         community = parent.communities.default
-        record_owner_id = parent.access.owned_by.owner_id
-
-        # Resolve entities for references
-        creator_ref = ResolverRegistry.reference_entity(
-            {"user": str(record_owner_id)}, raise_=True
-        )
-        receiver_ref = ResolverRegistry.reference_entity(
-            {"community": str(community.id)}, raise_=True
-        )
-        topic_ref = ResolverRegistry.reference_entity(
-            {"record": record["id"]}, raise_=True
-        )
-
+        self.LEGACY_REPLY_LINK_MAP = {}
         count = 0
 
-        with UnitOfWork() as uow:
-            request_item = current_requests_service.create(
-                system_identity,
-                data={
-                    "title": record["metadata"]["title"],
-                },
-                request_type=CommunitySubmission,
-                receiver=receiver_ref,
-                creator=creator_ref,
-                topic=topic_ref,
-                uow=uow,
+        for comment_data in comments:
+            comment_event = self.create_event(
+                request, comment_data, community, uow, legacy_recid, count
             )
-            request = request_item._record
-            request.status = "accepted"
-            request.number = f"lrecid:{legacy_recid}"
-            created_at = datetime.fromisoformat(record["created"])
-            request.model.created = created_at
-
-            self.logger.info(
-                f"Created accepted community submission request<{request.id}> for record<{record['id']}>."
-            )
-
-            for comment_data in comments:
-                comment_event = self.create_event(
-                    request, comment_data, community, uow, legacy_recid, count
+            count += 1
+            for reply in comment_data.get("replies", []):
+                reply_event = self.create_event(
+                    request,
+                    reply,
+                    community,
+                    uow,
+                    legacy_recid,
+                    count=count,
+                    parent_comment_id=comment_event.id,
                 )
+                self.LEGACY_REPLY_LINK_MAP[reply.get("comment_id")] = reply_event.id
                 count += 1
-                for reply in comment_data.get("replies", []):
-                    reply_event = self.create_event(
-                        request,
-                        reply,
-                        community,
-                        uow,
-                        legacy_recid,
-                        count=count,
-                        parent_comment_id=comment_event.id,
-                    )
-                    self.LEGACY_REPLY_LINK_MAP[reply.get("comment_id")] = reply_event.id
-                    count += 1
 
-            # Set this request ID in the `rdm_parents_community` which would be null for these migrated records
-            # This is normally executed by the accept action in the request service
+        if link_parent_relation:
+            # Normally executed by the accept action in the request service
             parent_to_request_relation = (
                 parent.communities._m2m_model_cls.query.filter_by(
                     record_id=parent.id, community_id=community.id
@@ -331,41 +352,143 @@ class CDSCommentsLoad(Load):
             )
             parent_to_request_relation.request_id = request.id
 
-            # Commit at the end so that rollback can be done if any error occurs not only for the request but also for the comments in the middle
+        return count
+
+    def migrate_comments(
+        self,
+        legacy_recid,
+        record,
+        parent,
+        comments=None,
+        request=None,
+    ):
+        """Migrate comments onto ``request``, creating one if ``request`` is None."""
+        if not comments:
+            self.logger.warning(
+                f"No comments found for record<{record['id']}>. Skipping request creation."
+            )
+            return None
+
+        is_request_created = request is None
+
+        with UnitOfWork() as uow:
+            if request is None:
+                community = parent.communities.default
+                record_owner_id = parent.access.owned_by.owner_id
+                creator_ref = ResolverRegistry.reference_entity(
+                    {"user": str(record_owner_id)}, raise_=True
+                )
+                receiver_ref = ResolverRegistry.reference_entity(
+                    {"community": str(community.id)}, raise_=True
+                )
+                topic_ref = ResolverRegistry.reference_entity(
+                    {"record": record["id"]}, raise_=True
+                )
+                request_item = current_requests_service.create(
+                    system_identity,
+                    data={"title": record["metadata"]["title"]},
+                    request_type=CommunitySubmission,
+                    receiver=receiver_ref,
+                    creator=creator_ref,
+                    topic=topic_ref,
+                    uow=uow,
+                )
+                request = request_item._record
+                request.status = "accepted"
+                request.number = f"lrecid:{legacy_recid}"
+                created_at = datetime.fromisoformat(record["created"])
+                request.model.created = created_at
+                self.logger.info(
+                    f"Created accepted community submission request<{request.id}> "
+                    f"for record<{record['id']}>."
+                )
+            else:
+                self.logger.info(
+                    f"Migrating comments onto existing request<{request.id}> "
+                    f"for recid: {legacy_recid}."
+                )
+
+            self._apply_reviewers(request)
+            count = self._add_comments_to_request(
+                request,
+                parent,
+                comments,
+                legacy_recid,
+                uow,
+                link_parent_relation=is_request_created,
+            )
             uow.register(
                 RecordCommitOp(request, indexer=current_requests_service.indexer)
             )
             uow.commit()
+
         self.logger.info(
             f"Successfully migrated {count} comment(s) for request: {request.id} from recid: {legacy_recid}"
         )
-
         return request
+
+    def _resolve_record_and_parent(self, recid):
+        """Resolve the RDM parent and oldest record version for comments.
+
+        Legacy recid PIDs are minted on the public parent. For EP-approval
+        migrations, comments must instead target the restricted (internal)
+        parent, linked via ``permission_flags.committee_approval.source_internal_version``.
+        Non-EP records keep the legacy-recid → parent → oldest version path.
+        """
+        parent_pid = get_pid_by_legacy_recid(recid)
+        parent = RDMParent.pid.resolve(parent_pid.pid_value)
+        parent_pid_value = parent_pid.pid_value
+
+        internal_version = (
+            (parent.get("permission_flags") or {})
+            .get("committee_approval", {})
+            .get("source_internal_version")
+        )
+        if internal_version:
+            self.logger.info(
+                f"EP approval record detected for recid: {recid}. "
+                f"Resolving comments target via internal version: {internal_version}"
+            )
+            internal_record = current_rdm_records_service.read(
+                identity=system_identity, id_=internal_version
+            )
+            parent_pid_value = internal_record["parent"]["id"]
+            parent = RDMParent.pid.resolve(parent_pid_value)
+
+        self.all_record_versions = {}
+        oldest_record = self.get_oldest_record(parent_pid_value)
+        return oldest_record, parent
 
     def _process_legacy_comments_for_recid(self, recid, comments):
         """Process the legacy comments for the record."""
         self.logger.info(f"Processing legacy comments for recid: {recid}")
-        parent_pid = get_pid_by_legacy_recid(recid)
-        oldest_record = self.get_oldest_record(parent_pid.pid_value)
-        parent = RDMParent.pid.resolve(parent_pid.pid_value)
+        oldest_record, parent = self._resolve_record_and_parent(recid)
 
-        # Skip if it is already migrated
-        search_result = current_requests_service.search(
-            identity=system_identity,
-            q=f'number:"lrecid:{recid}"',
-        )
-        if search_result.total > 0:
+        existing_request = self._get_existing_request(recid)
+        if existing_request and self._request_has_migrated_comments(existing_request):
             self.logger.info(
                 f"Skipping recid: {recid} because the request comments are already migrated"
             )
             return None
+
         if self.dry_run:
-            self.logger.info(f"Dry loading legacy comments for recid: {recid}")
+            target = (
+                f"existing request<{existing_request.id}>"
+                if existing_request
+                else "a new community submission request"
+            )
+            self.logger.info(
+                f"Dry loading legacy comments for recid: {recid} onto {target}"
+            )
             return None
-        request = self.create_accepted_community_submission_request(
-            recid, oldest_record, parent, comments
+
+        return self.migrate_comments(
+            recid,
+            oldest_record,
+            parent,
+            comments=comments,
+            request=existing_request,
         )
-        return request
 
     def _load(self, entry):
         """Use the services to load the entries."""

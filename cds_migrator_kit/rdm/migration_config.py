@@ -391,11 +391,7 @@ RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES = {
             "datacite": "INDICO",
         },
         "hal": {"label": "HAL", "validator": schemes.is_hal, "datacite": "HAL"},
-        "edms": {
-            "label": _("EDMS"),
-            "validator": schemes.is_edms,
-            "datacite": "EDMS"
-        },
+        "edms": {"label": _("EDMS"), "validator": schemes.is_edms, "datacite": "EDMS"},
     },
     # keep internal identifiers' schemes for internal record relations
     **RDM_RECORDS_IDENTIFIERS_SCHEMES,
@@ -504,7 +500,8 @@ RDM_RECORDS_SERVICE_COMPONENTS = [
     # SubjectsValidationComponent,
     *DefaultRecordsComponents,
     CDSResourcePublication,
-    ClcSyncComponent,
+    # Component disabled to not trigger due to auto=True and the sync task is triggered manually in migration code
+    # ClcSyncComponent,
     # component disabled, this part is handled separately in migration code
     # due to two conflicting DB updates causing StaleDataError
     # MintAlternateIdentifierComponent,

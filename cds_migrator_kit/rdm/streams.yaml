@@ -1,145 +1,5 @@
 db_uri: postgresql://cds-rdm:cds-rdm@localhost:5432/cds-rdm
 records:
-  aleph:
-    data_dir: cds_migrator_kit/rdm/data/lep_exp/aleph
-    plots: true
-    create_inclusion_request: true
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/lep_exp/aleph/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/aleph/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "7c568753-550b-4b48-8d76-461181973100"
-        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/aleph/duplicated_pids.json
-  aleph_ep:
-    data_dir: cds_migrator_kit/rdm/data/lep_ep/aleph
-    plots: true
-    create_inclusion_request: true
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/lep_ep/aleph/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/lep_ep/aleph/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "7c568753-550b-4b48-8d76-461181973100"
-        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_ep/aleph/duplicated_pids.json
-  aleph_drafts:
-    data_dir: cds_migrator_kit/rdm/data/lep_exp/aleph_drafts
-    restricted: "True"
-    plots: true
-    create_inclusion_request: true
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/lep_exp/aleph_drafts/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/aleph_drafts/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "7c568753-550b-4b48-8d76-461181973100"
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/aleph_drafts/duplicated_pids.json
-  l3:
-    data_dir: cds_migrator_kit/rdm/data/lep_exp/l3
-    plots: true
-    create_inclusion_request: true
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/lep_exp/l3/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/l3/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "bb0ac2d2-b90b-498e-bf64-1986791d1032"
-        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/l3/duplicated_pids.json
-  l3_ep:
-    data_dir: cds_migrator_kit/rdm/data/lep_ep/l3
-    plots: true
-    create_inclusion_request: true
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/lep_ep/l3/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/lep_ep/l3/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "bb0ac2d2-b90b-498e-bf64-1986791d1032"
-        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_ep/l3/duplicated_pids.json
-  opal:
-    data_dir: cds_migrator_kit/rdm/data/lep_exp/opal
-    plots: true
-    create_inclusion_request: true
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/lep_exp/opal/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/opal/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "473e34c5-4fe1-44fc-a4c2-3305cf6adcba"
-        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/opal/duplicated_pids.json
-  opal_ep:
-    data_dir: cds_migrator_kit/rdm/data/lep_ep/opal
-    plots: true
-    create_inclusion_request: true
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/lep_ep/opal/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/lep_ep/opal/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "473e34c5-4fe1-44fc-a4c2-3305cf6adcba"
-        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_ep/opal/duplicated_pids.json
-  delphi:
-    data_dir: cds_migrator_kit/rdm/data/lep_exp/delphi
-    plots: true
-    create_inclusion_request: true
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/lep_exp/delphi/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/delphi/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "b6553d89-ea62-4a7c-9f5b-e76b5bfdb733"
-        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/delphi/duplicated_pids.json
-  delphi_ep:
-    data_dir: cds_migrator_kit/rdm/data/lep_ep/delphi
-    plots: true
-    create_inclusion_request: true
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/lep_ep/delphi/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/lep_ep/delphi/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "b6553d89-ea62-4a7c-9f5b-e76b5bfdb733"
-        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_ep/delphi/duplicated_pids.json
-  delphi_priv:
-    data_dir: cds_migrator_kit/rdm/data/lep_exp/delphi_priv
-    restricted: "True"
-    plots: true
-    create_inclusion_request: true
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/lep_exp/delphi_priv/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/lep_exp/delphi_priv/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "b6553d89-ea62-4a7c-9f5b-e76b5bfdb733"
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_exp/delphi_priv/duplicated_pids.json
   drdc_comm:
     data_dir: cds_migrator_kit/rdm/data/committees/drdc
     extract:
@@ -483,7 +343,6 @@ records:
   faser-drafts:
     data_dir: cds_migrator_kit/rdm/data/faser-drafts
     restricted: "True"
-    plots: true
     create_inclusion_request: true
     access_grants_view:
       - faser-all
@@ -497,7 +356,6 @@ records:
   faser:
     data_dir: cds_migrator_kit/rdm/data/faser
     create_inclusion_request: true
-    plots: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/faser/dump/
     transform:
@@ -506,7 +364,6 @@ records:
       communities_ids:
         - "33af9368-5bad-45cb-9360-8c9e5dfca09f"
   faser-ep:
-    plots: true
     data_dir: cds_migrator_kit/rdm/data/faser
     create_inclusion_request: true
     extract:
@@ -516,25 +373,6 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "e5de962b-5e2c-408f-be69-2823fda1f732"
-  staff_association:
-    data_dir: cds_migrator_kit/rdm/data/staff_association
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/staff_association/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/staff_association/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "3d0a8ba2-7ec6-4016-b171-325d68e50e51"
-  bulletin_drafts:
-    data_dir: cds_migrator_kit/rdm/data/bulletin_drafts
-    restricted: "True"
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/bulletin_drafts/dump/
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/bulletin_drafts/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "3d0a8ba2-7ec6-4016-b171-325d68e50e51"
   ts_dep:
     plots: true
     data_dir: cds_migrator_kit/rdm/data/dep_ts
@@ -575,3 +413,59 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "d9c138bd-d39c-4797-a06c-c6f8db45f3ce"
+  aleph_missing:
+    data_dir: cds_migrator_kit/rdm/data/lep_missing/aleph
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/lep_missing/aleph/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/lep_missing/aleph/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "7c568753-550b-4b48-8d76-461181973100"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_missing/aleph/duplicated_pids.json
+  l3_missing:
+    data_dir: cds_migrator_kit/rdm/data/lep_missing/l3
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/lep_missing/l3/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/lep_missing/l3/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "bb0ac2d2-b90b-498e-bf64-1986791d1032"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/lep_missing/l3/duplicated_pids.json
+  ab_dep:
+    data_dir: cds_migrator_kit/rdm/data/dep_ab
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/dep_ab/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/dep_ab/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "1c1519b8-8e2b-412c-999b-975291d0f5cf"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/dep_ab/duplicated_pids.json
+comments:
+  faser-drafts:
+    dir_path: /migration/faser-drafts/comments/
+    reviewers:
+      - {group: faser-all}
+  faser:
+    dir_path: /migration/faser/comments/
+    reviewers:
+      - {group: faser-all}
+
+  faser-ep:
+    dir_path: /migration/faser-ep/comments/
+    reviewers:
+      - {group: faser-all}

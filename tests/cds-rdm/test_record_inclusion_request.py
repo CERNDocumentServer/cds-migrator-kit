@@ -15,7 +15,7 @@ from helpers import config
 from invenio_access.permissions import system_identity
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.records.api import RDMRecord
-from invenio_rdm_records.requests import CommunityInclusion
+from invenio_rdm_records.requests import CommunitySubmission
 from invenio_requests.proxies import current_requests_service
 from invenio_requests.records.api import Request
 from invenio_search.api import dsl
@@ -59,7 +59,7 @@ def test_accepted_record_inclusion_request(
                 "bool",
                 must=[
                     dsl.Q("term", **{"topic.record": record["id"]}),
-                    dsl.Q("term", **{"type": CommunityInclusion.type_id}),
+                    dsl.Q("term", **{"type": CommunitySubmission.type_id}),
                 ],
             ),
         )

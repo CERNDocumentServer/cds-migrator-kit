@@ -6,6 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """Pytest fixtures."""
+
 import os
 from collections import namedtuple
 from os.path import dirname, join
@@ -1777,6 +1778,13 @@ def groups(database, app):
             app,
         ),
         _create_group("hr-web-gacepa", "hr-web-gacepa", "Special HR group", True, app),
+        _create_group(
+            "test-comments-reviewers",
+            "test-comments-reviewers",
+            "Test comments reviewers",
+            True,
+            app,
+        ),
     ]
 
     current_groups_service.indexer.process_bulk_queue()

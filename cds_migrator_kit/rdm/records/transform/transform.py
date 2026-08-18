@@ -45,6 +45,7 @@ from cds_migrator_kit.rdm.migration_config import (
 )
 from cds_migrator_kit.rdm.records.transform.config import (
     CERN_SCIENTIFIC_RESOURCE_TYPES,
+    EXPERIMENT_ALIASES,
     FILE_SUBFORMATS_TO_DROP,
     IDENTIFIERS_SCHEMES_TO_DROP,
     IDENTIFIERS_VALUES_TO_DROP,
@@ -563,6 +564,9 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             for experiment in experiments:
                 if experiment.lower().strip() in ["not applicable", "xx"]:
                     continue
+                experiment = EXPERIMENT_ALIASES.get(
+                    experiment.lower().strip(), experiment
+                )
                 result = search_vocabulary(experiment, "experiments")
                 if result and result not in custom_fields_dict["cern:experiments"]:
                     custom_fields_dict["cern:experiments"].append(result)

@@ -6,6 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM migration load module."""
+
 import datetime
 import json
 import os
@@ -14,6 +15,7 @@ from copy import deepcopy
 
 import arrow
 from cds_rdm.clc_sync.models import CDSToCLCSyncModel
+from cds_rdm.clc_sync.proxies import current_clc_sync_service
 from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from cds_rdm.minters import legacy_recid_minter
@@ -27,7 +29,7 @@ from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
-from invenio_rdm_records.requests import CommunityInclusion
+from invenio_rdm_records.requests import CommunitySubmission
 from invenio_records.systemfields.relations import InvalidRelationValue
 from invenio_records_resources.services.uow import RecordCommitOp
 from invenio_requests.customizations.event_types import (
@@ -194,6 +196,22 @@ class CDSRecordServiceLoad(Load):
         record.access = access_dict["access_obj"]
         record.commit()
 
+    def _after_commit_run_clc_sync(self, record_state):
+        """Run the CLC sync after UOW commit."""
+        if not self._is_final_record:
+            return
+        if self.clc_sync:
+            clc_sync_entry = current_clc_sync_service.read(
+                system_identity, record_state["parent_recid"]
+            ).to_dict()
+            clc_sync_entry["record"] = current_rdm_records_service.read(
+                system_identity, record_state["latest_version"]
+            ).to_dict()
+            clc_sync_entry["auto_sync"] = True
+            current_clc_sync_service.update(
+                system_identity, clc_sync_entry["id"], clc_sync_entry
+            )
+
     def _after_publish_update_dois(self, identity, record, entry, uow):
         """Update migrated DOIs post publish."""
         if not self._is_final_record:
@@ -257,9 +275,7 @@ class CDSRecordServiceLoad(Load):
             elif specific_file_restrictions == "restricted":
                 # https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showroledetails?id_role=69
                 groups.add("cern-personnel")
-            elif specific_file_restrictions.strip().endswith(
-                "[CERN]"
-            ) and not any(
+            elif specific_file_restrictions.strip().endswith("[CERN]") and not any(
                 kw in specific_file_restrictions for kw in ("firerole:", "allow ")
             ):
                 # bare CERN e-group name, e.g.
@@ -424,7 +440,7 @@ class CDSRecordServiceLoad(Load):
             # but then we get a double redirection
             legacy_recid_minter(legacy_recid, record._record.parent.model.id)
 
-    def _after_publish_add_inclusion_request(self, request_data, record, entry, uow):
+    def _after_publish_add_submission_request(self, request_data, record, entry, uow):
         """Create community inclusion request after publish."""
         legacy_recid = entry["record"]["recid"]
         request_number = f"lrecid:{legacy_recid}"
@@ -464,7 +480,7 @@ class CDSRecordServiceLoad(Load):
         request_item = current_requests_service.create(
             system_identity,
             data={"title": record["metadata"]["title"]},
-            request_type=CommunityInclusion,
+            request_type=CommunitySubmission,
             receiver=receiver,
             creator=creator,
             topic={"record": record.id},
@@ -525,14 +541,16 @@ class CDSRecordServiceLoad(Load):
         request_data = entry["record"].get("_request_data", {})
 
         if request_data and not self.create_inclusion_request:
-            raise ManualImportRequired(message="Detected request data, enable the requests",
-                    field="validation",
-                    stage="load",
-                    recid=entry["record"]["recid"],
-                    priority="warning",
-                    subfield=None,)
+            raise ManualImportRequired(
+                message="Detected request data, enable the requests",
+                field="validation",
+                stage="load",
+                recid=entry["record"]["recid"],
+                priority="warning",
+                subfield=None,
+            )
         if self.create_inclusion_request and request_data:
-            self._after_publish_add_inclusion_request(
+            self._after_publish_add_submission_request(
                 request_data, published_record, entry, uow
             )
         # db.session.commit()
@@ -819,15 +837,11 @@ class CDSRecordServiceLoad(Load):
                 elif uow is not None:
                     recid_state_after_load = self._load_versions(entry, uow)
                     if recid_state_after_load:
-                        self._save_original_dumped_record(
-                            entry, recid_state_after_load
-                        )
+                        self._save_original_dumped_record(entry, recid_state_after_load)
                         self._after_load_clc_sync(recid_state_after_load)
                 else:
                     with UnitOfWork(db.session) as inner_uow:
-                        recid_state_after_load = self._load_versions(
-                            entry, inner_uow
-                        )
+                        recid_state_after_load = self._load_versions(entry, inner_uow)
                         if recid_state_after_load:
                             self._save_original_dumped_record(
                                 entry, recid_state_after_load
@@ -839,6 +853,8 @@ class CDSRecordServiceLoad(Load):
                     # commit boundary and is responsible for finalising the
                     # record only after it actually commits.
                     self.migration_logger.finalise_record(recid)
+                # Run the CLC sync after UOW commit
+                self._after_commit_run_clc_sync(recid_state_after_load)
                 return recid_state_after_load
             except (UnexpectedValue, ManualImportRequired) as e:
                 self.migration_logger.add_log(e, record=entry)

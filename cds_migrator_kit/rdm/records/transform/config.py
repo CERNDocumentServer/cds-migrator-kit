@@ -63,7 +63,7 @@ RECOGNISED_KEYWORD_SCHEMES = [
     "desy",
     "medline",
     "aip",
-    "jacow"
+    "jacow",
 ]
 KEYWORD_SCHEMES_TO_DROP = ["proquest", "disxa", "inspeq"]
 
@@ -158,6 +158,7 @@ udc_pattern = r"\b\d+(?:\.\d+)*-?\d*(?:\.\d+)*\b"
 
 FILE_SUBFORMATS_TO_DROP = ["pdfa", "unstamped"]
 
+
 # Public research publication resource types that are auto-included in the CERN Research community.
 CERN_SCIENTIFIC_RESOURCE_TYPES = {
     "publication-dissertation",  # Already included by the migrator for thesis records.
@@ -173,4 +174,9 @@ CERN_SCIENTIFIC_RESOURCE_TYPES = {
     "publication-technicalnote",
     "publication-note",
     "publication",
+}
+
+# Legacy experiment names remapped to vocabulary ids before lookup
+EXPERIMENT_ALIASES = {
+    "t2k": "re13",
 }

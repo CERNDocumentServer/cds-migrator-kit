@@ -7,14 +7,19 @@
 
 """Tests for comments migration workflow."""
 
+import json
 import os
 import tempfile
 
 import pytest
+import yaml
 from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
+from invenio_db.uow import UnitOfWork
 from invenio_rdm_records.proxies import current_rdm_records_service
+from invenio_rdm_records.requests import CommunitySubmission
+from invenio_records_resources.services.uow import RecordCommitOp
 from invenio_requests.proxies import current_events_service, current_requests_service
 from invenio_search import current_search, current_search_client
 from invenio_users_resources.records.api import UserAggregate
@@ -36,6 +41,35 @@ Testcases to be used in the tests:
     - 45678: Deeply nested comments related to files: Normal case with flatted replies
 (Also to show the errors before doesn't affect other testcases)
 """
+
+COMMENTS_DATA_DIR = os.path.join(os.path.dirname(__file__), "data", "comments")
+
+
+def write_comments_stream_config(
+    temp_dir,
+    collection,
+    dir_path=None,
+    reviewers=None,
+):
+    """Write a temporary streams.yaml for comments collection config."""
+    config_path = os.path.join(temp_dir, "streams.yaml")
+    with open(config_path, "w") as fp:
+        yaml.safe_dump(
+            {
+                "comments": {
+                    collection: {
+                        "dir_path": dir_path or COMMENTS_DATA_DIR,
+                        "reviewers": (
+                            reviewers
+                            if reviewers is not None
+                            else [{"group": "test-comments-reviewers"}]
+                        ),
+                    }
+                }
+            },
+            fp,
+        )
+    return config_path
 
 
 @pytest.fixture
@@ -107,6 +141,7 @@ def test_migrate_comments_from_metadata(
     temp_dir,
     migrated_records_with_comments,
     community,
+    groups,
     db,
 ):
     """Test migrating comments from comments_metadata.json."""
@@ -118,19 +153,17 @@ def test_migrate_comments_from_metadata(
     db.session.add(user2)
     db.session.commit()
 
+    expected_reviewers = [{"group": "test-comments-reviewers"}]
+
     # Create directory structure for attached files
-    comments_dir = os.path.join(os.path.dirname(__file__), "data", "comments")
-    os.makedirs(comments_dir, exist_ok=True)
+    os.makedirs(COMMENTS_DATA_DIR, exist_ok=True)
 
     # Run comments runner
     log_dir = os.path.join(temp_dir, "logs")
     runner = CommentsRunner(
         stream_definition=CommentsStreamDefinition,
-        filepath=os.path.join(
-            os.path.dirname(__file__), "data", "comments", "comments_metadata.json"
-        ),
+        config_filepath=write_comments_stream_config(temp_dir, "test-comments"),
         collection="test-comments",
-        dirpath=comments_dir,
         log_dir=log_dir,
         dry_run=False,
     )
@@ -169,6 +202,10 @@ def test_migrate_comments_from_metadata(
     request_in_db = current_requests_service.read(system_identity, request["id"])
     assert request_in_db["number"] == "lrecid:12345"
     assert request_in_db["status"] == "accepted"
+    assert (
+        current_requests_service.record_cls.get_record(request["id"]).get("reviewers")
+        == expected_reviewers
+    )
 
     # 23456: With attached files
     record_id = migrated_records_with_comments[23456]["id"]
@@ -193,6 +230,10 @@ def test_migrate_comments_from_metadata(
     request_in_db = current_requests_service.read(system_identity, request["id"])
     assert request_in_db["number"] == "lrecid:23456"
     assert request_in_db["status"] == "accepted"
+    assert (
+        current_requests_service.record_cls.get_record(request["id"]).get("reviewers")
+        == expected_reviewers
+    )
 
     # 34567: Unknown user (not in users_metadata.json): No request is created
     record_id = migrated_records_with_comments[34567]["id"]
@@ -299,30 +340,23 @@ def test_migrate_comments_from_metadata(
 def test_migrate_comments_dry_run(temp_dir, test_app, db):
     """Test migrating comments in dry-run mode."""
     # Create directory structure for attached files
-    comments_dir = os.path.join(os.path.dirname(__file__), "data", "comments")
-    os.makedirs(comments_dir, exist_ok=True)
+    os.makedirs(COMMENTS_DATA_DIR, exist_ok=True)
 
     # Run comments runner in dry-run mode
     log_dir = os.path.join(temp_dir, "logs")
     runner = CommentsRunner(
         stream_definition=CommentsStreamDefinition,
-        filepath=os.path.join(
-            os.path.dirname(__file__), "data", "comments", "comments_metadata.json"
-        ),
+        config_filepath=write_comments_stream_config(temp_dir, "test-comments"),
         collection="test-comments",
-        dirpath=comments_dir,
         log_dir=log_dir,
         dry_run=True,
     )
+    before = current_requests_service.search(system_identity, q="").total
     runner.run()
-
     # In dry-run mode, request and comments should not be created
     # Verify the runner completes without errors
-    request = current_requests_service.search(
-        identity=system_identity,
-        q="",
-    )
-    assert request.total == 4  # Already created ones in the non dry-run mode
+    after = current_requests_service.search(system_identity, q="").total
+    assert after == before
 
 
 def test_create_users_from_metadata(
@@ -334,10 +368,8 @@ def test_create_users_from_metadata(
     log_dir = os.path.join(temp_dir, "logs")
     runner = CommenterRunner(
         stream_definition=CommenterStreamDefinition,
-        filename="missing_commentors_from_ldap.json",
-        missing_users_dir=os.path.join(
-            os.path.dirname(__file__), "data", "comments", "users"
-        ),
+        config_filepath=write_comments_stream_config(temp_dir, "test-comments"),
+        collection="test-comments",
         log_dir=log_dir,
         dry_run=False,
     )
@@ -367,10 +399,8 @@ def test_create_users_dry_run(
     log_dir = os.path.join(temp_dir, "logs")
     runner = CommenterRunner(
         stream_definition=CommenterStreamDefinition,
-        filename="missing_commentors_from_ldap.json",
-        missing_users_dir=os.path.join(
-            os.path.dirname(__file__), "data", "comments", "users"
-        ),
+        config_filepath=write_comments_stream_config(temp_dir, "test-comments"),
+        collection="test-comments",
         log_dir=log_dir,
         dry_run=True,
     )
@@ -384,3 +414,171 @@ def test_create_users_dry_run(
     # For now, we just verify the runner completes without errors
     assert user1 is None
     assert user2 is None
+
+
+def test_migrate_comments_onto_existing_inclusion_request(
+    temp_dir, migrated_records_with_comments, community, groups, db
+):
+    """Reuse an existing inclusion request and skip on re-run."""
+    legacy_recid = 12345
+    record = migrated_records_with_comments[legacy_recid]
+    parent = record._record.parent
+    expected_reviewers = [{"group": "test-comments-reviewers"}]
+
+    with UnitOfWork() as uow:
+        request_item = current_requests_service.create(
+            system_identity,
+            data={"title": record["metadata"]["title"]},
+            request_type=CommunitySubmission,
+            receiver={"community": str(community.id)},
+            creator={"user": str(parent.access.owned_by.owner_id)},
+            topic={"record": record.id},
+            uow=uow,
+        )
+        inclusion = request_item._record
+        inclusion.status = "accepted"
+        inclusion.number = f"lrecid:{legacy_recid}"
+        uow.register(
+            RecordCommitOp(inclusion, indexer=current_requests_service.indexer)
+        )
+        uow.commit()
+
+    db.session.add(User(email="submitter13@cern.ch", active=True))
+    db.session.add(User(email="submitter10@gmail.com", active=True))
+    db.session.commit()
+
+    log_dir = os.path.join(temp_dir, "logs")
+    runner = CommentsRunner(
+        stream_definition=CommentsStreamDefinition,
+        config_filepath=write_comments_stream_config(temp_dir, "test-comments"),
+        collection="test-comments",
+        log_dir=log_dir,
+        dry_run=False,
+    )
+    runner.run()
+    current_requests_service.record_cls.index.refresh()
+    current_events_service.record_cls.index.refresh()
+
+    request_in_db = current_requests_service.read(system_identity, inclusion.id)
+    assert request_in_db["type"] == CommunitySubmission.type_id
+    assert (
+        current_requests_service.record_cls.get_record(inclusion.id).get("reviewers")
+        == expected_reviewers
+    )
+    comments = [
+        h
+        for h in current_events_service.search(
+            system_identity, request_id=str(inclusion.id)
+        ).hits
+        if h.get("type") == "C"
+    ]
+    assert len(comments) == 1
+
+    # Re-run should not duplicate comments
+    runner.run()
+    current_events_service.record_cls.index.refresh()
+    comments_after = [
+        h
+        for h in current_events_service.search(
+            system_identity, request_id=str(inclusion.id)
+        ).hits
+        if h.get("type") == "C"
+    ]
+    assert len(comments_after) == 1
+
+
+def test_migrate_comments_ep_targets_internal_version(
+    temp_dir, test_app, community, db, add_pid
+):
+    """EP comments target the restricted record via source_internal_version."""
+    legacy_recid = 77777
+    payload = {
+        "metadata": {
+            "title": "EP record",
+            "publication_date": "2026-01-01",
+            "resource_type": {"id": "publication-article"},
+            "creators": [
+                {
+                    "person_or_org": {
+                        "type": "personal",
+                        "name": "Test Author",
+                        "given_name": "Test",
+                        "family_name": "Author",
+                    }
+                }
+            ],
+        },
+        "access": {"record": "public", "files": "public"},
+        "files": {"enabled": False},
+        "media_files": {"enabled": False},
+    }
+
+    def _publish(title, with_community):
+        draft = current_rdm_records_service.create(
+            system_identity,
+            {**payload, "metadata": {**payload["metadata"], "title": title}},
+        )
+        record = current_rdm_records_service.publish(system_identity, draft.id)
+        if with_community:
+            parent = record._record.parent
+            parent.communities.add(community)
+            parent.communities.default = community
+            parent.commit()
+        return record
+
+    restricted = _publish("EP restricted", True)
+    public = _publish("EP public", False)
+    legacy_minter(legacy_recid, public._record.parent.pid.object_uuid)
+    public_parent = public._record.parent
+    public_parent["permission_flags"] = {
+        "committee_approval": {"source_internal_version": restricted["id"]}
+    }
+    public_parent.commit()
+    db.session.add(User(email="ep.commenter@cern.ch", active=True))
+    db.session.commit()
+    current_rdm_records_service.record_cls.index.refresh()
+
+    metadata_path = os.path.join(temp_dir, "comments_metadata.json")
+    with open(metadata_path, "w") as fp:
+        json.dump(
+            {
+                str(legacy_recid): [
+                    {
+                        "comment_id": 1,
+                        "content": "EP comment",
+                        "status": "ok",
+                        "user_email": "ep.commenter@cern.ch",
+                        "created_at": "2025-01-10 10:00:00",
+                        "file_relation": {},
+                        "replies": [],
+                    }
+                ]
+            },
+            fp,
+        )
+
+    CommentsRunner(
+        stream_definition=CommentsStreamDefinition,
+        config_filepath=write_comments_stream_config(
+            temp_dir,
+            "test-collection",
+            dir_path=temp_dir,
+        ),
+        collection="test-collection",
+        log_dir=os.path.join(temp_dir, "logs"),
+        dry_run=False,
+    ).run()
+    current_requests_service.record_cls.index.refresh()
+
+    assert (
+        current_requests_service.search(
+            system_identity, q=f'topic.record:"{restricted["id"]}"'
+        ).total
+        == 1
+    )
+    assert (
+        current_requests_service.search(
+            system_identity, q=f'topic.record:"{public["id"]}"'
+        ).total
+        == 0
+    )
