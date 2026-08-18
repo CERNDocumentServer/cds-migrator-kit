@@ -14,11 +14,11 @@ from unittest.mock import MagicMock
 import pytest
 
 from cds_migrator_kit.errors import UnexpectedValue
-from cds_migrator_kit.rdm.migration_config import CDS_CERN_SCIENTIFIC_COMMUNITY_ID
 from cds_migrator_kit.rdm.records.load.ep_approval_entry import (
     EPPHAPP_FILE_TYPE,
     PublicEntry,
     RestrictedEntry,
+    _cern_scientific_community_id,
 )
 
 RECID = "12345"
@@ -526,7 +526,7 @@ class TestPublicEntryModifications:
             entry, _make_approval_request(), _make_migration_logger()
         ).build()
 
-        assert CDS_CERN_SCIENTIFIC_COMMUNITY_ID in (
+        assert _cern_scientific_community_id() in (
             result["parent"]["json"]["communities"]["ids"]
         )
 
@@ -534,14 +534,14 @@ class TestPublicEntryModifications:
         entry = _make_entry(_versions_with_epphapp())
         entry["parent"]["json"]["communities"]["ids"] = [
             "example-community",
-            CDS_CERN_SCIENTIFIC_COMMUNITY_ID,
+            _cern_scientific_community_id(),
         ]
         result = PublicEntry(
             entry, _make_approval_request(), _make_migration_logger()
         ).build()
 
         community_ids = result["parent"]["json"]["communities"]["ids"]
-        assert community_ids.count(CDS_CERN_SCIENTIFIC_COMMUNITY_ID) == 1
+        assert community_ids.count(_cern_scientific_community_id()) == 1
 
 
 class TestEntryImmutability:

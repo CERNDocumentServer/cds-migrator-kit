@@ -278,7 +278,7 @@ def running_app(
 
 
 @pytest.fixture
-def test_app(running_app):
+def test_app(running_app, cern_scientific_community):
     """Get current app."""
     running_app.app.config["RDM_PERSISTENT_IDENTIFIERS"]["doi"]["required"] = False
     running_app.app.config["RDM_PARENT_PERSISTENT_IDENTIFIERS"]["doi"][
@@ -1700,6 +1700,18 @@ def community(running_app, db):
     comm.theme = {"brand": "test-theme-brand"}
     comm.commit()
     db.session.commit()
+    return comm
+
+
+@pytest.fixture()
+def cern_scientific_community(running_app, db, app):
+    """A CERN Research community fixture."""
+    comm = Community.create({})
+    comm.slug = "cern-research"
+    comm.metadata = {"title": "CERN Research"}
+    comm.commit()
+    db.session.commit()
+    app.config["CDS_CERN_SCIENTIFIC_COMMUNITY_ID"] = str(comm.id)
     return comm
 
 
