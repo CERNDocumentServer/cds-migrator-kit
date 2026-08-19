@@ -794,20 +794,36 @@ def resource_type(self, key, value):
             subjects = self.get("subjects")
             subjects.append({"subject": value_a if value_a else value_b})
             self["subjects"] = subjects
-            raise IgnoreKey("resource_type")
-        raise UnexpectedValue(
-            "Unknown resource type (Publications)", value=best_value, field=key
-        )
+        # This function is invoked once per repeated 980__/697C_ occurrence
+        # (see CdsOverdo.do), with `self["resource_type"]` accumulating the
+        # best match across calls. An unmapped value here doesn't mean the
+        # record has no resource type - another occurrence, processed later,
+        # may still resolve to a known one, so don't abort the whole record.
+        # If no occurrence ever resolves, the missing resource_type is
+        # caught downstream (see `_resource_type` in transform.py).
+        raise IgnoreKey("resource_type")
 
-    if current:
-        current_key = next((k for k, v in mapping.items() if v == current), None)
-        current_rank = priority.get(current_key, float("inf"))
+    # `current` may be `resource_type`'s value from an earlier 980__/697C_
+    # occurrence on this same record, but it may also be a default seeded by
+    # the model's `_default_fields` (e.g. ResearchCommitteeModel sets
+    # resource_type to publication-other upfront) before this rule ever ran.
+    # Reverse-looking up `current` in `mapping` can't tell those apart - a
+    # seeded default happens to equal "alephdraft"'s mapped value, so it
+    # would get treated as an already-decided, low-priority match and block
+    # any later occurrence whose value isn't in `priority` (rank stays
+    # `inf`, and `inf < inf` is False). Track the rank of our own previous
+    # decision explicitly instead, so a seeded default never poisons this
+    # comparison.
+    current_rank = self.get("_resource_type_rank")
 
+    if current and current_rank is not None:
         if rank < current_rank:
+            self["_resource_type_rank"] = rank
             return mapping[best_value]
         else:
             raise IgnoreKey("resource_type")
     else:
+        self["_resource_type_rank"] = rank
         return mapping[best_value]
 
 
