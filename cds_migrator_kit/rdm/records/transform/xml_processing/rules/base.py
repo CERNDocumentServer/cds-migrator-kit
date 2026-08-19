@@ -551,8 +551,7 @@ def corporate_author(self, key, value):
         departments = self.get("custom_fields", {}).get("cern:departments", [])
         if department and department not in departments:
             departments.append(department)
-        self["custom_fields"]["cern:departments"] = departments
-        raise IgnoreKey("contributors")
+            self["custom_fields"]["cern:departments"] = departments
     if "b" in value:
         unit = value.get("b")
         if unit:
@@ -875,6 +874,14 @@ def related_identifiers_787(self, key, value):
         },
         "report": {
             "relation_type": {"id": "references"},
+            "resource_type": {"id": "publication-report"},
+        },
+        "addendum to": {
+            "relation_type": {"id": "issupplementto"},
+            "resource_type": {"id": "publication-report"},
+        },
+        "complemented by": {
+            "relation_type": {"id": "issuplementedby"},
             "resource_type": {"id": "publication-report"},
         },
         "preprint": {

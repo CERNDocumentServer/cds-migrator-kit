@@ -14,11 +14,14 @@ from pathlib import Path
 
 import arrow
 import yaml
+from cds_dojson.marc21.utils import create_record
 from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
+from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from dateutil.parser import ParserError, parse
 from flask import current_app
 from idutils import normalize_ror
 from idutils.validators import is_doi, is_ror
+from invenio_access.permissions import system_identity
 from invenio_accounts.models import User, UserIdentity
 from invenio_db import db
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
@@ -26,6 +29,7 @@ from invenio_rdm_migrator.streams.records.transform import (
     RDMRecordEntry,
     RDMRecordTransform,
 )
+from invenio_rdm_records.proxies import current_rdm_records_service, current_record_communities_service
 from invenio_vocabularies.contrib.affiliations.models import AffiliationsMetadata
 from invenio_vocabularies.contrib.names.models import NamesMetadata
 from sqlalchemy.exc import NoResultFound
@@ -418,6 +422,11 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             return _creators
 
         def _resource_type(entry):
+            # `_resource_type_rank` is bookkeeping for the 980__/697C_
+            # resource_type rule and research_committee.py's report-number
+            # detection (see research.py:resource_type) - drop it before it
+            # reaches the final record.
+            entry.pop("_resource_type_rank", None)
             try:
                 return entry["resource_type"]
             except KeyError:
@@ -613,6 +622,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 if result and result not in custom_fields_dict["cern:departments"]:
                     custom_fields_dict["cern:departments"].append(result)
                 elif not result:
+                    if department.lower() == "cern?":
+                        continue
                     subj = json_output["metadata"].get("subjects", [])
                     subj.append({"subject": department})
                     json_output["metadata"]["subjects"] = subj
@@ -622,7 +633,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                         value=department,
                         field="department",
                         message=f"Department {department} not found. "
-                        f"Added as unit and subject",
+                                f"Added as unit and subject",
                         stage="vocabulary match",
                     )
 
@@ -907,12 +918,12 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                     "_clc_sync": clc_sync,
                 }
         except (
-            LossyConversion,
-            RestrictedFileDetected,
-            UnexpectedValue,
-            ManualImportRequired,
-            MissingRequiredField,
-            MultipleModelsMatched,
+                LossyConversion,
+                RestrictedFileDetected,
+                UnexpectedValue,
+                ManualImportRequired,
+                MissingRequiredField,
+                MultipleModelsMatched,
         ) as e:
             migration_logger.add_log(e, record=entry)
 
@@ -1014,7 +1025,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
                 {
                     file_dump["full_name"]: {
                         "eos_tmp_path": tmp_eos_root
-                        / full_path.relative_to(legacy_path_root),
+                                        / full_path.relative_to(legacy_path_root),
                         "id_bibdoc": file_dump["bibdocid"],
                         "key": file_dump["full_name"],
                         "metadata": {
@@ -1100,17 +1111,77 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
     def should_skip(self, entry):
         return str(entry["recid"]) in self._migrated_recids
 
+    def _existing_record_is_restricted(self, record_id):
+        """Check the current access state of an already-migrated RDM record.
+
+        Reads live from the record service (DB) rather than the legacy
+        MARCXML, since access restrictions may have been changed in RDM
+        after migration and the legacy record data would be stale.
+        """
+        record = current_rdm_records_service.read_latest(
+            system_identity, id_=record_id
+        )
+        access = record.data.get("access", {})
+        return access.get("record") != "public" or access.get("files") != "public"
+
     def run(self, entries):
         """Run transformation step."""
         self._migrated_recids = self._load_migrated_recids()
-
         for entry in entries:
             if self.should_skip(entry):
                 recid = entry["recid"]
+                try:
+                    parent_pid = get_pid_by_legacy_recid(str(recid))
+                    # we don't check here if the record has 980:MIGRATED
+                    # because this does not add anything and it should not be deciding factor.
+                    # if the legacy recid has been minted - we know already the record has been migrated
+                    if self._existing_record_is_restricted(parent_pid.pid_value):
+                        # checking if we need to be more careful while assigning access
+                        # to various communities
+                        raise ManualImportRequired(
+                            message=(
+                                "Existing record is restricted or has "
+                                "restricted files; not adding to "
+                                "communities automatically"
+                            ),
+                            field="access",
+                            stage="transform",
+                            recid=recid,
+                            priority="warning",
+                        )
+                    # bulk_add resolves record_ids via RDMRecord.pid.resolve(),
+                    # which -- unlike read_latest -- has no fallback for a
+                    # parent-level recid (what get_pid_by_legacy_recid returns).
+                    # We must pass the record's own recid instead.
+                    record_item = current_rdm_records_service.read_latest(
+                        system_identity, id_=parent_pid.pid_value
+                    )
+                    for community_id in self.communities_ids:
+                        current_record_communities_service.bulk_add(
+                            system_identity,
+                            community_id,
+                            [record_item.id],
+                        )
+                except NoResultFound:
+                    self.migration_logger.add_information(
+                        recid,
+                        {
+                            "message": (
+                                "Problem with PIDs - minted legacy recid but"
+                                "no corresponding parent record found."
+                            ),
+                            "value": recid,
+                        },
+                    )
+                except ManualImportRequired as exc:
+                    self.migration_logger.add_log(exc, record=entry)
+
                 self.migration_logger.add_information(
                     recid,
                     {
-                        "message": "Record already migrated, skipping",
+                        "message": "Record already migrated, skipping,"
+                                   " added existing {} to communities {}".format(
+                            recid, self.communities_ids),
                         "value": recid,
                     },
                 )

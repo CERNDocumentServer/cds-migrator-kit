@@ -95,11 +95,10 @@ class ResearchCommitteeModel(CdsOverdo):
 
     _default_fields = {
         "custom_fields": {},
-        "resource_type": {"id": "publication-other"},
     }
 
 
 research_comm_model = ResearchCommitteeModel(
     bases=(rdm_base_publication_model,),
-    entry_point_group="cds_migrator_kit.migrator.rdm.rules.publication",
+    entry_point_group="cds_migrator_kit.migrator.rules.research_committee",
 )

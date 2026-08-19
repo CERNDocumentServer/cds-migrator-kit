@@ -21,6 +21,7 @@ from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import
     journal,
     meeting,
     oa_level_from_license,
+    resource_type,
     udc,
 )
 
@@ -1216,3 +1217,106 @@ class TestLicenseAndFundingFrom540:
                 record, "540__", [{"f": "SCOAP3"}, {"f": "Collective"}]
             )
         assert self._cf(record)["cern:oa_funding_model"] == {"id": "scoap3"}
+
+
+class TestResourceType:
+    """Test resource_type function from publications.py (980__/697C_ rule).
+
+    980__/697C_ is a repeated MARC field: dojson invokes this rule once per
+    occurrence (see CdsOverdo.do), accumulating the best match into
+    record["resource_type"] across calls. An unmapped value on one
+    occurrence must not stop later occurrences from being considered.
+    """
+
+    def _apply(self, record, key, value):
+        """Simulate one dojson `do()` step for a repeated-field occurrence."""
+        try:
+            record["resource_type"] = resource_type(record, key, value)
+        except IgnoreKey:
+            pass
+
+    def test_record_290988_note_resolved_after_unmapped_occurrence(self):
+        """https://cds.cern.ch/record/290988 has three 980__ occurrences:
+        SCICOMMPUBLDRDC (a committee, not a resource type), INTNOTEATLASPUBL
+        (unmapped), and NOTE (maps to publication-technicalnote). The
+        unmapped middle occurrence must not prevent NOTE from being applied.
+        """
+        record = {"custom_fields": {}}
+
+        self._apply(record, "980__", {"a": "SCICOMMPUBLDRDC"})
+        self._apply(record, "980__", {"a": "INTNOTEATLASPUBL"})
+        self._apply(record, "980__", {"a": "NOTE"})
+
+        assert record["resource_type"] == {"id": "publication-technicalnote"}
+        assert record["custom_fields"]["cern:committees"] == [{"id": "DRDC"}]
+
+    def test_unmapped_value_ignored_not_raised(self):
+        """An unmapped 980__a is skipped, not raised - it no longer aborts
+        processing of the record's remaining fields."""
+        record = {"custom_fields": {}}
+        with pytest.raises(IgnoreKey):
+            resource_type(record, "980__", {"a": "INTNOTEATLASPUBL"})
+        assert "resource_type" not in record
+
+    def test_unmapped_only_occurrence_still_ignored_not_raised(self):
+        """Even as the only occurrence, an unmapped value is skipped. Records
+        left without any resource_type are caught downstream by the
+        required-field check (see `_resource_type` in transform.py)."""
+        record = {"custom_fields": {}}
+        with pytest.raises(IgnoreKey):
+            resource_type(record, "980__", {"a": "totally-unknown-type"})
+        assert "resource_type" not in record
+
+    def test_committee_sets_custom_field_not_resource_type(self):
+        record = {"custom_fields": {}}
+        with pytest.raises(IgnoreKey):
+            resource_type(record, "980__", {"a": "SCICOMMPUBLSPSC"})
+        assert record["custom_fields"]["cern:committees"] == [{"id": "SPSC"}]
+        assert "resource_type" not in record
+
+    def test_ignored_type_dropped_silently(self):
+        record = {"custom_fields": {}}
+        with pytest.raises(IgnoreKey):
+            resource_type(record, "980__", {"a": "aleph_misc"})
+        assert "resource_type" not in record
+        assert "cern:committees" not in record["custom_fields"]
+
+    def test_experiment_marker_sets_custom_field(self):
+        record = {"custom_fields": {}}
+        with pytest.raises(IgnoreKey):
+            resource_type(record, "980__", {"a": "LHCBCERNTALK"})
+        assert record["custom_fields"]["cern:experiments"] == ["LHCb"]
+        assert "resource_type" not in record
+
+    def test_higher_priority_value_replaces_note(self):
+        record = {"custom_fields": {}}
+        self._apply(record, "980__", {"a": "NOTE"})
+
+        result = resource_type(record, "980__", {"a": "ARTICLE"})
+        assert result == {"id": "publication-article"}
+
+    def test_lower_priority_value_ignored(self):
+        record = {"custom_fields": {}}
+        self._apply(record, "980__", {"a": "conferencepaper"})
+
+        with pytest.raises(IgnoreKey):
+            resource_type(record, "980__", {"a": "note"})
+        assert record["resource_type"] == {"id": "publication-conferencepaper"}
+
+    def test_seeded_default_resource_type_does_not_block_real_value(self):
+        """A `resource_type` value present without a matching
+        `_resource_type_rank` (e.g. seeded by a model's `_default_fields`,
+        or set directly by another rule - see
+        xml_processing/rules/research_committee.py) must not be mistaken
+        for an already-decided match and block a real, unranked mapped
+        value like "report"."""
+        record = {"custom_fields": {}, "resource_type": {"id": "publication-other"}}
+        result = resource_type(record, "980__", {"a": "REPORT"})
+        assert result == {"id": "publication-report"}
+
+    def test_697C_lexi_adds_subject_instead_of_resource_type(self):
+        record = {"custom_fields": {}, "subjects": []}
+        with pytest.raises(IgnoreKey):
+            resource_type(record, "697C_", {"a": "lexisomething"})
+        assert record["subjects"] == [{"subject": "lexisomething"}]
+        assert "resource_type" not in record
