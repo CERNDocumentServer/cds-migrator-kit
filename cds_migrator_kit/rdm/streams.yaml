@@ -140,10 +140,10 @@ records:
       communities_ids:
         - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
         - "28bf99b9-1e72-405a-b95a-828019831def"
-  scps_comm:
-    data_dir: cds_migrator_kit/rdm/data/committees/scps
+  scp_adv:
+    data_dir: cds_migrator_kit/rdm/data/committees/sc_sdv
     extract:
-      dirpath: cds_migrator_kit/rdm/data/committees/scps
+      dirpath: cds_migrator_kit/rdm/data/committees/sc_adv
     transform:
       files_dump_dir: cds_migrator_kit/rdm/data/committees/files/
       missing_users: cds_migrator_kit/rdm/data/users

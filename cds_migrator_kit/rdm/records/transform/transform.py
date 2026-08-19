@@ -422,6 +422,11 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             return _creators
 
         def _resource_type(entry):
+            # `_resource_type_rank` is bookkeeping for the 980__/697C_
+            # resource_type rule and research_committee.py's report-number
+            # detection (see research.py:resource_type) - drop it before it
+            # reaches the final record.
+            entry.pop("_resource_type_rank", None)
             try:
                 return entry["resource_type"]
             except KeyError:
@@ -617,6 +622,8 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 if result and result not in custom_fields_dict["cern:departments"]:
                     custom_fields_dict["cern:departments"].append(result)
                 elif not result:
+                    if department.lower() == "cern?":
+                        continue
                     subj = json_output["metadata"].get("subjects", [])
                     subj.append({"subject": department})
                     json_output["metadata"]["subjects"] = subj
