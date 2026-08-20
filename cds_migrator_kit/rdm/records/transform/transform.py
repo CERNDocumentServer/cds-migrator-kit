@@ -12,27 +12,20 @@ import re
 from collections import OrderedDict
 from copy import deepcopy
 from pathlib import Path
+from typing import Any, Dict, NamedTuple, Optional
 
 import arrow
-import yaml
 from cds_dojson.marc21.utils import create_record
 from cds_rdm.legacy.models import CDSMigrationAffiliationMapping
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
-from dateutil.parser import ParserError, parse
+from dateutil.parser import ParserError
 from flask import current_app
-from idutils import normalize_ror
-from idutils.validators import is_doi, is_ror
+from idutils.validators import is_doi
 from invenio_access.permissions import system_identity
-from invenio_accounts.models import User, UserIdentity
-from invenio_db import db
+from invenio_accounts.models import User
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
-from invenio_rdm_migrator.streams.records.transform import (
-    RDMRecordEntry,
-    RDMRecordTransform,
-)
+from invenio_rdm_migrator.logging import Logger
 from invenio_rdm_records.proxies import current_rdm_records_service, current_record_communities_service
-from invenio_vocabularies.contrib.affiliations.models import AffiliationsMetadata
-from invenio_vocabularies.contrib.names.models import NamesMetadata
 from sqlalchemy.exc import NoResultFound
 
 from cds_migrator_kit.errors import (
@@ -43,95 +36,40 @@ from cds_migrator_kit.errors import (
     RestrictedFileDetected,
     UnexpectedValue,
 )
-from cds_migrator_kit.rdm.migration_config import (
-    RDM_RECORDS_IDENTIFIERS_SCHEMES,
-    VOCABULARIES_NAMES_SCHEMES,
-)
 from cds_migrator_kit.rdm.records.transform.config import (
-    EXPERIMENT_ALIASES,
     FILE_SUBFORMATS_TO_DROP,
-    IDENTIFIERS_SCHEMES_TO_DROP,
-    IDENTIFIERS_VALUES_TO_DROP,
     PIDS_SCHEMES_ALLOWED,
     PIDS_SCHEMES_TO_DROP,
+)
+from cds_migrator_kit.rdm.records.transform.entry_types import (
+    MigrationEntry,
+    ParentAccess,
+    ParentEntry,
+    ParentJson,
+    RecordEntry,
+    VersionEntry,
+)
+from cds_migrator_kit.rdm.records.transform.mappers.base import RecordTransformContext
+from cds_migrator_kit.rdm.records.transform.mappers.record import AccessGrantsMapper
+from cds_migrator_kit.rdm.records.transform.mappers.registry import (
+    CUSTOM_FIELD_MAPPERS,
+    METADATA_MAPPERS,
 )
 from cds_migrator_kit.transform.dumper import CDSRecordDump
 from cds_migrator_kit.transform.errors import LossyConversion
 
 cli_logger = logging.getLogger("migrator")
 
-_VOCAB_FILENAMES = {
-    "experiments": "experiments.yaml",
-    "departments": "departments.yaml",
-    "programmes": "programmes.yaml",
-    "accelerators": "accelerators.yaml",
-    "beams": "beams.yaml",
-}
 
+class CDSToRDMRecordEntry:
+    """Transform CDS record to RDM record.
 
-class VocabularyCache:
-    """Vocabulary lookup cache loaded once from YAML files at startup."""
-
-    def __init__(self, default_dir, override_dir=None):
-        """Load all vocabularies into memory.
-
-        For each vocabulary file, ``override_dir`` (e.g. a test-local
-        directory overriding just a subset of files) is preferred when it
-        contains that file, falling back to ``default_dir`` otherwise.
-        """
-        self._cache = {}
-        default_dir = Path(default_dir)
-        override_dir = Path(override_dir) if override_dir else None
-        for vocab_type, filename in _VOCAB_FILENAMES.items():
-            filepath = default_dir / filename
-            if override_dir and (override_dir / filename).exists():
-                filepath = override_dir / filename
-            self._cache[vocab_type] = self._load(filepath)
-
-    @staticmethod
-    def _load(filepath):
-        """Build a case-insensitive term→id lookup from a vocabulary YAML."""
-        with open(filepath) as f:
-            entries = yaml.safe_load(f)
-        lookup = {}
-        for entry in entries:
-            entry_id = entry["id"]
-            lookup[entry_id.lower()] = entry_id
-            title = entry.get("title", {}).get("en", "")
-            if title and title.lower() != entry_id.lower():
-                lookup[title.lower()] = entry_id
-        return lookup
-
-    def get(self, term, vocab_type):
-        """Return {"id": vocab_id} if term matches, else None."""
-        entry_id = self._cache[vocab_type].get(term.strip().lower())
-        return {"id": entry_id} if entry_id else None
-
-
-_vocabulary_cache = None
-
-
-def _get_vocabulary_cache():
-    global _vocabulary_cache
-    if _vocabulary_cache is None:
-        import cds_rdm
-
-        default_dir = Path(cds_rdm.__file__).parent / "app_data" / "vocabularies"
-        override_dir = current_app.config.get("CDS_MIGRATOR_KIT_VOCABULARIES_DIR")
-        _vocabulary_cache = VocabularyCache(default_dir, override_dir)
-    return _vocabulary_cache
-
-
-def search_vocabulary(term, vocab_type):
-    """Look up a vocabulary term using the pre-loaded YAML cache.
-
-    Returns {"id": vocab_id} if found, else None.
+    Builds the ``record`` content dict consumed by
+    ``CDSToRDMRecordTransform`` - not the invenio_rdm_migrator "generic RDM
+    record" envelope (this class deliberately does not use that framework's
+    ``RDMRecordEntry.transform()``/``_load_partial`` orchestration, since the
+    CDS legacy shape and the CDS loader's needs don't match it).
     """
-    return _get_vocabulary_cache().get(term, vocab_type)
-
-
-class CDSToRDMRecordEntry(RDMRecordEntry):
-    """Transform CDS record to RDM record."""
 
     def __init__(
         self,
@@ -148,6 +86,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         preferred_model=None,
     ):
         """Constructor."""
+        self.partial = partial
         self.missing_users_dir = missing_users_dir
         self.missing_users_filename = missing_users_filename
         self.affiliations_mapping = affiliations_mapping
@@ -157,6 +96,12 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         self.access_grants_view = access_grants_view
         self.migration_logger = migration_logger
         self.record_state_logger = record_state_logger
+        # populated by transform(); an ETL-envelope concern (does the
+        # parent need a CLC sync after load), not record content, so it
+        # isn't part of the dict transform() returns - the caller
+        # (CDSToRDMRecordTransform._record()) reads it off this instance
+        # instead. See CDSToRDMRecordTransform._transform()'s docstring.
+        self.clc_sync = None
         self.preferred_model = preferred_model
         self.ep_approval_request = None
         super().__init__(partial)
@@ -192,18 +137,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
     def _recid(self, record_dump):
         """Returns the recid of the record."""
         return str(record_dump.data["recid"])
-
-    def _bucket_id(self, json_entry):
-        return
-
-    def _id(self, entry):
-        return
-
-    def _media_bucket_id(self, entry):
-        return
-
-    def _media_files(self, entry):
-        return {}
 
     def _pids(self, json_entry):
         DATACITE_PREFIX = current_app.config["DATACITE_PREFIX"]
@@ -256,288 +189,21 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
     def _owner(self, json_entry):
         email = json_entry.get("submitter")
-        if not email:
-            return "system"
-        try:
-            user = User.query.filter_by(email=email).one()
-            return user.id
-        except NoResultFound:
-            raise UnexpectedValue(
-                message=f"{email} not found - did you run user migration?",
-                stage="transform",
-                recid=json_entry["legacy_recid"],
-                value=email,
-                priority="critical",
-            )
+        return email
 
-    def _match_affiliation(self, affiliation_name, json_entry):
-        """Match an affiliation against `CDSMigrationAffiliationMapping` db table."""
-        if is_ror(affiliation_name):
-            ror = normalize_ror(affiliation_name)
-            name = AffiliationsMetadata.query.filter_by(pid=ror).one_or_none()
-            if name is None:
-                raise ManualImportRequired(
-                    message="Affiliation {ror} does not exist in the AffiliationMetadata table".format(
-                        ror=ror
-                    ),
-                    field="validation",
-                    stage="transform",
-                    description="Add this affiliation",
-                    recid=json_entry["recid"],
-                    priority="critical",
-                    value=None,
-                    subfield=None,
-                )
-            return {"id": normalize_ror(affiliation_name)}
-        # Step 1: search in the affiliation mapping (ROR organizations)
-        match = self.affiliations_mapping.query.filter_by(
-            legacy_affiliation_input=affiliation_name
-        ).one_or_none()
-        if match:
-            # Step 1: check if there is a curated input
-            if match.curated_affiliation:
-                return match.curated_affiliation
-            # Step 2: check if there is an exact match
-            if match.ror_exact_match:
-                return {"id": normalize_ror(match.ror_exact_match)}
-            # Step 3: check if there is not exact match
-            if match.ror_not_exact_match:
-                _affiliation_ror_id = normalize_ror(match.ror_not_exact_match)
-                raise RecordFlaggedCuration(
-                    subfield="u",
-                    value={"id": _affiliation_ror_id},
-                    field="author",
-                    message=f"Affiliation {_affiliation_ror_id} not found as an exact match, ROR id should be checked.",
-                    stage="vocabulary match",
-                )
-        # Step 4: set the originally inserted value from legacy (no match, or match
-        # found but has no ROR id of any kind)
-        raise RecordFlaggedCuration(
-            subfield="u",
-            value={"name": affiliation_name},
-            field="author",
-            message=f"Affiliation {affiliation_name} not found as an exact match, custom value should be checked.",
-            stage="vocabulary match",
+    def _metadata(self, json_entry, entry):
+        """Build the metadata dict by running the composed field mappers."""
+        ctx = RecordTransformContext(
+            json_entry=json_entry,
+            entry=entry,
+            migration_logger=self.migration_logger,
+            affiliations_mapping=self.affiliations_mapping,
         )
-
-    def _metadata(self, json_entry, record_dump):
-
-        def creator_affiliations(creator):
-            affiliations = creator.get("affiliations", [])
-            transformed_aff = []
-
-            for affiliation_name in affiliations:
-                try:
-                    affiliation = self._match_affiliation(affiliation_name, json_entry)
-                    if affiliation not in transformed_aff:
-                        transformed_aff.append(affiliation)
-                except RecordFlaggedCuration as exc:
-                    # Save not exact match affiliation and reraise to flag the record
-                    self.migration_logger.add_information(
-                        json_entry["recid"],
-                        {"message": exc.message, "value": exc.value},
-                    )
-                    aff = {"name": affiliation_name}
-                    if aff not in transformed_aff:
-                        transformed_aff.append({"name": affiliation_name})
-            creator["affiliations"] = transformed_aff
-
-        def creator_identifiers(creator):
-            processed_identifiers = []
-            inner_dict = creator.get("person_or_org", {})
-            identifiers = inner_dict.get("identifiers", [])
-            for identifier in identifiers:
-                # we check for unknown schemes
-                if identifier["scheme"] in VOCABULARIES_NAMES_SCHEMES.keys():
-                    processed_identifiers.append(identifier)
-            if processed_identifiers:
-                inner_dict["identifiers"] = processed_identifiers
-            else:
-                inner_dict.pop("identifiers", None)
-
-        def lookup_person_id(creator):
-            migrated_identifiers = deepcopy(
-                creator.get("person_or_org", {}).get("identifiers", [])
-            )
-            name = None
-            # lookup person_id
-            person_id = next(
-                (
-                    identifier
-                    for identifier in migrated_identifiers
-                    if identifier["scheme"] == "cern"
-                ),
-                {},
-            ).get("identifier")
-            if person_id:
-                ui = UserIdentity.query.filter_by(id=person_id).one_or_none()
-                if ui:
-                    user_id = ui.user.id
-                    names = NamesMetadata.query.filter_by(
-                        internal_id=str(user_id)
-                    ).all()
-                    name = next(
-                        (
-                            name
-                            for name in names
-                            if "unlisted" not in name.json.get("tags", [])
-                        ),
-                        None,
-                    )
-            # filter out cern person_id
-            creator["person_or_org"]["identifiers"] = [
-                identifier
-                for identifier in migrated_identifiers
-                if identifier["scheme"] != "cern"
-            ]
-            if name:
-                # update identifiers of the authors to the latest known
-                ids = creator["person_or_org"]["identifiers"]
-                # check ids supplied by the names vocabulary and add missing
-                for identifier in name.json.get("identifiers", []):
-                    if identifier not in ids and identifier.get("scheme") != "cern":
-                        ids.append(identifier)
-
-                # copy names identifiers and json to assign explicitly json object
-                # due to how postgres assignment of json is handled
-                json_copy = deepcopy(name.json)
-                existing_ids = deepcopy(name.json.get("identifiers", []))
-                # update the names vocab to contain other ids found during migration
-                for identifier in ids:
-                    if identifier not in existing_ids:
-                        existing_ids.append(identifier)
-
-                if existing_ids:
-                    # assign json explicitly to names entry
-                    json_copy["identifiers"] = existing_ids
-                    name.json = json_copy
-
-                    db.session.add(name)
-                    # db.session.commit()
-
-        def creators(json, key="creators"):
-            _creators = deepcopy(json.get(key, []))
-            _creators = list(filter(lambda x: x is not None, _creators))
-            for creator in _creators:
-                creator_affiliations(creator)
-                lookup_person_id(creator)
-                creator_identifiers(creator)
-            return _creators
-
-        def _resource_type(entry):
-            # `_resource_type_rank` is bookkeeping for the 980__/697C_
-            # resource_type rule and research_committee.py's report-number
-            # detection (see research.py:resource_type) - drop it before it
-            # reaches the final record.
-            entry.pop("_resource_type_rank", None)
-            try:
-                return entry["resource_type"]
-            except KeyError:
-                raise MissingRequiredField(message="resource_type", field="980")
-
-        def _title(entry, resource_type):
-            title = entry.get("title")
-            if title:
-                return title
-            # 245 (title) is sometimes absent on conference proceedings
-            # records; fall back to the conference name (111__a) stored on
-            # the first meeting entry.
-            if resource_type.get("id") == "publication-conferenceproceeding":
-                meetings = entry.get("custom_fields", {}).get("meeting:meeting", [])
-                for meeting_entry in meetings:
-                    meeting_title = meeting_entry.get("title")
-                    if meeting_title:
-                        return meeting_title
-            return title
-
-        def _publication_date(entry, dump_record):
-            pub_date = entry.get("publication_date")
-            created = entry.get("status_week_date")
-            files = dump_record["files"]
-            if not (pub_date or created or files):
-                raise MissingRequiredField(
-                    message="missing creation or publication date", field="916"
-                )
-            if not pub_date:
-                if created:
-                    pub_date = entry["status_week_date"]
-                elif not created and files:
-                    pub_date = parse(files[0]["creation_date"]).date().isoformat()
-            return pub_date
-
-        def _identifiers(json_entry):
-            identifiers = json_entry.get("identifiers", [])
-            for item in reversed(identifiers):
-                # drop unwanted schemes
-                if item is None or "scheme" not in item:
-                    raise UnexpectedValue(
-                        field="identifiers",
-                        value=item,
-                        subfield="9",
-                        message="IDENTIFIER SCHEME MISSING",
-                        priority="warning",
-                        stage="transform",
-                    )
-                if (
-                    item["scheme"].upper() in IDENTIFIERS_SCHEMES_TO_DROP
-                    or IDENTIFIERS_VALUES_TO_DROP in item["identifier"]
-                ):
-                    identifiers.remove(item)
-                    continue
-                if item["scheme"] not in RDM_RECORDS_IDENTIFIERS_SCHEMES.keys():
-                    raise UnexpectedValue(
-                        field="identifiers",
-                        subfield="9",
-                        message="IDENTIFIER SCHEME INVALID",
-                        priority="warning",
-                        stage="transform",
-                        value=item,
-                    )
-            return identifiers
-
-        def table_of_contents(json_entry):
-            toc = json_entry.get("table_of_content", [])
-            additional_desc = json_entry.get("additional_descriptions", [])
-            if toc:
-                additional_desc.append(
-                    {"description": toc, "type": {"id": "table-of-contents"}}
-                )
-                json_entry["additional_descriptions"] = additional_desc
-                json_entry.pop("table_of_content")
-
-        def subjects(json_entry):
-            _subjects = json_entry.get("subjects")
-            if _subjects:
-                for subject in reversed(_subjects):
-                    if subject.get("subject", "").lower() in ["xx", "talk"]:
-                        _subjects.remove(subject)
-                    elif subject.get("id", "").lower() in ["xx", "talk"]:
-                        _subjects.remove(subject)
-            return _subjects
-
-        _subjects = subjects(json_entry)
-        table_of_contents(json_entry)
-
-        _resource_type_value = _resource_type(json_entry)
-        metadata = {
-            "creators": creators(json_entry),
-            "title": _title(json_entry, _resource_type_value),
-            "resource_type": _resource_type_value,
-            "description": json_entry.get("description"),
-            "publication_date": _publication_date(json_entry, record_dump),
-            "contributors": creators(json_entry, key="contributors"),
-            "subjects": _subjects,
-            "publisher": json_entry.get("publisher"),
-            "additional_descriptions": json_entry.get("additional_descriptions"),
-            "additional_titles": json_entry.get("additional_titles"),
-            "identifiers": _identifiers(json_entry),
-            "languages": json_entry.get("languages"),
-            "dates": json_entry.get("dates"),
-            "funding": json_entry.get("funding"),
-            "related_identifiers": json_entry.get("related_identifiers"),
-            "rights": json_entry.get("rights"),
-            "copyright": json_entry.get("copyright"),
-        }
+        metadata = ctx.metadata
+        # Order matters: ResourceTypeMapper must run before TitleMapper reads
+        # metadata["resource_type"]; see mappers/registry.py.
+        for mapper in METADATA_MAPPERS:
+            metadata[mapper.id] = mapper.map_value(ctx)
 
         # filter empty keys
         helper_keys = [
@@ -553,8 +219,6 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "internal_notes",
             "ep_approval",
         ]
-        self.ep_approval_request = json_entry.get("ep_approval", [])
-
         keys = deepcopy(list(json_entry.keys()))
         for item in helper_keys:
             if item in keys:
@@ -566,169 +230,16 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
         return {k: v for k, v in metadata.items() if v}
 
     def _custom_fields(self, json_entry, json_output):
-
-        def field_experiments(record_json, custom_fields_dict):
-            experiments = record_json.get("custom_fields", {}).get(
-                "cern:experiments", []
-            )
-            for experiment in experiments:
-                if experiment.lower().strip() in ["not applicable", "xx"]:
-                    continue
-                experiment = EXPERIMENT_ALIASES.get(
-                    experiment.lower().strip(), experiment
-                )
-                result = search_vocabulary(experiment, "experiments")
-                if result and result not in custom_fields_dict["cern:experiments"]:
-                    custom_fields_dict["cern:experiments"].append(result)
-                elif not result:
-                    subj = json_output["metadata"].get("subjects", [])
-                    subj.append({"subject": experiment})
-                    json_output["metadata"]["subjects"] = subj
-                    raise UnexpectedValue(
-                        subfield="e",
-                        value=experiment,
-                        field="693",
-                        message=f"Experiment {experiment} not found",
-                        stage="vocabulary match",
-                    )
-
-        def field_programmes(record_json):
-            programme = record_json.get("custom_fields", {}).get("cern:programmes")
-            if programme:
-                result = search_vocabulary(programme, "programmes")
-                if result:
-                    return result
-                else:
-                    raise UnexpectedValue(
-                        value=programme,
-                        field="programme",
-                        message=f"programme {programme} not found",
-                        stage="vocabulary match",
-                    )
-            else:
-                if record_json["resource_type"] == "publication-thesis":
-                    return {"id": "None"}
-                else:
-                    return
-
-        def field_departments(record_json, custom_fields_dict):
-            departments = record_json.get("custom_fields", {}).get(
-                "cern:departments", []
-            )
-            for department in departments:
-                if "-" in department:
-                    units = department.split("-")
-                    dep = units[0]
-                else:
-                    dep = department
-                result = search_vocabulary(dep, "departments")
-                if result and result not in custom_fields_dict["cern:departments"]:
-                    custom_fields_dict["cern:departments"].append(result)
-                elif not result:
-                    if department.lower() == "cern?":
-                        continue
-                    subj = json_output["metadata"].get("subjects", [])
-                    subj.append({"subject": department})
-                    json_output["metadata"]["subjects"] = subj
-                    custom_fields_dict["cern:administrative_unit"] = department
-                    raise RecordFlaggedCuration(
-                        subfield="a",
-                        value=department,
-                        field="department",
-                        message=f"Department {department} not found. "
-                                f"Added as unit and subject",
-                        stage="vocabulary match",
-                    )
-
-        def field_accelerators(record_json, custom_fields_dict):
-            accelerators = record_json.get("custom_fields", {}).get(
-                "cern:accelerators", []
-            )
-            for accelerator in accelerators:
-                if accelerator.lower().strip() in ["not applicable", "xx", "fermi"]:
-                    continue
-                result = search_vocabulary(accelerator, "accelerators")
-                if result and result not in custom_fields_dict["cern:accelerators"]:
-                    custom_fields_dict["cern:accelerators"].append(result)
-                elif not result:
-                    raise UnexpectedValue(
-                        subfield="a",
-                        value=accelerator,
-                        field="accelerators",
-                        message=f"Accelerator {accelerator} not found.",
-                        stage="vocabulary match",
-                    )
-
-        def field_beams(record_json, custom_fields_dict):
-            beams = record_json.get("custom_fields", {}).get("cern:beams", [])
-            for beam in beams:
-                if beam.lower().strip() == "not applicable":
-                    continue
-                result = search_vocabulary(beam, "beams")
-                if result and result not in custom_fields_dict["cern:beams"]:
-                    custom_fields_dict["cern:beams"].append(result)
-                elif not result:
-                    raise UnexpectedValue(
-                        subfield="a",
-                        value=beam,
-                        field="beams",
-                        message=f"Beam {beam} not found.",
-                        stage="vocabulary match",
-                    )
-
-        def field_journal(record_json):
-            """Raise if title is missing in journal field"""
-            journal = record_json.get("custom_fields", {}).get("journal:journal", {})
-            if journal:
-                if not journal.get("title"):
-                    raise RecordFlaggedCuration(
-                        message="found partial journal field, to be checked",
-                        stage="transform",
-                        field="773",
-                    )
-                return journal
-            return {}
-
-        _cf = json_entry.get("custom_fields", {})
-        try:
-            journal = field_journal(json_entry)
-        except RecordFlaggedCuration as e:
-            self.migration_logger.add_information(
-                json_entry["recid"],
-                {"message": e.message, "value": e.value},
-            )
-            journal = {}
-        custom_fields = {
-            "cern:experiments": [],
-            "cern:departments": [],
-            "cern:accelerators": [],
-            "cern:administrative_unit": _cf.get("cern:administrative_unit", []),
-            "cern:projects": _cf.get("cern:projects", []),
-            "cern:facilities": _cf.get("cern:facilities", []),
-            "cern:studies": _cf.get("cern:studies", []),
-            "cern:beams": [],
-            "cern:programmes": field_programmes(json_entry),
-            "cern:committees": _cf.get("cern:committees"),
-            "cern:oa_funding_model": _cf.get("cern:oa_funding_model"),
-            "thesis:thesis": _cf.get("thesis:thesis", {}),
-            "journal:journal": journal,
-            "imprint:imprint": _cf.get("imprint:imprint", {}),
-            "meeting:meeting": _cf.get("meeting:meeting", {}),
-        }
-        try:
-            field_experiments(json_entry, custom_fields)
-            field_departments(json_entry, custom_fields)
-
-        except RecordFlaggedCuration as exc:
-            self.migration_logger.add_information(
-                json_entry["recid"],
-                {"message": exc.message, "value": exc.value},
-            )
-        field_accelerators(json_entry, custom_fields)
-        field_beams(json_entry, custom_fields)
-
-        if custom_fields["cern:programmes"] is None:
-            del custom_fields["cern:programmes"]
+        """Build the custom_fields dict by running the composed field mappers."""
+        ctx = RecordTransformContext(
+            json_entry=json_entry,
+            entry=json_entry,
+            migration_logger=self.migration_logger,
+            json_output=json_output,
+        )
+        for mapper in CUSTOM_FIELD_MAPPERS:
+            mapper.apply(ctx)
+        custom_fields = ctx.custom_fields
 
         forgotten_keys = [
             key
@@ -762,15 +273,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                 subfield=None,
             )
 
-    def _access_grants(self, json_data, record_json_output):
-        access_grants = json_data.get("access_grants", [])
-        if self.access_grants_view:
-            for grant in self.access_grants_view:
-                access_grants.append({str(grant): "view"})
-        if access_grants:
-            record_json_output.update({"access_grants": access_grants})
-
-    def transform(self, entry):
+    def transform(self, entry) -> RecordEntry:
         """Transform a record single entry."""
         record_dump = CDSRecordDump(
             entry,
@@ -800,7 +303,7 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
 
         self.record_state_logger.add_record(json_data)
 
-        clc_sync = deepcopy(json_data.get("_clc_sync", False))
+        self.clc_sync = deepcopy(json_data.get("_clc_sync", False))
         if "_clc_sync" in json_data:
             del json_data["_clc_sync"]
 
@@ -813,13 +316,18 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
                     error,
                 )
 
+        record_ctx = RecordTransformContext(
+            json_entry=json_data,
+            entry=entry,
+            access_grants_view=self.access_grants_view,
+        )
         record_json_output = {
             "files": self._files(record_dump),
             "pids": self._pids(json_data),
             "metadata": self._metadata(json_data, entry),
+            "access_grants": AccessGrantsMapper().map_value(record_ctx),
         }
 
-        self._access_grants(json_data, record_json_output)
         custom_fields = self._custom_fields(json_data, record_json_output)
         internal_notes = json_data.get("internal_notes")
 
@@ -846,18 +354,34 @@ class CDSToRDMRecordEntry(RDMRecordEntry):
             "recid": self._recid(record_dump),
             "communities": self._communities(json_data),
             "json": record_json_output,
-            "access": access,
+            "access_status": access,
             "owned_by": self._owner(json_data),
-            # keep the original extracted entry for storing it
-            "_original_dump": entry,
+            # record-scoped extras, read by load.py nested under "record"
             "_request_data": request_data,
-            "_clc_sync": clc_sync,
-            "ep_approval": self.ep_approval_request,
+            "ep_approval": entry.get("ep_approval", []),
         }
 
 
-class CDSToRDMRecordTransform(RDMRecordTransform):
-    """CDSToRDMRecordTransform."""
+class RecordBuildResult(NamedTuple):
+    """Private return type of ``CDSToRDMRecordTransform._record()``.
+
+    Pairs the record content with the one ETL-envelope extra
+    (``clc_sync``) that can only be computed as a side effect of building
+    it - see ``CDSToRDMRecordEntry.clc_sync``.
+    """
+
+    record: RecordEntry
+    clc_sync: Any
+
+
+class CDSToRDMRecordTransform:
+    """Assembles the ETL entry consumed by ``CDSRecordServiceLoad``.
+
+    Wraps the ``record`` content built by ``CDSToRDMRecordEntry`` together
+    with ``versions``/``parent`` (computed here) and the ETL-envelope extras
+    that aren't record content (currently just ``_original_dump`` and
+    ``_clc_sync`` - see ``_transform()``).
+    """
 
     def __init__(
         self,
@@ -876,6 +400,9 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         preferred_model=None,
     ):
         """Constructor."""
+        self._workers = workers
+        self._throw = throw
+        self._logger = None
         self.files_dump_dir = Path(files_dump_dir).absolute().as_posix()
         self.missing_users_dir = Path(missing_users).absolute().as_posix()
         self.communities_ids = communities_ids
@@ -888,7 +415,13 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         self.record_state_logger = record_state_logger
         self.preferred_model = preferred_model
         self.db_state = {"affiliations": CDSMigrationAffiliationMapping}
-        super().__init__(workers, throw)
+
+    @property
+    def logger(self):
+        """Return the base logger."""
+        if self._logger is None:
+            self._logger = Logger.get_logger()
+        return self._logger
 
     def _communities_ids(self, entry, record):
         communities = record.get("communities", [])
@@ -897,47 +430,52 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             return {"ids": communities, "default": self.communities_ids[0]}
         return {}
 
-    def _parent(self, entry, record):
-        if record["owned_by"] == "system":
+    def _parent(self, entry, record: RecordEntry) -> ParentEntry:
+
+        email = record["owned_by"]
+        if not email:
             owner = "system"
         else:
             try:
-                owner = int(record["owned_by"])
-            except (ValueError, TypeError):
-                owner = "system"
-        parent = {
-            "created": record["created"],  # same as the record
-            "updated": record["updated"],  # same as the record
-            "version_id": record["version_id"],
-            "json": {
+                user = User.query.filter_by(email=email).one()
+                owner = user.id
+            except NoResultFound:
+                raise UnexpectedValue(
+                    message=f"{email} not found - did you run user migration?",
+                    stage="transform",
+                    recid=entry["legacy_recid"],
+                    value=email,
+                    priority="critical",
+                )
+
+        return ParentEntry(
+            created=record["created"],  # same as the record
+            updated=record["updated"],  # same as the record
+            version_id=record["version_id"],
+            json=ParentJson(
                 # loader is responsible for creating/updating if the PID exists.
                 # this part will be simply omitted
-                "id": f'{record["recid"]}-parent',
-                "access": {
-                    "owned_by": {"user": owner},
-                },
-                "communities": self._communities_ids(entry, record),
-            },
-        }
+                id=f'{record["recid"]}-parent',
+                access=ParentAccess(owned_by={"user": owner}),
+                communities=self._communities_ids(entry, record),
+            ),
+        )
 
-        return parent
-
-    def _transform(self, entry):
+    def _transform(self, entry) -> Optional[MigrationEntry]:
         """Transform a single entry."""
         # creates the output structure for load step
         migration_logger = self.migration_logger
         try:
-            record = self._record(entry)
-            original_dump = record.pop("_original_dump", {})
-            clc_sync = record.pop("_clc_sync", {})
+            built = self._record(entry)
+            record = built.record
 
             if record:
                 return {
                     "record": record,
                     "versions": self._versions(entry, record),
                     "parent": self._parent(entry, record),
-                    "_original_dump": original_dump,
-                    "_clc_sync": clc_sync,
+                    "_original_dump": entry,
+                    "_clc_sync": built.clc_sync,
                 }
         except (
                 LossyConversion,
@@ -949,10 +487,9 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         ) as e:
             migration_logger.add_log(e, record=entry)
 
-    def _record(self, entry):
+    def _record(self, entry) -> RecordBuildResult:
         # could be in draft as well, depends on how we decide to publish
-
-        return CDSToRDMRecordEntry(
+        entry_builder = CDSToRDMRecordEntry(
             missing_users_dir=self.missing_users_dir,
             affiliations_mapping=self.db_state["affiliations"],
             dry_run=self.dry_run,
@@ -962,7 +499,9 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
             migration_logger=self.migration_logger,
             record_state_logger=self.record_state_logger,
             preferred_model=self.preferred_model,
-        ).transform(entry)
+        )
+        record = entry_builder.transform(entry)
+        return RecordBuildResult(record=record, clc_sync=entry_builder.clc_sync)
 
     def _draft(self, entry):
         return None
@@ -970,7 +509,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
     def _parse_file_status(self, file_status):
         pass
 
-    def _versions(self, entry, record):
+    def _versions(self, entry, record: RecordEntry) -> Dict[int, VersionEntry]:
 
         def compute_access(file, record_access):
 
@@ -1079,7 +618,7 @@ class CDSToRDMRecordTransform(RDMRecordTransform):
         # we start versions from files (because this is the only way of
         # mapping version of files to version of records from legacy)
         _files = entry["files"]
-        record_access = record["access"]
+        record_access = record["access_status"]
         for file in _files:
             if should_skip_file(file):
                 continue

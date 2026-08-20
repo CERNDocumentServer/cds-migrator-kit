@@ -12,6 +12,7 @@ import json
 import os
 import re
 from copy import deepcopy
+from typing import Dict
 
 import arrow
 from cds_rdm.clc_sync.models import CDSToCLCSyncModel
@@ -48,6 +49,11 @@ from cds_migrator_kit.errors import (
     ManualImportRequired,
     RecordFlaggedCuration,
     UnexpectedValue,
+)
+from cds_migrator_kit.rdm.records.transform.entry_types import (
+    MigrationEntry,
+    VersionAccess,
+    VersionFileEntry,
 )
 
 
@@ -100,7 +106,13 @@ class CDSRecordServiceLoad(Load):
         """Prepare the record."""
         pass
 
-    def _load_files(self, draft, entry, version_files, uow=None):
+    def _load_files(
+        self,
+        draft,
+        entry: MigrationEntry,
+        version_files: Dict[str, VersionFileEntry],
+        uow=None,
+    ):
         """Load files to draft."""
         recid = entry.get("record", {}).get("recid", {})
         identity = system_identity  # Should we create an identity for the migration?
@@ -182,7 +194,7 @@ class CDSRecordServiceLoad(Load):
                 self.migration_logger.add_log(exc, record=entry)
                 raise e
 
-    def _load_parent_access_and_communities(self, draft, entry):
+    def _load_parent_access_and_communities(self, draft, entry: MigrationEntry):
         """Load access rights and communities in a single parent commit."""
         parent = draft._record.parent
         parent.access = entry["parent"]["json"]["access"]
@@ -192,7 +204,7 @@ class CDSRecordServiceLoad(Load):
         parent.communities.default = entry["parent"]["json"]["communities"]["default"]
         parent.commit()
 
-    def _load_record_access(self, draft, access_dict):
+    def _load_record_access(self, draft, access_dict: VersionAccess):
         record = draft._record
         record.access = access_dict["access_obj"]
         record.commit()
@@ -232,7 +244,9 @@ class CDSRecordServiceLoad(Load):
                 )
                 return record
 
-    def _after_publish_load_parent_access_grants(self, draft, version, entry):
+    def _after_publish_load_parent_access_grants(
+        self, draft, version, entry: MigrationEntry
+    ):
         """Load access grants from metadata and record grants efficiently."""
 
         def _normalize_group_name(subject):
@@ -406,7 +420,7 @@ class CDSRecordServiceLoad(Load):
 
         parent.commit()
 
-    def _after_publish_update_created(self, record, entry, version):
+    def _after_publish_update_created(self, record, entry: MigrationEntry, version):
         """Update created timestamp post publish.
 
         Ensures that the `created` timestamp is correctly set, preferring:
@@ -431,7 +445,7 @@ class CDSRecordServiceLoad(Load):
         record._record.model.created = creation_date
         db.session.add(record._record.model)
 
-    def _after_publish_mint_recid(self, record, entry, version):
+    def _after_publish_mint_recid(self, record, entry: MigrationEntry, version):
         """Mint legacy ids for redirections assigned to the parent."""
         if not self._is_final_record:
             return
@@ -515,7 +529,9 @@ class CDSRecordServiceLoad(Load):
 
         uow.register(RecordCommitOp(request, indexer=current_requests_service.indexer))
 
-    def _after_publish_update_files_created(self, record, entry, version):
+    def _after_publish_update_files_created(
+        self, record, entry: MigrationEntry, version
+    ):
         """Update the created date of the files post publish."""
         # Fix the `created` timestamp forcing the one from the legacy system
         # Force the created date. This can be done after publish as the service
@@ -580,7 +596,9 @@ class CDSRecordServiceLoad(Load):
             except PIDAlreadyExists:
                 pass  # already minted on a previous run — idempotent
 
-    def _after_publish(self, identity, published_record, entry, version, uow):
+    def _after_publish(
+        self, identity, published_record, entry: MigrationEntry, version, uow
+    ):
         """Run fixes after record publish."""
         record = self._after_publish_update_dois(identity, published_record, entry, uow)
         if record:
@@ -639,7 +657,7 @@ class CDSRecordServiceLoad(Load):
                         f"Report number {report_number} already exists."
                     )
 
-    def _pre_publish(self, identity, entry, version, draft, uow):
+    def _pre_publish(self, identity, entry: MigrationEntry, version, draft, uow):
         """Create and process draft before publish."""
         versions = entry["versions"]
         files = versions[version]["files"]
@@ -699,7 +717,7 @@ class CDSRecordServiceLoad(Load):
 
         return draft
 
-    def _load_versions(self, entry, uow):
+    def _load_versions(self, entry: MigrationEntry, uow):
         """Load other versions of the record."""
         versions = entry["versions"]
         legacy_recid = entry["record"]["recid"]
@@ -730,7 +748,7 @@ class CDSRecordServiceLoad(Load):
                     self.record_state_logger.add_record_state(record_state_context)
                 return record_state_context
 
-    def _dry_load(self, entry):
+    def _dry_load(self, entry: MigrationEntry):
         current_rdm_records_service.schema.load(
             entry["record"]["json"],
             context=dict(
@@ -812,7 +830,7 @@ class CDSRecordServiceLoad(Load):
                 recid_state["latest_version_object_uuid"] = str(rec.id)
         return recid_state
 
-    def _save_original_dumped_record(self, entry, recid_state):
+    def _save_original_dumped_record(self, entry: MigrationEntry, recid_state):
         """Save the original dumped record.
 
         This is the originally extracted record before any transformation.
@@ -854,7 +872,7 @@ class CDSRecordServiceLoad(Load):
             )
             db.session.add(sync)
 
-    def _load(self, entry, uow=None):
+    def _load(self, entry: MigrationEntry, uow=None):
         """Use the services to load the entries.
 
         If ``uow`` is provided, operations are registered on it without
