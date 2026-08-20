@@ -58,17 +58,21 @@ def title(self, key, value):
 def description(self, key, value):
     """Translates description."""
     description_text = StringValue(value.get("a")).parse()
-    if self.get("description") and description_text:
-        additional_descriptions = self.get("additional_descriptions", [])
-        additional_descriptions.append(
-            {
-                "description": description_text,
-                "type": {"id": "other"},
-            }
-        )
-        self["additional_descriptions"] = additional_descriptions
-        raise IgnoreKey("description")
-    return description_text
+    existing_description = self.get("description")
+
+    if not (existing_description and description_text):
+        return description_text
+
+    if description_text != existing_description:
+        additional = self.get("additional_descriptions", [])
+        new_desc = {
+            "description": description_text,
+            "type": {"id": "other"},
+        }
+        if new_desc not in additional:
+            additional.append(new_desc)
+            self["additional_descriptions"] = additional
+    raise IgnoreKey("description")
 
 
 @model.over("languages", "^041__")
@@ -131,7 +135,12 @@ def process_contributors(key, value, orcid_subfield="k"):
             if text:
                 affiliations = get_contributor_affiliations(value) or []
             else:
-                raise UnexpectedValue(field=key, subfield="t", value=grid_value, message="Grid value found but no ROR value found")
+                raise UnexpectedValue(
+                    field=key,
+                    subfield="t",
+                    value=grid_value,
+                    message="Grid value found but no ROR value found",
+                )
     else:
         affiliations = get_contributor_affiliations(value)
 
