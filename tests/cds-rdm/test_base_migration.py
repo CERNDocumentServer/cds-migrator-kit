@@ -23,6 +23,7 @@ from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
     subjects,
     title,
 )
+from cds_migrator_kit.transform.xml_processing.rules.base import description
 
 
 class TestTitle:
@@ -67,6 +68,57 @@ class TestTitle:
         assert {"title": "New Subtitle", "type": {"id": "subtitle"}} in record[
             "additional_titles"
         ]
+
+
+class TestDescription:
+    """Test description function from shared transform base.py."""
+
+    def test_description_basic(self):
+        """Test basic description translation."""
+        record = {}
+        result = description(record, "520__", {"a": "A valid description"})
+        assert result == "A valid description"
+        assert "additional_descriptions" not in record
+
+    def test_duplicate_of_existing_description_ignored(self):
+        """Test that a duplicate of the main description is ignored."""
+        record = {"description": "Same text"}
+        with pytest.raises(IgnoreKey):
+            description(record, "520__", {"a": "Same text"})
+        assert "additional_descriptions" not in record
+
+    def test_different_description_added_as_additional(self):
+        """Test that a different description is added as additional."""
+        record = {"description": "First description"}
+        with pytest.raises(IgnoreKey):
+            description(record, "520__", {"a": "Second description"})
+        assert record["additional_descriptions"] == [
+            {"description": "Second description", "type": {"id": "other"}}
+        ]
+
+    def test_duplicate_additional_description_not_appended(self):
+        """Test that a description already in additional_descriptions is skipped."""
+        record = {
+            "description": "First description",
+            "additional_descriptions": [
+                {"description": "Second description", "type": {"id": "other"}}
+            ],
+        }
+        with pytest.raises(IgnoreKey):
+            description(record, "520__", {"a": "Second description"})
+        assert len(record["additional_descriptions"]) == 1
+
+    def test_description_appends_to_existing_additional(self):
+        """Test a new description is appended to existing additional_descriptions."""
+        record = {
+            "description": "First description",
+            "additional_descriptions": [
+                {"description": "Existing extra", "type": {"id": "other"}}
+            ],
+        }
+        with pytest.raises(IgnoreKey):
+            description(record, "520__", {"a": "Another extra"})
+        assert len(record["additional_descriptions"]) == 2
 
 
 class TestCopyrights:
