@@ -9,10 +9,15 @@
 import re
 from collections import OrderedDict
 from copy import deepcopy
+from typing import Dict
 
 from flask import current_app
 
 from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.rdm.records.transform.entry_types import (
+    MigrationEntry,
+    VersionEntry,
+)
 
 EPPHAPP_FILE_TYPE = "EPPHAPP_FILE"
 EP_APPROVAL_REPORT_NUMBER_PREFIX = "CERN-EP"
@@ -35,7 +40,7 @@ def _cern_scientific_community_id():
 class MetadataEntry:
     """Build a load entry for the public or restricted EP approval split."""
 
-    def __init__(self, entry, approval_request, migration_logger):
+    def __init__(self, entry: MigrationEntry, approval_request, migration_logger):
         self.entry = entry
         self.approval_request = approval_request
         self.migration_logger = migration_logger
@@ -44,7 +49,7 @@ class MetadataEntry:
         """Return identifiers for this split."""
         raise NotImplementedError
 
-    def build(self):
+    def build(self) -> MigrationEntry:
         """Return a load entry with split files and modified metadata."""
         split = deepcopy(self.entry)
         split["record"].pop("ep_approval", None)
@@ -91,7 +96,7 @@ class MetadataEntry:
         """Remove DOI PID from record."""
         pass
 
-    def _build_versions(self, split):
+    def _build_versions(self, split: MigrationEntry) -> Dict[int, VersionEntry]:
         """Return versioned files for this split; override in subclasses."""
         raise NotImplementedError
 
@@ -115,7 +120,7 @@ class MetadataEntry:
 class PublicEntry(MetadataEntry):
     """Build the public EP approval split entry."""
 
-    def _build_versions(self, split):
+    def _build_versions(self, split: MigrationEntry) -> Dict[int, VersionEntry]:
         new_versions = OrderedDict()
         versioned_files = OrderedDict()
         previous_signature = None
@@ -239,7 +244,7 @@ class RestrictedEntry(MetadataEntry):
             for file_data in version_data.get("files", {}).values()
         )
 
-    def _build_versions(self, split):
+    def _build_versions(self, split: MigrationEntry) -> Dict[int, VersionEntry]:
         new_versions = OrderedDict()
         versioned_files = OrderedDict()
         previous_signature = None

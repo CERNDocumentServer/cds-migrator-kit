@@ -304,6 +304,8 @@ def report_number(self, key, value):
             scheme = "handle"
         if scheme == "arXiv:reportnumber":
             scheme = "cdsrn"
+        if scheme.lower() == "submitter":
+            scheme = "cdsrn"
         if (
             scheme.upper()
             in PID_SCHEMES_TO_STORE_IN_RELATED_IDENTIFIERS
@@ -316,7 +318,7 @@ def report_number(self, key, value):
             raise UnexpectedValue(field=key, value=value, subfield="n")
         scheme = "handle"
     if (key == "037__" and not scheme) or (identifier and key == "088__"):
-        # if there is no scheme, it meaens report number
+        # if there is no scheme, it means report number
         scheme = "cdsrn"
 
     # if there is no identifier it means something else was stored in __9
