@@ -7,6 +7,7 @@
 
 """Tests for record version file snapshot logic in transform._versions()."""
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -67,11 +68,11 @@ def _file_dump(
 
 
 def _record():
-    """Build a minimal record."""
-    return {
-        "access_status": "public",
-        "body": {"metadata": {"publication_date": "2020-01-01"}},
-    }
+    """Build a minimal RecordEntry-shaped test double."""
+    return SimpleNamespace(
+        access_status="public",
+        body={"metadata": {"publication_date": "2020-01-01"}},
+    )
 
 
 @pytest.fixture
@@ -86,7 +87,7 @@ def transform(tmp_path):
 
 def test_versions_preserve_file_revision_per_record_version(transform):
     """Each record version keeps the file revision."""
-    entry = {
+    raw_dump_entry = {
         "recid": 123,
         "files": [
             _file_dump(file_version=1, checksum="checksum-v1"),
@@ -95,7 +96,7 @@ def test_versions_preserve_file_revision_per_record_version(transform):
         ],
     }
 
-    versions = transform._versions(entry, _record())
+    versions = transform._versions(raw_dump_entry, _record())
 
     assert list(versions.keys()) == [1, 2]
     assert versions[1]["files"]["draft.pdf"]["version"] == 1
@@ -109,7 +110,7 @@ def test_versions_preserve_file_revision_per_record_version(transform):
 
 def test_versions_with_skipped_files(transform):
     """Versions with skipped files should not create extra record versions."""
-    entry = {
+    raw_dump_entry = {
         "recid": 123,
         "files": [
             _file_dump(
@@ -155,7 +156,7 @@ def test_versions_with_skipped_files(transform):
         ],
     }
 
-    versions = transform._versions(entry, _record())
+    versions = transform._versions(raw_dump_entry, _record())
 
     assert list(versions.keys()) == [1, 2]
     assert set(versions[1]["files"]) == {"main.pdf"}
@@ -168,9 +169,9 @@ def test_versions_with_skipped_files(transform):
 
 def test_versions_no_files_falls_back_to_metadata_only_version(transform):
     """A record with no files gets a single, empty, public version."""
-    entry = {"recid": 123, "files": []}
+    raw_dump_entry = {"recid": 123, "files": []}
 
-    versions = transform._versions(entry, _record())
+    versions = transform._versions(raw_dump_entry, _record())
 
     assert list(versions.keys()) == [1]
     assert versions[1]["files"] == {}
@@ -185,12 +186,12 @@ def test_versions_individual_file_restriction_sets_access_meta(transform):
     status = (
         'firerole: allow group "some-group [CERN]"\ndeny until "1996-02-01"\nallow all'
     )
-    entry = {
+    raw_dump_entry = {
         "recid": 123,
         "files": [_file_dump(status=status)],
     }
 
-    versions = transform._versions(entry, _record())
+    versions = transform._versions(raw_dump_entry, _record())
 
     assert versions[1]["access"] == {
         "access_obj": {"record": "public", "files": "restricted"},

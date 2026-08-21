@@ -22,7 +22,7 @@ from cds_migrator_kit.rdm.records.transform.mappers.base import FieldMapper
 
 def match_affiliation(affiliation_name, ctx):
     """Match an affiliation against `CDSMigrationAffiliationMapping` db table."""
-    json_entry = ctx.json_entry
+    dojson_entry = ctx.dojson_entry
     if is_ror(affiliation_name):
         ror = normalize_ror(affiliation_name)
         name = AffiliationsMetadata.query.filter_by(pid=ror).one_or_none()
@@ -34,7 +34,7 @@ def match_affiliation(affiliation_name, ctx):
                 field="validation",
                 stage="transform",
                 description="Add this affiliation",
-                recid=json_entry["recid"],
+                recid=dojson_entry["recid"],
                 priority="critical",
                 value=None,
                 subfield=None,
@@ -165,7 +165,7 @@ def _lookup_person_id(creator):
 
 def creators_for(ctx, key="creators"):
     """Build the creators/contributors list for ``key``."""
-    _creators = deepcopy(ctx.json_entry.get(key, []))
+    _creators = deepcopy(ctx.dojson_entry.get(key, []))
     _creators = list(filter(lambda x: x is not None, _creators))
     for creator in _creators:
         _creator_affiliations(creator, ctx)

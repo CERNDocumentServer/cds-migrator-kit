@@ -124,7 +124,12 @@ class MigrationProgressLogger:
 
         recid = getattr(exc, "recid", None)
         if not recid and record:
-            recid = record.get("recid", None) or record.get("record", {}).get("recid")
+            # `record` is either the raw harvested entry (has "recid"
+            # directly) or a MigrationEntry (its "record" key is a real
+            # RecordEntry object, not a dict - see entities/record.py).
+            recid = record.get("recid", None) or getattr(
+                record.get("record"), "recid", None
+            )
 
         subfield = f"subfield: {exc.subfield}" if getattr(exc, "subfield", None) else ""
         error_format = {

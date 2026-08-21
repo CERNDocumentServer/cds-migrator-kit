@@ -22,8 +22,8 @@ class RecordTransformContext:
     ``metadata["resource_type"]``).
     """
 
-    json_entry: dict
-    entry: dict
+    dojson_entry: dict
+    raw_dump_entry: dict
     migration_logger: object = None
     affiliations_mapping: object = None
     access_grants_view: object = None
@@ -33,7 +33,7 @@ class RecordTransformContext:
     def flag_curation(self, exc):
         """Log a caught ``RecordFlaggedCuration`` for curation follow-up."""
         self.migration_logger.add_information(
-            self.json_entry["recid"],
+            self.dojson_entry["recid"],
             {"message": exc.message, "value": exc.value},
         )
 
@@ -63,7 +63,7 @@ class PassthroughMapper(FieldMapper):
 
     def map_value(self, ctx):
         """Return the raw value of ``self.id`` from the source entry."""
-        return ctx.json_entry.get(self.id)
+        return ctx.dojson_entry.get(self.id)
 
 
 class CustomFieldMapper(ABC):
@@ -93,5 +93,5 @@ class PassthroughCustomFieldMapper(CustomFieldMapper):
 
     def apply(self, ctx):
         """Copy ``self.id`` from the source custom_fields, or use the default."""
-        source = ctx.json_entry.get("custom_fields", {})
+        source = ctx.dojson_entry.get("custom_fields", {})
         ctx.custom_fields[self.id] = source.get(self.id, self.default)

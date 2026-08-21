@@ -16,7 +16,7 @@ class AccessGrantsMapper(FieldMapper):
 
     def map_value(self, ctx):
         """Return access_grants extended with configured view grants."""
-        access_grants = ctx.json_entry.get("access_grants", [])
+        access_grants = ctx.dojson_entry.pop("access_grants", [])
         if ctx.access_grants_view:
             for grant in ctx.access_grants_view:
                 access_grants.append({str(grant): "view"})

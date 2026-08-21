@@ -113,7 +113,7 @@ class CDSRecordServiceLoad(Load):
         uow=None,
     ):
         """Load files to draft."""
-        recid = entry.get("record", {}).get("recid", {})
+        recid = entry["record"].recid
         identity = system_identity  # Should we create an identity for the migration?
 
         for filename, file_data in version_files.items():
@@ -229,7 +229,7 @@ class CDSRecordServiceLoad(Load):
         """Update migrated DOIs post publish."""
         if not self._is_final_record:
             return
-        migrated_pids = entry["record"]["body"]["pids"]
+        migrated_pids = entry["record"].body["pids"]
         for pid_type, identifier in migrated_pids.items():
             if pid_type == "doi":
                 # If a DOI was already minted from legacy then on publish the datacite
@@ -293,7 +293,7 @@ class CDSRecordServiceLoad(Load):
                     field="access",
                     subfield="subject.id",
                     stage="load",
-                    recid=entry["record"]["recid"],
+                    recid=entry["record"].recid,
                     priority="warning",
                     value=subject_id,
                 )
@@ -317,7 +317,7 @@ class CDSRecordServiceLoad(Load):
             raise GrantCreationError(
                 message=f"Users not found for emails: {', '.join(missing_emails)}",
                 stage="load",
-                recid=entry["record"]["recid"],
+                recid=entry["record"].recid,
                 value=list(missing_emails),
                 priority="warning",
             )
@@ -340,7 +340,7 @@ class CDSRecordServiceLoad(Load):
         2. The record's creation date if there are no files.
         3. Today's date if the original value and file creation date is missing.
         """
-        creation_date = arrow.get(entry["record"]["created"]).datetime.replace(
+        creation_date = arrow.get(entry["record"].created).datetime.replace(
             tzinfo=None
         )
 
@@ -361,7 +361,7 @@ class CDSRecordServiceLoad(Load):
         """Mint legacy ids for redirections assigned to the parent."""
         if not self._is_final_record:
             return
-        legacy_recid = entry["record"]["recid"]
+        legacy_recid = entry["record"].recid
         if record._record.versions.index == 1:
             # it seems more intuitive if we mint the lrecid for parent
             # but then we get a double redirection
@@ -369,7 +369,7 @@ class CDSRecordServiceLoad(Load):
 
     def _after_publish_add_submission_request(self, request_data, record, entry, uow):
         """Create community inclusion request after publish."""
-        legacy_recid = entry["record"]["recid"]
+        legacy_recid = entry["record"].recid
         request_number = f"lrecid:{legacy_recid}"
 
         # Defensive/idempotency guard: skip if a request for this record was
@@ -574,7 +574,7 @@ class CDSRecordServiceLoad(Load):
             # we decided to skip it and act normal
             try:
                 draft = current_rdm_records_service.create(
-                    identity, data=entry["record"]["body"], uow=uow
+                    identity, data=entry["record"].body, uow=uow
                 )
                 self._assign_rep_numbers(draft)
             except (UniqueViolation, IntegrityError) as e:
@@ -583,10 +583,10 @@ class CDSRecordServiceLoad(Load):
                 raise ManualImportRequired(message=str(e))
             if draft.errors:
                 raise ManualImportRequired(
-                    message=f"{str(draft.errors)}: {str(entry['record']['json'])}",
+                    message=f"{str(draft.errors)}: {str(entry['record'].body)}",
                     field="validation",
                     stage="load",
-                    recid=entry["record"]["recid"],
+                    recid=entry["record"].recid,
                     priority="warning",
                     value=draft._record.pid.pid_value,
                     subfield=None,
@@ -599,7 +599,7 @@ class CDSRecordServiceLoad(Load):
             draft_dict = draft.to_dict()
             if not self.update_new_version_publication_date:
                 publication_date = arrow.get(
-                    entry["record"]["body"]["metadata"]["publication_date"]
+                    entry["record"].body["metadata"]["publication_date"]
                 )
             else:
                 publication_date = versions[version]["publication_date"]
@@ -625,7 +625,7 @@ class CDSRecordServiceLoad(Load):
     def _load_versions(self, entry: MigrationEntry, uow):
         """Load other versions of the record."""
         versions = entry["versions"]
-        legacy_recid = entry["record"]["recid"]
+        legacy_recid = entry["record"].recid
 
         identity = system_identity
 
@@ -655,7 +655,7 @@ class CDSRecordServiceLoad(Load):
 
     def _dry_load(self, entry: MigrationEntry):
         current_rdm_records_service.schema.load(
-            entry["record"]["body"],
+            entry["record"].body,
             context=dict(
                 identity=system_identity,
             ),
@@ -747,7 +747,7 @@ class CDSRecordServiceLoad(Load):
             json=_original_dump,
             parent_object_uuid=recid_state["parent_object_uuid"],
             migrated_record_object_uuid=recid_state["latest_version_object_uuid"],
-            legacy_recid=entry["record"]["recid"],
+            legacy_recid=entry["record"].recid,
         )
         db.session.add(_original_dump_model)
 
@@ -785,7 +785,7 @@ class CDSRecordServiceLoad(Load):
         operations (e.g. the EP approval record split).
         """
         if entry:
-            recid = entry.get("record", {}).get("recid", {})
+            recid = entry["record"].recid
             if self._should_skip_recid(recid):
                 self.migration_logger.add_information(
                     recid, state={"message": "Record already migrated", "value": recid}

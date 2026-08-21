@@ -24,14 +24,14 @@ class ResourceTypeMapper(FieldMapper):
 
     def map_value(self, ctx):
         """Return resource_type, dropping the upstream ranking scratch key."""
-        json_entry = ctx.json_entry
+        dojson_entry = ctx.dojson_entry
         # `_resource_type_rank` is bookkeeping for the 980__/697C_
         # resource_type rule and research_committee.py's report-number
         # detection (see research.py:resource_type) - drop it before it
         # reaches the final record.
-        json_entry.pop("_resource_type_rank", None)
+        dojson_entry.pop("_resource_type_rank", None)
         try:
-            return json_entry["resource_type"]
+            return dojson_entry["resource_type"]
         except KeyError:
             raise MissingRequiredField(message="resource_type", field="980")
 
@@ -43,8 +43,8 @@ class TitleMapper(FieldMapper):
 
     def map_value(self, ctx):
         """Return title, or the 111__a meeting title as a fallback."""
-        json_entry = ctx.json_entry
-        title = json_entry.get("title")
+        dojson_entry = ctx.dojson_entry
+        title = dojson_entry.get("title")
         if title:
             return title
         # 245 (title) is sometimes absent on conference proceedings
@@ -52,7 +52,7 @@ class TitleMapper(FieldMapper):
         # the first meeting entry.
         resource_type = ctx.metadata.get("resource_type") or {}
         if resource_type.get("id") == "publication-conferenceproceeding":
-            meetings = json_entry.get("custom_fields", {}).get("meeting:meeting", [])
+            meetings = dojson_entry.get("custom_fields", {}).get("meeting:meeting", [])
             for meeting_entry in meetings:
                 meeting_title = meeting_entry.get("title")
                 if meeting_title:
@@ -67,17 +67,17 @@ class PublicationDateMapper(FieldMapper):
 
     def map_value(self, ctx):
         """Return publication_date, requiring at least one date source."""
-        json_entry = ctx.json_entry
-        pub_date = json_entry.get("publication_date")
-        created = json_entry.get("status_week_date")
-        files = ctx.entry["files"]
+        dojson_entry = ctx.dojson_entry
+        pub_date = dojson_entry.get("publication_date")
+        created = dojson_entry.get("status_week_date")
+        files = ctx.raw_dump_entry["files"]
         if not (pub_date or created or files):
             raise MissingRequiredField(
                 message="missing creation or publication date", field="916"
             )
         if not pub_date:
             if created:
-                pub_date = json_entry["status_week_date"]
+                pub_date = dojson_entry["status_week_date"]
             elif not created and files:
                 pub_date = parse(files[0]["creation_date"]).date().isoformat()
         return pub_date
@@ -90,7 +90,7 @@ class SubjectsMapper(FieldMapper):
 
     def map_value(self, ctx):
         """Return the subjects list with placeholder entries removed."""
-        subjects = ctx.json_entry.get("subjects")
+        subjects = ctx.dojson_entry.get("subjects")
         if subjects:
             for subject in reversed(subjects):
                 if subject.get("subject", "").lower() in ["xx", "talk"]:
@@ -107,16 +107,16 @@ class TableOfContentsMapper(FieldMapper):
 
     def map_value(self, ctx):
         """Move table_of_content into additional_descriptions and return it."""
-        json_entry = ctx.json_entry
-        toc = json_entry.get("table_of_content", [])
-        additional_desc = json_entry.get("additional_descriptions", [])
+        dojson_entry = ctx.dojson_entry
+        toc = dojson_entry.get("table_of_content", [])
+        additional_desc = dojson_entry.get("additional_descriptions", [])
         if toc:
             additional_desc.append(
                 {"description": toc, "type": {"id": "table-of-contents"}}
             )
-            json_entry["additional_descriptions"] = additional_desc
-            json_entry.pop("table_of_content")
-        return json_entry.get("additional_descriptions")
+            dojson_entry["additional_descriptions"] = additional_desc
+            dojson_entry.pop("table_of_content")
+        return dojson_entry.get("additional_descriptions")
 
 
 class IdentifiersMapper(FieldMapper):
@@ -126,7 +126,7 @@ class IdentifiersMapper(FieldMapper):
 
     def map_value(self, ctx):
         """Return identifiers filtered/validated against known schemes."""
-        identifiers = ctx.json_entry.get("identifiers", [])
+        identifiers = ctx.dojson_entry.get("identifiers", [])
         for item in reversed(identifiers):
             # drop unwanted schemes
             if item is None or "scheme" not in item:
@@ -156,10 +156,11 @@ class IdentifiersMapper(FieldMapper):
         return identifiers
 
 
-# Fields that pass through unchanged from json_entry - kept explicit in the
+# Fields that pass through unchanged from dojson_entry - kept explicit in the
 # composed list (mappers/config equivalent) rather than open-ended, so the
-# "forgotten metadata key" completeness check in RecordEntry._metadata
-# still catches any newly introduced json_entry key nobody has mapped yet.
+# "forgotten metadata key" completeness check in
+# CDSToRDMRecordTransform._check_forgotten_keys() still catches any newly
+# introduced dojson_entry key nobody has mapped yet.
 PASSTHROUGH_METADATA_FIELDS = (
     "description",
     "publisher",

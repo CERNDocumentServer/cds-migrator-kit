@@ -57,7 +57,7 @@ class MetadataEntry:
         return split
 
     def _apply_metadata(self, split):
-        metadata = split["record"]["body"]["metadata"]
+        metadata = split["record"].body["metadata"]
         metadata["identifiers"] = self.identifiers(metadata.get("identifiers", []))
         self._remove_doi_pid(split)
 
@@ -79,7 +79,7 @@ class MetadataEntry:
         )
 
     def _log_removed_identifiers(self, removed, split_type):
-        recid = self.entry.get("record", {}).get("recid")
+        recid = self.entry["record"].recid
         self.migration_logger.add_information(
             recid,
             {
@@ -161,7 +161,7 @@ class PublicEntry(MetadataEntry):
             raise UnexpectedValue(
                 message="No public files found to load for EP approval public split",
                 stage="load",
-                recid=split["record"]["recid"],
+                recid=split["record"].recid,
                 priority="critical",
             )
 
@@ -194,7 +194,6 @@ class PublicEntry(MetadataEntry):
 
     def _apply_entry_modifications(self, split):
         split.pop("_request_data", None)
-        split["record"]["owned_by"] = "system"
         split["parent"].body["access"]["owned_by"] = {"user": "system"}
         self._add_cern_scientific_community(split)
 
@@ -248,7 +247,7 @@ class RestrictedEntry(MetadataEntry):
 
         if not has_restricted_files:
             self.migration_logger.add_information(
-                split["record"]["recid"],
+                split["record"].recid,
                 {
                     "message": (
                         "No restricted files found; public files used for the "
@@ -298,7 +297,7 @@ class RestrictedEntry(MetadataEntry):
             raise UnexpectedValue(
                 message=("No files found to load for EP approval restricted split"),
                 stage="load",
-                recid=split["record"]["recid"],
+                recid=split["record"].recid,
                 priority="critical",
             )
 
@@ -336,8 +335,8 @@ class RestrictedEntry(MetadataEntry):
 
     def _remove_doi_pid(self, split):
         """Remove DOI PID from restricted record."""
-        recid = split.get("record", {}).get("recid")
-        record_body = split.get("record", {}).get("body", {})
+        recid = split["record"].recid
+        record_body = split["record"].body
         pids = record_body.get("pids")
 
         if not pids or "doi" not in pids:

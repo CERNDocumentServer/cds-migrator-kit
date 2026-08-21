@@ -75,7 +75,7 @@ class CDSEPApprovalRecordServiceLoad(Load):
         if not entry:
             return
         try:
-            recid = entry.get("record", {}).get("recid")
+            recid = entry["record"].recid
 
             # The same legacy recid can be cross-listed under multiple EP
             # collections (e.g. a joint ALEPH/DELPHI/L3/OPAL paper appears in
@@ -98,7 +98,7 @@ class CDSEPApprovalRecordServiceLoad(Load):
                     recid=recid,
                     priority="critical",
                 )
-            record_body = entry.get("record", {}).get("body", {})
+            record_body = entry["record"].body
             metadata = record_body.get("metadata", {})
 
             self.approval_request = ApprovalRequest(
