@@ -24,17 +24,18 @@ class RecordVersionsTransform:
     just its own delta.
     """
 
-    def __init__(self, entry, record, files_dump_dir, plots, migration_logger):
+    def __init__(self, raw_dump_entry, record, files_dump_dir, plots, migration_logger):
         """Constructor.
 
-        :param entry: the original harvested legacy entry (needs "files").
-        :param record: the already-built ``RecordEntry`` dict (needs
+        :param raw_dump_entry: the original harvested legacy entry (needs
+            "files").
+        :param record: the already-built ``RecordEntry`` (needs
             ``access_status`` and ``body["metadata"]["publication_date"]``).
         :param files_dump_dir: local EOS mirror root for file content.
         :param plots: whether to keep Plot-type files.
         :param migration_logger: for skip/restriction logging.
         """
-        self.entry = entry
+        self.raw_dump_entry = raw_dump_entry
         self.record = record
         self.files_dump_dir = files_dump_dir
         self.plots = plots
@@ -42,14 +43,14 @@ class RecordVersionsTransform:
 
     def build(self):
         """Group legacy files by version, build + carry files forward, return."""
-        record_access = self.record["access_status"]
+        record_access = self.record.access_status
 
         # group non-skipped raw file dumps by legacy version number, in
         # first-seen order - own_file_dumps[v] is version v's own files
         # (not yet carrying anything forward from earlier versions).
         own_file_dumps = OrderedDict()
         representative_file = {}
-        for file_dump in self.entry["files"]:
+        for file_dump in self.raw_dump_entry["files"]:
             if self._should_skip_file(file_dump):
                 continue
             version_number = file_dump["version"]
@@ -82,7 +83,7 @@ class RecordVersionsTransform:
                 record_access=record_access,
                 files_dump_dir=self.files_dump_dir,
                 migration_logger=self.migration_logger,
-                publication_date=self.record["body"]["metadata"]["publication_date"],
+                publication_date=self.record.body["metadata"]["publication_date"],
             ).build()
 
         return versions

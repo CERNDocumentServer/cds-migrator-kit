@@ -596,9 +596,11 @@ class TestJournal:
 
         record["resource_type"] = "publication-other"
         migration_logger = MagicMock()
-        custom_fields = RecordEntry(migration_logger=migration_logger)._custom_fields(
-            record
-        )
+        # RecordEntry double for calling _custom_fields() in isolation -
+        # bypasses the constructor, which needs a real dump/dojson_entry.
+        record_entry = RecordEntry.__new__(RecordEntry)
+        record_entry.migration_logger = migration_logger
+        custom_fields = record_entry._custom_fields(record, raw_dump_entry={})
 
         # titleless journal data is dropped (falsy values are filtered out),
         # not raised as a hard error

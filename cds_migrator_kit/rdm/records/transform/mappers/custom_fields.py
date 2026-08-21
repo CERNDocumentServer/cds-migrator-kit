@@ -23,7 +23,7 @@ class ExperimentsMapper(CustomFieldMapper):
     def apply(self, ctx):
         """Set ctx.custom_fields["cern:experiments"]."""
         experiments_out = ctx.custom_fields["cern:experiments"] = []
-        experiments = ctx.json_entry.get("custom_fields", {}).get(
+        experiments = ctx.dojson_entry.get("custom_fields", {}).get(
             "cern:experiments", []
         )
         for experiment in experiments:
@@ -56,7 +56,7 @@ class DepartmentsMapper(CustomFieldMapper):
     def apply(self, ctx):
         """Set ctx.custom_fields["cern:departments"]."""
         departments_out = ctx.custom_fields["cern:departments"] = []
-        departments = ctx.json_entry.get("custom_fields", {}).get(
+        departments = ctx.dojson_entry.get("custom_fields", {}).get(
             "cern:departments", []
         )
         for department in departments:
@@ -75,7 +75,7 @@ class DepartmentsMapper(CustomFieldMapper):
                 # up naturally - see RecordEntry.transform(), which
                 # runs custom_fields mappers before metadata mappers for
                 # exactly this reason.
-                ctx.json_entry.setdefault("subjects", []).append(
+                ctx.dojson_entry.setdefault("subjects", []).append(
                     {"subject": department}
                 )
 
@@ -114,7 +114,7 @@ class AcceleratorsMapper(CustomFieldMapper):
     def apply(self, ctx):
         """Set ctx.custom_fields["cern:accelerators"]."""
         accelerators_out = ctx.custom_fields["cern:accelerators"] = []
-        accelerators = ctx.json_entry.get("custom_fields", {}).get(
+        accelerators = ctx.dojson_entry.get("custom_fields", {}).get(
             "cern:accelerators", []
         )
         for accelerator in accelerators:
@@ -142,7 +142,7 @@ class BeamsMapper(CustomFieldMapper):
     def apply(self, ctx):
         """Set ctx.custom_fields["cern:beams"]."""
         beams_out = ctx.custom_fields["cern:beams"] = []
-        beams = ctx.json_entry.get("custom_fields", {}).get("cern:beams", [])
+        beams = ctx.dojson_entry.get("custom_fields", {}).get("cern:beams", [])
         for beam in beams:
             if beam.lower().strip() == "not applicable":
                 continue
@@ -168,7 +168,7 @@ class ProgrammesMapper(CustomFieldMapper):
 
     def apply(self, ctx):
         """Set ctx.custom_fields["cern:programmes"], or leave it unset."""
-        record_json = ctx.json_entry
+        record_json = ctx.dojson_entry
         programme = record_json.get("custom_fields", {}).get("cern:programmes")
         if programme:
             result = search_vocabulary(programme, "programmes")
@@ -193,7 +193,7 @@ class JournalMapper(CustomFieldMapper):
 
     def apply(self, ctx):
         """Set ctx.custom_fields["journal:journal"]."""
-        journal = ctx.json_entry.get("custom_fields", {}).get("journal:journal", {})
+        journal = ctx.dojson_entry.get("custom_fields", {}).get("journal:journal", {})
         if journal and not journal.get("title"):
             ctx.flag_curation(
                 RecordFlaggedCuration(

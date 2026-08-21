@@ -21,6 +21,7 @@ from cds_migrator_kit.rdm.records.load.ep_approval_entry import (
     RestrictedEntry,
 )
 from cds_migrator_kit.rdm.records.transform.entities.parent import RecordParent
+from cds_migrator_kit.rdm.records.transform.entities.record import RecordEntry
 
 RECID = "12345"
 APPROVED_REPORT_NUMBER = "CERN-EP-2020-001"
@@ -82,6 +83,22 @@ def _make_parent(owner="uploader", communities=None, access_grants=None):
     return parent
 
 
+def _make_record(recid, body):
+    """Build a RecordEntry-shaped test double.
+
+    Bypasses RecordEntry's constructor/build()'s mapper-dependent logic -
+    this module tests PublicEntry/RestrictedEntry's splitting logic, not
+    RecordEntry's own construction. The record's owner is a RecordParent
+    concern (see _make_parent's `owner`), not tracked on the record itself.
+    """
+    record = RecordEntry.__new__(RecordEntry)
+    record.recid = recid
+    record.body = body
+    record.access_status = "public"
+    record.created = "2020-01-15T00:00:00+00:00"
+    return record
+
+
 def _make_entry(
     versions,
     recid=RECID,
@@ -125,11 +142,7 @@ def _make_entry(
         }
 
     return {
-        "record": {
-            "recid": recid,
-            "body": record_json,
-            "owned_by": "uploader",
-        },
+        "record": _make_record(recid, record_json),
         "parent": _make_parent(communities={"ids": ["example-community"]}),
         "versions": versions,
         "ep_approval": [
@@ -434,7 +447,7 @@ class TestPublicEntryIdentifiers:
             entry, _make_approval_request(), _make_migration_logger()
         ).build()
 
-        identifiers = result["record"]["body"]["metadata"]["identifiers"]
+        identifiers = result["record"].body["metadata"]["identifiers"]
         cdsrn_values = {i["identifier"] for i in identifiers if i["scheme"] == "cdsrn"}
 
         assert APPROVED_REPORT_NUMBER not in cdsrn_values
@@ -456,7 +469,7 @@ class TestPublicEntryIdentifiers:
 
         cdsrn_ids = [
             i
-            for i in result["record"]["body"]["metadata"]["identifiers"]
+            for i in result["record"].body["metadata"]["identifiers"]
             if i["scheme"] == "cdsrn"
         ]
         assert len(cdsrn_ids) == 1
@@ -474,7 +487,7 @@ class TestRestrictedEntryIdentifiers:
 
         cdsrn_values = {
             i["identifier"]
-            for i in result["record"]["body"]["metadata"]["identifiers"]
+            for i in result["record"].body["metadata"]["identifiers"]
             if i["scheme"] == "cdsrn"
         }
 
@@ -488,7 +501,7 @@ class TestRestrictedEntryIdentifiers:
 
         cdsrn_values = {
             i["identifier"]
-            for i in result["record"]["body"]["metadata"]["identifiers"]
+            for i in result["record"].body["metadata"]["identifiers"]
             if i["scheme"] == "cdsrn"
         }
 
@@ -511,7 +524,7 @@ class TestRestrictedEntryIdentifiers:
             entry, _make_approval_request(), _make_migration_logger()
         ).build()
 
-        assert "doi" not in result["record"]["body"].get("pids", {})
+        assert "doi" not in result["record"].body.get("pids", {})
 
 
 class TestPublicEntryModifications:
@@ -531,7 +544,6 @@ class TestPublicEntryModifications:
             entry, _make_approval_request(), _make_migration_logger()
         ).build()
 
-        assert result["record"]["owned_by"] == "system"
         assert result["parent"].body["access"]["owned_by"] == {"user": "system"}
 
     def test_public_adds_cern_scientific_community(self, app):
@@ -565,8 +577,8 @@ class TestEntryImmutability:
         PublicEntry(entry, _make_approval_request(), _make_migration_logger()).build()
 
         assert (
-            entry["record"]["body"]["metadata"]["identifiers"]
-            == original["record"]["body"]["metadata"]["identifiers"]
+            entry["record"].body["metadata"]["identifiers"]
+            == original["record"].body["metadata"]["identifiers"]
         )
 
     def test_restricted_build_does_not_mutate_original(self, app):
@@ -577,6 +589,6 @@ class TestEntryImmutability:
         ).build()
 
         assert (
-            entry["record"]["body"]["metadata"]["identifiers"]
-            == original["record"]["body"]["metadata"]["identifiers"]
+            entry["record"].body["metadata"]["identifiers"]
+            == original["record"].body["metadata"]["identifiers"]
         )

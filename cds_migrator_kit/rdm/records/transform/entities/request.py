@@ -16,7 +16,7 @@ class RecordRequest:
     """A community-inclusion request for one migrated CDS record.
 
     Built by ``CDSToRDMRecordTransform._transform()`` - pops the raw
-    request data off ``json_entry`` (before any field mapper can see it,
+    request data off ``dojson_entry`` (before any field mapper can see it,
     since it isn't part of the RDM record schema), resolves raw reviewer
     name/email strings to actual user accounts (a DB lookup, which is why
     this lives here and not in a dojson rule - rules must stay DB-free),
@@ -24,22 +24,22 @@ class RecordRequest:
     publish, which owns actually creating the RDM request.
     """
 
-    def __init__(self, json_entry, recid, migration_logger):
+    def __init__(self, dojson_entry, recid, migration_logger):
         """Constructor.
 
-        :param json_entry: the DOJSON-processed record data - request_data
+        :param dojson_entry: the DOJSON-processed record data - request_data
             is popped off it.
         :param recid: this record's legacy recid, for error reporting.
         :param migration_logger: for reviewer-error/validation logging.
         """
-        self.json_entry = json_entry
+        self.dojson_entry = dojson_entry
         self.recid = recid
         self.migration_logger = migration_logger
         self.data = None
 
     def build(self):
-        """Pop request_data off ``json_entry``, resolve reviewers; return self."""
-        request_data = self.json_entry.pop("request_data", None)
+        """Pop request_data off ``dojson_entry``, resolve reviewers; return self."""
+        request_data = self.dojson_entry.pop("request_data", None)
         if request_data:
             reviewer_names = request_data.pop("reviewer_names", [])
             # merge into whatever's already there rather than overwriting -

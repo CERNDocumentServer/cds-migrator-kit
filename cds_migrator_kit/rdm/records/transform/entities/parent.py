@@ -26,26 +26,31 @@ class RecordParent:
     membership, and access grants - built by ``build()``, called from
     ``CDSToRDMRecordTransform._transform()`` (the one place that has both
     the already-built record content and the DOJSON-processed
-    ``json_entry`` that access-grant resolution needs).
+    ``dojson_entry`` that access-grant resolution needs).
     """
 
-    def __init__(self, record, entry, json_entry, communities_ids, access_grants_view):
+    def __init__(
+        self, record, raw_dump_entry, dojson_entry, communities_ids, access_grants_view
+    ):
         """Constructor.
 
-        :param record: the already-built ``RecordEntryData`` dict (needs
-            ``owned_by``/``recid``/``communities``).
-        :param entry: the original harvested legacy entry (needs
-            ``legacy_recid``, for error reporting).
-        :param json_entry: the DOJSON-processed record data - required to
-            resolve access grants (see ``_build_access_grants()``).
+        :param record: the already-built ``RecordEntry`` (needs ``recid``).
+        :param raw_dump_entry: the original harvested legacy entry (needs
+            ``recid``, for error reporting).
+        :param dojson_entry: the DOJSON-processed record data - owner/
+            communities/access grants are popped straight off it
+            (``submitter``/``communities``/``access_grants``) - this is the
+            last entity to touch it, so it's also where those keys stop
+            existing for the forgotten-keys check in
+            ``CDSToRDMRecordTransform._check_forgotten_keys()``.
         :param communities_ids: configured target community ids for this
             migration run (``CDSToRDMRecordTransform.communities_ids``).
         :param access_grants_view: configured collection-wide view grants
             (``CDSToRDMRecordTransform.access_grants_view``).
         """
         self.record = record
-        self.entry = entry
-        self.json_entry = json_entry
+        self.raw_dump_entry = raw_dump_entry
+        self.dojson_entry = dojson_entry
         self.communities_ids = communities_ids
         self.access_grants_view = access_grants_view
         self.body = None
@@ -60,7 +65,7 @@ class RecordParent:
         self.body = {
             # loader is responsible for creating/updating if the PID exists,
             # this part will be simply omitted.
-            "id": f'{self.record["recid"]}-parent',
+            "id": f"{self.record.recid}-parent",
             "access": access,
             "communities": self.communities,
         }
@@ -68,7 +73,7 @@ class RecordParent:
 
     def _build_access(self):
         """Resolve the owner and return the parent's access dict."""
-        email = self.record["owned_by"]
+        email = self.dojson_entry.pop("submitter", None)
         if not email:
             owner = "system"
         else:
@@ -79,7 +84,7 @@ class RecordParent:
                 raise UnexpectedValue(
                     message=f"{email} not found - did you run user migration?",
                     stage="transform",
-                    recid=self.entry["legacy_recid"],
+                    recid=self.raw_dump_entry["recid"],
                     value=email,
                     priority="critical",
                 )
@@ -87,7 +92,7 @@ class RecordParent:
 
     def _build_communities(self):
         """Combine the configured target communities with the record's own."""
-        communities = self.record.get("communities", [])
+        communities = self.dojson_entry.pop("communities", [])
         communities = self.communities_ids + [slug for slug in communities]
         if communities:
             return {"ids": communities, "default": self.communities_ids[0]}
@@ -96,8 +101,8 @@ class RecordParent:
     def _build_access_grants_from_record_marc(self):
         """Compute the access grants to create on this parent after publish."""
         ctx = RecordTransformContext(
-            json_entry=self.json_entry,
-            entry=self.entry,
+            dojson_entry=self.dojson_entry,
+            raw_dump_entry=self.raw_dump_entry,
             access_grants_view=self.access_grants_view,
         )
         return AccessGrantsMapper().map_value(ctx)
@@ -136,7 +141,7 @@ class RecordParent:
                         field="access",
                         subfield="subject.id",
                         stage="load",
-                        recid=self.record["recid"],
+                        recid=self.record.recid,
                         priority="critical",
                         value=specific_file_restrictions,
                     )
@@ -159,7 +164,7 @@ class RecordParent:
                         field="access",
                         subfield="subject.id",
                         stage="load",
-                        recid=self.record["recid"],
+                        recid=self.record.recid,
                         priority="critical",
                         value=specific_file_restrictions,
                     )
