@@ -90,7 +90,7 @@ class CDSEPApprovalRecordServiceLoad(Load):
                 self.migration_logger.finalise_record(recid)
                 return
 
-            ep_approval = entry.get("record", {}).get("ep_approval")
+            ep_approval = entry.get("ep_approval")
             if not ep_approval:
                 raise UnexpectedValue(
                     message="EP approval request not found",
@@ -98,8 +98,8 @@ class CDSEPApprovalRecordServiceLoad(Load):
                     recid=recid,
                     priority="critical",
                 )
-            record_json = entry.get("record", {}).get("json", {})
-            metadata = record_json.get("metadata", {})
+            record_body = entry.get("record", {}).get("body", {})
+            metadata = record_body.get("metadata", {})
 
             self.approval_request = ApprovalRequest(
                 ep_approval=ep_approval,

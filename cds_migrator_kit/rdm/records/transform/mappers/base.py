@@ -27,7 +27,6 @@ class RecordTransformContext:
     migration_logger: object = None
     affiliations_mapping: object = None
     access_grants_view: object = None
-    json_output: dict = None
     metadata: dict = field(default_factory=dict)
     custom_fields: dict = field(default_factory=dict)
 

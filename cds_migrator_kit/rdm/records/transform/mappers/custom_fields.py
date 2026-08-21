@@ -36,9 +36,6 @@ class ExperimentsMapper(CustomFieldMapper):
             if result and result not in experiments_out:
                 experiments_out.append(result)
             elif not result:
-                subj = ctx.json_output["metadata"].get("subjects", [])
-                subj.append({"subject": experiment})
-                ctx.json_output["metadata"]["subjects"] = subj
                 raise UnexpectedValue(
                     subfield="e",
                     value=experiment,
@@ -73,9 +70,24 @@ class DepartmentsMapper(CustomFieldMapper):
             elif not result:
                 if department.lower() == "cern?":
                     continue
-                subj = ctx.json_output["metadata"].get("subjects", [])
-                subj.append({"subject": department})
-                ctx.json_output["metadata"]["subjects"] = subj
+                # Written into the shared source entry (not the already-built
+                # metadata output) so metadata's own SubjectsMapper picks it
+                # up naturally - see RecordEntry.transform(), which
+                # runs custom_fields mappers before metadata mappers for
+                # exactly this reason.
+                ctx.json_entry.setdefault("subjects", []).append(
+                    {"subject": department}
+                )
+
+                if ctx.custom_fields.get("cern:administrative_unit"):
+                    raise UnexpectedValue(
+                        subfield="5",
+                        value=department,
+                        field="710",
+                        message=f"conflict on administrative unit "
+                                f"{ctx.custom_fields["cern:administrative_unit"]} VS {department}",
+                        stage="vocabulary match",
+                    )
                 ctx.custom_fields["cern:administrative_unit"] = department
                 ctx.flag_curation(
                     RecordFlaggedCuration(
@@ -83,7 +95,7 @@ class DepartmentsMapper(CustomFieldMapper):
                         value=department,
                         field="department",
                         message=f"Department {department} not found. "
-                        f"Added as unit and subject",
+                                f"Added as unit and subject",
                         stage="vocabulary match",
                     )
                 )

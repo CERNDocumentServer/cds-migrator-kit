@@ -9,13 +9,13 @@
 
 import pytest
 
-from cds_migrator_kit.rdm.records.transform.transform import CDSToRDMRecordEntry
+from cds_migrator_kit.rdm.records.transform.entities.record import RecordEntry
 
 
 @pytest.fixture
 def entry():
     """Transform entry instance (no DB/app context required)."""
-    return CDSToRDMRecordEntry()
+    return RecordEntry()
 
 
 def _dump():

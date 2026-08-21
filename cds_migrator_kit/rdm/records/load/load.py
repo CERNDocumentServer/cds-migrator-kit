@@ -10,7 +10,6 @@
 import datetime
 import json
 import os
-import re
 from copy import deepcopy
 from typing import Dict
 
@@ -50,8 +49,8 @@ from cds_migrator_kit.errors import (
     RecordFlaggedCuration,
     UnexpectedValue,
 )
-from cds_migrator_kit.rdm.records.transform.entry_types import (
-    MigrationEntry,
+from cds_migrator_kit.rdm.records.transform.entities.migration import MigrationEntry
+from cds_migrator_kit.rdm.records.transform.entities.version import (
     VersionAccess,
     VersionFileEntry,
 )
@@ -197,11 +196,12 @@ class CDSRecordServiceLoad(Load):
     def _load_parent_access_and_communities(self, draft, entry: MigrationEntry):
         """Load access rights and communities in a single parent commit."""
         parent = draft._record.parent
-        parent.access = entry["parent"]["json"]["access"]
-        communities = entry["parent"]["json"]["communities"]["ids"]
+        record_parent = entry["parent"]
+        parent.access = record_parent.body["access"]
+        communities = record_parent.communities["ids"]
         for community in communities:
             parent.communities.add(community)
-        parent.communities.default = entry["parent"]["json"]["communities"]["default"]
+        parent.communities.default = record_parent.communities["default"]
         parent.commit()
 
     def _load_record_access(self, draft, access_dict: VersionAccess):
@@ -229,7 +229,7 @@ class CDSRecordServiceLoad(Load):
         """Update migrated DOIs post publish."""
         if not self._is_final_record:
             return
-        migrated_pids = entry["record"]["json"]["pids"]
+        migrated_pids = entry["record"]["body"]["pids"]
         for pid_type, identifier in migrated_pids.items():
             if pid_type == "doi":
                 # If a DOI was already minted from legacy then on publish the datacite
@@ -248,107 +248,19 @@ class CDSRecordServiceLoad(Load):
         self, draft, version, entry: MigrationEntry
     ):
         """Load access grants from metadata and record grants efficiently."""
-
-        def _normalize_group_name(subject):
-            if subject.endswith(" [CERN]"):
-                subject = subject.replace(" [CERN]", "")
-            return subject.strip()
-
         access_dict = entry["versions"][version]["access"]
         parent = draft._record.parent
         identity = system_identity
 
-        record_grants = entry["record"]["json"].get("access_grants", [])
+        record_parent = entry["parent"]
         specific_file_restrictions = access_dict.get("meta", "")
-        if not specific_file_restrictions and not record_grants:
+        if not specific_file_restrictions and not record_parent.access_grants:
             return
         default_permission = "view"
 
-        groups = set()
-        emails = set()
-        grants_with_perms = {}
-        email_pattern = re.compile(r"[^@]+@[^@]+\.[^@]+")
-
-        # ----Parse file status metadata----#
-        if specific_file_restrictions:
-
-            group_mappings = current_app.config.get("CDS_ACCESS_GROUP_MAPPINGS", {})
-
-            if specific_file_restrictions in group_mappings:
-                try:
-                    groups.update(group_mappings[specific_file_restrictions])
-                except KeyError as e:
-                    raise ManualImportRequired(
-                        message="Missing permission mapping",
-                        field="access",
-                        subfield="subject.id",
-                        stage="load",
-                        recid=entry["record"]["recid"],
-                        priority="critical",
-                        value=specific_file_restrictions,
-                    )
-            elif specific_file_restrictions == "restricted":
-                # https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showroledetails?id_role=69
-                groups.add("cern-personnel")
-            elif specific_file_restrictions.strip().endswith("[CERN]") and not any(
-                kw in specific_file_restrictions for kw in ("firerole:", "allow ")
-            ):
-                # bare CERN e-group name, e.g.
-                # "cds-ph-ep-publications-referee-non-lhc [CERN]"
-                groups.add(_normalize_group_name(specific_file_restrictions))
-            else:
-                if not any(
-                    kw in specific_file_restrictions
-                    for kw in ("firerole: allow group", "allow email")
-                ):
-                    raise ManualImportRequired(
-                        message="Unexpected permission format.",
-                        field="access",
-                        subfield="subject.id",
-                        stage="load",
-                        recid=entry["record"]["recid"],
-                        priority="critical",
-                        value=specific_file_restrictions,
-                    )
-
-                meta_str = specific_file_restrictions.replace("\r\n", "\n")
-
-                # Parse groups
-                group_matches = re.search(
-                    r'allow group\s+((?:"[^"]+",?\s*)+)', meta_str
-                )
-                if group_matches:
-                    group_values = re.findall(r'"([^"]+)"', group_matches.group(1))
-                    for g in group_values:
-                        groups.add(_normalize_group_name(g))
-
-                # Parse emails
-                email_matches = re.search(
-                    r'allow email\s+((?:"[^"]+",?\s*)+)', meta_str
-                )
-                if email_matches:
-                    email_values = re.findall(r'"([^"]+)"', email_matches.group(1))
-                    emails.update(email_values)
-
-        # ----Parse record access grants----#
-
-        for grant_info in record_grants:
-            if not isinstance(grant_info, dict) or not grant_info:
-                continue
-
-            subject, permission = next(iter(grant_info.items()))
-            permission = permission or default_permission
-            grants_with_perms[subject] = permission
-
-            # attention!
-            # this is important - if there was no specific restrictions on the file,
-            # then the record grands takes over - but if file had specific status,
-            # then we take the least possible access
-            if not specific_file_restrictions:
-                if email_pattern.match(subject):
-                    emails.add(subject)
-                else:
-                    groups.add(_normalize_group_name(subject))
+        groups, emails, grants_with_perms = record_parent.resolve_grants(
+            specific_file_restrictions
+        )
 
         def _create_grant(subject_type, subject_id, permission):
             grant_data = {
@@ -608,21 +520,14 @@ class CDSRecordServiceLoad(Load):
         self._after_publish_update_files_created(published_record, entry, version)
         self._after_publish_load_parent_access_grants(published_record, version, entry)
         self._after_publish_set_committee_approval(published_record, entry["record"], uow)
-        request_data = entry["record"].get("_request_data", {})
+        record_request = entry.get("_request_data")
 
-        if request_data and not self.create_inclusion_request:
-            raise ManualImportRequired(
-                message="Detected request data, enable the requests",
-                field="validation",
-                stage="load",
-                recid=entry["record"]["recid"],
-                priority="warning",
-                subfield=None,
-            )
-        if self.create_inclusion_request and request_data:
-            self._after_publish_add_submission_request(
-                request_data, published_record, entry, uow
-            )
+        if record_request:
+            record_request.ensure_enabled(self.create_inclusion_request)
+            if self.create_inclusion_request:
+                self._after_publish_add_submission_request(
+                    record_request.data, published_record, entry, uow
+                )
         # db.session.commit()
 
     def _assign_rep_numbers(self, draft):
@@ -669,7 +574,7 @@ class CDSRecordServiceLoad(Load):
             # we decided to skip it and act normal
             try:
                 draft = current_rdm_records_service.create(
-                    identity, data=entry["record"]["json"], uow=uow
+                    identity, data=entry["record"]["body"], uow=uow
                 )
                 self._assign_rep_numbers(draft)
             except (UniqueViolation, IntegrityError) as e:
@@ -694,7 +599,7 @@ class CDSRecordServiceLoad(Load):
             draft_dict = draft.to_dict()
             if not self.update_new_version_publication_date:
                 publication_date = arrow.get(
-                    entry["record"]["json"]["metadata"]["publication_date"]
+                    entry["record"]["body"]["metadata"]["publication_date"]
                 )
             else:
                 publication_date = versions[version]["publication_date"]
@@ -750,7 +655,7 @@ class CDSRecordServiceLoad(Load):
 
     def _dry_load(self, entry: MigrationEntry):
         current_rdm_records_service.schema.load(
-            entry["record"]["json"],
+            entry["record"]["body"],
             context=dict(
                 identity=system_identity,
             ),
@@ -893,7 +798,7 @@ class CDSRecordServiceLoad(Load):
                 del entry["_clc_sync"]
 
             try:
-                ep_approval = entry.get("record", {}).get("ep_approval")
+                ep_approval = entry.get("ep_approval")
                 if ep_approval:
                     raise UnexpectedValue(
                         message="EP approval records must be loaded with the '--ep-approval' flag",

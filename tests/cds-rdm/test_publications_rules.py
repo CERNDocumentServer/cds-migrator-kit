@@ -571,8 +571,8 @@ class TestJournal:
         """A mismatched book leaves titleless journal data flagged for curation."""
         from unittest.mock import MagicMock
 
-        from cds_migrator_kit.rdm.records.transform.transform import (
-            CDSToRDMRecordEntry,
+        from cds_migrator_kit.rdm.records.transform.entities.record import (
+            RecordEntry,
         )
         from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import (
             related_identifiers,
@@ -596,9 +596,9 @@ class TestJournal:
 
         record["resource_type"] = "publication-other"
         migration_logger = MagicMock()
-        custom_fields = CDSToRDMRecordEntry(
-            migration_logger=migration_logger
-        )._custom_fields(record, {"metadata": {}})
+        custom_fields = RecordEntry(migration_logger=migration_logger)._custom_fields(
+            record
+        )
 
         # titleless journal data is dropped (falsy values are filtered out),
         # not raised as a hard error
