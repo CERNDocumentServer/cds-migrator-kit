@@ -158,7 +158,7 @@ class IdentifiersMapper(FieldMapper):
 
 # Fields that pass through unchanged from json_entry - kept explicit in the
 # composed list (mappers/config equivalent) rather than open-ended, so the
-# "forgotten metadata key" completeness check in CDSToRDMRecordEntry._metadata
+# "forgotten metadata key" completeness check in RecordEntry._metadata
 # still catches any newly introduced json_entry key nobody has mapped yet.
 PASSTHROUGH_METADATA_FIELDS = (
     "description",

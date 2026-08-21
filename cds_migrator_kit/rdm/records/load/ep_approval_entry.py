@@ -14,10 +14,8 @@ from typing import Dict
 from flask import current_app
 
 from cds_migrator_kit.errors import UnexpectedValue
-from cds_migrator_kit.rdm.records.transform.entry_types import (
-    MigrationEntry,
-    VersionEntry,
-)
+from cds_migrator_kit.rdm.records.transform.entities.migration import MigrationEntry
+from cds_migrator_kit.rdm.records.transform.entities.version import VersionEntry
 
 EPPHAPP_FILE_TYPE = "EPPHAPP_FILE"
 EP_APPROVAL_REPORT_NUMBER_PREFIX = "CERN-EP"
@@ -52,14 +50,14 @@ class MetadataEntry:
     def build(self) -> MigrationEntry:
         """Return a load entry with split files and modified metadata."""
         split = deepcopy(self.entry)
-        split["record"].pop("ep_approval", None)
+        split.pop("ep_approval", None)
         split["versions"] = self._build_versions(split)
         self._apply_metadata(split)
         self._apply_entry_modifications(split)
         return split
 
     def _apply_metadata(self, split):
-        metadata = split["record"]["json"]["metadata"]
+        metadata = split["record"]["body"]["metadata"]
         metadata["identifiers"] = self.identifiers(metadata.get("identifiers", []))
         self._remove_doi_pid(split)
 
@@ -195,21 +193,20 @@ class PublicEntry(MetadataEntry):
         return kept
 
     def _apply_entry_modifications(self, split):
-        split["record"].pop("_request_data", None)
+        split.pop("_request_data", None)
         split["record"]["owned_by"] = "system"
-        split["parent"]["json"]["access"]["owned_by"] = {"user": "system"}
+        split["parent"].body["access"]["owned_by"] = {"user": "system"}
         self._add_cern_scientific_community(split)
 
     def _add_cern_scientific_community(self, entry):
         community_id = _cern_scientific_community_id()
-        communities = entry.get("parent", {}).get("json", {}).get("communities", {})
+        # mutating in place: entry["parent"].communities is the same dict
+        # object, no need to set it back.
+        communities = entry["parent"].communities
         ids = list(communities.get("ids", []))
         if community_id not in ids:
             ids.append(community_id)
         communities["ids"] = ids
-        entry.setdefault("parent", {}).setdefault("json", {})[
-            "communities"
-        ] = communities
 
 
 class RestrictedEntry(MetadataEntry):
@@ -226,16 +223,15 @@ class RestrictedEntry(MetadataEntry):
         it (see _add_cern_scientific_community).
         """
         community_id = _cern_scientific_community_id()
-        communities = entry.get("parent", {}).get("json", {}).get("communities", {})
+        # mutating in place: entry["parent"].communities is the same dict
+        # object, no need to set it back.
+        communities = entry["parent"].communities
         ids = [
             cid for cid in communities.get("ids", []) if cid != community_id
         ]
         communities["ids"] = ids
         if communities.get("default") == community_id:
             communities["default"] = ids[0] if ids else None
-        entry.setdefault("parent", {}).setdefault("json", {})[
-            "communities"
-        ] = communities
 
     def _has_restricted_files(self, split):
         return any(
@@ -341,8 +337,8 @@ class RestrictedEntry(MetadataEntry):
     def _remove_doi_pid(self, split):
         """Remove DOI PID from restricted record."""
         recid = split.get("record", {}).get("recid")
-        record_json = split.get("record", {}).get("json", {})
-        pids = record_json.get("pids")
+        record_body = split.get("record", {}).get("body", {})
+        pids = record_body.get("pids")
 
         if not pids or "doi" not in pids:
             return

@@ -8,7 +8,7 @@ from edtf import EDTFParseException, parse_edtf, text_to_edtf
 from idutils.normalizers import normalize_isbn, normalize_issn
 from isbnlib import NotValidISBNError
 
-from cds_migrator_kit.errors import ManualImportRequired, RecordFlaggedCuration, UnexpectedValue
+from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     filter_list_values,
     for_each_value,
@@ -22,7 +22,6 @@ from ...config import (
 )
 from ...models.base_publication_record import rdm_base_publication_model as model
 from .base import normalize
-from ..quality.reviewers import find_reviewer
 
 
 @model.over("isbns", "^020__", override_tag=True)
@@ -424,19 +423,13 @@ def request_reviewers(self, key, value):
         reviewer = " ".join(part for part in (first, last) if part)
 
     if reviewer:
+        # resolving a name/email to an actual user account requires a DB
+        # lookup, which dojson rules must not do - RecordRequest
+        # (transform/entities/request.py) resolves these into
+        # request_data["reviewers"] later, once transform() runs.
         request_data = self.setdefault("request_data", {})
-        reviewers = request_data.setdefault("reviewers", [])
-
-        try:
-            user = find_reviewer(reviewer)
-            reviewer_entry = {"user": str(user.id)}
-        except RecordFlaggedCuration as exc:
-            reviewer_errors = request_data.setdefault("_reviewer_errors", [])
-            reviewer_errors.append({"message": exc.message, "value": exc.value})
-            reviewer_entry = {"user": "-1"}
-
-        if reviewer_entry not in reviewers:
-            reviewers.append(reviewer_entry)
+        reviewer_names = request_data.setdefault("reviewer_names", [])
+        reviewer_names.append(reviewer)
 
     raise IgnoreKey("request_reviewers")
 

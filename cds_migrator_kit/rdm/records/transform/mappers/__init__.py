@@ -9,5 +9,5 @@
 
 Each mapper owns the derivation of a single ``metadata`` or
 ``custom_fields`` value from the legacy record entry, composed together by
-``CDSToRDMRecordEntry`` in ``transform.py``.
+``RecordEntry`` in ``entities/record.py``.
 """

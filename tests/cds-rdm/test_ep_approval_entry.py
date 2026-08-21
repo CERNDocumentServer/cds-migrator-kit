@@ -20,6 +20,7 @@ from cds_migrator_kit.rdm.records.load.ep_approval_entry import (
     PublicEntry,
     RestrictedEntry,
 )
+from cds_migrator_kit.rdm.records.transform.entities.parent import RecordParent
 
 RECID = "12345"
 APPROVED_REPORT_NUMBER = "CERN-EP-2020-001"
@@ -61,6 +62,24 @@ def _epphapp_file(key=DRAFT_FILE_KEY, checksum="bbb", version=1, id_bibdoc=200):
         "type": EPPHAPP_FILE_TYPE,
         "creation_date": "2020-01-10",
     }
+
+
+def _make_parent(owner="uploader", communities=None, access_grants=None):
+    """Build a RecordParent-shaped test double.
+
+    Bypasses RecordParent.build()'s DB/mapper-dependent logic (owner
+    lookup, access grant resolution) - this module tests PublicEntry/
+    RestrictedEntry's splitting logic, not RecordParent's own construction.
+    """
+    parent = RecordParent.__new__(RecordParent)
+    parent.communities = communities if communities is not None else {}
+    parent.access_grants = access_grants if access_grants is not None else []
+    parent.body = {
+        "id": f"{RECID}-parent",
+        "access": {"owned_by": {"user": owner}},
+        "communities": parent.communities,
+    }
+    return parent
 
 
 def _make_entry(
@@ -108,27 +127,22 @@ def _make_entry(
     return {
         "record": {
             "recid": recid,
-            "json": record_json,
-            "ep_approval": [
-                {
-                    "status": "waiting",
-                    "ep_report_number": report_number,
-                },
-                {
-                    "status": "approved",
-                    "ep_report_number": report_number,
-                },
-            ],
+            "body": record_json,
             "owned_by": "uploader",
-            "_request_data": {"placeholder": True},
         },
-        "parent": {
-            "json": {
-                "access": {"owned_by": {"user": "uploader"}},
-                "communities": {"ids": ["example-community"]},
-            }
-        },
+        "parent": _make_parent(communities={"ids": ["example-community"]}),
         "versions": versions,
+        "ep_approval": [
+            {
+                "status": "waiting",
+                "ep_report_number": report_number,
+            },
+            {
+                "status": "approved",
+                "ep_report_number": report_number,
+            },
+        ],
+        "_request_data": {"placeholder": True},
     }
 
 
@@ -420,7 +434,7 @@ class TestPublicEntryIdentifiers:
             entry, _make_approval_request(), _make_migration_logger()
         ).build()
 
-        identifiers = result["record"]["json"]["metadata"]["identifiers"]
+        identifiers = result["record"]["body"]["metadata"]["identifiers"]
         cdsrn_values = {i["identifier"] for i in identifiers if i["scheme"] == "cdsrn"}
 
         assert APPROVED_REPORT_NUMBER not in cdsrn_values
@@ -442,7 +456,7 @@ class TestPublicEntryIdentifiers:
 
         cdsrn_ids = [
             i
-            for i in result["record"]["json"]["metadata"]["identifiers"]
+            for i in result["record"]["body"]["metadata"]["identifiers"]
             if i["scheme"] == "cdsrn"
         ]
         assert len(cdsrn_ids) == 1
@@ -460,7 +474,7 @@ class TestRestrictedEntryIdentifiers:
 
         cdsrn_values = {
             i["identifier"]
-            for i in result["record"]["json"]["metadata"]["identifiers"]
+            for i in result["record"]["body"]["metadata"]["identifiers"]
             if i["scheme"] == "cdsrn"
         }
 
@@ -474,7 +488,7 @@ class TestRestrictedEntryIdentifiers:
 
         cdsrn_values = {
             i["identifier"]
-            for i in result["record"]["json"]["metadata"]["identifiers"]
+            for i in result["record"]["body"]["metadata"]["identifiers"]
             if i["scheme"] == "cdsrn"
         }
 
@@ -497,7 +511,7 @@ class TestRestrictedEntryIdentifiers:
             entry, _make_approval_request(), _make_migration_logger()
         ).build()
 
-        assert "doi" not in result["record"]["json"].get("pids", {})
+        assert "doi" not in result["record"]["body"].get("pids", {})
 
 
 class TestPublicEntryModifications:
@@ -509,7 +523,7 @@ class TestPublicEntryModifications:
             entry, _make_approval_request(), _make_migration_logger()
         ).build()
 
-        assert "_request_data" not in result["record"]
+        assert "_request_data" not in result
 
     def test_public_sets_owned_by_system(self, app):
         entry = _make_entry(_versions_with_epphapp())
@@ -518,7 +532,7 @@ class TestPublicEntryModifications:
         ).build()
 
         assert result["record"]["owned_by"] == "system"
-        assert result["parent"]["json"]["access"]["owned_by"] == {"user": "system"}
+        assert result["parent"].body["access"]["owned_by"] == {"user": "system"}
 
     def test_public_adds_cern_scientific_community(self, app):
         entry = _make_entry(_versions_with_epphapp())
@@ -526,13 +540,11 @@ class TestPublicEntryModifications:
             entry, _make_approval_request(), _make_migration_logger()
         ).build()
 
-        assert CDS_CERN_SCIENTIFIC_COMMUNITY_ID in (
-            result["parent"]["json"]["communities"]["ids"]
-        )
+        assert CDS_CERN_SCIENTIFIC_COMMUNITY_ID in result["parent"].communities["ids"]
 
     def test_public_does_not_duplicate_community(self, app):
         entry = _make_entry(_versions_with_epphapp())
-        entry["parent"]["json"]["communities"]["ids"] = [
+        entry["parent"].communities["ids"] = [
             "example-community",
             CDS_CERN_SCIENTIFIC_COMMUNITY_ID,
         ]
@@ -540,7 +552,7 @@ class TestPublicEntryModifications:
             entry, _make_approval_request(), _make_migration_logger()
         ).build()
 
-        community_ids = result["parent"]["json"]["communities"]["ids"]
+        community_ids = result["parent"].communities["ids"]
         assert community_ids.count(CDS_CERN_SCIENTIFIC_COMMUNITY_ID) == 1
 
 
@@ -553,8 +565,8 @@ class TestEntryImmutability:
         PublicEntry(entry, _make_approval_request(), _make_migration_logger()).build()
 
         assert (
-            entry["record"]["json"]["metadata"]["identifiers"]
-            == original["record"]["json"]["metadata"]["identifiers"]
+            entry["record"]["body"]["metadata"]["identifiers"]
+            == original["record"]["body"]["metadata"]["identifiers"]
         )
 
     def test_restricted_build_does_not_mutate_original(self, app):
@@ -565,6 +577,6 @@ class TestEntryImmutability:
         ).build()
 
         assert (
-            entry["record"]["json"]["metadata"]["identifiers"]
-            == original["record"]["json"]["metadata"]["identifiers"]
+            entry["record"]["body"]["metadata"]["identifiers"]
+            == original["record"]["body"]["metadata"]["identifiers"]
         )

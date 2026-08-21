@@ -5,7 +5,7 @@
 # CDS-RDM is free software; you can redistribute it and/or modify it under
 # the terms of the MIT License; see LICENSE file for more details.
 
-"""Composed lists of field mappers used by CDSToRDMRecordEntry."""
+"""Composed lists of field mappers used by RecordEntry."""
 from cds_migrator_kit.rdm.records.transform.mappers.base import (
     PassthroughCustomFieldMapper,
     PassthroughMapper,

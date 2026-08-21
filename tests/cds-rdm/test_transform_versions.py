@@ -25,12 +25,13 @@ def _file_dump(
     subformat="",
     recid=123,
     bibdocid=1,
+    status="",
 ):
     """Build a minimal legacy file dump entry."""
     checksum = checksum or f"checksum-v{file_version}"
     return {
         "comment": None,
-        "status": "",
+        "status": status,
         "version": file_version,
         "encoding": None,
         "creation_date": creation_date,
@@ -68,8 +69,8 @@ def _file_dump(
 def _record():
     """Build a minimal record."""
     return {
-        "access": "public",
-        "json": {"metadata": {"publication_date": "2020-01-01"}},
+        "access_status": "public",
+        "body": {"metadata": {"publication_date": "2020-01-01"}},
     }
 
 
@@ -163,3 +164,40 @@ def test_versions_with_skipped_files(transform):
     assert versions[2]["files"]["main.pdf"]["version"] == 2
     assert "plot.png" not in versions[1]["files"]
     assert "plot.png" not in versions[2]["files"]
+
+
+def test_versions_no_files_falls_back_to_metadata_only_version(transform):
+    """A record with no files gets a single, empty, public version."""
+    entry = {"recid": 123, "files": []}
+
+    versions = transform._versions(entry, _record())
+
+    assert list(versions.keys()) == [1]
+    assert versions[1]["files"] == {}
+    assert versions[1]["publication_date"] == "2020-01-01"
+    assert versions[1]["access"] == {
+        "access_obj": {"record": "public", "files": "public"}
+    }
+
+
+def test_versions_individual_file_restriction_sets_access_meta(transform):
+    """A file with its own restriction status flags that version as restricted."""
+    status = (
+        'firerole: allow group "some-group [CERN]"\ndeny until "1996-02-01"\nallow all'
+    )
+    entry = {
+        "recid": 123,
+        "files": [_file_dump(status=status)],
+    }
+
+    versions = transform._versions(entry, _record())
+
+    assert versions[1]["access"] == {
+        "access_obj": {"record": "public", "files": "restricted"},
+        "meta": status,
+    }
+    transform.migration_logger.add_information.assert_called_once()
+    recid, info = transform.migration_logger.add_information.call_args[0]
+    assert recid == "123"
+    assert info["message"] == "Record has individual file restrictions"
+    assert info["value"] == status

@@ -173,7 +173,8 @@ class CDSSubmitterLoad(Load):
         """Make sure family_name/given_name are set on the profile.
 
         MigrationUserAPI.create_user() only ever sets `full_name`, but
-        find_reviewer() (cds_migrator_kit/rdm/records/load/load.py) matches
+        RecordRequest._find_reviewer()
+        (cds_migrator_kit/rdm/records/transform/entities/request.py) matches
         reviewers by `family_name`/`given_name` - without this, a
         just-created reviewer account would still be unmatchable by name
         later on. Only fills in missing values, never overwrites an
