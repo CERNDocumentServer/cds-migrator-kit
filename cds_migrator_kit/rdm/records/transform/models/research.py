@@ -60,6 +60,7 @@ class ResearchModel(CdsOverdo):
         "8564_y",  # file description - done by files dump, sometimes these are used for open access calculation
         "8564_w",  # system field
         "8564_z",  # file comment, migrated via file metadata
+        "8564_q",  # TIFF metadata
         "913__y",  # citation
         "913__v",  # citation
         "913__t",  # citation

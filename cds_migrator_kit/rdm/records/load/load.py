@@ -31,6 +31,7 @@ from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.requests import CommunitySubmission
 from invenio_records.systemfields.relations import InvalidRelationValue
+from invenio_drafts_resources.services.records.uow import ParentRecordCommitOp
 from invenio_records_resources.services.uow import RecordCommitOp
 from invenio_requests.customizations.event_types import (
     LogEventType,
@@ -529,6 +530,56 @@ class CDSRecordServiceLoad(Load):
             )
             db.session.add(file.model)
 
+    def _after_publish_set_committee_approval(self, published_record, entry, uow):
+        """Write committee_approval to parent for records already EP-approved pre-migration.
+
+        Only runs when:
+          1. entry["ep_approval"] is empty — record did NOT go through the
+             9031_/EPPHAPP path (those are handled by CDSEPApprovalRecordServiceLoad
+             which already writes committee_approval correctly for both records).
+          2. The record carries at least one apprn identifier.
+
+        For these records the migrated record IS the final public version (no
+        separate internal draft exists). We write the same "public side"
+        committee_approval block that ep_approval_load writes, pointing
+        source_internal_version at the record's own PID so that
+        get_committee_approval_state returns is_public_approved_record=True.
+        """
+        if entry.get("ep_approval"):
+            return
+
+        record = published_record._record
+        identifiers = record.get("metadata", {}).get("identifiers", [])
+        apprn_ids = [i["identifier"] for i in identifiers if i.get("scheme") == "apprn"]
+        if not apprn_ids:
+            return
+
+        parent = record.parent
+        pf = parent.get("permission_flags") or {}
+        if pf.get("committee_approval", {}).get("source_internal_version"):
+            return  # idempotency: already written
+
+        pf["committee_approval"] = {
+            "source_internal_version": str(record.pid.pid_value),
+            "reportnumber": apprn_ids[0],
+        }
+        parent["permission_flags"] = pf
+        uow.register(ParentRecordCommitOp(parent))
+
+        # Mint apprn PIDs in pidstore — same logic as ApprovalRequest._mint_apprn_pid.
+        from cds_rdm.requests.committee_approval import APPRN_PID_TYPE
+        for apprn_value in apprn_ids:
+            try:
+                PersistentIdentifier.create(
+                    pid_type=APPRN_PID_TYPE,
+                    pid_value=apprn_value,
+                    object_type="rec",
+                    object_uuid=str(record.id),
+                    status=PIDStatus.REGISTERED,
+                )
+            except PIDAlreadyExists:
+                pass  # already minted on a previous run — idempotent
+
     def _after_publish(self, identity, published_record, entry, version, uow):
         """Run fixes after record publish."""
         record = self._after_publish_update_dois(identity, published_record, entry, uow)
@@ -538,6 +589,7 @@ class CDSRecordServiceLoad(Load):
         self._after_publish_mint_recid(published_record, entry, version)
         self._after_publish_update_files_created(published_record, entry, version)
         self._after_publish_load_parent_access_grants(published_record, version, entry)
+        self._after_publish_set_committee_approval(published_record, entry["record"], uow)
         request_data = entry["record"].get("_request_data", {})
 
         if request_data and not self.create_inclusion_request:

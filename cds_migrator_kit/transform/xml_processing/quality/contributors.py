@@ -163,6 +163,12 @@ def extract_json_contributor_ids(info, orcid_subfield="k"):
 
     author_orcid = info.get(orcid_subfield)
     if author_orcid:
+        if isinstance(author_orcid, tuple):
+            raise UnexpectedValue(
+                message="Multiple ORCID values found for a single author",
+                value=author_orcid,
+                stage="transform",
+            )
         author_orcid = author_orcid.replace("ORCID:", "")
         if not author_orcid.lower().startswith("jacow-"):
             if idutils.is_orcid(author_orcid):

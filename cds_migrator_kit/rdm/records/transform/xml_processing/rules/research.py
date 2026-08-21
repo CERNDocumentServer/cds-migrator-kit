@@ -21,29 +21,8 @@ from ...config import (
     udc_pattern,
 )
 from ...models.base_publication_record import rdm_base_publication_model as model
-from .base import licenses as _base_licenses
 from .base import normalize
 from ..quality.reviewers import find_reviewer
-
-# Unwrapped base functions (strip @for_each_value to avoid double-wrapping).
-# licenses also has @filter_values beneath @for_each_value, so two levels deep.
-_raw_licenses = (
-    _base_licenses.__wrapped__
-)  # filter_values(raw) — handles None filtering
-
-_FUNDING_MODEL_MAP = {
-    "scoap3": "scoap3",
-    "collective": "collective",
-    "cern-rp": "cern-rp",
-    "cern-apc": "cern-apc",
-    "other": "other",
-}
-
-
-def _sub(v, code):
-    """Return first string value of a MARC subfield, handling dojson tuple packing."""
-    val = force_list(v.get(code))
-    return val[0] if val else ""
 
 
 @model.over("isbns", "^020__", override_tag=True)
@@ -391,36 +370,7 @@ def meeting(self, key, value):
     raise IgnoreKey("custom_fields")
 
 
-@model.over("_oa_license", "^540__", override=True)
-def oa_level_from_license(self, key, value):
-    """Detect funding model; also runs base license logic for rights.
-
-    540__f: 'SCOAP3'|'Collective'|'CERN-RP'|'CERN-APC'|'Other' → funding model
-    """
-    _custom_fields = self.get("custom_fields", {})
-    rights = self.get("rights", [])
-
-    for v in force_list(value):
-        qualifier = _sub(v, "f").strip()
-        funding_model_id = _FUNDING_MODEL_MAP.get(qualifier.lower())
-
-        if funding_model_id and not _custom_fields.get("cern:oa_funding_model"):
-            _custom_fields["cern:oa_funding_model"] = {"id": funding_model_id}
-
-        # Base license logic: expand repeated 'a' subfields into individual calls
-        # because clean_val raises UnexpectedValue for tuple values by default.
-        a_vals = force_list(v.get("a")) or ()
-        for a_val in a_vals:
-            if not a_val:
-                continue
-            license_result = _raw_licenses(self, key, dict(v, a=a_val))
-            if license_result and license_result not in rights:
-                rights.append(license_result)
-
-    self["custom_fields"] = _custom_fields
-    if rights:
-        self["rights"] = rights
-    raise IgnoreKey("_oa_license")
+# 540__ is fully handled by the base licenses rule (OA funding model included).
 
 
 @model.over("access_grants", "^506[1_]_")
@@ -769,6 +719,11 @@ def resource_type(self, key, value):
         "intnoteitpubl": {"id": "publication-technicalnote"},
         "intnotealephpriv": {"id": "publication-technicalnote"},
         "intnotetspubl": {"id": "publication-technicalnote"},
+        "intnoteatspubl": {"id": "publication-note"},
+        "intnotehie-isoldepubl": {"id": "publication-note"},
+        "hie-isolde-project-notes": {"id": "publication-note"},
+        "intnotebepubl": {"id": "publication-note"},
+        "technote": {"id": "publication-technicalnote"},
         "intnoteeppubl": {"id": "publication-technicalnote"},
         "intnotehsepubl": {"id": "publication-technicalnote"},
         "bookchapter": {"id": "publication-section"},
