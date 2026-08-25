@@ -86,7 +86,9 @@ COLLECT_STORAGE = "flask_collect.storage.file"
 
 # Cache
 # =====
-CACHE_TYPE = "null"
+# flask caching v2.5
+# https://github.com/inveniosoftware/invenio-cache/blob/master/invenio_cache/config.py#L19C1-L20C1
+CACHE_TYPE = "flask_caching.backends.RedisCache"
 
 # JSONSchemas
 # ===========

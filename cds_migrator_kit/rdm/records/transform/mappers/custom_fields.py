@@ -85,7 +85,7 @@ class DepartmentsMapper(CustomFieldMapper):
                         value=department,
                         field="710",
                         message=f"conflict on administrative unit "
-                                f"{ctx.custom_fields["cern:administrative_unit"]} VS {department}",
+                                f"{ctx.custom_fields['cern:administrative_unit']} VS {department}",
                         stage="vocabulary match",
                     )
                 ctx.custom_fields["cern:administrative_unit"] = department
