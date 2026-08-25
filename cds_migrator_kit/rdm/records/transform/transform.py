@@ -42,7 +42,7 @@ cli_logger = logging.getLogger("migrator")
 
 
 class CDSToRDMRecordTransform:
-    """Assembles the ETL entry consumed by ``CDSRecordServiceLoad``.
+    """Assembles the ETL entry consumed by ``CDSMigrationEntryLoad``.
 
     Wraps the ``record`` content built by ``RecordEntry`` together
     with ``versions``/``parent`` (computed here - ``parent`` is a

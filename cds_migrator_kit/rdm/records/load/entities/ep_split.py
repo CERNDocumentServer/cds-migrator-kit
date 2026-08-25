@@ -94,9 +94,77 @@ class MetadataEntry:
         """Remove DOI PID from record."""
         pass
 
-    def _build_versions(self, split: MigrationEntry) -> Dict[int, VersionEntry]:
-        """Return versioned files for this split; override in subclasses."""
+    # Set by subclasses - written onto ``access_obj["record"]``/``["files"]``
+    # for every version, and reused as the ``split_type`` label passed to
+    # ``_log_removed_identifiers()``.
+    _access_status = None
+    # Whether to drop the version's file-restriction ``meta`` string - kept
+    # for the restricted split (``ParentLoad.load_access_grants()`` reads it
+    # to resolve access grants), stripped for the public one (never
+    # restricted, so there's nothing to resolve grants from).
+    _strip_access_meta = False
+
+    def _include_file(self, file_data, context):
+        """Return whether a file belongs to this split; override in subclasses."""
         raise NotImplementedError
+
+    def _version_build_context(self, split):
+        """Hook for subclass precomputation before filtering files; default no-op."""
+        return None
+
+    def _no_versions_error_message(self):
+        """Error message when this split ends up with no versions; override in subclasses."""
+        raise NotImplementedError
+
+    def _build_versions(self, split: MigrationEntry) -> Dict[int, VersionEntry]:
+        """Return versioned files for this split, filtered/tagged per subclass."""
+        new_versions = OrderedDict()
+        versioned_files = OrderedDict()
+        previous_signature = None
+        context = self._version_build_context(split)
+
+        for _, version_data in split.get("versions", {}).items():
+            current_version_files = OrderedDict(
+                (key, deepcopy(file_data))
+                for key, file_data in version_data.get("files", {}).items()
+                if self._include_file(file_data, context)
+            )
+
+            if not current_version_files:
+                continue
+
+            versioned_files.update(current_version_files)
+
+            signature = self._version_signature(versioned_files)
+            # If the signature is the same, skip the version.
+            if signature == previous_signature:
+                continue
+
+            previous_signature = signature
+
+            version_access = deepcopy(version_data.get("access", {}))
+            access_obj = deepcopy(version_access.get("access_obj", {}))
+            access_obj["record"] = self._access_status
+            access_obj["files"] = self._access_status
+            if self._strip_access_meta:
+                version_access.pop("meta", None)
+            version_access["access_obj"] = access_obj
+
+            new_version_data = deepcopy(version_data)
+            new_version_data["files"] = deepcopy(versioned_files)
+            new_version_data["access"] = version_access
+
+            new_versions[len(new_versions) + 1] = new_version_data
+
+        if not new_versions:
+            raise UnexpectedValue(
+                message=self._no_versions_error_message(),
+                stage="load",
+                recid=split["record"].recid,
+                priority="critical",
+            )
+
+        return new_versions
 
     @staticmethod
     def _version_signature(versioned_files):
@@ -118,54 +186,14 @@ class MetadataEntry:
 class PublicEntry(MetadataEntry):
     """Build the public EP approval split entry."""
 
-    def _build_versions(self, split: MigrationEntry) -> Dict[int, VersionEntry]:
-        new_versions = OrderedDict()
-        versioned_files = OrderedDict()
-        previous_signature = None
+    _access_status = "public"
+    _strip_access_meta = True
 
-        for _, version_data in split.get("versions", {}).items():
-            current_version_files = OrderedDict()
+    def _include_file(self, file_data, context):
+        return not self._is_restricted_file(file_data)
 
-            for key, file_data in version_data.get("files", {}).items():
-                if self._is_restricted_file(file_data):
-                    continue
-
-                current_version_files[key] = deepcopy(file_data)
-
-            if not current_version_files:
-                continue
-
-            versioned_files.update(current_version_files)
-
-            signature = self._version_signature(versioned_files)
-            # If the signature is the same, skip the version.
-            if signature == previous_signature:
-                continue
-
-            previous_signature = signature
-
-            version_access = deepcopy(version_data.get("access", {}))
-            access_obj = deepcopy(version_access.get("access_obj", {}))
-            access_obj["record"] = "public"
-            access_obj["files"] = "public"
-            version_access.pop("meta", None)
-            version_access["access_obj"] = access_obj
-
-            new_version_data = deepcopy(version_data)
-            new_version_data["files"] = deepcopy(versioned_files)
-            new_version_data["access"] = version_access
-
-            new_versions[len(new_versions) + 1] = new_version_data
-
-        if not new_versions:
-            raise UnexpectedValue(
-                message="No public files found to load for EP approval public split",
-                stage="load",
-                recid=split["record"].recid,
-                priority="critical",
-            )
-
-        return new_versions
+    def _no_versions_error_message(self):
+        return "No public files found to load for EP approval public split"
 
     def identifiers(self, identifiers):
         kept = []
@@ -188,7 +216,7 @@ class PublicEntry(MetadataEntry):
         )
 
         if removed:
-            self._log_removed_identifiers(removed, "public")
+            self._log_removed_identifiers(removed, self._access_status)
 
         return kept
 
@@ -210,6 +238,8 @@ class PublicEntry(MetadataEntry):
 
 class RestrictedEntry(MetadataEntry):
     """Build the restricted EP approval split entry."""
+
+    _access_status = "restricted"
 
     def _apply_entry_modifications(self, split):
         self._remove_cern_scientific_community(split)
@@ -239,12 +269,14 @@ class RestrictedEntry(MetadataEntry):
             for file_data in version_data.get("files", {}).values()
         )
 
-    def _build_versions(self, split: MigrationEntry) -> Dict[int, VersionEntry]:
-        new_versions = OrderedDict()
-        versioned_files = OrderedDict()
-        previous_signature = None
-        has_restricted_files = self._has_restricted_files(split)
+    def _version_build_context(self, split):
+        """Return whether this record has any restricted files.
 
+        Logged as a fallback notice when it doesn't, since the restricted
+        split then has to fall back to using all (public) files - see
+        ``_include_file()``.
+        """
+        has_restricted_files = self._has_restricted_files(split)
         if not has_restricted_files:
             self.migration_logger.add_information(
                 split["record"].recid,
@@ -256,52 +288,16 @@ class RestrictedEntry(MetadataEntry):
                     "value": "public files",
                 },
             )
+        return has_restricted_files
 
-        for _, version_data in split.get("versions", {}).items():
-            current_version_files = OrderedDict()
+    def _include_file(self, file_data, context):
+        has_restricted_files = context
+        # If restricted files exist, use only those; otherwise fall back to
+        # using all (public) files for the restricted record.
+        return self._is_restricted_file(file_data) or not has_restricted_files
 
-            for key, file_data in version_data.get("files", {}).items():
-                is_restricted = self._is_restricted_file(file_data)
-
-                # If restricted files exist, use only those; otherwise fall
-                # back to using all (public) files for the restricted record.
-                if not is_restricted and has_restricted_files:
-                    continue
-
-                current_version_files[key] = deepcopy(file_data)
-
-            if not current_version_files:
-                continue
-
-            versioned_files.update(current_version_files)
-
-            signature = self._version_signature(versioned_files)
-            if signature == previous_signature:
-                continue
-
-            previous_signature = signature
-
-            version_access = deepcopy(version_data.get("access", {}))
-            access_obj = deepcopy(version_access.get("access_obj", {}))
-            access_obj["record"] = "restricted"
-            access_obj["files"] = "restricted"
-            version_access["access_obj"] = access_obj
-
-            new_version_data = deepcopy(version_data)
-            new_version_data["files"] = deepcopy(versioned_files)
-            new_version_data["access"] = version_access
-
-            new_versions[len(new_versions) + 1] = new_version_data
-
-        if not new_versions:
-            raise UnexpectedValue(
-                message=("No files found to load for EP approval restricted split"),
-                stage="load",
-                recid=split["record"].recid,
-                priority="critical",
-            )
-
-        return new_versions
+    def _no_versions_error_message(self):
+        return "No files found to load for EP approval restricted split"
 
     def identifiers(self, identifiers):
         kept = []
@@ -329,7 +325,7 @@ class RestrictedEntry(MetadataEntry):
                 kept.append(id_entry)
 
         if removed:
-            self._log_removed_identifiers(removed, "restricted")
+            self._log_removed_identifiers(removed, self._access_status)
 
         return kept
 

@@ -87,7 +87,6 @@ APP_ALLOWED_HOSTS = ["0.0.0.0", "localhost", "127.0.0.1", "localhost.cern.ch"]
 # See https://flask-sqlalchemy.palletsprojects.com/en/2.x/config/
 
 SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://cds-rdm:cds-rdm@localhost/cds-rdm"
-SQLALCHEMY_ENGINE_OPTIONS = {"connect_args": {"options": "-c timezone=UTC"}}
 
 # Invenio-App
 # ===========

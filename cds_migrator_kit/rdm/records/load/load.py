@@ -7,40 +7,19 @@
 
 """CDS-RDM migration load module."""
 
-import datetime
 import json
-import os
-from copy import deepcopy
-from typing import Dict
 
-import arrow
 from cds_rdm.clc_sync.models import CDSToCLCSyncModel
-from cds_rdm.clc_sync.proxies import current_clc_sync_service
 from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from cds_rdm.minters import legacy_recid_minter
-from flask import current_app
-from invenio_access.permissions import system_identity
-from invenio_accounts.models import User
 from invenio_db import db
 from invenio_db.uow import UnitOfWork
 from invenio_i18n import _
-from invenio_pidstore.errors import PIDAlreadyExists
-from invenio_pidstore.models import PersistentIdentifier, PIDStatus
+from invenio_pidstore.models import PersistentIdentifier
 from invenio_rdm_migrator.load.base import Load
-from invenio_rdm_records.proxies import current_rdm_records_service
-from invenio_rdm_records.requests import CommunitySubmission
 from invenio_records.systemfields.relations import InvalidRelationValue
-from invenio_drafts_resources.services.records.uow import ParentRecordCommitOp
-from invenio_records_resources.services.uow import RecordCommitOp
-from invenio_requests.customizations.event_types import (
-    LogEventType,
-)
-from invenio_requests.proxies import current_events_service, current_requests_service
-from invenio_requests.records.models import RequestMetadata
 from marshmallow import ValidationError
-from psycopg2.errors import UniqueViolation
-from sqlalchemy.exc import IntegrityError
 
 from cds_migrator_kit.errors import (
     CDSMigrationException,
@@ -50,25 +29,14 @@ from cds_migrator_kit.errors import (
     UnexpectedValue,
 )
 from cds_migrator_kit.rdm.records.transform.entities.migration import MigrationEntry
-from cds_migrator_kit.rdm.records.transform.entities.version import (
-    VersionAccess,
-    VersionFileEntry,
-)
+
+from .entities.parent import ParentLoad
+from .entities.record import RecordLoad
+from .entities.request import RequestLoad
 
 
-def import_legacy_files(filepath):
-    """Download file from legacy."""
-    if current_app.config["CDS_MIGRATOR_KIT_ENV"] == "local":
-        import cds_migrator_kit
-
-        base_path = os.path.dirname(os.path.realpath(cds_migrator_kit.__file__))
-        filepath = os.path.join(base_path, "rdm/data/files/dummy.pdf")
-    filestream = open(filepath, "rb")
-    return filestream
-
-
-class CDSRecordServiceLoad(Load):
-    """CDSRecordServiceLoad."""
+class CDSMigrationEntryLoad(Load):
+    """Loads a plain (non-EP-approval) ``MigrationEntry`` end to end."""
 
     def __init__(
         self,
@@ -77,671 +45,40 @@ class CDSRecordServiceLoad(Load):
         entries=None,
         dry_run=False,
         legacy_pids_to_redirect=None,
-        collection=None,
         update_new_version_publication_date=False,
         create_inclusion_request=False,
         migration_logger=None,
         record_state_logger=None,
-        _is_final_record=True,
     ):
         """Constructor."""
         self.dry_run = dry_run
         self.legacy_pids_to_redirect = {}
-        self.clc_sync = False
-        self.collection = collection
         self.update_new_version_publication_date = update_new_version_publication_date
         self.create_inclusion_request = create_inclusion_request
         self.migration_logger = migration_logger
         self.record_state_logger = record_state_logger
-        self._is_final_record = _is_final_record
-        if legacy_pids_to_redirect is not None:
-            if isinstance(legacy_pids_to_redirect, dict):
-                self.legacy_pids_to_redirect = legacy_pids_to_redirect
-            else:
-                with open(legacy_pids_to_redirect, "r") as fp:
-                    self.legacy_pids_to_redirect = json.load(fp)
+        self.parent_load_cls = ParentLoad
+        self.record_load_cls = RecordLoad
+        self.request_load_cls = RequestLoad
+        with open(legacy_pids_to_redirect, "r") as fp:
+            self.legacy_pids_to_redirect = json.load(fp)
 
-    def _prepare(self, entry):
-        """Prepare the record."""
-        pass
-
-    def _load_files(
-        self,
-        draft,
-        entry: MigrationEntry,
-        version_files: Dict[str, VersionFileEntry],
-        uow=None,
-    ):
-        """Load files to draft."""
-        recid = entry["record"].recid
-        identity = system_identity  # Should we create an identity for the migration?
-
-        for filename, file_data in version_files.items():
-
-            file_data = version_files[filename]
-
-            try:
-                current_rdm_records_service.draft_files.init_files(
-                    identity,
-                    draft.id,
-                    data=[
-                        {
-                            "key": file_data["key"],
-                            "metadata": {
-                                **file_data["metadata"],
-                                "legacy_file_id": file_data["id_bibdoc"],
-                                "legacy_recid": recid,
-                            },
-                            "access": {"hidden": False},
-                        }
-                    ],
-                    uow=uow,
-                )
-                # TODO change to eos move or xrootd command instead of going through the app
-                # TODO leave the init part to pre-create the destination folder
-                # TODO update checksum, size, commit (to be checked on how these methods work)
-                # if current_app.config["XROOTD_ENABLED"]:
-                #     storage = current_files_rest.storage_factory
-                #     current_rdm_records_service.draft_files.set_file_content(
-                #         identity,
-                #         draft.id,
-                #         file["key"],
-                #         BytesIO(b"Placeholder file"),
-                #     )
-                #     obj = None
-                #     for object in draft._record.files.objects:
-                #         if object.key == file["key"]:
-                #             obj = object
-                #     path = obj.file.uri
-                # else:
-                # for local development
-                current_rdm_records_service.draft_files.set_file_content(
-                    identity,
-                    draft.id,
-                    file_data["key"],
-                    import_legacy_files(file_data["eos_tmp_path"]),
-                    uow=uow,
-                )
-                result = current_rdm_records_service.draft_files.commit_file(
-                    identity, draft.id, file_data["key"], uow=uow
-                )
-                legacy_checksum = f"md5:{file_data['checksum']}"
-                new_checksum = result.to_dict()["checksum"]
-                if current_app.config["CDS_MIGRATOR_KIT_ENV"] != "local":
-                    try:
-                        assert legacy_checksum == new_checksum
-                    except AssertionError:
-                        raise ManualImportRequired(
-                            message=f"Files checksum failed legacy:{legacy_checksum} calculated new: {new_checksum}",
-                            field="checksum",
-                            stage="load",
-                            recid=recid,
-                            priority="critical",
-                            value=file_data["key"],
-                            subfield=None,
-                        )
-
-            except Exception as e:
-                exc = ManualImportRequired(
-                    recid=recid,
-                    message=str(e),
-                    field="filename",
-                    value=file_data["key"],
-                    stage="file load",
-                    priority="critical",
-                )
-                self.migration_logger.add_log(exc, record=entry)
-                raise e
-
-    def _load_parent_access_and_communities(self, draft, entry: MigrationEntry):
-        """Load access rights and communities in a single parent commit."""
-        parent = draft._record.parent
-        record_parent = entry["parent"]
-        parent.access = record_parent.body["access"]
-        communities = record_parent.communities["ids"]
-        for community in communities:
-            parent.communities.add(community)
-        parent.communities.default = record_parent.communities["default"]
-        parent.commit()
-
-    def _load_record_access(self, draft, access_dict: VersionAccess):
-        record = draft._record
-        record.access = access_dict["access_obj"]
-        record.commit()
-
-    def _after_commit_run_clc_sync(self, record_state):
-        """Run the CLC sync after UOW commit."""
-        if not self._is_final_record:
-            return
-        if self.clc_sync:
-            clc_sync_entry = current_clc_sync_service.read(
-                system_identity, record_state["parent_recid"]
-            ).to_dict()
-            clc_sync_entry["record"] = current_rdm_records_service.read(
-                system_identity, record_state["latest_version"]
-            ).to_dict()
-            clc_sync_entry["auto_sync"] = True
-            current_clc_sync_service.update(
-                system_identity, clc_sync_entry["id"], clc_sync_entry
+    def _apply_clc_sync(self, record_state, entry: MigrationEntry):
+        """Create the CLC sync entry after the load has committed."""
+        if entry.get("_clc_sync", False):
+            sync = CDSToCLCSyncModel(
+                parent_record_pid=record_state["parent_recid"],
+                status="P",
+                auto_sync=True,
             )
-
-    def _after_publish_update_dois(self, identity, record, entry, uow):
-        """Update migrated DOIs post publish."""
-        if not self._is_final_record:
-            return
-        migrated_pids = entry["record"].body["pids"]
-        for pid_type, identifier in migrated_pids.items():
-            if pid_type == "doi":
-                # If a DOI was already minted from legacy then on publish the datacite
-                # will return a warning that "This DOI has already been taken"
-                # In that case, we edit and republish to force an update of the doi with
-                # the new published metadata as in the new system we have more information available
-                _draft = current_rdm_records_service.edit(
-                    identity, record["id"], uow=uow
-                )
-                record = current_rdm_records_service.publish(
-                    identity, _draft["id"], uow=uow
-                )
-                return record
-
-    def _after_publish_load_parent_access_grants(
-        self, draft, version, entry: MigrationEntry
-    ):
-        """Load access grants from metadata and record grants efficiently."""
-        access_dict = entry["versions"][version]["access"]
-        parent = draft._record.parent
-        identity = system_identity
-
-        record_parent = entry["parent"]
-        specific_file_restrictions = access_dict.get("meta", "")
-        if not specific_file_restrictions and not record_parent.access_grants:
-            return
-        default_permission = "view"
-
-        groups, emails, grants_with_perms = record_parent.resolve_grants(
-            specific_file_restrictions
-        )
-
-        def _create_grant(subject_type, subject_id, permission):
-            grant_data = {
-                "grants": [
-                    {
-                        "subject": {"type": subject_type, "id": str(subject_id)},
-                        "permission": permission,
-                    }
-                ]
-            }
-            current_rdm_records_service.access.schema_grants.load(
-                grant_data,
-                context={"identity": identity},
-                raise_errors=True,
-            )
-
-            grant = parent.access.grants.create(
-                subject_type=subject_type,
-                subject_id=subject_id,
-                permission=permission,
-                origin="migrated",
-            )
-            is_local_dev = current_app.config.get("CDS_MIGRATOR_KIT_ENV") == "local"
-            is_valid = current_rdm_records_service.access._validate_grant_subject(
-                identity, grant
-            )
-            if not is_local_dev and not is_valid:
-                raise ManualImportRequired(
-                    message="Verification of access subject failed (likely not existing entry)",
-                    field="access",
-                    subfield="subject.id",
-                    stage="load",
-                    recid=entry["record"].recid,
-                    priority="warning",
-                    value=subject_id,
-                )
-
-        # Create grants for groups
-        for group in groups:
-            _create_grant(
-                subject_type="role",
-                subject_id=group.lower(),
-                permission=grants_with_perms.get(group, default_permission),
-            )
-
-        # Fetch existing users
-        existing_users = {
-            user.email: user.id
-            for user in User.query.filter(User.email.in_(emails)).all()
-        }
-        # raise error for missing user
-        missing_emails = emails - existing_users.keys()
-        if missing_emails:
-            raise GrantCreationError(
-                message=f"Users not found for emails: {', '.join(missing_emails)}",
-                stage="load",
-                recid=entry["record"].recid,
-                value=list(missing_emails),
-                priority="warning",
-            )
-
-        # Create grants for users
-        for email, user_id in existing_users.items():
-            _create_grant(
-                subject_type="user",
-                subject_id=user_id,
-                permission=grants_with_perms.get(email, default_permission),
-            )
-
-        parent.commit()
-
-    def _after_publish_update_created(self, record, entry: MigrationEntry, version):
-        """Update created timestamp post publish.
-
-        Ensures that the `created` timestamp is correctly set, preferring:
-        1. The original legacy system value for the version.
-        2. The record's creation date if there are no files.
-        3. Today's date if the original value and file creation date is missing.
-        """
-        creation_date = arrow.get(entry["record"].created).datetime.replace(
-            tzinfo=None
-        )
-
-        versions = entry.get("versions", {})
-        version_data = versions.get(version, {})
-
-        if version_data.get("files") and version != 1:
-            # Subsequent versions should use the file creation date, instead of the record creation date,
-            # which is stored as the publication date in the version data
-            creation_date = version_data["publication_date"].datetime.replace(
-                tzinfo=None
-            )
-
-        record._record.model.created = creation_date
-        db.session.add(record._record.model)
-
-    def _after_publish_mint_recid(self, record, entry: MigrationEntry, version):
-        """Mint legacy ids for redirections assigned to the parent."""
-        if not self._is_final_record:
-            return
-        legacy_recid = entry["record"].recid
-        if record._record.versions.index == 1:
-            # it seems more intuitive if we mint the lrecid for parent
-            # but then we get a double redirection
-            legacy_recid_minter(legacy_recid, record._record.parent.model.id)
-
-    def _after_publish_add_submission_request(self, request_data, record, entry, uow):
-        """Create community inclusion request after publish."""
-        legacy_recid = entry["record"].recid
-        request_number = f"lrecid:{legacy_recid}"
-
-        # Defensive/idempotency guard: skip if a request for this record was
-        # already committed by a previous (partial) load attempt, otherwise
-        # re-creating it would violate the unique constraint on `number`.
-        if RequestMetadata.query.filter_by(number=request_number).first() is not None:
-            return
-
-        status = request_data.get("status", "accepted")
-        reviewers = request_data.get("reviewers", [])
-
-        created_at = datetime.datetime.fromisoformat(record["created"])
-
-        parent = record._record.parent
-        owner_id = parent.access.owned_by.owner_id
-        community = parent.communities.default
-
-        creator = {"user": str(owner_id)}
-        receiver = {"community": str(community.id)}
-
-        def create_event(request_model, payload, event_type, user):
-            """Create and register a request event."""
-            event = current_events_service.record_cls.create(
-                {},
-                request=request_model,
-                request_id=str(request_model.id),
-                type=event_type,
-            )
-            event.update(payload=payload)
-            event.model.created = created_at
-            event.created_by = {"user": str(user)}
-
-            uow.register(RecordCommitOp(event, indexer=current_events_service.indexer))
-
-        request_item = current_requests_service.create(
-            system_identity,
-            data={"title": record["metadata"]["title"]},
-            request_type=CommunitySubmission,
-            receiver=receiver,
-            creator=creator,
-            topic={"record": record.id},
-            uow=uow,
-        )
-
-        request = request_item._record
-        request.status = "submitted"
-        request.number = request_number
-        request.model.created = created_at
-
-        if reviewers:
-            request.reviewers = reviewers
-
-        if status:
-            request.status = status
-            if status == "accepted":
-                parent_to_request_relation = (
-                    parent.communities._m2m_model_cls.query.filter_by(
-                        record_id=parent.id, community_id=community.id
-                    ).one()
-                )
-                parent_to_request_relation.request_id = request.id
-
-            create_event(
-                request.model,
-                {"event": status},
-                event_type=LogEventType,
-                user="system",
-            )
-
-        uow.register(RecordCommitOp(request, indexer=current_requests_service.indexer))
-
-    def _after_publish_update_files_created(
-        self, record, entry: MigrationEntry, version
-    ):
-        """Update the created date of the files post publish."""
-        # Fix the `created` timestamp forcing the one from the legacy system
-        # Force the created date. This can be done after publish as the service
-        # overrides the `created` date otherwise.
-        versions = entry.get("versions", {})
-        version_data = versions.get(version, {})
-        files = version_data.get("files", {})
-        for _, file_data in files.items():
-            file = record._record.files.entries[file_data["key"]]
-            file.model.created = arrow.get(file_data["creation_date"]).datetime.replace(
-                tzinfo=None
-            )
-            db.session.add(file.model)
-
-    def _after_publish_set_committee_approval(self, published_record, entry, uow):
-        """Write committee_approval to parent for records already EP-approved pre-migration.
-
-        Only runs when:
-          1. entry["ep_approval"] is empty — record did NOT go through the
-             9031_/EPPHAPP path (those are handled by CDSEPApprovalRecordServiceLoad
-             which already writes committee_approval correctly for both records).
-          2. The record carries at least one apprn identifier.
-
-        For these records the migrated record IS the final public version (no
-        separate internal draft exists). We write the same "public side"
-        committee_approval block that ep_approval_load writes, pointing
-        source_internal_version at the record's own PID so that
-        get_committee_approval_state returns is_public_approved_record=True.
-        """
-        if entry.get("ep_approval"):
-            return
-
-        record = published_record._record
-        identifiers = record.get("metadata", {}).get("identifiers", [])
-        apprn_ids = [i["identifier"] for i in identifiers if i.get("scheme") == "apprn"]
-        if not apprn_ids:
-            return
-
-        parent = record.parent
-        pf = parent.get("permission_flags") or {}
-        if pf.get("committee_approval", {}).get("source_internal_version"):
-            return  # idempotency: already written
-
-        pf["committee_approval"] = {
-            "source_internal_version": str(record.pid.pid_value),
-            "reportnumber": apprn_ids[0],
-        }
-        parent["permission_flags"] = pf
-        uow.register(ParentRecordCommitOp(parent))
-
-        # Mint apprn PIDs in pidstore — same logic as ApprovalRequest._mint_apprn_pid.
-        from cds_rdm.requests.committee_approval import APPRN_PID_TYPE
-        for apprn_value in apprn_ids:
-            try:
-                PersistentIdentifier.create(
-                    pid_type=APPRN_PID_TYPE,
-                    pid_value=apprn_value,
-                    object_type="rec",
-                    object_uuid=str(record.id),
-                    status=PIDStatus.REGISTERED,
-                )
-            except PIDAlreadyExists:
-                pass  # already minted on a previous run — idempotent
-
-    def _after_publish(
-        self, identity, published_record, entry: MigrationEntry, version, uow
-    ):
-        """Run fixes after record publish."""
-        record = self._after_publish_update_dois(identity, published_record, entry, uow)
-        if record:
-            published_record = record
-        self._after_publish_update_created(published_record, entry, version)
-        self._after_publish_mint_recid(published_record, entry, version)
-        self._after_publish_update_files_created(published_record, entry, version)
-        self._after_publish_load_parent_access_grants(published_record, version, entry)
-        self._after_publish_set_committee_approval(published_record, entry["record"], uow)
-        record_request = entry.get("_request_data")
-
-        if record_request:
-            record_request.ensure_enabled(self.create_inclusion_request)
-            if self.create_inclusion_request:
-                self._after_publish_add_submission_request(
-                    record_request.data, published_record, entry, uow
-                )
-        # db.session.commit()
-
-    def _assign_rep_numbers(self, draft):
-        if not self._is_final_record:
-            return
-        draft_report_nums = {}
-        for index, id in enumerate(draft.data["metadata"].get("identifiers", [])):
-            if id["scheme"] == "cdsrn":
-                draft_report_nums[id["identifier"]] = index
-
-        if not draft_report_nums:
-            # If no mintable identifiers, return early
-            return
-
-        for report_number, index in draft_report_nums.items():
-            try:
-                PersistentIdentifier.create(
-                    pid_type="cdsrn",
-                    pid_value=report_number,
-                    object_type="rec",
-                    object_uuid=draft._record.parent.id,
-                    status=PIDStatus.REGISTERED,
-                )
-            except PIDAlreadyExists as e:
-                pid = PersistentIdentifier.get(
-                    pid_type="cdsrn", pid_value=report_number
-                )
-                if pid.object_uuid != draft._record.parent.id:
-                    # raise only if different parent uuid found, meaning they are 2
-                    # different records and the repnum is duplicated
-                    raise ManualImportRequired(
-                        f"Report number {report_number} already exists."
-                    )
-
-    def _pre_publish(self, identity, entry: MigrationEntry, version, draft, uow):
-        """Create and process draft before publish."""
-        versions = entry["versions"]
-        files = versions[version]["files"]
-        access = versions[version]["access"]
-
-        if version == 1 or (version > 1 and draft is None):
-            # when draft is None, it means the initial version one was hard deleted
-            # and we don't have index 1
-            # we decided to skip it and act normal
-            try:
-                draft = current_rdm_records_service.create(
-                    identity, data=entry["record"].body, uow=uow
-                )
-                self._assign_rep_numbers(draft)
-            except (UniqueViolation, IntegrityError) as e:
-                raise ManualImportRequired(message=str(e))
-            except Exception as e:
-                raise ManualImportRequired(message=str(e))
-            if draft.errors:
-                raise ManualImportRequired(
-                    message=f"{str(draft.errors)}: {str(entry['record'].body)}",
-                    field="validation",
-                    stage="load",
-                    recid=entry["record"].recid,
-                    priority="warning",
-                    value=draft._record.pid.pid_value,
-                    subfield=None,
-                )
-            self._load_parent_access_and_communities(draft, entry)
-        else:
-            draft = current_rdm_records_service.new_version(
-                identity, draft["id"], uow=uow
-            )
-            draft_dict = draft.to_dict()
-            if not self.update_new_version_publication_date:
-                publication_date = arrow.get(
-                    entry["record"].body["metadata"]["publication_date"]
-                )
-            else:
-                publication_date = versions[version]["publication_date"]
-            missing_data = {
-                **draft_dict,
-                "metadata": {
-                    # copy over the previous draft metadata
-                    **draft_dict["metadata"],
-                    # add missing publication date based
-                    # on the time of creation of the new file version
-                    "publication_date": publication_date.date().isoformat(),
-                },
-            }
-            draft = current_rdm_records_service.update_draft(
-                identity, draft["id"], data=missing_data, uow=uow
-            )
-
-        self._load_record_access(draft, access)
-        self._load_files(draft, entry, files, uow=uow)
-
-        return draft
-
-    def _load_versions(self, entry: MigrationEntry, uow):
-        """Load other versions of the record."""
-        versions = entry["versions"]
-        legacy_recid = entry["record"].recid
-
-        identity = system_identity
-
-        records = []
-        # initial value of draft. If different file versions identified then the first
-        # created draft is used to populate all newer versions
-        draft = None
-        for version in versions.keys():
-            # Create and prepare draft
-            draft = self._pre_publish(identity, entry, version, draft, uow)
-
-            # Publish draft
-            published_record = current_rdm_records_service.publish(
-                identity, draft["id"], uow=uow
-            )
-            # Run after publish fixes
-            self._after_publish(identity, published_record, entry, version, uow)
-            records.append(published_record._record)
-
-        if records:
-            record_state_context = self._load_record_state(legacy_recid, records)
-            # Dump the computed record state. This is useful to migrate then the record stats
-            if record_state_context:
-                if self._is_final_record:
-                    self.record_state_logger.add_record_state(record_state_context)
-                return record_state_context
-
-    def _dry_load(self, entry: MigrationEntry):
-        current_rdm_records_service.schema.load(
-            entry["record"].body,
-            context=dict(
-                identity=system_identity,
-            ),
-            raise_errors=True,
-        )
-
-    def _load_record_state(self, legacy_recid, records):
-        """Compute state for legacy recid.
-
-        Returns
-        {
-            "legacy_recid": "2884810",
-            "parent_recid": "zts3q-6ef46",
-            "parent_object_uuid": "435be22f-3038-49e0-9f17-9518eaac783a",
-            "latest_version": "1mae4-skq89"
-            "latest_version_object_uuid": "895be22f-3038-49e0-9f17-9518eaac783a",
-            "versions": [
-                {
-                    "new_recid": "1mae4-skq89",
-                    "version": 2,
-                    "files": [
-                        {
-                            "legacy_file_id": 1568736,
-                            "bucket_id": "155be22f-3038-49e0-9f17-9518eaac783a",
-                            "file_key": "Summer student program report.pdf",
-                            "file_id": "06cdb9d2-635f-4dbe-89fe-4b27afddeaa2",
-                            "size": "1690854"
-                        }
-                    ]
-                }
-            ]
-        }
-        """
-
-        def convert_file_format(file_entries, bucket_id):
-            """Convert the file metadata into the required format."""
-            return [
-                {
-                    "legacy_file_id": entry["metadata"]["legacy_file_id"],
-                    "bucket_id": bucket_id,
-                    "file_key": entry["key"],
-                    "file_id": entry["file_id"],
-                    "size": str(entry["size"]),
-                }
-                for entry in file_entries.values()
-            ]
-
-        def extract_record_version(record):
-            """Extract relevant details from a single record."""
-            bucket_id = str(record.files.bucket_id)
-            files = record.__class__.files.dump(
-                record, record.files, include_entries=True
-            ).get("entries", {})
-            return {
-                "new_recid": record.pid.pid_value,
-                "version": record.versions.index,
-                "files": convert_file_format(files, bucket_id),
-            }
-
-        recid_state = {"legacy_recid": legacy_recid, "versions": []}
-        parent_recid = None
-
-        for record in records:
-            if parent_recid is None:
-                parent_id = str(record.parent.id)
-                parent_recid = record.parent.pid.pid_value
-                recid_state["parent_recid"] = parent_recid
-                recid_state["parent_object_uuid"] = parent_id
-
-            recid_version = extract_record_version(record)
-            # Save the record versions for legacy recid
-            recid_state["versions"].append(recid_version)
-
-            if "latest_version" not in recid_state:
-                rec = record.get_latest_by_parent(record.parent)
-                recid_state["latest_version"] = rec["id"]
-                recid_state["latest_version_object_uuid"] = str(rec.id)
-        return recid_state
+            db.session.add(sync)
+            db.session.commit()
 
     def _save_original_dumped_record(self, entry: MigrationEntry, recid_state):
         """Save the original dumped record.
 
         This is the originally extracted record before any transformation.
         """
-        if not self._is_final_record:
-            return
         _original_dump = entry["_original_dump"]
         _original_dump_model = CDSMigrationLegacyRecord(
             json=_original_dump,
@@ -763,96 +100,78 @@ class CDSRecordServiceLoad(Load):
     def _should_skip_recid(self, recid):
         """Check if recid should be skipped."""
         if recid in self.legacy_pids_to_redirect or self._have_migrated_recid(recid):
+            self.migration_logger.add_information(
+                recid, state={"message": "Record already migrated", "value": recid}
+            )
+            self.migration_logger.finalise_record(recid)
             return True
         return False
 
-    def _after_load_clc_sync(self, record_state):
-        if not self._is_final_record:
+    def _load(self, entry: MigrationEntry):
+        """Use the services to load the entry."""
+        if not entry:
             return
-        if self.clc_sync:
-            sync = CDSToCLCSyncModel(
-                parent_record_pid=record_state["parent_recid"],
-                status="P",
-                auto_sync=False,
-            )
-            db.session.add(sync)
 
-    def _load(self, entry: MigrationEntry, uow=None):
-        """Use the services to load the entries.
+        recid = entry["record"].recid
+        if self._should_skip_recid(recid):
+            return
 
-        If ``uow`` is provided, operations are registered on it without
-        committing, so the caller can group this load atomically with other
-        operations (e.g. the EP approval record split).
-        """
-        if entry:
-            recid = entry["record"].recid
-            if self._should_skip_recid(recid):
-                self.migration_logger.add_information(
-                    recid, state={"message": "Record already migrated", "value": recid}
-                )
-                self.migration_logger.finalise_record(recid)
-                return
-
-            self.clc_sync = deepcopy(entry.get("_clc_sync", False))
-            if "_clc_sync" in entry:
-                del entry["_clc_sync"]
-
-            try:
-                ep_approval = entry.get("ep_approval")
-                if ep_approval:
-                    raise UnexpectedValue(
-                        message="EP approval records must be loaded with the '--ep-approval' flag",
-                        stage="load",
-                        recid=recid,
-                        priority="critical",
+        record_load = RecordLoad(
+            entry["record"],
+            entry["parent"],
+            self.migration_logger,
+            is_final_record=True,
+            update_new_version_publication_date=self.update_new_version_publication_date,
+            record_state_logger=self.record_state_logger,
+        )
+        try:
+            if self.dry_run:
+                record_load.dry_load()
+                recid_state_after_load = None
+            else:
+                with UnitOfWork(db.session) as uow:
+                    records = record_load.load(entry, uow=uow)
+                    recid_state_after_load = record_load.build_record_state(
+                        recid, records
                     )
-                if self.dry_run:
-                    self._dry_load(entry)
-                    recid_state_after_load = None
-                elif uow is not None:
-                    recid_state_after_load = self._load_versions(entry, uow)
                     if recid_state_after_load:
                         self._save_original_dumped_record(entry, recid_state_after_load)
-                        self._after_load_clc_sync(recid_state_after_load)
-                else:
-                    with UnitOfWork(db.session) as inner_uow:
-                        recid_state_after_load = self._load_versions(entry, inner_uow)
-                        if recid_state_after_load:
-                            self._save_original_dumped_record(
-                                entry, recid_state_after_load
-                            )
-                            self._after_load_clc_sync(recid_state_after_load)
-                        inner_uow.commit()
-                if self._is_final_record and uow is None:
-                    # When an external uow is provided, the caller owns the
-                    # commit boundary and is responsible for finalising the
-                    # record only after it actually commits.
+                        self.parent_load_cls(
+                            entry, self.migration_logger, recid_state_after_load
+                        ).load(published_record=records[-1])
+                        self.request_load_cls(entry).load(
+                            records, self.create_inclusion_request, uow
+                        )
+                    uow.commit()
+                if recid_state_after_load:
+                    # only log to disk once the unit of work has actually
+                    # committed - logging any earlier risks recording a
+                    # record that a later failure in the same uow rolls back
+                    record_load.log_record_state(recid_state_after_load)
                     self.migration_logger.finalise_record(recid)
-                # Run the CLC sync after UOW commit
-                self._after_commit_run_clc_sync(recid_state_after_load)
-                return recid_state_after_load
-            except (UnexpectedValue, ManualImportRequired) as e:
-                self.migration_logger.add_log(e, record=entry)
-            except GrantCreationError as e:
-                self.migration_logger.add_log(e, record=entry)
-            except (CDSMigrationException, ValidationError, InvalidRelationValue) as e:
-                exc = ManualImportRequired(
-                    message=str(e),
-                    field="validation",
-                    stage="load",
-                    recid=recid,
-                    priority="warning",
-                )
-                self.migration_logger.add_log(exc, record=entry)
-            except Exception as e:
-                exc = ManualImportRequired(
-                    message=str(e),
-                    field="validation",
-                    stage="load",
-                    recid=recid,
-                    priority="warning",
-                )
-                self.migration_logger.add_log(exc, record=entry)
+                    # apply after record fully finished (does not sync at the spot, only enabled)
+                    self._apply_clc_sync(recid_state_after_load, entry)
+            return recid_state_after_load
+        except (UnexpectedValue, ManualImportRequired, GrantCreationError) as e:
+            self.migration_logger.add_log(e, record=entry)
+        except (CDSMigrationException, ValidationError, InvalidRelationValue) as e:
+            exc = ManualImportRequired(
+                message=str(e),
+                field="validation",
+                stage="load",
+                recid=recid,
+                priority="warning",
+            )
+            self.migration_logger.add_log(exc, record=entry)
+        except Exception as e:
+            exc = ManualImportRequired(
+                message=str(e),
+                field="validation",
+                stage="load",
+                recid=recid,
+                priority="warning",
+            )
+            self.migration_logger.add_log(exc, record=entry)
 
     def _cleanup(self, *args, **kwargs):
         """Post migration process."""

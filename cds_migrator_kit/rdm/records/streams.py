@@ -11,20 +11,20 @@ from invenio_rdm_migrator.streams import StreamDefinition
 from cds_migrator_kit.extract.extract import LegacyExtract
 from cds_migrator_kit.rdm.records.transform.transform import CDSToRDMRecordTransform
 
-from .load import CDSEPApprovalRecordServiceLoad, CDSRecordServiceLoad
+from .load.entities.ep_migration_entry_load import EPMigrationEntryLoad
 
 RecordStreamDefinition = StreamDefinition(
     name="records",
     extract_cls=LegacyExtract,
     transform_cls=CDSToRDMRecordTransform,
-    load_cls=CDSRecordServiceLoad,
+    load_cls=EPMigrationEntryLoad,
 )
-"""ETL stream for CDS to RDM records."""
+"""ETL stream for CDS to RDM records.
 
-RecordEPApprovalStreamDefinition = StreamDefinition(
-    name="records",
-    extract_cls=LegacyExtract,
-    transform_cls=CDSToRDMRecordTransform,
-    load_cls=CDSEPApprovalRecordServiceLoad,
-)
-"""ETL stream for CDS to RDM records with EP approval."""
+Handles both plain records and EP approval records (split into a
+public/restricted pair) - which path an entry takes is decided per-record by
+``EPMigrationEntryLoad._load()``, based on whether the entry carries
+``ep_approval`` data, not by a separate stream/CLI flag. ``EPMigrationEntryLoad``
+subclasses ``CDSMigrationEntryLoad`` (the plain per-entry loader) and falls
+back to it for non-EP-approval entries.
+"""

@@ -15,7 +15,7 @@ import pytest
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.migration_config import CDS_CERN_SCIENTIFIC_COMMUNITY_ID
-from cds_migrator_kit.rdm.records.load.ep_approval_entry import (
+from cds_migrator_kit.rdm.records.load.entities.ep_split import (
     EPPHAPP_FILE_TYPE,
     PublicEntry,
     RestrictedEntry,
