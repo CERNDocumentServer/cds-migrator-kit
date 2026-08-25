@@ -57,22 +57,6 @@ class RecordRequest:
         """True when there's request data to act on."""
         return bool(self.data)
 
-    def ensure_enabled(self, create_inclusion_request):
-        """Raise if this record has request data but requests aren't enabled.
-
-        :param create_inclusion_request: whether the current load run is
-            configured to create community-inclusion requests - see
-            ``CDSRecordServiceLoad.create_inclusion_request``.
-        """
-        if self.data and not create_inclusion_request:
-            raise ManualImportRequired(
-                message="Detected request data, enable the requests",
-                field="validation",
-                stage="load",
-                recid=self.recid,
-                priority="warning",
-                subfield=None,
-            )
 
     def _resolve_reviewers(self, reviewer_names):
         """Resolve raw reviewer name/email strings to RDM reviewer entries.

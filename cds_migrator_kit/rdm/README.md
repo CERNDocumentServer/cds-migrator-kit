@@ -152,9 +152,9 @@ Run the below command to migrate records in the created community from before:
 invenio migration run
 ```
 
-#### EP approval records (`--ep-approval`)
+#### EP approval records
 
-EP approval records must be migrated in a **separate stream**. Do not mix them with regular records.
+EP approval records are detected automatically per-record (via the `9031_:EPPHAPP` history popped during transform) and split into a public/restricted pair by the loader - no separate flag or stream is needed, they can be migrated in the same run as regular records.
 
 1. **Dump** them filtered by `9031_:EPPHAPP`, for example (FASER):
 
@@ -162,16 +162,14 @@ EP approval records must be migrated in a **separate stream**. Do not mix them w
 inveniomigrator dump records -q '980__a:ARTICLE or 980__a:PREPRINT and 693:"FASER" not 980:CONFERENCEPAPER not 591__b:"Draft" 9031_:EPPHAPP -980:DELETED -980:HIDDEN -980__c:MIGRATED -980__a:DUMMY' --file-prefix faser-papers-cern-ep --chunk-size=1000
 ```
 
-2. Configure a dedicated collection entry in `streams.yaml` pointing at that dump.
+2. Configure a collection entry in `streams.yaml` pointing at that dump.
 
-3. **Migrate** with the `--ep-approval` flag (dry run first):
+3. **Migrate** normally (dry run first):
 
 ```shell
-invenio migration run --collection faser-ep --ep-approval --dry-run
-invenio migration run --collection faser-ep --ep-approval
+invenio migration run --collection faser-ep --dry-run
+invenio migration run --collection faser-ep
 ```
-
-Without `--ep-approval`, the loader will reject EP approval records.
 
 #### Comments migration
 

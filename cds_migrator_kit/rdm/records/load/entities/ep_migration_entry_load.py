@@ -5,99 +5,88 @@
 # CDS-RDM is free software; you can redistribute it and/or modify it under
 # the terms of the MIT License; see LICENSE file for more details.
 
-"""CDS-RDM migration load module for records with EP approval."""
-import json
-
-from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
-from cds_rdm.minters import legacy_recid_minter
+"""Splits and loads an EP approval record as a public/restricted pair."""
 from invenio_access.permissions import system_identity
 from invenio_db import db
 from invenio_db.uow import UnitOfWork
-from invenio_drafts_resources.services.records.uow import ParentRecordCommitOp
-from invenio_pidstore.models import PersistentIdentifier
-from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.records.api import RDMParent
 
 from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
+from cds_migrator_kit.rdm.records.transform.entities.migration import MigrationEntry
 
+from ..load import CDSMigrationEntryLoad
 from .approval_request import ApprovalRequest
-from .ep_approval_entry import PublicEntry, RestrictedEntry
-from .load import CDSRecordServiceLoad
+from .approval_request_load import ApprovalRequestLoad
+from .ep_split import PublicEntry, RestrictedEntry
+from .parent import ParentLoad
 
 
-class CDSEPApprovalRecordServiceLoad(Load):
-    """Load records with EP approval.
+class EPMigrationEntryLoad(CDSMigrationEntryLoad):
+    """Splits and loads an EP approval record as a public/restricted pair.
 
-    Splits a legacy record into two RDM records before load:
-    - a public record with non-EPPHAPP files
-    - a restricted record with restricted EPPHAPP files
+    Adds EP-approval splitting on top of the plain per-entry loader: builds
+    and validates the ``ApprovalRequest``, splits the entry into
+    ``PublicEntry``/``RestrictedEntry``, creates both records directly via
+    ``RecordLoad`` (not by delegating to ``super()._load()``, since the two
+    halves need different treatment - see ``_load_split()``), creates/
+    approves the EP approval request, links the two records with
+    related_identifiers, and writes EP approval metadata onto both parents -
+    all inside a single unit of work so a partial failure rolls back
+    everything instead of leaving an orphaned restricted record and/or
+    approval request behind.
+
+    Registered as the stream's ``load_cls`` in place of
+    ``CDSMigrationEntryLoad`` - every entry goes through this class, and
+    ``_load()`` decides per-entry whether to split or fall back to the
+    inherited plain behavior.
     """
 
-    def __init__(
-        self,
-        db_uri,
-        data_dir,
-        entries=None,
-        dry_run=False,
-        legacy_pids_to_redirect=None,
-        collection=None,
-        update_new_version_publication_date=False,
-        create_inclusion_request=False,
-        migration_logger=None,
-        record_state_logger=None,
-    ):
-        self.dry_run = dry_run
-        self.legacy_pids_to_redirect = {}
-        self.clc_sync = False
-        self.collection = collection
-        self.update_new_version_publication_date = update_new_version_publication_date
-        self.create_inclusion_request = create_inclusion_request
-        self.migration_logger = migration_logger
-        self.record_state_logger = record_state_logger
-        self.approval_request = None
-        if legacy_pids_to_redirect is not None:
-            with open(legacy_pids_to_redirect, "r") as fp:
-                self.legacy_pids_to_redirect = json.load(fp)
+    def _load(self, entry: MigrationEntry):
+        """Route to the plain per-entry loader, or split, based on the entry.
 
-    def _load(self, entry):
+        Overrides ``CDSMigrationEntryLoad._load()`` to add the ep_approval
+        check *before* delegating - the base class has no knowledge of
+        splitting at all.
         """
-        Load the record with EP approval.
+        if not entry:
+            return
+
+        recid = entry["record"].recid
+        if self._should_skip_recid(recid):
+            return
+
+        if not entry.get("ep_approval"):
+            return super()._load(entry)
+
+        return self._load_split(entry, recid)
+
+    def _load_split(self, entry: MigrationEntry, recid):
+        """Load a record with EP approval by splitting it into two records.
+
         Configure the 2 records by separating the files, then:
         1. create the restricted record
         2. create and approve the EP approval request
         3. create the public record and link both with related_identifiers
+        4. write EP approval metadata on both parents
 
         Steps 1-4 are grouped into a single unit of work so a failure at any
         point rolls back everything, instead of leaving an orphaned
-        restricted record and/or approval request committed behind.
+        restricted record and/or approval request committed behind. This
+        path has its own uow/error handling (rather than sharing the plain
+        single-record path's) since a partial failure here is more severe -
+        it can leave a public/restricted pair half-created - so unexpected
+        errors are logged as "critical" here, not "warning".
+
+        Parent access grants and the community-inclusion request are
+        applied to the *restricted* half - it's the one carrying the actual
+        restricted files and (per ``RestrictedEntry``) any ``_request_data``
+        (``PublicEntry`` strips it). Original-dump persistence and CLC sync
+        are applied to the *public* half - the discoverable/"final" record
+        for this legacy recid.
         """
-        if not entry:
-            return
         try:
-            recid = entry["record"].recid
-
-            # The same legacy recid can be cross-listed under multiple EP
-            # collections (e.g. a joint ALEPH/DELPHI/L3/OPAL paper appears in
-            # all four experiments' dumps). Once one pass has fully migrated
-            # it, later passes should skip cleanly instead of failing on the
-            # already-created approval request.
-            if CDSRecordServiceLoad._have_migrated_recid(recid):
-                self.migration_logger.add_information(
-                    recid,
-                    state={"message": "Record already migrated", "value": recid},
-                )
-                self.migration_logger.finalise_record(recid)
-                return
-
             ep_approval = entry.get("ep_approval")
-            if not ep_approval:
-                raise UnexpectedValue(
-                    message="EP approval request not found",
-                    stage="load",
-                    recid=recid,
-                    priority="critical",
-                )
             record_body = entry["record"].body
             metadata = record_body.get("metadata", {})
 
@@ -109,6 +98,7 @@ class CDSEPApprovalRecordServiceLoad(Load):
                 dry_run=self.dry_run,
             )
             self.approval_request.validate()
+            approval_request_load = ApprovalRequestLoad(self.approval_request)
 
             # Split the metadata and files
             public_entry = PublicEntry(
@@ -122,48 +112,60 @@ class CDSEPApprovalRecordServiceLoad(Load):
                 migration_logger=self.migration_logger,
             ).build()
 
-            restricted_record_service = CDSRecordServiceLoad(
-                dry_run=self.dry_run,
-                collection=self.collection,
-                create_inclusion_request=self.create_inclusion_request,
-                migration_logger=self.migration_logger,
+            restricted_record_load = self.record_load_cls(
+                restricted_entry["record"],
+                restricted_entry["parent"],
+                self.migration_logger,
+                is_final_record=False,
+                update_new_version_publication_date=self.update_new_version_publication_date,
                 record_state_logger=self.record_state_logger,
-                legacy_pids_to_redirect=self.legacy_pids_to_redirect,
-                _is_final_record=False,
             )
-            public_record_service = CDSRecordServiceLoad(
-                dry_run=self.dry_run,
-                collection=self.collection,
-                create_inclusion_request=self.create_inclusion_request,
-                migration_logger=self.migration_logger,
+            public_record_load = self.record_load_cls(
+                public_entry["record"],
+                public_entry["parent"],
+                self.migration_logger,
+                is_final_record=True,
+                update_new_version_publication_date=self.update_new_version_publication_date,
                 record_state_logger=self.record_state_logger,
-                legacy_pids_to_redirect=self.legacy_pids_to_redirect,
-                _is_final_record=True,
             )
 
             if self.dry_run:
                 # 1. Create restricted record
-                restricted_record_state = restricted_record_service._load(
-                    restricted_entry
+                restricted_records = restricted_record_load.load(restricted_entry)
+                restricted_record_state = restricted_record_load.build_record_state(
+                    recid, restricted_records
                 )
                 # 2. Create and approve EP approval request
-                self.approval_request.create(restricted_record_state)
+                approval_request_load.create(restricted_record_state)
                 # 3. Create public record
-                public_record_service._load(public_entry)
+                public_record_load.load(public_entry)
                 return
 
             with UnitOfWork(db.session) as uow:
                 # 1. Create restricted record
-                restricted_record_state = restricted_record_service._load(
+                restricted_records = restricted_record_load.load(
                     restricted_entry, uow=uow
+                )
+                restricted_record_state = restricted_record_load.build_record_state(
+                    recid, restricted_records
                 )
 
                 # 2. Create and approve EP approval request
-                self.approval_request.create(restricted_record_state, uow=uow)
+                approval_request_load.create(restricted_record_state, uow=uow)
+
+                # Parent access grants + community-inclusion request for
+                # the restricted half.
+                self.parent_load_cls(
+                    restricted_entry, self.migration_logger, restricted_record_state
+                ).load(published_record=restricted_records[-1])
+                self.request_load_cls(restricted_entry).load(
+                    restricted_records, self.create_inclusion_request, uow
+                )
 
                 # 3. Create public record
-                public_record_state = public_record_service._load(
-                    public_entry, uow=uow
+                public_records = public_record_load.load(public_entry, uow=uow)
+                public_record_state = public_record_load.build_record_state(
+                    recid, public_records
                 )
                 if not public_record_state:
                     raise UnexpectedValue(
@@ -172,6 +174,9 @@ class CDSEPApprovalRecordServiceLoad(Load):
                         recid=recid,
                         priority="critical",
                     )
+
+                # Original-dump persistence for the public half.
+                self._save_original_dumped_record(public_entry, public_record_state)
 
                 # Link the records with related_identifiers
                 self._append_related_identifier(
@@ -203,10 +208,18 @@ class CDSEPApprovalRecordServiceLoad(Load):
 
                 uow.commit()
 
+                # Only log to disk once the unit of work has actually
+                # committed - logging any earlier risks recording a record
+                # that a later failure in the same uow rolls back.
+                public_record_load.log_record_state(public_record_state)
+
                 # The public record is the final one; finalise it only now
                 # that the whole split has actually committed (see the
-                # matching `uow is None` guard in CDSRecordServiceLoad._load).
+                # matching `uow is None` guard in the plain path).
                 self.migration_logger.finalise_record(recid)
+
+            # CLC sync for the public half, run after commit.
+            self._apply_clc_sync(public_record_state, public_entry)
         except (UnexpectedValue, ManualImportRequired) as e:
             self.migration_logger.add_log(e, record=entry)
         except Exception as e:
@@ -266,7 +279,7 @@ class CDSEPApprovalRecordServiceLoad(Load):
             public_record_state["parent_object_uuid"]
         )
 
-        self._write_parent_ep_approval(
+        ParentLoad.write_committee_approval(
             restricted_parent,
             {
                 "reportnumber": report_number,
@@ -277,7 +290,7 @@ class CDSEPApprovalRecordServiceLoad(Load):
             },
             uow,
         )
-        self._write_parent_ep_approval(
+        ParentLoad.write_committee_approval(
             public_parent,
             {
                 "reportnumber": report_number,
@@ -285,18 +298,6 @@ class CDSEPApprovalRecordServiceLoad(Load):
             },
             uow,
         )
-
-    def _write_parent_ep_approval(
-        self,
-        parent,
-        ep_approval,
-        uow,
-    ):
-        """Write the EP approval metadata to the parent record."""
-        pf = parent.get("permission_flags") or {}
-        pf["committee_approval"] = ep_approval
-        parent["permission_flags"] = pf
-        uow.register(ParentRecordCommitOp(parent))
 
     def _append_related_identifier(
         self, record_id, target_id, relation_id, resource_type, uow=None
@@ -327,21 +328,3 @@ class CDSEPApprovalRecordServiceLoad(Load):
         )
         current_rdm_records_service.publish(system_identity, id_=draft.id, uow=uow)
         return True
-
-    def _cleanup(self, *args, **kwargs):
-        """Post migration process."""
-        for legacy_src_pid, legacy_dest_pid in self.legacy_pids_to_redirect.items():
-            if CDSRecordServiceLoad._have_migrated_recid(legacy_src_pid):
-                continue
-            try:
-                parent_dest_pid = get_pid_by_legacy_recid(str(legacy_dest_pid))
-                assert str(parent_dest_pid.status) == "R"
-                legacy_recid_minter(legacy_src_pid, parent_dest_pid.object_uuid)
-                db.session.commit()
-                self.migration_logger.finalise_record(legacy_src_pid)
-            except Exception as exc:
-                db.session.rollback()
-                self.migration_logger.add_log(
-                    f"Failed to redirect {legacy_src_pid} to {legacy_dest_pid}: {str(exc)}",
-                    record={"recid": legacy_src_pid},
-                )

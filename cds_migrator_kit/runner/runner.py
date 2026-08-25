@@ -109,7 +109,6 @@ class Runner:
                             db_uri=self.db_uri,
                             data_dir=data_dir,
                             dry_run=dry_run,
-                            collection=collection,
                             update_new_version_publication_date=self.update_new_version_publication_date,
                             create_inclusion_request=self.create_inclusion_request,
                             migration_logger=self.migration_logger,

@@ -17,7 +17,7 @@ from cds_migrator_kit.rdm.records.transform.entities.version import VersionEntry
 class MigrationEntry(TypedDict):
     """The full ETL entry yielded by ``CDSToRDMRecordTransform.run()``.
 
-    Consumed by ``CDSRecordServiceLoad``/``ep_approval_entry.py``. Keys
+    Consumed by ``CDSMigrationEntryLoad``/``EPMigrationEntryLoad``. Keys
     outside ``"record"`` are ETL-envelope-scoped (about this migration run,
     not about the record's own content): ``versions``/``parent`` are
     computed by ``CDSToRDMRecordTransform`` itself, while
