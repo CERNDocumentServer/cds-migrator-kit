@@ -112,6 +112,21 @@ class CDSToRDMRecordTransform:
         """
         dump = CDSRecordDump(raw_dump_entry, preferred_model=self.preferred_model)
         dump.prepare_revisions()
+        if dump.multiple_models_warning:
+            w = dump.multiple_models_warning
+            recid = raw_dump_entry.get("recid") or raw_dump_entry.get("record", {}).get(
+                "recid")
+            matched = re.findall(r"\['(\w+)',", w.message or "")
+            self.migration_logger.add_information(
+                str(recid),
+                {
+                    "type": w.type,
+                    "error": w.description,
+                    "message": w.message,
+                    "value": ", ".join(matched),
+                    "priority": "warning",
+                },
+            )
         timestamp, dojson_entry = dump.latest_revision
         self.dojson_entry = dojson_entry
         self.record_state_logger.add_record(dojson_entry)

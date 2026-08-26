@@ -138,7 +138,7 @@ class CDSMigrationEntryLoad(Load):
                         self._save_original_dumped_record(entry, recid_state_after_load)
                         self.parent_load_cls(
                             entry, self.migration_logger, recid_state_after_load
-                        ).load(published_record=records[-1])
+                        ).load(published_record=records[-1], uow=uow)
                         self.request_load_cls(entry).load(
                             records, self.create_inclusion_request, uow
                         )

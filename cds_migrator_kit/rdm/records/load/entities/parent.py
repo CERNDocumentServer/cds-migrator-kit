@@ -10,6 +10,8 @@ from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
 from invenio_drafts_resources.services.records.uow import ParentRecordCommitOp
+from invenio_pidstore.errors import PIDAlreadyExists
+from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_rdm_records.proxies import current_rdm_records_service
 
 from cds_migrator_kit.errors import GrantCreationError, ManualImportRequired
@@ -40,8 +42,9 @@ class ParentLoad:
         self.record_state = record_state
         self.migration_entry = entry
         self.versions = entry["versions"]
+        self.ep_approval = entry.get("ep_approval")
 
-    def load(self, published_record):
+    def load(self, published_record, uow):
         """Load access/communities, then access grants for every version.
 
         Called once from ``CDSMigrationEntryLoad._load()`` after the whole
@@ -59,6 +62,7 @@ class ParentLoad:
         """
         self.load_access_and_communities(published_record)
         self.load_access_grants(published_record)
+        self._set_committee_approval(published_record, uow)
 
     def load_access_and_communities(self, draft):
         """Load access rights and communities in a single parent commit."""
@@ -189,3 +193,53 @@ class ParentLoad:
         pf["committee_approval"] = ep_approval
         parent["permission_flags"] = pf
         uow.register(ParentRecordCommitOp(parent))
+
+    def _set_committee_approval(self, published_record, uow):
+        """Write committee_approval to parent for records already EP-approved pre-migration.
+
+        Only runs when:
+          1. entry["ep_approval"] is empty — record did NOT go through the
+             9031_/EPPHAPP path (those are handled by CDSEPApprovalRecordServiceLoad
+             which already writes committee_approval correctly for both records).
+          2. The record carries at least one apprn identifier.
+
+        For these records the migrated record IS the final public version (no
+        separate internal draft exists). We write the same "public side"
+        committee_approval block that ep_approval_load writes, pointing
+        source_internal_version at the record's own PID so that
+        get_committee_approval_state returns is_public_approved_record=True.
+        """
+        if self.ep_approval:
+            return
+
+        record = published_record._record
+        identifiers = record.get("metadata", {}).get("identifiers", [])
+        apprn_ids = [i["identifier"] for i in identifiers if i.get("scheme") == "apprn"]
+        if not apprn_ids:
+            return
+
+        parent = record.parent
+        pf = parent.get("permission_flags") or {}
+        if pf.get("committee_approval", {}).get("source_internal_version"):
+            return  # idempotency: already written
+
+        pf["committee_approval"] = {
+            "source_internal_version": str(record.pid.pid_value),
+            "reportnumber": apprn_ids[0],
+        }
+        parent["permission_flags"] = pf
+        uow.register(ParentRecordCommitOp(parent))
+
+        # Mint apprn PIDs in pidstore — same logic as ApprovalRequest._mint_apprn_pid.
+        from cds_rdm.requests.committee_approval import APPRN_PID_TYPE
+        for apprn_value in apprn_ids:
+            try:
+                PersistentIdentifier.create(
+                    pid_type=APPRN_PID_TYPE,
+                    pid_value=apprn_value,
+                    object_type="rec",
+                    object_uuid=str(record.id),
+                    status=PIDStatus.REGISTERED,
+                )
+            except PIDAlreadyExists:
+                pass  # already minted on a previous run — idempotent

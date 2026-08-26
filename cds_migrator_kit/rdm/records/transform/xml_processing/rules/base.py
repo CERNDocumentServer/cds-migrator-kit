@@ -23,10 +23,9 @@ from cds_migrator_kit.rdm.migration_config import (
     RDM_RECORDS_IDENTIFIERS_SCHEMES,
     RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES,
 )
-from cds_migrator_kit.rdm.records.load.ep_approval_entry import (
+from cds_migrator_kit.rdm.records.load.entities.ep_split import (
     EP_APPROVAL_REPORT_NUMBER_RE,
 )
-
 from cds_migrator_kit.rdm.records.transform.config import (
     CONTROLLED_SUBJECTS_SCHEMES,
     IDENTIFIERS_SCHEMES_TO_DROP,
@@ -693,7 +692,9 @@ def licenses(self, key, value):
 
     if not license_id:
         # 540__f/b without a license id — side effects (funding model, copyright) already applied
-        raise UnexpectedValue("License title missing", field=key, subfield="a", value=value)
+        raise UnexpectedValue(
+            "License title missing", field=key, subfield="a", value=value
+        )
 
     # 2897660, 2694245, 684383
     if license_id in [
