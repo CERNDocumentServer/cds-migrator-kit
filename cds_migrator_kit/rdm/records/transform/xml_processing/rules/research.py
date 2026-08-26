@@ -8,7 +8,11 @@ from edtf import EDTFParseException, parse_edtf, text_to_edtf
 from idutils.normalizers import normalize_isbn, normalize_issn
 from isbnlib import NotValidISBNError
 
-from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
+from cds_migrator_kit.errors import (
+    ManualImportRequired,
+    RecordFlaggedCuration,
+    UnexpectedValue,
+)
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     filter_list_values,
     for_each_value,
@@ -21,6 +25,7 @@ from ...config import (
     udc_pattern,
 )
 from ...models.base_publication_record import rdm_base_publication_model as model
+from .base import licenses as _base_licenses
 from .base import normalize
 
 
@@ -103,7 +108,7 @@ def corpo_author(self, key, value):
         return author
     raise IgnoreKey("creators")
 
-1
+
 @model.over("imprint_info", "(^250__)")
 @for_each_value
 @require(["a"])
@@ -276,7 +281,7 @@ def journal(self, key, value):
         new_meeting = {}
         identifiers = []
         if conference_url:
-            identifiers.append({"scheme": "URL", "identifier":  conference_url})
+            identifiers.append({"scheme": "URL", "identifier": conference_url})
         if conference_cnum:
             identifiers.append({"scheme": "inspire", "identifier": conference_cnum})
             new_meeting["identifiers"] = identifiers
@@ -299,8 +304,13 @@ def journal(self, key, value):
     if not is_journal_year and "y" in value:
         if not pub_date:
             self["publication_date"] = year
+        # Check if the pub date and year match as raw strings; if not, check if the year part of the pub date matches the conference year
         elif pub_date != year:
-            raise UnexpectedValue("Publication date mismatch", field=key, value=value)
+            parsed_pub_date = parse(pub_date, default=datetime(1, 1, 1), dayfirst=True)
+            if parsed_pub_date.year != int(year):
+                raise UnexpectedValue(
+                    "Publication date mismatch", field=key, value=value
+                )
 
     # Only populate journal fields from a journal 773 (has p/n/v).
     # A 773 with only 'c'+'w' is a conference proceedings reference and must
@@ -599,7 +609,6 @@ def resource_type(self, key, value):
     # handles occurrences where document type should have been an experiment
     add_experiment_for = {"lhcbcerntalk": "LHCb", "lhcb_misc": "LHCb"}
 
-
     committees = {
         "scicommpubldrdc": "DRDC",
         "scicommpubleec": "EEC",
@@ -624,9 +633,7 @@ def resource_type(self, key, value):
     value_a = value_a.lower()
     value_b = value_b.lower()
 
-    if (value_a in committees.keys()) or (
-        value_b in committees
-    ):
+    if (value_a in committees.keys()) or (value_b in committees):
         custom_fields = self.get("custom_fields", {})
         comm_cf = custom_fields.get("cern:committees", [])
         if value_a:
@@ -636,11 +643,8 @@ def resource_type(self, key, value):
         self["custom_fields"]["cern:committees"] = comm_cf
         raise IgnoreKey("resource_type")
 
-    if (value_a.lower() in ignore_res_types) or (
-        value_b in ignore_res_types
-    ):
+    if (value_a.lower() in ignore_res_types) or (value_b in ignore_res_types):
         raise IgnoreKey("resource_type")
-
 
     if value_a in add_experiment_for.keys():
         custom_field = self.get("custom_fields", {})

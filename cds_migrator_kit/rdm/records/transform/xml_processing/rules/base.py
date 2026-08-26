@@ -1056,10 +1056,25 @@ def imprint_info(self, key, value):
     if place:
         imprint["place"] = place.rstrip(".")
     self["custom_fields"]["imprint:imprint"] = imprint
+
     if publication_date_str:
         try:
-            publication_date = normalize(publication_date_str)
+            # Sometimes the imprint publication date ends with a "?" to mean that it's uncertain
+            # when the exact date was.
+            if "?" in publication_date_str:
+                publication_date_str = (
+                    publication_date_str.replace("?", "").rstrip("-").strip()
+                )
+                self.setdefault("dates", []).append(
+                    {
+                        "description": "The publication date is indeterminate.",
+                        "date": normalize(publication_date_str),
+                        "type": {"id": "created"},
+                    }
+                )
 
+            # TODO: should we still set as the main publication date if it's uncertain?
+            publication_date = normalize(publication_date_str)
             self["publication_date"] = publication_date
         except (ParserError, TypeError) as e:
             raise UnexpectedValue(
