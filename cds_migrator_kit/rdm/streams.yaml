@@ -377,7 +377,7 @@ records:
     data_dir: cds_migrator_kit/rdm/data/isolde
     plots: true
     create_inclusion_request: true
-    preferred_model: isolde  # set to resolve MultipleModelsMatched as warning instead of error
+    preferred_model: isolde # set to resolve MultipleModelsMatched as warning instead of error
     extract:
       dirpath: cds_migrator_kit/rdm/data/isolde/dump/
     transform:
@@ -664,17 +664,61 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "88a105fe-4713-493b-b555-6ab398599d21"
+  na61:
+    data_dir: cds_migrator_kit/rdm/data/north_area/na61
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/north_area/na61/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/north_area/na61/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - ""
+  na62:
+    data_dir: cds_migrator_kit/rdm/data/north_area/na62
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/north_area/na62/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/north_area/na62/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - ""
+  na63:
+    data_dir: cds_migrator_kit/rdm/data/north_area/na63
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/north_area/na63/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/north_area/na63/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - ""
+  na64:
+    data_dir: cds_migrator_kit/rdm/data/north_area/na64
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/north_area/na64/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/north_area/na64/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - ""
 comments:
   faser-drafts:
     dir_path: /migration/faser-drafts/comments/
     reviewers:
-      - {group: faser-all}
+      - { group: faser-all }
   faser:
     dir_path: /migration/faser/comments/
     reviewers:
-      - {group: faser-all}
+      - { group: faser-all }
 
   faser-ep:
     dir_path: /migration/faser-ep/comments/
     reviewers:
-      - {group: faser-all}
+      - { group: faser-all }
