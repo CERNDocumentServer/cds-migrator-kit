@@ -6,6 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """Splits and loads an EP approval record as a public/restricted pair."""
+
 from invenio_access.permissions import system_identity
 from invenio_db import db
 from invenio_db.uow import UnitOfWork
@@ -157,7 +158,7 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
                 # the restricted half.
                 self.parent_load_cls(
                     restricted_entry, self.migration_logger, restricted_record_state
-                ).load(published_record=restricted_records[-1])
+                ).load(published_record=restricted_records[-1], uow=uow)
                 self.request_load_cls(restricted_entry).load(
                     restricted_records, self.create_inclusion_request, uow
                 )
@@ -176,7 +177,9 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
                     )
 
                 # Original-dump persistence for the public half.
-                self._save_original_dumped_record(public_entry, public_record_state)
+                self._save_original_dumped_record(
+                    public_entry, public_record_state, uow
+                )
 
                 # Link the records with related_identifiers
                 self._append_related_identifier(
@@ -275,11 +278,9 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
         restricted_parent = RDMParent.get_record(
             restricted_record_state["parent_object_uuid"]
         )
-        public_parent = RDMParent.get_record(
-            public_record_state["parent_object_uuid"]
-        )
+        public_parent = RDMParent.get_record(public_record_state["parent_object_uuid"])
 
-        ParentLoad.write_committee_approval(
+        ParentLoad.write_committee_approval_obj(
             restricted_parent,
             {
                 "reportnumber": report_number,
@@ -290,7 +291,7 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
             },
             uow,
         )
-        ParentLoad.write_committee_approval(
+        ParentLoad.write_committee_approval_obj(
             public_parent,
             {
                 "reportnumber": report_number,

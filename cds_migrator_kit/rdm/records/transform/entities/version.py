@@ -6,11 +6,13 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """One record version - a value in ``MigrationEntry["versions"]``."""
+
 from pathlib import Path
 from typing import Dict, Optional, TypedDict, Union
 
 import arrow
 from arrow import Arrow
+from typing_extensions import Required
 
 LEGACY_FILES_PATH_ROOT = Path("/opt/cdsweb/var/data/files/")
 
@@ -29,7 +31,7 @@ class VersionAccess(TypedDict, total=False):
     ``load.py::_load_record_access`` (``record.access = access_dict["access_obj"]``).
     """
 
-    access_obj: VersionAccessObj
+    access_obj: Required[VersionAccessObj]
     # Raw legacy file-restriction status string, present only when an
     # individual file carried its own restriction - see
     # RecordVersion.compute_access().
