@@ -6,6 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """Creates, versions, and publishes a single RDM record from a ``RecordEntry``."""
+
 import os
 from typing import Dict
 
@@ -14,9 +15,11 @@ from cds_rdm.minters import legacy_recid_minter
 from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_db import db
+from invenio_db.uow import ModelCommitOp
 from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_rdm_records.proxies import current_rdm_records_service
+from invenio_records_resources.services.uow import RecordCommitOp
 from psycopg2.errors import UniqueViolation
 from sqlalchemy.exc import IntegrityError
 
@@ -153,11 +156,11 @@ class RecordLoad:
                 self.migration_logger.add_log(exc, record={"record": self.record_entry})
                 raise e
 
-    def load_access(self, draft, access_dict: VersionAccess):
+    def load_access(self, draft, access_dict: VersionAccess, uow):
         """Set this version's access on the published record."""
         record = draft._record
         record.access = access_dict["access_obj"]
-        record.commit()
+        uow.register(RecordCommitOp(record))
 
     def assign_rep_numbers(self, draft):
         """Mint ``cdsrn`` PIDs for this draft's report-number identifiers."""
@@ -245,8 +248,8 @@ class RecordLoad:
                 identity, draft["id"], data=missing_data, uow=uow
             )
 
-        self.load_access(draft, access)
-        self.load_files(draft, files, uow=uow)
+        self.load_access(draft, access, uow)
+        self.load_files(draft, files, uow)
 
         return draft
 
@@ -269,7 +272,7 @@ class RecordLoad:
                 )
                 return record
 
-    def after_publish_update_created(self, record, version_data, version):
+    def after_publish_update_created(self, record, version_data, version, uow):
         """Update created timestamp post publish.
 
         Ensures that the `created` timestamp is correctly set, preferring:
@@ -289,7 +292,7 @@ class RecordLoad:
             )
 
         record._record.model.created = creation_date
-        db.session.add(record._record.model)
+        uow.register(ModelCommitOp(record._record.model))
 
     def after_publish_mint_recid(self, record):
         """Mint legacy ids for redirections assigned to the parent."""
@@ -301,7 +304,7 @@ class RecordLoad:
             # but then we get a double redirection
             legacy_recid_minter(legacy_recid, record._record.parent.model.id)
 
-    def after_publish_update_files_created(self, record, version_data):
+    def after_publish_update_files_created(self, record, version_data, uow):
         """Update the created date of the files post publish."""
         # Fix the `created` timestamp forcing the one from the legacy system
         # Force the created date. This can be done after publish as the service
@@ -312,7 +315,7 @@ class RecordLoad:
             file.model.created = arrow.get(file_data["creation_date"]).datetime.replace(
                 tzinfo=None
             )
-            db.session.add(file.model)
+            uow.register(ModelCommitOp(file.model))
 
     def _after_publish(self, identity, published_record, entry, version, uow):
         """Run fixes after record publish."""
@@ -320,9 +323,9 @@ class RecordLoad:
         if record:
             published_record = record
         version_data = entry.get("versions", {}).get(version, {})
-        self.after_publish_update_created(published_record, version_data, version)
+        self.after_publish_update_created(published_record, version_data, version, uow)
         self.after_publish_mint_recid(published_record)
-        self.after_publish_update_files_created(published_record, version_data)
+        self.after_publish_update_files_created(published_record, version_data, uow)
 
     def _load_versions(self, entry, uow):
         """Create, publish, and run after-publish fixes for every version."""

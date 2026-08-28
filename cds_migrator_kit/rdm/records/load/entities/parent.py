@@ -6,6 +6,8 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """Materializes a ``RecordParent`` against a real RDM parent record."""
+
+from cds_rdm.requests.committee_approval import APPRN_PID_TYPE
 from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
@@ -60,20 +62,20 @@ class ParentLoad:
         freshly-read parent instance, which ``load_access_and_communities``'s
         stale in-memory parent doesn't see).
         """
-        self.load_access_and_communities(published_record)
-        self.load_access_grants(published_record)
-        self._set_committee_approval(published_record, uow)
+        self.load_access_and_communities(published_record, uow)
+        self.load_access_grants(published_record, uow)
+        self.set_stateless_committee_approval(published_record, uow)
 
-    def load_access_and_communities(self, draft):
+    def load_access_and_communities(self, draft, uow):
         """Load access rights and communities in a single parent commit."""
         parent = draft._record.parent
         parent.access = self.record_parent.body["access"]
         for community in self.record_parent.communities["ids"]:
             parent.communities.add(community)
         parent.communities.default = self.record_parent.communities["default"]
-        parent.commit()
+        uow.register(ParentRecordCommitOp(parent))
 
-    def load_access_grants(self, published_record):
+    def load_access_grants(self, published_record, uow):
         """Load access grants from metadata and record grants efficiently.
 
         :param draft: the draft/published record whose parent grants are set.
@@ -117,6 +119,8 @@ class ParentLoad:
                         }
                     ]
                 }
+
+                # Verify the grant meets the schema
                 current_rdm_records_service.access.schema_grants.load(
                     grant_data,
                     context={"identity": identity},
@@ -176,10 +180,10 @@ class ParentLoad:
                     permission=grants_with_perms.get(email, default_permission),
                 )
 
-            parent.commit()
+            uow.register(ParentRecordCommitOp(parent))
 
     @staticmethod
-    def write_committee_approval(parent, ep_approval, uow):
+    def write_committee_approval_obj(parent, ep_approval, uow):
         """Write EP approval metadata onto an already-published parent.
 
         :param parent: an ``RDMParent`` fetched by uuid (post-publish - not
@@ -194,7 +198,7 @@ class ParentLoad:
         parent["permission_flags"] = pf
         uow.register(ParentRecordCommitOp(parent))
 
-    def _set_committee_approval(self, published_record, uow):
+    def set_stateless_committee_approval(self, published_record, uow):
         """Write committee_approval to parent for records already EP-approved pre-migration.
 
         Only runs when:
@@ -231,7 +235,6 @@ class ParentLoad:
         uow.register(ParentRecordCommitOp(parent))
 
         # Mint apprn PIDs in pidstore — same logic as ApprovalRequest._mint_apprn_pid.
-        from cds_rdm.requests.committee_approval import APPRN_PID_TYPE
         for apprn_value in apprn_ids:
             try:
                 PersistentIdentifier.create(

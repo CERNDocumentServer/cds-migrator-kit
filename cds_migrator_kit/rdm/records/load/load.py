@@ -14,7 +14,7 @@ from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from cds_rdm.minters import legacy_recid_minter
 from invenio_db import db
-from invenio_db.uow import UnitOfWork
+from invenio_db.uow import ModelCommitOp, UnitOfWork
 from invenio_i18n import _
 from invenio_pidstore.models import PersistentIdentifier
 from invenio_rdm_migrator.load.base import Load
@@ -74,7 +74,7 @@ class CDSMigrationEntryLoad(Load):
             db.session.add(sync)
             db.session.commit()
 
-    def _save_original_dumped_record(self, entry: MigrationEntry, recid_state):
+    def _save_original_dumped_record(self, entry: MigrationEntry, recid_state, uow):
         """Save the original dumped record.
 
         This is the originally extracted record before any transformation.
@@ -86,7 +86,7 @@ class CDSMigrationEntryLoad(Load):
             migrated_record_object_uuid=recid_state["latest_version_object_uuid"],
             legacy_recid=entry["record"].recid,
         )
-        db.session.add(_original_dump_model)
+        uow.register(ModelCommitOp(_original_dump_model))
 
     @staticmethod
     def _have_migrated_recid(recid):
@@ -135,7 +135,9 @@ class CDSMigrationEntryLoad(Load):
                         recid, records
                     )
                     if recid_state_after_load:
-                        self._save_original_dumped_record(entry, recid_state_after_load)
+                        self._save_original_dumped_record(
+                            entry, recid_state_after_load, uow
+                        )
                         self.parent_load_cls(
                             entry, self.migration_logger, recid_state_after_load
                         ).load(published_record=records[-1], uow=uow)

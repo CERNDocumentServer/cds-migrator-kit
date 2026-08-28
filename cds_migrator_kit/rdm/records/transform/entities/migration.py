@@ -6,7 +6,10 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """The full ETL entry yielded by ``CDSToRDMRecordTransform.run()``."""
+
 from typing import Any, Dict, List, TypedDict
+
+from typing_extensions import NotRequired
 
 from cds_migrator_kit.rdm.records.transform.entities.parent import RecordParent
 from cds_migrator_kit.rdm.records.transform.entities.record import RecordEntry
@@ -41,6 +44,6 @@ class MigrationEntry(TypedDict):
     # not a plain dict; see entities/request.py.
     _request_data: RecordRequest
     # EP approval workflow entries for this record, if any (possibly []).
-    ep_approval: List[dict]
+    ep_approval: NotRequired[List[dict]]
     _original_dump: dict
     _clc_sync: Any
