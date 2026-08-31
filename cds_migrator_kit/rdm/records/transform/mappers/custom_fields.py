@@ -6,7 +6,12 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """``custom_fields`` mappers for CDS to RDM record transformation."""
-from cds_migrator_kit.errors import RecordFlaggedCuration, UnexpectedValue
+
+from cds_migrator_kit.errors import (
+    MissingRequiredField,
+    RecordFlaggedCuration,
+    UnexpectedValue,
+)
 from cds_migrator_kit.rdm.records.transform.config import EXPERIMENT_ALIASES
 from cds_migrator_kit.rdm.records.transform.mappers.base import CustomFieldMapper
 from cds_migrator_kit.rdm.records.transform.mappers.vocabulary import search_vocabulary
@@ -29,9 +34,7 @@ class ExperimentsMapper(CustomFieldMapper):
         for experiment in experiments:
             if experiment.lower().strip() in ["not applicable", "xx"]:
                 continue
-            experiment = EXPERIMENT_ALIASES.get(
-                experiment.lower().strip(), experiment
-            )
+            experiment = EXPERIMENT_ALIASES.get(experiment.lower().strip(), experiment)
             result = search_vocabulary(experiment, "experiments")
             if result and result not in experiments_out:
                 experiments_out.append(result)
@@ -85,7 +88,7 @@ class DepartmentsMapper(CustomFieldMapper):
                         value=department,
                         field="710",
                         message=f"conflict on administrative unit "
-                                f"{ctx.custom_fields['cern:administrative_unit']} VS {department}",
+                        f"{ctx.custom_fields['cern:administrative_unit']} VS {department}",
                         stage="vocabulary match",
                     )
                 ctx.custom_fields["cern:administrative_unit"] = department
@@ -95,7 +98,7 @@ class DepartmentsMapper(CustomFieldMapper):
                         value=department,
                         field="department",
                         message=f"Department {department} not found. "
-                                f"Added as unit and subject",
+                        f"Added as unit and subject",
                         stage="vocabulary match",
                     )
                 )
@@ -170,6 +173,10 @@ class ProgrammesMapper(CustomFieldMapper):
         """Set ctx.custom_fields["cern:programmes"], or leave it unset."""
         record_json = ctx.dojson_entry
         programme = record_json.get("custom_fields", {}).get("cern:programmes")
+        resource_type = record_json.get("resource_type")
+        if resource_type is None:
+            raise MissingRequiredField(message="resource_type", field="980")
+
         if programme:
             result = search_vocabulary(programme, "programmes")
             if not result:
@@ -180,7 +187,7 @@ class ProgrammesMapper(CustomFieldMapper):
                     stage="vocabulary match",
                 )
             ctx.custom_fields["cern:programmes"] = result
-        elif record_json["resource_type"] == "publication-thesis":
+        elif resource_type == "publication-thesis":
             ctx.custom_fields["cern:programmes"] = {"id": "None"}
 
 
