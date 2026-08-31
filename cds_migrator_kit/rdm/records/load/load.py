@@ -60,8 +60,12 @@ class CDSMigrationEntryLoad(Load):
         self.parent_load_cls = ParentLoad
         self.record_load_cls = RecordLoad
         self.request_load_cls = RequestLoad
-        with open(legacy_pids_to_redirect, "r") as fp:
-            self.legacy_pids_to_redirect = json.load(fp)
+
+        if legacy_pids_to_redirect is not None:
+            with open(legacy_pids_to_redirect, "r") as fp:
+                self.legacy_pids_to_redirect = json.load(fp)
+        else:
+            self.legacy_pids_to_redirect = {}
 
     def _apply_clc_sync(self, record_state, entry: MigrationEntry):
         """Create the CLC sync entry after the load has committed."""
@@ -128,6 +132,7 @@ class CDSMigrationEntryLoad(Load):
             if self.dry_run:
                 record_load.dry_load()
                 recid_state_after_load = None
+                self.migration_logger.finalise_record(recid)
             else:
                 with UnitOfWork(db.session) as uow:
                     records = record_load.load(entry, uow=uow)

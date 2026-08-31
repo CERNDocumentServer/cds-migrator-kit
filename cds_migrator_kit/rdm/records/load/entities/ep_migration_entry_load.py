@@ -140,6 +140,9 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
                 approval_request_load.create(restricted_record_state)
                 # 3. Create public record
                 public_record_load.load(public_entry)
+                # We need to finalise here, or the log would only list the
+                # records that failed.
+                self.migration_logger.finalise_record(recid)
                 return
 
             with UnitOfWork(db.session) as uow:
