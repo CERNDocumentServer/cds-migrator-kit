@@ -40,10 +40,10 @@ for arg in $@; do
 			keep_services=1
 			;;
 		rdm)
-            pytest_args+=( "tests/cds-rdm" "tests/test_cds_migrator_kit.py" )
+            pytest_args+=( "tests/cds-rdm" "tests/test_cds_migrator_kit.py" "cds_migrator_kit/rdm" )
             ;;
         videos)
-            pytest_args+=( "tests/cds-videos" "tests/test_cds_migrator_kit.py" )
+            pytest_args+=( "tests/cds-videos" "tests/test_cds_migrator_kit.py" "cds_migrator_kit/videos/weblecture_migration" )
             ;;
 		*)
 			pytest_args+=( ${arg} )
