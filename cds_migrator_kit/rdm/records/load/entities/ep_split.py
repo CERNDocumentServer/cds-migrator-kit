@@ -6,9 +6,10 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """Build public and restricted load entries for EP approval records."""
+
 import re
 from collections import OrderedDict
-from copy import deepcopy
+from copy import copy, deepcopy
 from typing import Dict
 
 from flask import current_app
@@ -35,6 +36,24 @@ def _cern_scientific_community_id():
     return current_app.config["CDS_CERN_SCIENTIFIC_COMMUNITY_ID"]
 
 
+def _split_copy(entry: MigrationEntry) -> MigrationEntry:
+    """Return a deep-ish copy of ``entry`` without copying things that can't be copied."""
+    memo = {}
+    split = dict(entry)
+
+    record = copy(entry["record"])
+    record.body = deepcopy(entry["record"].body, memo)
+    split["record"] = record
+
+    parent = copy(entry["parent"])
+    parent.body = deepcopy(entry["parent"].body, memo)
+    parent.communities = deepcopy(entry["parent"].communities, memo)
+    parent.access_grants = deepcopy(entry["parent"].access_grants, memo)
+    split["parent"] = parent
+
+    return split
+
+
 class MetadataEntry:
     """Build a load entry for the public or restricted EP approval split."""
 
@@ -49,7 +68,7 @@ class MetadataEntry:
 
     def build(self) -> MigrationEntry:
         """Return a load entry with split files and modified metadata."""
-        split = deepcopy(self.entry)
+        split = _split_copy(self.entry)
         split.pop("ep_approval", None)
         split["versions"] = self._build_versions(split)
         self._apply_metadata(split)
@@ -208,12 +227,12 @@ class PublicEntry(MetadataEntry):
             else:
                 kept.append(id_entry)
 
-        kept.append(
-            {
-                "identifier": self.approval_request.report_number,
-                "scheme": "apprn",
-            }
-        )
+        apprn_entry = {
+            "identifier": self.approval_request.report_number,
+            "scheme": "apprn",
+        }
+        if apprn_entry not in kept:
+            kept.append(apprn_entry)
 
         if removed:
             self._log_removed_identifiers(removed, self._access_status)
@@ -255,9 +274,7 @@ class RestrictedEntry(MetadataEntry):
         # mutating in place: entry["parent"].communities is the same dict
         # object, no need to set it back.
         communities = entry["parent"].communities
-        ids = [
-            cid for cid in communities.get("ids", []) if cid != community_id
-        ]
+        ids = [cid for cid in communities.get("ids", []) if cid != community_id]
         communities["ids"] = ids
         if communities.get("default") == community_id:
             communities["default"] = ids[0] if ids else None

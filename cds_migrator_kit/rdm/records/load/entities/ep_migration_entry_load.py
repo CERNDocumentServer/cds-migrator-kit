@@ -131,15 +131,10 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
             )
 
             if self.dry_run:
-                # 1. Create restricted record
-                restricted_records = restricted_record_load.load(restricted_entry)
-                restricted_record_state = restricted_record_load.build_record_state(
-                    recid, restricted_records
-                )
-                # 2. Create and approve EP approval request
-                approval_request_load.create(restricted_record_state)
-                # 3. Create public record
-                public_record_load.load(public_entry)
+                # We are already validating the approval request, so trying to load it
+                # is not necessary. There is now uow here so we can't call `approval_request_load.create`
+                restricted_record_load.dry_load()
+                public_record_load.dry_load()
                 # We need to finalise here, or the log would only list the
                 # records that failed.
                 self.migration_logger.finalise_record(recid)
