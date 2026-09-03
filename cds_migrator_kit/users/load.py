@@ -6,6 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM transform step module."""
+
 import csv
 import json
 import logging
@@ -16,7 +17,6 @@ from flask import current_app
 from invenio_accounts.models import User
 from invenio_db import db
 from invenio_rdm_migrator.load.base import Load
-from sqlalchemy.exc import NoResultFound
 
 cli_logger = logging.getLogger("migrator")
 
@@ -78,13 +78,11 @@ class CDSSubmitterLoad(Load):
         """Fetch or create a user account by email."""
         if not email:
             return
-        try:
-            user = User.query.filter_by(email=email).one()
+        user = User.query.filter(db.func.lower(User.email) == email.lower()).first()
+        if user is not None:
             return user.id
-        except NoResultFound:
-            if not self.dry_run:
-                user_id = self._create_owner(email)
-                return user_id
+        if not self.dry_run:
+            return self._create_owner(email)
 
     def _parse_reviewer_name(self, name):
         """Split a "Family name, Given name" or "Given name Family name"
