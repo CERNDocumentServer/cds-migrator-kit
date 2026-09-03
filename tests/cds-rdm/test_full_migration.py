@@ -95,7 +95,18 @@ def suite_multi_field(record):
             },
         },
     ]
+    # resource_type is not an article), and 269 (preprint_date) is more
+    # precise than 260 (publication_date), so it wins - 260 becomes the
+    # secondary dates entry, and preprint_date never leaks into the record.
     assert dict_rec["metadata"]["publication_date"] == "2018-08-02"
+    assert dict_rec["metadata"]["dates"] == [
+        {
+            "date": "2018",
+            "type": {"id": "available", "title": {"en": "Available"}},
+            "description": "published",
+        }
+    ]
+    assert "preprint_date" not in dict_rec["metadata"]
     assert (
         dict_rec["metadata"]["title"] == "FLUKA and ActiWiz benchmark on BDF materials"
     )

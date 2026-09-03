@@ -60,8 +60,33 @@ class TitleMapper(FieldMapper):
         return title
 
 
+def _date_precision(date_str):
+    """Return how granular a normalized date string is (year=1, month=2, day=3)."""
+    if not date_str:
+        return 0
+    return len(date_str.split("-"))
+
+
+def _is_more_accurate(candidate, current):
+    """Return True if `candidate` has finer granularity than `current`."""
+    return _date_precision(candidate) > _date_precision(current)
+
+
 class PublicationDateMapper(FieldMapper):
-    """Maps publication_date, falling back to status week or file creation date."""
+    """Maps publication_date, preferring 260 (article) or 269 (preprint).
+
+    - resource_type == "publication-article": publication_date (260)
+      always wins; preprint_date (269), if present, becomes a secondary
+      "submitted"/"preprint" entry in `dates`.
+    - any other resource_type: preprint_date (269) wins when present,
+      unless publication_date (260) is also present and at least as
+      accurate (day > month > year) - in that case publication_date wins
+      instead. Whichever one loses, if present, becomes a secondary entry
+      in `dates` ("available"/"published" for publication_date,
+      "submitted"/"preprint" for preprint_date).
+
+    Falls back to status week or file creation date when neither applies.
+    """
 
     id = "publication_date"
 
@@ -69,6 +94,43 @@ class PublicationDateMapper(FieldMapper):
         """Return publication_date, requiring at least one date source."""
         dojson_entry = ctx.dojson_entry
         pub_date = dojson_entry.get("publication_date")
+        # `preprint_date` is bookkeeping produced by the 269 rules (see
+        # xml_processing/rules/base.py) - drop it before it reaches the
+        # final record.
+        preprint_date = dojson_entry.pop("preprint_date", None)
+        resource_type = (dojson_entry.get("resource_type") or {}).get("id")
+
+        if resource_type == "publication-article":
+            if preprint_date:
+                dojson_entry.setdefault("dates", []).append(
+                    {
+                        "date": preprint_date,
+                        "type": {"id": "submitted"},
+                        "description": "preprint",
+                    }
+                )
+        elif preprint_date:
+            if pub_date and not _is_more_accurate(preprint_date, pub_date):
+                # publication_date is present and at least as accurate -
+                # keep it, preprint_date becomes the secondary entry.
+                dojson_entry.setdefault("dates", []).append(
+                    {
+                        "date": preprint_date,
+                        "type": {"id": "submitted"},
+                        "description": "preprint",
+                    }
+                )
+            else:
+                if pub_date:
+                    dojson_entry.setdefault("dates", []).append(
+                        {
+                            "date": pub_date,
+                            "type": {"id": "available"},
+                            "description": "published",
+                        }
+                    )
+                pub_date = preprint_date
+
         created = dojson_entry.get("status_week_date")
         files = ctx.raw_dump_entry["files"]
         if not (pub_date or created or files):

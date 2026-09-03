@@ -293,7 +293,7 @@ def journal(self, key, value):
             raise UnexpectedValue("Journal fields already set", field=key, value=value)
         journal_fields["pages"] = StringValue(value.get("c", "")).parse()
 
-    pub_date = self.get("publication_date")
+    pub_date = self.get("publication_date") or self.get("preprint_date")
     # if we only have 773 in the record and no other journal fields,
     # it is not journal date
     if not is_journal_year and "y" in value:

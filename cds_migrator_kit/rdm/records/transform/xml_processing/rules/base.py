@@ -1026,7 +1026,6 @@ def imprint_info(self, key, value):
     if publication_date_str:
         try:
             publication_date = normalize(publication_date_str)
-
             return publication_date
         except (ParserError, TypeError) as e:
             raise UnexpectedValue(
@@ -1060,7 +1059,7 @@ def imprint_info(self, key, value):
         try:
             publication_date = normalize(publication_date_str)
 
-            self["publication_date"] = publication_date
+            self["preprint_date"] = publication_date
         except (ParserError, TypeError) as e:
             raise UnexpectedValue(
                 field=key,
