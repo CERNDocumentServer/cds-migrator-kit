@@ -13,6 +13,7 @@ from dojson.errors import IgnoreKey
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
     custom_fields_693,
+    imprint_info,
     normalize,
     note,
     recid,
@@ -397,3 +398,41 @@ class TestNote:
         record = {}
         with pytest.raises(IgnoreKey):
             note(record, "595__", {"a": "   "})
+
+
+class TestImprintInfo269:
+    """Test the 269 (preprint) imprint_info function from base.py.
+
+    It never sets `publication_date` itself - it stashes the parsed date
+    under `record["preprint_date"]`, to be reconciled with a possible 260
+    (article) date once resource_type is known, in PublicationDateMapper.
+    """
+
+    def test_imprint_info_269_full(self):
+        """Test full imprint info with place, publisher, and date."""
+        record = {"custom_fields": {}}
+        with pytest.raises(IgnoreKey):
+            imprint_info(record, "269__", {"a": "Geneva.", "b": "CERN", "c": "2021"})
+        assert record["preprint_date"] == "2021"
+        assert record["publisher"] == "CERN"
+        assert record["custom_fields"]["imprint:imprint"]["place"] == "Geneva"
+
+    def test_imprint_info_269_publisher_not_overwritten(self):
+        """Test that existing publisher is not overwritten."""
+        record = {"custom_fields": {}, "publisher": "Existing Publisher"}
+        with pytest.raises(IgnoreKey):
+            imprint_info(record, "269__", {"b": "CERN", "c": "2021"})
+        assert record["publisher"] == "Existing Publisher"
+
+    def test_imprint_info_269_no_date_ignored(self):
+        """Test that missing date raises IgnoreKey and sets no date."""
+        record = {"custom_fields": {}}
+        with pytest.raises(IgnoreKey):
+            imprint_info(record, "269__", {"a": "Geneva", "b": "CERN"})
+        assert "preprint_date" not in record
+
+    def test_imprint_info_269_invalid_date_raises_error(self):
+        """Test that invalid date raises error."""
+        record = {"custom_fields": {}}
+        with pytest.raises(UnexpectedValue):
+            imprint_info(record, "269__", {"c": "not-a-valid-date"})

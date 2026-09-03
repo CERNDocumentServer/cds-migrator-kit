@@ -1015,6 +1015,26 @@ def date_type_v(app, date_type):
         },
     )
 
+    vocabulary_service.create(
+        system_identity,
+        {
+            "id": "submitted",
+            "props": {"datacite": "Submitted"},
+            "title": {"en": "Submitted"},
+            "type": "datetypes",
+        },
+    )
+
+    vocabulary_service.create(
+        system_identity,
+        {
+            "id": "available",
+            "props": {"datacite": "Available"},
+            "title": {"en": "Available"},
+            "type": "datetypes",
+        },
+    )
+
     return vocab
 
 
