@@ -6,6 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM transform step module."""
+
 import logging
 import re
 from collections import OrderedDict
@@ -18,8 +19,10 @@ from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from invenio_access.permissions import system_identity
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_rdm_migrator.logging import Logger
-from invenio_rdm_records.proxies import current_rdm_records_service, \
-    current_record_communities_service
+from invenio_rdm_records.proxies import (
+    current_rdm_records_service,
+    current_record_communities_service,
+)
 from sqlalchemy.exc import NoResultFound
 
 from cds_migrator_kit.errors import (
@@ -33,8 +36,9 @@ from cds_migrator_kit.rdm.records.transform.entities.migration import MigrationE
 from cds_migrator_kit.rdm.records.transform.entities.parent import RecordParent
 from cds_migrator_kit.rdm.records.transform.entities.record import RecordEntry
 from cds_migrator_kit.rdm.records.transform.entities.request import RecordRequest
-from cds_migrator_kit.rdm.records.transform.transform_versions import \
-    RecordVersionsTransform
+from cds_migrator_kit.rdm.records.transform.transform_versions import (
+    RecordVersionsTransform,
+)
 from cds_migrator_kit.transform.dumper import CDSRecordDump
 from cds_migrator_kit.transform.errors import LossyConversion
 
@@ -115,7 +119,8 @@ class CDSToRDMRecordTransform:
         if dump.multiple_models_warning:
             w = dump.multiple_models_warning
             recid = raw_dump_entry.get("recid") or raw_dump_entry.get("record", {}).get(
-                "recid")
+                "recid"
+            )
             matched = re.findall(r"\['(\w+)',", w.message or "")
             self.migration_logger.add_information(
                 str(recid),
@@ -197,12 +202,12 @@ class CDSToRDMRecordTransform:
                 )
 
         except (
-                LossyConversion,
-                RestrictedFileDetected,
-                UnexpectedValue,
-                ManualImportRequired,
-                MissingRequiredField,
-                MultipleModelsMatched,
+            LossyConversion,
+            RestrictedFileDetected,
+            UnexpectedValue,
+            ManualImportRequired,
+            MissingRequiredField,
+            MultipleModelsMatched,
         ) as e:
             migration_logger.add_log(e, record=raw_dump_entry)
 
@@ -266,9 +271,7 @@ class CDSToRDMRecordTransform:
         MARCXML, since access restrictions may have been changed in RDM
         after migration and the legacy record data would be stale.
         """
-        record = current_rdm_records_service.read_latest(
-            system_identity, id_=record_id
-        )
+        record = current_rdm_records_service.read_latest(system_identity, id_=record_id)
         access = record.data.get("access", {})
         return access.get("record") != "public" or access.get("files") != "public"
 
@@ -328,8 +331,9 @@ class CDSToRDMRecordTransform:
                     recid,
                     {
                         "message": "Record already migrated, skipping,"
-                                   " added existing {} to communities {}".format(
-                            recid, self.communities_ids),
+                        " added existing {} to communities {}".format(
+                            recid, self.communities_ids
+                        ),
                         "value": recid,
                     },
                 )

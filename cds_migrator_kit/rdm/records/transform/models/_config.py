@@ -1,18 +1,37 @@
 """Fields which we can confidently ignore in each model."""
+
 IGNORE_SYSTEM_KEYS = {
+    "0247_9",  # provenance of the DOI
     "0248_a",
     "0248_p",
     "0248_q",
     "852__c",  # holdings will be taken separately
     "852__h",
+    "035__h",  # OAI harvest tag or timestamp
+    "035__d",  # OAI harvest tag or timestamp
+    "035__m",  # OAI harvest format (e.g. `marcxml`)
+    "035__t",  # oai harvest tag
+    "035__u",  # oai harvest tag
+    "035__z",  # oai harvest tag
     "037__c",  # arxiv subject
     "100__m",  # email of contributor
+    "245__9",  # Provenance of title
+    "270__m",  # Contact email
     "300__a",  # number of pages
+    "520__9",  # Provenance of the description
+    "540__3",  # Material of the license
+    "540__9",  # Also material of the license
+    "542__3",  # Also material of the license
     "700__m",  # email of contributor
+    "773__t",  # from SIS: can be ignored
+    "773__0",  # from SIS: can be ignored
+    "773__o",  # from SIS: can be ignored
+    "773__x",  # INSPIRE publication note
     "8564_8",  # file id
     "8564_s",  # bibdoc id
     "8564_x",  # icon thumbnails sizes
     "8564_y",  # file description - done by files dump
+    "8564_z",  # Websubmit "stamp" (migrated as file metadata)
     "916__y",  # year, redundant value
     "937__c",  # last modified by
     "937__s",  # last modification date
