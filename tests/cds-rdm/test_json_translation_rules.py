@@ -52,7 +52,8 @@ def test_migrate_sspn_record(datadir, base_app):
             ],
             "title": "Deep Learning Methods for Particle Reconstruction in the HGCal",
             "publisher": "CERN",
-            "publication_date": "2017-06-24",
+            "publication_date": "2017",
+            "preprint_date": "2017-06-24",
             "description": "The High Granularity end-cap Calorimeter is part of the phase-2 CMS upgrade (see Figure \\ref{fig:cms})\\cite{Contardo:2020886}. It's goal it to provide measurements of high resolution in time, space and energy. Given such measurements, the purpose of this work is to discuss the use of Deep Neural Networks for the task of particle and trajectory reconstruction, identification and energy estimation, during my participation in the CERN Summer Students Program.",
             "internal_notes": [],
             "subjects": [
@@ -154,7 +155,8 @@ def test_migrate_record_all_fields(datadir, base_app):
                 }
             ],
             "publisher": "CERN",
-            "publication_date": "2018-08-02",
+            "publication_date": "2018",
+            "preprint_date": "2018-08-02",
             "description": "This note describes the FLUKA and Actiwiz benchmark with gamma spectroscopy results of various material samples, which were irradiated during the Beam Dump Facility (BDF) prototype target test in the North Area of the Super Proton Synchrotron (SPS) at CERN. The samples represent most of the materials that will be used in the construction of the BDF facility.",
             "internal_notes": [{"note": "Comments submitted after 31-08-2021 10:41"}],
             "subjects": [

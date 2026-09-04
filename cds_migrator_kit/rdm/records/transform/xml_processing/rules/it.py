@@ -353,7 +353,7 @@ def imprint_dates(self, key, value):
                     "type": {"id": "created"},
                 }
             )
-        self["publication_date"] = normalize(pub)
+        self["preprint_date"] = normalize(pub)
     except (ParserError, TypeError):
         raise UnexpectedValue(
             field=key,
@@ -410,7 +410,7 @@ def translated_description(self, key, value):
 def imprint_info(self, key, value):
     """Translates publication_date field."""
     if key.startswith("260"):
-        base_publication_imprint_info(self, key, value)
+        return base_publication_imprint_info(self, key, value)
     else:
         publication_date_str = value.get("a")
         if publication_date_str:
