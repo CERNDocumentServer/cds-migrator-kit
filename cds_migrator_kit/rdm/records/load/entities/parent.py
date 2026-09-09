@@ -229,7 +229,7 @@ class ParentLoad:
 
         pf["committee_approval"] = {
             "source_internal_version": str(record.pid.pid_value),
-            "reportnumber": apprn_ids[0],
+            "reportnumber": apprn_ids,
         }
         parent["permission_flags"] = pf
         uow.register(ParentRecordCommitOp(parent))

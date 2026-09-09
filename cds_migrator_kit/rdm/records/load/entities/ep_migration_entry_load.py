@@ -281,7 +281,7 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
         ParentLoad.write_committee_approval_obj(
             restricted_parent,
             {
-                "reportnumber": report_number,
+                "reportnumber": [report_number],
                 "datetime": approval_iso,
                 "approved_internal_version": restricted_recid,
                 "approved_public_version": public_recid,
@@ -292,7 +292,7 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
         ParentLoad.write_committee_approval_obj(
             public_parent,
             {
-                "reportnumber": report_number,
+                "reportnumber": [report_number],
                 "source_internal_version": restricted_recid,
             },
             uow,
