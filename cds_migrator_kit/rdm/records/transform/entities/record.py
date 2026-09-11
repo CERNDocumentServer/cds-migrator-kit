@@ -189,6 +189,8 @@ class RecordEntry:
         # metadata["resource_type"]; see mappers/registry.py.
         for mapper in METADATA_MAPPERS:
             metadata[mapper.id] = mapper.map_value(ctx)
+            # Consume the key even if the value is later dropped.
+            dojson_entry.pop(mapper.id, None)
         return {k: v for k, v in metadata.items() if v}
 
     def _custom_fields(self, dojson_entry, raw_dump_entry):

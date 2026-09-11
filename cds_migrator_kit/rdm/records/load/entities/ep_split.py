@@ -323,10 +323,15 @@ class RestrictedEntry(MetadataEntry):
         kept = []
         removed = []
         for id_entry in identifiers:
-            if id_entry.get("scheme") != "cdsrn":
+            scheme = id_entry.get("scheme")
+            identifier = id_entry.get("identifier", "")
+            # apprn belongs only on the public record.
+            if scheme == "apprn":
+                removed.append(identifier)
+                continue
+            elif scheme != "cdsrn":
                 kept.append(id_entry)
                 continue
-            identifier = id_entry.get("identifier", "")
             if not identifier.startswith(EP_APPROVAL_REPORT_NUMBER_PREFIX):
                 kept.append(id_entry)
                 continue

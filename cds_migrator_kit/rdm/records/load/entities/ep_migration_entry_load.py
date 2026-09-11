@@ -149,14 +149,15 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
                     recid, restricted_records
                 )
 
-                # 2. Create and approve EP approval request
-                approval_request_load.create(restricted_record_state, uow=uow)
-
-                # Parent access grants + community-inclusion request for
-                # the restricted half.
+                # Parent access grants + communities before EP approval request
+                # (needs parent.communities.default for referee group lookup).
                 self.parent_load_cls(
                     restricted_entry, self.migration_logger, restricted_record_state
                 ).load(published_record=restricted_records[-1], uow=uow)
+
+                # 2. Create and approve EP approval request
+                approval_request_load.create(restricted_record_state, uow=uow)
+
                 self.request_load_cls(restricted_entry).load(
                     restricted_records, self.create_inclusion_request, uow
                 )

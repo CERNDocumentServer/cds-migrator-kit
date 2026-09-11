@@ -493,6 +493,22 @@ class TestRestrictedEntryIdentifiers:
 
         assert APPROVED_REPORT_NUMBER not in cdsrn_values
 
+    def test_restricted_removes_apprn(self, app):
+        identifiers = [
+            {"identifier": RECID, "scheme": "cds"},
+            {"scheme": "apprn", "identifier": APPROVED_REPORT_NUMBER},
+            {"scheme": "cdsrn", "identifier": DRAFT_REPORT_NUMBER},
+        ]
+        entry = _make_entry(_versions_with_epphapp(), identifiers=identifiers)
+        result = RestrictedEntry(
+            entry, _make_approval_request(), _make_migration_logger()
+        ).build()
+
+        assert not any(
+            i["scheme"] == "apprn"
+            for i in result["record"].body["metadata"]["identifiers"]
+        )
+
     def test_restricted_keeps_draft_report_number(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = RestrictedEntry(
