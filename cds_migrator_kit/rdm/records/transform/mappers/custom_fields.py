@@ -63,8 +63,21 @@ class DepartmentsMapper(CustomFieldMapper):
             "cern:departments", []
         )
         for department in departments:
+            if department.lower() == "xx":
+                continue
             if "-" in department:
                 dep = department.split("-")[0]
+                if not ctx.custom_fields.get("cern:administrative_unit"):
+                    ctx.custom_fields["cern:administrative_unit"] = department
+                else:
+                    raise UnexpectedValue(
+                        subfield="5",
+                        value=department,
+                        field="710",
+                        message=f"conflict on administrative unit "
+                        f"{ctx.custom_fields['cern:administrative_unit']} VS {department}",
+                        stage="vocabulary match",
+                    )
             else:
                 dep = department
             result = search_vocabulary(dep, "departments")
