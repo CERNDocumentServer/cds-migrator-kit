@@ -70,7 +70,6 @@ class MetadataEntry:
     def build(self) -> MigrationEntry:
         """Return a load entry with split files and modified metadata."""
         split = _split_copy(self.entry)
-        split.pop("ep_approval", None)
         split["versions"] = self._build_versions(split)
         self._apply_metadata(split)
         self._apply_entry_modifications(split)

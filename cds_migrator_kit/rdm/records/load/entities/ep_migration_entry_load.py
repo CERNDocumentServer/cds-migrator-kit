@@ -175,6 +175,11 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
                         priority="critical",
                     )
 
+                # Load access grants + communities for the public record
+                self.parent_load_cls(
+                    public_entry, self.migration_logger, public_record_state
+                ).load(published_record=public_records[-1], uow=uow)
+
                 # Original-dump persistence for the public half.
                 self._save_original_dumped_record(
                     public_entry, public_record_state, uow
