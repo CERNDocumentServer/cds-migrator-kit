@@ -298,3 +298,36 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "e849139c-dff5-45a7-90b1-90cdddc9c00e"
+  faser-drafts:
+    data_dir: cds_migrator_kit/rdm/data/faser-drafts
+    restricted: "True"
+    create_inclusion_request: true
+    access_grants_view:
+      - faser-all
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/faser-drafts/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/faser-drafts/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "33af9368-5bad-45cb-9360-8c9e5dfca09f"
+  faser:
+    data_dir: cds_migrator_kit/rdm/data/faser
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/faser/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/faser/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "33af9368-5bad-45cb-9360-8c9e5dfca09f"
+  faser-ep:
+    data_dir: cds_migrator_kit/rdm/data/faser
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/faser-ep/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/faser/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "e5de962b-5e2c-408f-be69-2823fda1f732"
