@@ -12,6 +12,12 @@ from invenio_db import db
 
 from cds_migrator_kit.errors import ManualImportRequired, RecordFlaggedCuration
 
+# Cache reviewer lookup results across records.  Maps the raw reviewer string
+# (email or "Family, Given" name) to the resolved user_id (int) on success, or
+# to the RecordFlaggedCuration exception instance when no account was found.
+# Stable for one migration run: user accounts don't change during records stream.
+_reviewer_id_cache: dict = {}
+
 
 class RecordRequest:
     """A community-inclusion request for one migrated CDS record.
@@ -67,14 +73,24 @@ class RecordRequest:
         """
         resolved = []
         for reviewer_name in reviewer_names:
-            try:
-                user = self._find_reviewer(reviewer_name)
-                reviewer_entry = {"user": str(user.id)}
-            except RecordFlaggedCuration as exc:
+            cached = _reviewer_id_cache.get(reviewer_name)
+            if cached is None and reviewer_name not in _reviewer_id_cache:
+                try:
+                    user = self._find_reviewer(reviewer_name)
+                    _reviewer_id_cache[reviewer_name] = user.id
+                    cached = user.id
+                except RecordFlaggedCuration as exc:
+                    _reviewer_id_cache[reviewer_name] = exc
+                    cached = exc
+
+            if isinstance(cached, RecordFlaggedCuration):
                 self.migration_logger.add_information(
-                    self.recid, {"message": exc.message, "value": exc.value}
+                    self.recid, {"message": cached.message, "value": cached.value}
                 )
                 reviewer_entry = {"user": "-1"}
+            else:
+                reviewer_entry = {"user": str(cached)}
+
             if reviewer_entry not in resolved:
                 resolved.append(reviewer_entry)
         return resolved
