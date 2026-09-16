@@ -88,6 +88,8 @@ class MigrationProgressLogger:
         ]
         self.log_writer = csv.DictWriter(self.error_file, fieldnames=columns)
         self._temp_state_cache = {}
+        self._flush_interval = 100
+        self._rows_since_flush = 0
 
     def start_log(self):
         """Initialize logging file descriptors."""
@@ -116,6 +118,7 @@ class MigrationProgressLogger:
 
     def finalise(self):
         """Finalise logging files."""
+        self.error_file.flush()
         self.error_file.close()
 
     def add_log(self, exc, record=None, key=None, value=None):
@@ -145,7 +148,10 @@ class MigrationProgressLogger:
         }
         self.log_writer.writerow(error_format)
         logger_migrator.error(exc)
-        self.error_file.flush()
+        self._rows_since_flush += 1
+        if self._rows_since_flush >= self._flush_interval:
+            self.error_file.flush()
+            self._rows_since_flush = 0
 
     def add_information(self, recid, state):
         """Save a temporary success state for recid.
@@ -163,7 +169,10 @@ class MigrationProgressLogger:
         """Log recid as success."""
         _state = self._temp_state_cache.pop(recid, {})
         self.log_writer.writerow({"recid": recid, "clean": True, **_state})
-        self.error_file.flush()
+        self._rows_since_flush += 1
+        if self._rows_since_flush >= self._flush_interval:
+            self.error_file.flush()
+            self._rows_since_flush = 0
 
 
 class RecordStateLogger:
