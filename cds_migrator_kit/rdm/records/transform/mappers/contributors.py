@@ -20,6 +20,12 @@ from cds_migrator_kit.errors import ManualImportRequired, RecordFlaggedCuration
 from cds_migrator_kit.rdm.migration_config import VOCABULARIES_NAMES_SCHEMES
 from cds_migrator_kit.rdm.records.transform.mappers.base import FieldMapper
 
+# Sentinel distinguishing "not yet cached" from "cached as None (not found)".
+_MISSING = object()
+
+# Per-process cache for CERN person-id → RDM user_id lookups.
+_person_id_to_user_id: dict = {}  # cern person_id str → user_id int or None
+
 
 def match_affiliation(affiliation_name, ctx):
     """Match an affiliation against `CDSMigrationAffiliationMapping` db table."""
@@ -120,9 +126,12 @@ def _lookup_person_id(creator):
         {},
     ).get("identifier")
     if person_id:
-        ui = UserIdentity.query.filter_by(id=person_id).one_or_none()
-        if ui:
-            user_id = ui.user.id
+        user_id = _person_id_to_user_id.get(person_id, _MISSING)
+        if user_id is _MISSING:
+            ui = UserIdentity.query.filter_by(id=person_id).one_or_none()
+            user_id = ui.user.id if ui else None
+            _person_id_to_user_id[person_id] = user_id
+        if user_id is not None:
             names = NamesMetadata.query.filter_by(internal_id=str(user_id)).all()
             name = next(
                 (name for name in names if "unlisted" not in name.json.get("tags", [])),
