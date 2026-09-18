@@ -54,7 +54,7 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
             return
 
         recid = entry["record"].recid
-        if self._should_skip_recid(recid):
+        if self._should_skip_recid(entry):
             return
 
         if not entry.get("ep_approval"):
