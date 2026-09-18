@@ -1019,13 +1019,12 @@ def sync(self, key, value):
 
 
 @model.over("publication_date", "(^260__)", override=True)
-def imprint_info(self, key, value):
+def publication_date(self, key, value):
     """Translates publication_date field."""
     publication_date_str = value.get("c")
     if publication_date_str:
         try:
             publication_date = normalize(publication_date_str)
-
             return publication_date
         except (ParserError, TypeError) as e:
             raise UnexpectedValue(
@@ -1074,7 +1073,8 @@ def imprint_info(self, key, value):
 
             # TODO: should we still set as the main publication date if it's uncertain?
             publication_date = normalize(publication_date_str)
-            self["publication_date"] = publication_date
+
+            self["preprint_date"] = publication_date
         except (ParserError, TypeError) as e:
             raise UnexpectedValue(
                 field=key,

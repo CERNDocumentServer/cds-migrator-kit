@@ -100,8 +100,8 @@ class TestImprintDatesDelegation:
         record = {}
         with pytest.raises(IgnoreKey):
             imprint_dates(record, "269__", {"c": "2021"})
-        # Should have publication_date but no experiments from 693
-        assert record["publication_date"] == "2021"
+        # Should have the preprint date but no experiments from 693
+        assert record["preprint_date"] == "2021"
         assert "cern:experiments" not in record.get("custom_fields", {})
 
     def test_imprint_dates_269_with_place(self):
@@ -110,7 +110,7 @@ class TestImprintDatesDelegation:
         with pytest.raises(IgnoreKey):
             imprint_dates(record, "269__", {"a": "Geneva.", "c": "2021"})
         assert record["custom_fields"]["imprint:imprint"]["place"] == "Geneva"
-        assert record["publication_date"] == "2021"
+        assert record["preprint_date"] == "2021"
 
     def test_imprint_dates_269_with_publisher(self):
         """Test that 269__ field sets publisher when not already set."""
@@ -124,7 +124,7 @@ class TestImprintDatesDelegation:
         record = {}
         with pytest.raises(IgnoreKey):
             imprint_dates(record, "933__", {"c": "2022"})
-        assert record["publication_date"] == "2022"
+        assert record["preprint_date"] == "2022"
 
 
 class TestConferenceTitleDelegation:
@@ -168,11 +168,12 @@ class TestImprintInfoDelegation:
         """Test that 260__ field delegates to base_publication_imprint_info."""
         # Initialize custom_fields as base function expects it
         record = {"custom_fields": {}}
-        # Note: IT function calls base but doesn't return its value
-        # This might be a bug, but we test the actual behavior
+        # base_publication_imprint_info's return value must be propagated
+        # by the IT wrapper (previously it was silently discarded).
         result = imprint_info(
             record, "260__", {"c": "2021", "a": "Geneva", "b": "CERN"}
         )
+        assert result == "2021"
         # Check that imprint fields were set by base function
         assert record["custom_fields"]["imprint:imprint"]["place"] == "Geneva"
         assert record["publisher"] == "CERN"
@@ -479,7 +480,7 @@ class TestCombinedBehavior:
         # Both should be present
         assert "ATLAS" in record["custom_fields"]["cern:experiments"]
         assert record["custom_fields"]["imprint:imprint"]["place"] == "Geneva"
-        assert record["publication_date"] == "2020"
+        assert record["preprint_date"] == "2020"
 
     def test_conference_title_and_notes_together(self):
         """Test conference title and notes are both processed."""

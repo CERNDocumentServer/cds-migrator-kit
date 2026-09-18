@@ -229,7 +229,9 @@ class RecordEntry:
         creation date) and no creation date, raise an exception.
         """
         if not raw_dump_entry.get("files") and not (
-            dojson_entry.get("status_week_date") or dojson_entry.get("publication_date")
+            dojson_entry.get("status_week_date")
+            or dojson_entry.get("publication_date")
+            or dojson_entry.get("preprint_date")
         ):
             raise ManualImportRequired(
                 message="Record missing publication date",

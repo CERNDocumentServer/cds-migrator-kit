@@ -521,7 +521,7 @@ class TestImprintDates:
         record = {}
         with pytest.raises(IgnoreKey):
             imprint_dates(record, "269__", {"c": "2021"})
-        assert record["publication_date"] == "2021"
+        assert record["preprint_date"] == "2021"
 
     def test_imprint_dates_with_place(self):
         """Test imprint place is added."""
@@ -549,7 +549,7 @@ class TestImprintDates:
         record = {}
         with pytest.raises(IgnoreKey):
             imprint_dates(record, "269__", {"c": "2021?"})
-        assert record["publication_date"] == "2021"
+        assert record["preprint_date"] == "2021"
         assert len(record["dates"]) == 1
         assert record["dates"][0]["type"]["id"] == "created"
         assert "indeterminate" in record["dates"][0]["description"]
