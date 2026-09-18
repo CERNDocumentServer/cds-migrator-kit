@@ -7,6 +7,8 @@
 
 """``metadata`` field mappers for CDS to RDM record transformation."""
 
+import re
+
 from dateutil.parser import parse
 
 from cds_migrator_kit.errors import MissingRequiredField, UnexpectedValue
@@ -61,11 +63,28 @@ class TitleMapper(FieldMapper):
         return title
 
 
+#: An EDTF interval ("2020/2021", "2020-01/2020-05"), as produced by
+#: `xml_processing/rules/base.py:normalize` - it leaves intervals
+#: untouched, so the "/" here is a range separator, not a date one.
+_DATE_INTERVAL = re.compile(
+    r"^(?P<start>\d{4}(?:[-/]\d{1,2}){0,2})/(?P<end>\d{4}(?:[-/]\d{1,2}){0,2})$"
+)
+
+
 def _date_precision(date_str):
-    """Return how granular a normalized date string is (year=1, month=2, day=3)."""
+    """Return how granular a normalized date string is (year=1, month=2, day=3).
+
+    `normalize` keeps whichever separator it found, so "2021-05" and
+    "2021/05" are both possible - split on both. For an interval only the
+    start date is measured.
+    """
     if not date_str:
         return 0
-    return len(date_str.split("-"))
+    date_str = date_str.strip()
+    interval = _DATE_INTERVAL.match(date_str)
+    if interval:
+        date_str = interval.group("start")
+    return min(len(re.split(r"[-/]", date_str)), 3)
 
 
 def _is_more_accurate(candidate, current):

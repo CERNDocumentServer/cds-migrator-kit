@@ -70,6 +70,7 @@ target/
 **/migration/data/**
 **/migration/log/**
 **/weblecture_migration/data/**
+snapshots/
 
 **.DS_Store
 **/cds_migrator_kit/rdm/data/
