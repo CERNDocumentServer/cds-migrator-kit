@@ -119,7 +119,6 @@ _SERIES_RESOURCE_TYPES = {
     "status report": {"id": "publication-report"},
     "progress report": {"id": "publication-report"},
     "addendum": {"id": "publication-other"},
-    "decisions": {"id": "publication-meetingminutes"},
     "commentaires": {"id": "publication-peerreview"},
     "comments": {"id": "publication-peerreview"},
     "proposition": {"id": "publication-proposal"},
@@ -128,6 +127,29 @@ _SERIES_RESOURCE_TYPES = {
     "note": {"id": "publication-technicalnote"},
     "decision taken at the meeting": {"id": "publication-meetingminutes"},
 }
+
+
+# Free-text phrases that carry a variable segment in the middle, which the
+# fixed phrases in `_SERIES_RESOURCE_TYPES` can't express. Matched by
+# `_free_text_resource_type` (245__ title and 250__ edition), and tried
+# before the fixed phrases: a pattern is more specific than the bare words
+# ("report", "note", "minutes", ...) its match may happen to contain.
+_FREE_TEXT_PATTERN_RESOURCE_TYPES = (
+    # "Decisions of the 117th meeting of the Nuclear Physics Research
+    # Committee ...", "Decisions of the 22nd meeting of the ...". The
+    # meeting designation between "the" and "meeting" is optional and can
+    # be a numeral ("117th", "22nd") or spelled out ("third"), so allow a
+    # few arbitrary words there. Also covers the "Decision taken at the
+    # meeting" wording already listed in `_SERIES_RESOURCE_TYPES` (kept
+    # there for 490__ series, which is matched exactly - see
+    # `_apply_series_resource_type`).
+    (
+        re.compile(
+            r"\bdecisions?\s+(?:of|taken\s+at)\s+the\s+(?:\S+\s+){0,3}meeting\b"
+        ),
+        {"id": "publication-meetingminutes"},
+    ),
+)
 
 
 # Priority tiers for the different ways a research-committee record's
@@ -298,14 +320,20 @@ def _apply_series_resource_type(self, value_a):
 def _free_text_resource_type(text):
     """Return a resource_type matched from free-text phrases, or None.
 
-    Return the resource_type for text containing one of
-    `_SERIES_RESOURCE_TYPES`'s phrases anywhere in it (e.g. "Draft minutes
-    of the third meeting of the EEC ...",
+    Return the resource_type for text matching one of
+    `_FREE_TEXT_PATTERN_RESOURCE_TYPES`'s patterns (e.g. "Decisions of the
+    117th meeting of the Nuclear Physics Research Committee ..."), or
+    containing one of `_SERIES_RESOURCE_TYPES`'s phrases anywhere in it
+    (e.g. "Draft minutes of the third meeting of the EEC ...",
     https://cds.cern.ch/record/1015008, or "Addendum 1"), matched at a word
     boundary so e.g. "Reported" doesn't match "report" - or None if it
     doesn't.
     """
     text_lower = text.strip().lower()
+    # Patterns first - see `_FREE_TEXT_PATTERN_RESOURCE_TYPES`.
+    for pattern, resource_type in _FREE_TEXT_PATTERN_RESOURCE_TYPES:
+        if pattern.search(text_lower):
+            return resource_type
     # Longest phrase first, so "letter of intent" is tried before a
     # hypothetical single-word phrase it contains.
     for phrase in sorted(_SERIES_RESOURCE_TYPES, key=len, reverse=True):

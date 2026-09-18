@@ -94,8 +94,24 @@ class ResearchCommitteeModel(CdsOverdo):
         "999C6v",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
     }
 
+    # `resource_type` is seeded so a former-committee record whose document
+    # type none of the available signals can resolve (no
+    # <COMMITTEE>-<TYPE>-<NUMBER> report number, no document type spelled
+    # out in 250__/490__/245__, no usable 980__/697C_ tag - the committee
+    # 980__ tag itself only yields `cern:committees`) still migrates,
+    # instead of being rejected by ResourceTypeMapper's MissingRequiredField.
+    # This is scoped to this model on purpose: it covers the former
+    # committees only (see `__query__` - current committees like LHCC, and
+    # SPSC from 1990 onwards, are handled by other models, where a missing
+    # resource_type stays an error).
+    # Only a default - every rule that resolves a real resource_type
+    # overrides it, because they gate on `_resource_type_rank`, which a
+    # seeded default deliberately doesn't set (see
+    # research_committee.py:_set_resource_type_if_higher_priority and
+    # research.py:resource_type).
     _default_fields = {
         "custom_fields": {},
+        "resource_type": {"id": "publication-other"},
     }
 
 

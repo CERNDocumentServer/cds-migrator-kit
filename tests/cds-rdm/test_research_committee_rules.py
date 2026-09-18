@@ -13,6 +13,9 @@ from dojson.utils import GroupableOrderedDict
 
 from cds_migrator_kit.errors import MissingRequiredField
 from cds_migrator_kit.rdm.records.transform.entities.record import RecordEntry
+from cds_migrator_kit.rdm.records.transform.models.base_publication_record import (
+    rdm_base_publication_model,
+)
 from cds_migrator_kit.rdm.records.transform.models.research_committee import (
     research_comm_model,
 )
@@ -429,6 +432,41 @@ class TestTitleResourceType:
         )
         assert record["resource_type"] == {"id": "publication-proposal"}
 
+    def test_decisions_of_the_nth_meeting_matches_meetingminutes(self):
+        """ "Decisions of the <Nth> meeting ..." is meeting minutes, with the
+        meeting number written either as a numeral or spelled out."""
+        for title_value in (
+            "Decisions of the 117th meeting of the Nuclear Physics Research Committee",
+            "Decisions of the 22nd meeting of the Nuclear Physics Research Committee",
+            "Decisions of the third meeting of the NPRC",
+            "Decisions of the meeting of the NPRC",
+            "Decision taken at the meeting of the NPRC",
+        ):
+            record = {}
+            title(record, "245__", {"a": title_value})
+            assert record["resource_type"] == {"id": "publication-meetingminutes"}
+            assert record["_resource_type_rank"] == _RANK_TITLE
+
+    def test_decisions_pattern_wins_over_a_bare_phrase_in_the_title(self):
+        """The pattern is tried before the single-word phrases, so a
+        "report"/"note" mentioned further along the title can't win."""
+        record = {}
+        title(
+            record,
+            "245__",
+            {
+                "a": "Decisions of the 117th meeting of the NPRC and status "
+                "report of the experiments"
+            },
+        )
+        assert record["resource_type"] == {"id": "publication-meetingminutes"}
+
+    def test_decisions_without_a_meeting_not_matched(self):
+        """ "Decisions" on its own isn't a meeting-minutes marker."""
+        record = {}
+        title(record, "245__", {"a": "Decisions of the Director-General"})
+        assert "resource_type" not in record
+
     def test_base_title_behaviour_preserved(self):
         """title is still populated exactly like the generic 245__ rule
         (base.title)."""
@@ -524,6 +562,55 @@ class TestResearchCommitteeModelIntegration:
 
         assert out["resource_type"] == {"id": "publication-letter"}
 
+    def test_undeterminable_resource_type_defaults_to_other(self):
+        """A former-committee record carrying no resource_type signal at all
+        (the committee 980__ tag only yields `cern:committees`) falls back to
+        publication-other instead of failing on a missing resource_type."""
+        blob = GroupableOrderedDict(
+            (
+                ("088__", {"a": "CERN-SPSLC-94-025"}),
+                ("245__", {"a": "A study of fluoride crystals for LHC"}),
+                ("980__", {"a": "SCICOMMPUBLSPSLC"}),
+            )
+        )
+        out = research_comm_model.do(blob)
+
+        assert out["resource_type"] == {"id": "publication-other"}
+        assert out["custom_fields"]["cern:committees"] == [{"id": "SPSLC"}]
+        # The default is not a decision - it must leave the rank unset, so
+        # any rule can still override it.
+        assert "_resource_type_rank" not in out
+
+    def test_default_does_not_shadow_a_title_derived_type(self):
+        """The weakest real signal (245__ title) must still win over the
+        seeded default."""
+        blob = GroupableOrderedDict(
+            (
+                (
+                    "245__",
+                    {
+                        "a": "Decisions of the 117th meeting of the Nuclear "
+                        "Physics Research Committee"
+                    },
+                ),
+                ("980__", {"a": "SCICOMMPUBLNPRC"}),
+            )
+        )
+        out = research_comm_model.do(blob)
+
+        assert out["resource_type"] == {"id": "publication-meetingminutes"}
+
+    def test_default_does_not_shadow_a_generic_980_type(self):
+        """A generic 980__ document-type tag must also win over the seeded
+        default, even though `resource_type` is already present when
+        research.py:resource_type runs."""
+        blob = GroupableOrderedDict(
+            (("980__", ({"a": "ARTICLE"}, {"a": "SCICOMMPUBLSPSLC"})),)
+        )
+        out = research_comm_model.do(blob)
+
+        assert out["resource_type"] == {"id": "publication-article"}
+
 
 class TestResourceTypeFinalizer:
     """`_resource_type` (inside RecordEntry._metadata) must strip
@@ -577,15 +664,22 @@ class TestResourceTypeFinalizer:
             entry._metadata(dojson_entry, self._raw_dump_entry())
 
 
-class TestResearchCommitteeModelDoesNotDefaultResourceType:
-    """ResearchCommitteeModel must not seed resource_type with a default -
-    a record where no 980__/697C_ occurrence or committee report number
-    resolves a real type should end up with no resource_type key at all,
-    so it's caught as a missing required field downstream."""
+class TestResearchCommitteeModelDefaultsResourceType:
+    """ResearchCommitteeModel seeds resource_type with publication-other, so
+    a former-committee record where no 980__/697C_ occurrence, committee
+    report number or free-text document type resolves a real type still
+    migrates rather than being rejected downstream as missing a required
+    field. The default is scoped to this model - see its `_default_fields`."""
 
-    def test_committee_only_record_has_no_resource_type(self):
+    def test_committee_only_record_defaults_to_other(self):
         """A record with only a committee tag (no resolvable document type)
-        must not end up with resource_type=publication-other."""
+        ends up with resource_type=publication-other."""
         blob = GroupableOrderedDict((("980__", {"a": "SCICOMMPUBLSPSLC"}),))
         out = research_comm_model.do(blob)
-        assert "resource_type" not in out
+        assert out["resource_type"] == {"id": "publication-other"}
+
+    def test_other_models_still_have_no_default(self):
+        """The fallback must not leak into the base publication model the
+        other collections use - there, an unresolved resource_type stays
+        missing and is caught downstream."""
+        assert "resource_type" not in (rdm_base_publication_model._default_fields or {})
