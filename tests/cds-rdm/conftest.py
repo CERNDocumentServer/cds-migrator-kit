@@ -877,9 +877,9 @@ def experiments_v(app, exp_type):
     vocab = vocabulary_service.create(
         system_identity,
         {
-            "id": "COMPASS NA58",
+            "id": "NA58",
             "title": {
-                "en": "COMPASS NA58",
+                "en": "NA58",
             },
             "props": {"link": "http://bla.web.cern.ch/lhcb/"},
             "type": "experiments",

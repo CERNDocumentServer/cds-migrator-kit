@@ -20,12 +20,13 @@ IGNORE_SYSTEM_KEYS = {
     "300__a",  # number of pages
     "500__9",  # Provenance of the note
     "520__9",  # Provenance of the description
-    # "540__3",  # Material of the license
-    # "540__9",  # Also material of the license
-    # "542__3",  # Also material of the license
+    "540__3",  # Material of the license
+    "540__9",  # Also material of the license
+    "540__g",  # From SIS (see decision log)
+    "542__3",  # Also material of the license
     "700__m",  # email of contributor
-    # "773__t",  # from SIS: can be ignored
-    # "773__0",  # from SIS: can be ignored
+    "773__t",  # from SIS: can be ignored
+    "773__0",  # from SIS: can be ignored
     # "773__o",  # from SIS: can be ignored
     # "773__x",  # INSPIRE publication note
     "8564_8",  # file id
@@ -68,4 +69,6 @@ IGNORE_SYSTEM_KEYS = {
     "999C6t",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
     "999C6v",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
     "999C5d",  # old INSPIRE attr
+    "999C69",  # See decision log
+    "999C6c",  # See decision log
 }

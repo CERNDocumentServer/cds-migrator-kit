@@ -66,7 +66,7 @@ RECOGNISED_KEYWORD_SCHEMES = [
     "aip",
     "jacow",
 ]
-KEYWORD_SCHEMES_TO_DROP = ["proquest", "disxa", "inspeq"]
+KEYWORD_SCHEMES_TO_DROP = ["proquest", "disxa", "inspeq", "jinr"]
 
 ALLOWED_THESIS_COLLECTIONS = [
     "thesis",
@@ -162,4 +162,6 @@ FILE_SUBFORMATS_TO_DROP = ["pdfa", "unstamped"]
 # Legacy experiment names remapped to vocabulary ids before lookup
 EXPERIMENT_ALIASES = {
     "t2k": "re13",
+    "compass": "NA58",
+    "compass na58": "NA58",
 }
