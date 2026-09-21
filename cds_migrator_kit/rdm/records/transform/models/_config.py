@@ -24,8 +24,8 @@ IGNORE_SYSTEM_KEYS = {
     # "540__9",  # Also material of the license
     # "542__3",  # Also material of the license
     "700__m",  # email of contributor
-    # "773__t",  # from SIS: can be ignored
-    # "773__0",  # from SIS: can be ignored
+    "773__t",  # from SIS: can be ignored
+    "773__0",  # from SIS: can be ignored
     # "773__o",  # from SIS: can be ignored
     # "773__x",  # INSPIRE publication note
     "8564_8",  # file id
