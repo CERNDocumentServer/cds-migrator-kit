@@ -90,13 +90,37 @@ _COMMITTEE_TYPE_OVERRIDES = {
         "M": {"id": "publication-memorandum"},
         "R": {"id": "publication-report"},
     },
+    "PSCC": {
+        "M": {"id": "publication-memorandum"},
+    },
 }
 
-# Extra subject tagged onto the record for specific (committee, type) pairs.
-# "*" matches any committee.
+
+def _controlled_subject(term):
+    """Build a subjects entry referencing a controlled-vocabulary term.
+
+    Matches the shape base.py's `is_controlled_subject` branch writes for a
+    65017 MARC subject with a recognized scheme ($2/$9 in
+    CONTROLLED_SUBJECTS_SCHEMES): just `id` (no `scheme` - invenio-vocabularies
+    resolves the term, including its scheme, from the id) plus `subject` for
+    display. `term` must match an entry's `id` in
+    cds-rdm/site/cds_rdm/app_data/vocabularies/subjects_scicommittees.yaml.
+    """
+    return {"id": term, "subject": term}
+
+
+# Extra subject tagged onto the record for specific (committee, type) pairs -
+# see `_committee_report_type`. "*" matches any committee. Most of these
+# reference controlled terms from subjects_scicommittees.yaml (via
+# `_controlled_subject`); "recommendation" isn't in that vocabulary, so it
+# stays free text.
 _TYPE_SUBJECTS = {
-    ("SPSC", "R"): "recommendation",
-    ("*", "UG"): "collection:upgrade cost group",
+    ("SPSC", "R"): {"subject": "recommendation"},
+    ("*", "UG"): _controlled_subject("Upgrade Cost Group"),
+    ("*", "TDR"): _controlled_subject("Technical Design Report"),
+    ("*", "STATUS-REPORT"): _controlled_subject("Status Report"),
+    ("*", "SR"): _controlled_subject("Status Report"),
+    ("*", "RD"): _controlled_subject("Status Report"),
 }
 
 
@@ -246,9 +270,8 @@ def _apply_committee_report_number(self, identifier):
     _set_resource_type_if_higher_priority(self, resource_type, _RANK_REPORT_NUMBER)
     if subject:
         subjects = self.get("subjects", [])
-        new_subject = {"subject": subject}
-        if new_subject not in subjects:
-            subjects.append(new_subject)
+        if subject not in subjects:
+            subjects.append(subject)
         self["subjects"] = subjects
 
 

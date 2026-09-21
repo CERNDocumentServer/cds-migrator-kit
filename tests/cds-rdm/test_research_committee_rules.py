@@ -72,6 +72,9 @@ class TestCommitteeReportNumberType:
         record = {}
         self._call(record, "088__", {"a": "DRDC-Status-report-RD-30"})
         assert record["resource_type"] == {"id": "publication-report"}
+        assert record["subjects"] == [
+            {"id": "Status Report", "subject": "Status Report"}
+        ]
 
     def test_spsc_m_is_memorandum(self):
         """M is SPSC-specific: publication-memorandum, not meeting minutes."""
@@ -105,21 +108,37 @@ class TestCommitteeReportNumberType:
         self._call(record, "088__", {"a": "TCC-T-3"})
         assert record["resource_type"] == {"id": "publication-technicalnote"}
 
-    def test_type_tdr_is_report(self):
+    def test_type_tdr_is_report_with_technical_design_report_subject(self):
         record = {}
         self._call(record, "088__", {"a": "TCC-TDR-3"})
         assert record["resource_type"] == {"id": "publication-report"}
+        assert record["subjects"] == [
+            {"id": "Technical Design Report", "subject": "Technical Design Report"}
+        ]
 
-    def test_type_sr_is_report(self):
+    def test_type_sr_is_report_with_status_report_subject(self):
         record = {}
         self._call(record, "088__", {"a": "TCC-SR-3"})
         assert record["resource_type"] == {"id": "publication-report"}
+        assert record["subjects"] == [
+            {"id": "Status Report", "subject": "Status Report"}
+        ]
+
+    def test_type_rd_is_report_with_status_report_subject(self):
+        record = {}
+        self._call(record, "088__", {"a": "TCC-RD-3"})
+        assert record["resource_type"] == {"id": "publication-report"}
+        assert record["subjects"] == [
+            {"id": "Status Report", "subject": "Status Report"}
+        ]
 
     def test_type_ug_is_report_with_upgrade_cost_group_subject(self):
         record = {}
         self._call(record, "088__", {"a": "TCC-UG-3"})
         assert record["resource_type"] == {"id": "publication-report"}
-        assert record["subjects"] == [{"subject": "collection:upgrade cost group"}]
+        assert record["subjects"] == [
+            {"id": "Upgrade Cost Group", "subject": "Upgrade Cost Group"}
+        ]
 
     def test_spsc_r_is_report_with_recommendation_subject(self):
         """R is only defined for SPSC: publication-report + subject."""
