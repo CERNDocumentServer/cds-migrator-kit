@@ -66,7 +66,7 @@ RECOGNISED_KEYWORD_SCHEMES = [
     "aip",
     "jacow",
 ]
-KEYWORD_SCHEMES_TO_DROP = ["proquest", "disxa", "inspeq"]
+KEYWORD_SCHEMES_TO_DROP = ["proquest", "disxa", "inspeq", "jinr"]
 
 ALLOWED_THESIS_COLLECTIONS = [
     "thesis",
@@ -168,6 +168,8 @@ EXPERIMENT_ALIASES = {
     "harp ps214": "PS214",
     "harp": "PS214",
     "dampe": "RE29",
+    "compass": "NA58",
+    "compass na58": "NA58",
 }
 
 # 693__e values that are keywords rather than real experiments (curated as
