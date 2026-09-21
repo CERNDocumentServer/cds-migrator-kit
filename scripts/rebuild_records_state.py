@@ -50,11 +50,6 @@ from invenio_pidstore.models import PersistentIdentifier
 from invenio_rdm_records.records.api import RDMRecord
 from invenio_rdm_records.records.models import RDMParentCommunity, RDMRecordMetadata
 
-STREAM_CONFIG_FILES = (
-    "cds_migrator_kit/rdm/streams_done.yaml",
-    "cds_migrator_kit/rdm/streams.yaml",
-    "cds_migrator_kit/rdm/streams_shelved.yaml",
-)
 
 log_fp = None
 
@@ -77,38 +72,6 @@ def load_completed_recids(log_path):
             if line.startswith("DONE: legacy_recid="):
                 completed.add(line.strip().split("=")[1])
     return completed
-
-
-def mark_done(legacy_recid):
-    log(f"DONE: legacy_recid={legacy_recid}")
-
-
-def load_communities_ids(collection, config_files=STREAM_CONFIG_FILES):
-    """Look up a collection's ``transform.communities_ids`` in streams.yaml.
-
-    Reads the same shape ``Runner._read_config()`` does
-    (cds_migrator_kit/runner/runner.py:28-31): a top-level ``records`` key,
-    one entry per collection name.
-    """
-    for path in config_files:
-        if not Path(path).exists():
-            continue
-        with open(path) as f:
-            config = yaml.safe_load(f) or {}
-        collection_config = config.get("records", {}).get(collection)
-        if collection_config:
-            return collection_config["transform"]["communities_ids"]
-    raise ValueError(
-        f"collection {collection!r} not found in any of {config_files} - "
-        "pass its community id(s) directly via community_ids= instead"
-    )
-
-
-def default_output_path(collection):
-    """Same folder ``RecordStateLogger`` writes to (cds_migrator_kit/reports/log.py),
-    a different filename - this never overwrites ``rdm_records_state.json``."""
-    base_path = current_app.config["CDS_MIGRATOR_KIT_LOGS_PATH"]
-    return str(Path(base_path) / collection / "rdm_records_state.fixed.json")
 
 
 def find_legacy_recids(community_ids):
@@ -224,21 +187,17 @@ def write_state_file(filepath, entries):
         f.write("]")
 
 
-def main(collection, dry_run=True, output_path=None):
+def main(community_ids, output_path, log_file, dry_run=True):
     """Rebuild ``rdm_records_state.json`` for one stream/collection.
 
-    :param collection: the stream name, as used by
-        ``invenio migration run --collection`` - looked up in streams.yaml
-        to find the community id(s) and to build the default output path.
-    :param output_path: defaults to
-        ``<CDS_MIGRATOR_KIT_LOGS_PATH>/<collection>/rdm_records_state.fixed.json``,
-        next to (never over) the original state file.
+    :param community_ids: the community UUIDs passed inside the streams.yaml,
+        as used by ``invenio migration run --collection``.
+    :param output_path: should be `<CDS_MIGRATOR_KIT_LOGS_PATH>/<collection>/rdm_records_state.fixed.json`
+        next to the original state file (no overwriting).
+    :param log_file: Log file.
+    :param dry_run: Pass dfry_run False to write generate state json data to file.
     """
     global log_fp
-
-    community_ids = load_communities_ids(collection)
-    output_path = output_path or default_output_path(collection)
-    log_file = f"{output_path}.log"
 
     completed_recids = load_completed_recids(log_file)
     log_fp = open(log_file, "a")
@@ -249,8 +208,8 @@ def main(collection, dry_run=True, output_path=None):
     try:
         legacy_recids = find_legacy_recids(community_ids)
         log(
-            f"starting [collection={collection}, community_ids={community_ids}, "
-            f"dry_run={dry_run}, legacy_recids={len(legacy_recids)}]"
+            f"starting, community_ids={str(community_ids)}, "
+            f"dry_run={dry_run}, found legacy_recids={len(legacy_recids)}]"
         )
 
         stats = {"checked": 0, "skipped_done": 0, "no_versions": 0, "fixed": 0, "errors": 0}
@@ -276,7 +235,7 @@ def main(collection, dry_run=True, output_path=None):
                 stats["fixed"] += 1
 
                 if not dry_run:
-                    mark_done(legacy_recid)
+                    log(f"DONE: legacy_recid={legacy_recid}")
 
             except Exception as exc:
                 log(f"unexpected error for legacy_recid={legacy_recid}: {exc}")
