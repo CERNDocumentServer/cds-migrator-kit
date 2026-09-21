@@ -634,6 +634,17 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "88a105fe-4713-493b-b555-6ab398599d21"
+  na58:
+    data_dir: cds_migrator_kit/rdm/data/north_area/na58
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/north_area/na58/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/north_area/na58/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "742fea6c-0685-4da2-8000-c1f19635ba86"
   na61:
     data_dir: cds_migrator_kit/rdm/data/north_area/na61
     plots: true
@@ -644,7 +655,7 @@ records:
       files_dump_dir: cds_migrator_kit/rdm/data/north_area/na61/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - ""
+        - "cf52a005-cc57-4a69-a135-771bf9f28d8a"
   na62:
     data_dir: cds_migrator_kit/rdm/data/north_area/na62
     plots: true
@@ -655,7 +666,7 @@ records:
       files_dump_dir: cds_migrator_kit/rdm/data/north_area/na62/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - ""
+        - "71045612-b90c-4dba-83a5-c5e55d5b0622"
   na63:
     data_dir: cds_migrator_kit/rdm/data/north_area/na63
     plots: true
@@ -666,7 +677,7 @@ records:
       files_dump_dir: cds_migrator_kit/rdm/data/north_area/na63/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - ""
+        - "b018f5fc-66b3-47e9-af06-cb10f0021587"
   na64:
     data_dir: cds_migrator_kit/rdm/data/north_area/na64
     plots: true
@@ -677,7 +688,7 @@ records:
       files_dump_dir: cds_migrator_kit/rdm/data/north_area/na64/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - ""
+        - "25a0fa11-6e27-419a-a00e-3b4b30ef0182"
   na65:
     data_dir: cds_migrator_kit/rdm/data/north_area/na65
     plots: true
@@ -688,7 +699,7 @@ records:
       files_dump_dir: cds_migrator_kit/rdm/data/north_area/na65/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - ""
+        - "f6011761-fd7d-40dd-bba6-fcf6fa93edbc"
   na66:
     data_dir: cds_migrator_kit/rdm/data/north_area/na66
     plots: true
@@ -699,7 +710,7 @@ records:
       files_dump_dir: cds_migrator_kit/rdm/data/north_area/na66/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - ""
+        - "2ab3ab07-a634-4de8-8489-f99bc7fabec2"
 comments:
   faser-drafts:
     dir_path: /migration/faser-drafts/comments/
