@@ -8,18 +8,28 @@
 """CDS-RDM migration load module."""
 
 import json
+import re
 
 from cds_rdm.clc_sync.models import CDSToCLCSyncModel
+from cds_rdm.inspire_harvester.load.matcher import ArxivIdentifierMatchFilter
+from cds_rdm.inspire_harvester.utils import retrieve_identifiers
 from cds_rdm.legacy.models import CDSMigrationLegacyRecord
 from cds_rdm.legacy.resolver import get_pid_by_legacy_recid
 from cds_rdm.minters import legacy_recid_minter
+from cds_rdm.schemes import cds_rdm_regexp
+from flask import current_app
+from invenio_access.permissions import system_identity
 from invenio_db import db
 from invenio_db.uow import ModelCommitOp, UnitOfWork
 from invenio_i18n import _
+from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier
 from invenio_rdm_migrator.load.base import Load
+from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_records.systemfields.relations import InvalidRelationValue
+from invenio_search.engine import dsl
 from marshmallow import ValidationError
+from sqlalchemy.orm.exc import NoResultFound
 
 from cds_migrator_kit.errors import (
     CDSMigrationException,
@@ -111,6 +121,143 @@ class CDSMigrationEntryLoad(Load):
             return True
         return False
 
+    def _should_skip_replicated_record(self, entry: MigrationEntry):
+        """Skip if a hand-submitted CDS record already matches this dump.
+
+        When a match is found, mint ``lrecid`` onto that record so later runs
+        treat the legacy recid as already migrated.
+        """
+        recid = entry["record"].recid
+        try:
+            existing = self._existing_cds_record(entry)
+            if existing and not self.dry_run:
+                legacy_recid_minter(recid, existing._record.parent.model.id)
+                db.session.commit()
+            if existing:
+                self.migration_logger.add_information(
+                    recid,
+                    {
+                        "message": "Record already submitted on new CDS",
+                        "value": existing.id,
+                    },
+                )
+                self.migration_logger.finalise_record(recid)
+                return True
+        except ManualImportRequired as exc:
+            self.migration_logger.add_log(exc, record=entry)
+            return True
+
+        return False
+
+    def _find_unique_parent_by_identifiers(self, pid_type, values, field):
+        """Return the latest record if ``values`` all resolve to one parent.
+
+        Used by ``_existing_cds_record`` to decide whether a legacy dump already
+        exists as a hand-submitted CDS record. Each value is looked up in
+        pidstore as ``pid_type`` (e.g. ``recid`` or ``doi``), resolved to a
+        version recid, then grouped by that version's parent id.
+
+        :returns: Latest record for the single matching parent, or ``None``
+            if no value resolves to a record.
+        :raises ManualImportRequired: If the values resolve to more than one
+            parent (cannot safely treat as one duplicate). Propagates through
+            ``_existing_cds_record`` and is caught in
+            ``_should_skip_replicated_record``, which logs and skips the dump.
+        """
+        by_parent = {}
+        for value in dict.fromkeys(v for v in values if v):
+            for pid in PersistentIdentifier.query.filter_by(
+                pid_type=pid_type, pid_value=value, object_type="rec"
+            ):
+                recid = (
+                    pid
+                    if pid_type == "recid"
+                    else PersistentIdentifier.query.filter_by(
+                        object_uuid=pid.object_uuid,
+                        object_type="rec",
+                        pid_type="recid",
+                    ).one_or_none()
+                )
+                if not recid:
+                    continue
+                try:
+                    record = current_rdm_records_service.read_latest(
+                        system_identity, id_=recid.pid_value
+                    )
+                except (PIDDoesNotExistError, NoResultFound):
+                    continue
+                by_parent[record._record.parent.pid.pid_value] = record
+        if len(by_parent) > 1:
+            raise ManualImportRequired(
+                message="Multiple existing CDS records match this legacy record",
+                field=field,
+                stage="load",
+                value=", ".join(sorted(by_parent)),
+                priority="warning",
+            )
+        return next(iter(by_parent.values()), None)
+
+    def _existing_cds_record(self, entry: MigrationEntry):
+        """Find a hand-submitted CDS record this dump would duplicate."""
+        body = entry["record"].body
+        metadata = body.get("metadata", {})
+        prefix = current_app.config["DATACITE_PREFIX"]
+        identifiers = metadata.get("identifiers", []) + metadata.get(
+            "related_identifiers", []
+        )
+        dois = list(retrieve_identifiers(identifiers, "doi"))
+        doi = body.get("pids", {}).get("doi", {}).get("identifier")
+        if doi:
+            dois.append(doi)
+
+        # New-CDS ids: CDSRDM first, then repository.cern urls, then CERN DOI
+        # suffixes. Looked up in that order so a structured id wins over a url.
+        pat = cds_rdm_regexp.pattern
+        cdsrdm_ids = set()
+        for item in identifiers:
+            scheme = item.get("scheme") or item.get("schema") or ""
+            value = item.get("identifier") or item.get("value")
+            if scheme.upper() == "CDSRDM" and value and cds_rdm_regexp.fullmatch(value):
+                cdsrdm_ids.add(value)
+
+        url_ids = set()
+        for url in retrieve_identifiers(identifiers, "url"):
+            url_ids.update(
+                re.findall(rf"repository\.cern/(?:api/)?records/({pat})", url, re.I)
+            )
+
+        doi_suffix_ids = {
+            d.split("/", 1)[1] for d in dois if d.startswith(f"{prefix}/")
+        }
+
+        arxivs = list(retrieve_identifiers(identifiers, "arxiv"))
+        cores = [
+            v.split(":", 1)[-1] if v.lower().startswith("arxiv:") else v for v in arxivs
+        ]
+        # Includes external DOIs and arXiv DataCite DOIs (10.48550/…).
+        dois.extend(f"10.48550/arXiv.{c}" for c in cores)
+
+        record = (
+            self._find_unique_parent_by_identifiers("recid", cdsrdm_ids, "cdsrdm")
+            or self._find_unique_parent_by_identifiers("recid", url_ids, "url")
+            or self._find_unique_parent_by_identifiers("recid", doi_suffix_ids, "doi")
+            or self._find_unique_parent_by_identifiers("doi", dois, "doi")
+        )
+        if record or not arxivs:
+            return record
+
+        candidate = ArxivIdentifierMatchFilter(
+            values=list(dict.fromkeys([*arxivs, *cores]))
+        )
+        result = current_rdm_records_service.search(
+            system_identity,
+            extra_filter=dsl.Q("bool", filter=candidate.query),
+            params={"size": 25},
+        )
+        return self._find_unique_parent_by_identifiers(
+            "recid", [hit["parent"]["id"] for hit in result.hits], "arxiv"
+        )
+
     def _load(self, entry: MigrationEntry):
         """Use the services to load the entry."""
         if not entry:
@@ -118,6 +265,8 @@ class CDSMigrationEntryLoad(Load):
 
         recid = entry["record"].recid
         if self._should_skip_recid(recid):
+            return
+        if self._should_skip_replicated_record(entry):
             return
 
         record_load = RecordLoad(
