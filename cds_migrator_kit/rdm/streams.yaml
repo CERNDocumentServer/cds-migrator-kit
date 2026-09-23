@@ -364,6 +364,18 @@ records:
         - "1c46ceab-af68-4502-a436-cdf5a4cfbbe0"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/isolde/duplicated_pids.json
+  hie_isolde:
+    data_dir: cds_migrator_kit/rdm/data/hie_isolde
+    plots: true
+    create_inclusion_request: true
+    preferred_model: hie_isolde
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hie_isolde/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hie_isolde/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "e00ff890-7bdb-4b6a-ad6c-1cedfef2489a"
   ts_dep:
     plots: true
     data_dir: cds_migrator_kit/rdm/data/dep_ts
