@@ -535,7 +535,10 @@ AUDIT_LOGS_ENABLED = False
 
 ### EP Approval configuration only needed for local, it should use cds-rdm config for de/sandbox/prod
 # ===========================
-CDS_CERN_SCIENTIFIC_COMMUNITY_ID = "78b3c4aa-c4e6-4502-8226-67ba2d347afe"
+# ATTENTION: please don't modify this local value - the community is created
+# via cds-rdm fixtures with this id - if you have another ID locally
+# change it in your local db
+CDS_CERN_SCIENTIFIC_COMMUNITY_ID = "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
 """The id of the CERN Scientific community.
 
 This is only a local-dev default: on other instances (sandbox/prod), set the
@@ -615,5 +618,15 @@ CDS_COMMITTEE_APPROVAL_COMMUNITIES = {
             "include_year": True,  # append the current year after prefix
             "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
         },
+    },
+    "6a289642-5378-4daf-87b5-bb58af00487a": {
+            # DIRAC
+            "label": "EP approval",  # shown in UI buttons/headings
+            "referee_group": "cds-ph-ep-publications-referee-non-lhc",  # CERN e-group slug
+            "report_number": {
+                "prefix": "CERN-EP",  # literal prefix, e.g. "CERN-EP"
+                "include_year": True,  # append the current year after prefix
+                "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+            },
     },
 }
