@@ -237,33 +237,10 @@ records:
       communities_ids:
         - "88a5cdf4-974a-44d4-b145-d19ee6346bb8"
         - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
-  lcd_restr:
-    plots: true
-    data_dir: cds_migrator_kit/rdm/data/former_exp/lcd_restr
-    restricted: "True"
-    create_inclusion_request: true
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/former_exp/lcd_restr
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/former_exp/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "adc02716-780b-4bba-8e89-6316c9a11cf0"
-  lcd:
-    plots: true
-    create_inclusion_request: true
-    data_dir: cds_migrator_kit/rdm/data/former_exp/lcd
-    extract:
-      dirpath: cds_migrator_kit/rdm/data/former_exp/lcd
-    transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/former_exp/files/
-      missing_users: cds_migrator_kit/rdm/data/users
-      communities_ids:
-        - "adc02716-780b-4bba-8e89-6316c9a11cf0"
-        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
   re29:
     data_dir: cds_migrator_kit/rdm/data/former_exp/re29
     plots: true
+    create_inclusion_request: true
     extract:
       dirpath: cds_migrator_kit/rdm/data/former_exp/re29
     transform:
