@@ -688,6 +688,17 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - ""
+  totem:
+    data_dir: cds_migrator_kit/rdm/data/totem
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/totem/dump
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/totem/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - ""
 comments:
   faser-drafts:
     dir_path: /migration/faser-drafts/comments/
