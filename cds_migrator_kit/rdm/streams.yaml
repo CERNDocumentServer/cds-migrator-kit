@@ -622,6 +622,17 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "88a105fe-4713-493b-b555-6ab398599d21"
+  na58:
+    data_dir: cds_migrator_kit/rdm/data/north_area/na58
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/north_area/na58/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/north_area/na58/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - ""
   na61:
     data_dir: cds_migrator_kit/rdm/data/north_area/na61
     plots: true

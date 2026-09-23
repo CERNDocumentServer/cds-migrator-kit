@@ -7,7 +7,6 @@
 
 """CDS-RDM migration rules module."""
 
-
 import pycountry
 from cds_dojson.marc21.fields.utils import out_strip
 from dojson.errors import IgnoreKey
@@ -117,7 +116,9 @@ def process_contributors(key, value, orcid_subfield="k"):
         _affiliations = force_list(value.get("t", ""))
         affiliations = []
         # just to avoid the missing rule exception
-        text = value.get("u") or value.get("v")
+        text_u = value.get("u")
+        text_v = value.get("v")
+        text = text_u or text_v
         grid_value = None
         for aff in _affiliations:
             if aff:

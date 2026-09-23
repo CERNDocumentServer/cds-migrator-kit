@@ -5,7 +5,7 @@
 # CDS-RDM is free software; you can redistribute it and/or modify it under
 # the terms of the MIT License; see LICENSE file for more details.
 
-"""CDS-RDM North Area models (NA61-64)."""
+"""CDS-RDM North Area models (NA58 & NA61-66)."""
 
 from cds_migrator_kit.rdm.records.transform.models._config import IGNORE_SYSTEM_KEYS
 from cds_migrator_kit.rdm.records.transform.models.base_publication_record import (
@@ -17,8 +17,11 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 class NorthAreaModel(CdsOverdo):
     """Translation model for North Area experiments."""
 
-    __query__ = """693__.e:"NA61" OR 693__.e:"SHINE NA61" OR 693__.e:"NA62" OR 693__.e:"NA63" OR 693__.e:"NA64" OR 693__.e:"DsTau NA65" OR 693__.e:"AMBER NA66"
-    -980__:THESIS -980__:DELETED -980__:HIDDEN -980__:DUMMY"""
+    __query__ = """
+    693__.e:"COMPASS" OR 693__.e:"COMPASS NA58" OR 693__.e:"NA61" OR 693__.e:"SHINE NA61" OR
+    693__.e:"NA62" OR 693__.e:"NA63" OR 693__.e:"NA64" OR 693__.e:"DsTau NA65" OR 693__.e:"AMBER NA66"
+    -037__:CERN-STUDENTS-Note-* -980__:THESIS -980__:DELETED -980__:HIDDEN -980__:DUMMY
+    """
 
     __ignore_keys__ = IGNORE_SYSTEM_KEYS | {
         "270__m",  # Email of contact person
