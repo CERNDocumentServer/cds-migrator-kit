@@ -54,9 +54,11 @@ class VocabularyCache:
             if title and title.lower() != entry_id.lower():
                 lookup[title.lower()] = entry_id
 
+            # For now, I think this only supports one string value. If we make it support more in the future (e.g. via CSV) we
+            # will need to update this.
             entry_aliases = entry.get("props", {}).get("aliases")
-            for alias in entry_aliases or []:
-                lookup[alias.strip().lower()] = entry_id
+            if entry_aliases:
+                lookup[entry_aliases.strip().lower()] = entry_id
         return lookup
 
     def get(self, term, vocab_type):
