@@ -100,13 +100,27 @@ class DepartmentsMapper(CustomFieldMapper):
                     {"subject": department}
                 )
 
-                if ctx.custom_fields.get("cern:administrative_unit"):
+                existing_unit = ctx.custom_fields.get("cern:administrative_unit")
+                if existing_unit:
+                    if existing_unit.lower() == department.lower():
+                        # already set to the same value by the hyphen branch above
+                        ctx.flag_curation(
+                            RecordFlaggedCuration(
+                                subfield="a",
+                                value=department,
+                                field="department",
+                                message=f"Department {department} not found. "
+                                f"Added as unit and subject",
+                                stage="vocabulary match",
+                            )
+                        )
+                        return
                     raise UnexpectedValue(
                         subfield="5",
                         value=department,
                         field="710",
                         message=f"conflict on administrative unit "
-                        f"{ctx.custom_fields['cern:administrative_unit']} VS {department}",
+                        f"{existing_unit} VS {department}",
                         stage="vocabulary match",
                     )
                 ctx.custom_fields["cern:administrative_unit"] = department
