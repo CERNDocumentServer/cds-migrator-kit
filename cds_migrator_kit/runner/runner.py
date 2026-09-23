@@ -7,6 +7,8 @@
 
 """InvenioRDM migration streams runner."""
 
+import logging
+import time
 from pathlib import Path
 
 import yaml
@@ -120,15 +122,21 @@ class Runner:
 
     def run(self):
         """Run ETL streams."""
+        perf_logger = logging.getLogger("migrator-perf")
 
         self.migration_logger.start_log()
         self.record_state_logger.start_log()
         for stream in self.streams:
+            t0 = time.perf_counter()
             try:
                 stream.run(cleanup=True)
             except Exception as e:
                 self.migration_logger.add_log(e)
                 raise e
             finally:
+                elapsed = time.perf_counter() - t0
+                perf_logger.info(
+                    f"Stream '{stream.name}' finished in {elapsed:.1f}s"
+                )
                 self.migration_logger.finalise()
                 self.record_state_logger.finalise()

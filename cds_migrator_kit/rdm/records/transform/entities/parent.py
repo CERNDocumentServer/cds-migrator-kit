@@ -19,6 +19,10 @@ from cds_migrator_kit.rdm.records.transform.mappers.record import AccessGrantsMa
 
 EMAIL_PATTERN = re.compile(r"[^@]+@[^@]+\.[^@]+")
 
+# Cache submitter email → user_id across records.  Stable for one migration
+# run since users are created before the records stream starts.
+_submitter_id_by_email: dict = {}
+
 
 class RecordParent:
     """The parent record for one migrated CDS record.
@@ -77,9 +81,12 @@ class RecordParent:
         email = self.dojson_entry.pop("submitter", None)
         if not email:
             owner = "system"
+        elif email in _submitter_id_by_email:
+            owner = _submitter_id_by_email[email]
         else:
             try:
                 user = User.query.filter_by(email=email).one()
+                _submitter_id_by_email[email] = user.id
                 owner = user.id
             except NoResultFound:
                 raise UnexpectedValue(

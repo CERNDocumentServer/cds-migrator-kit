@@ -20,14 +20,32 @@ from cds_migrator_kit.errors import ManualImportRequired, RecordFlaggedCuration
 from cds_migrator_kit.rdm.migration_config import VOCABULARIES_NAMES_SCHEMES
 from cds_migrator_kit.rdm.records.transform.mappers.base import FieldMapper
 
+# Sentinel distinguishing "not yet cached" from "cached as None (not found)".
+_MISSING = object()
+
+# Per-process caches. Plain-dict row representations avoid SQLAlchemy object
+# expiry issues that occur across UoW commits between records.
+_affiliation_ror_cache: dict = (
+    {}
+)  # ror_normalized → bool (exists in AffiliationsMetadata)
+_affiliation_legacy_cache: dict = (
+    {}
+)  # legacy_name → {"curated","exact","not_exact"} or None
+_person_id_to_user_id: dict = {}  # cern person_id str → user_id int or None
+
 
 def match_affiliation(affiliation_name, ctx):
     """Match an affiliation against `CDSMigrationAffiliationMapping` db table."""
     dojson_entry = ctx.dojson_entry
     if is_ror(affiliation_name):
         ror = normalize_ror(affiliation_name)
-        name = AffiliationsMetadata.query.filter_by(pid=ror).one_or_none()
-        if name is None:
+        exists = _affiliation_ror_cache.get(ror, _MISSING)
+        if exists is _MISSING:
+            exists = (
+                AffiliationsMetadata.query.filter_by(pid=ror).one_or_none() is not None
+            )
+            _affiliation_ror_cache[ror] = exists
+        if not exists:
             raise ManualImportRequired(
                 message="Affiliation {ror} does not exist in the AffiliationMetadata table".format(
                     ror=ror
@@ -41,20 +59,35 @@ def match_affiliation(affiliation_name, ctx):
                 subfield=None,
             )
         return {"id": normalize_ror(affiliation_name)}
-    # Step 1: search in the affiliation mapping (ROR organizations)
-    match = ctx.affiliations_mapping.query.filter_by(
-        legacy_affiliation_input=affiliation_name
-    ).one_or_none()
-    if match:
+
+    # Legacy name lookup — cache the row fields as a plain dict to avoid
+    # SQLAlchemy object expiry that occurs across UoW commits.
+    cached = _affiliation_legacy_cache.get(affiliation_name, _MISSING)
+    if cached is _MISSING:
+        match = ctx.affiliations_mapping.query.filter_by(
+            legacy_affiliation_input=affiliation_name
+        ).one_or_none()
+        cached = (
+            {
+                "curated": match.curated_affiliation,
+                "exact": match.ror_exact_match,
+                "not_exact": match.ror_not_exact_match,
+            }
+            if match is not None
+            else None
+        )
+        _affiliation_legacy_cache[affiliation_name] = cached
+
+    if cached is not None:
         # Step 1: check if there is a curated input
-        if match.curated_affiliation:
-            return match.curated_affiliation
+        if cached["curated"]:
+            return cached["curated"]
         # Step 2: check if there is an exact match
-        if match.ror_exact_match:
-            return {"id": normalize_ror(match.ror_exact_match)}
+        if cached["exact"]:
+            return {"id": normalize_ror(cached["exact"])}
         # Step 3: check if there is not exact match
-        if match.ror_not_exact_match:
-            _affiliation_ror_id = normalize_ror(match.ror_not_exact_match)
+        if cached["not_exact"]:
+            _affiliation_ror_id = normalize_ror(cached["not_exact"])
             raise RecordFlaggedCuration(
                 subfield="u",
                 value={"id": _affiliation_ror_id},
@@ -120,9 +153,12 @@ def _lookup_person_id(creator):
         {},
     ).get("identifier")
     if person_id:
-        ui = UserIdentity.query.filter_by(id=person_id).one_or_none()
-        if ui:
-            user_id = ui.user.id
+        user_id = _person_id_to_user_id.get(person_id, _MISSING)
+        if user_id is _MISSING:
+            ui = UserIdentity.query.filter_by(id=person_id).one_or_none()
+            user_id = ui.user.id if ui else None
+            _person_id_to_user_id[person_id] = user_id
+        if user_id is not None:
             names = NamesMetadata.query.filter_by(internal_id=str(user_id)).all()
             name = next(
                 (name for name in names if "unlisted" not in name.json.get("tags", [])),
