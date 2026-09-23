@@ -924,7 +924,7 @@ def related_identifiers_787(self, key, value):
             "resource_type": {"id": "publication-report"},
         },
         "complemented by": {
-            "relation_type": {"id": "issuplementedby"},
+            "relation_type": {"id": "issupplementedby"},
             "resource_type": {"id": "publication-report"},
         },
         "preprint": {
