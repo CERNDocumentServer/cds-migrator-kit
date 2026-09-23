@@ -42,12 +42,15 @@ class ResearchCommitteeModel(CdsOverdo):
         "340__a",  # TODO ignore material?
         "540__3",  # TODO still ignore the material of the license?
         "542__3",  # TODO still ignore the material of the license?
+        "594__a",  # ATN tag
         "595__i",  # TODO ??
         "695__e",  # some inspire tag
+        "695__9",  # some inspire tag
         "700__m",  # email of contributor
         "700__q",  # TODO ignore? aliteration of the name, used for searching
         "700__v",  # TODO drop?
         "773__x",  # INSPIRE publication note
+        "852__a",
         "8564_8",  # file id
         "8564_s",  # bibdoc id
         "8564_x",  # icon thumbnails sizes
