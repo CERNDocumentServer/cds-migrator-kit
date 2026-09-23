@@ -34,9 +34,13 @@ IGNORE_SYSTEM_KEYS = {
     "540__3",  # Material of the license
     "540__9",  # Also material of the license
     "540__g",  # From SIS (see decision log)
+    "541__a",  # See decision log
+    "541__c",  # See decision log
+    "541__d",  # See decision log
+    "541__e",  # See decision log
     "542__3",  # Also material of the license
     "595__i",  # From SIS: see decision log
-    "696__9",  # From SIS: see decision log
+    "695__9",  # From SIS: see decision log
     "700__m",  # email of contributor
     "773__t",  # from SIS: can be ignored
     "773__0",  # from SIS: can be ignored
@@ -58,6 +62,7 @@ IGNORE_SYSTEM_KEYS = {
     "961__h",  # CDS modification tag # TODO
     "961__l",  # CDS modification tag # TODO
     "961__x",  # CDS modification tag # TODO
+    "964__a",  # See decision log
     "981__a",  # duplicate record id
     "999C50",  # From SIS: all 999* fields can be ignored
     "999C52",  # https://cds.cern.ch/record/2640188/export/hm?ln=en
