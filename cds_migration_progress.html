@@ -1,0 +1,862 @@
+<title>CDS Migration Progress, 2015–2026</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6; /* blue: legacy CDS, total (est. incl. restricted) */
+    --series-1-wash:  rgba(42,120,214,0.10);
+    --series-3:       #1baf7a; /* aqua: repository.cern cumulative */
+    --series-3-wash:  rgba(27,175,122,0.10);
+    --series-4:       #eda100; /* yellow: catalogue.library.cern cumulative */
+    --series-5:       #e87ba4; /* magenta: videos.cern.ch cumulative */
+    --series-2:       #eb6834; /* orange: migration milestones */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3987e5;
+      --series-1-wash:  rgba(57,135,229,0.14);
+      --series-3:       #199e70;
+      --series-3-wash:  rgba(25,158,112,0.16);
+      --series-4:       #c98500;
+      --series-5:       #d55181;
+      --series-2:       #d95926;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page:           #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3987e5;
+    --series-1-wash:  rgba(57,135,229,0.14);
+    --series-3:       #199e70;
+    --series-3-wash:  rgba(25,158,112,0.16);
+    --series-4:       #c98500;
+    --series-5:       #d55181;
+    --series-2:       #d95926;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .viz-root {
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page);
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 28px clamp(16px, 3vw, 40px) 56px;
+  }
+  .wrap { width: 100%; margin: 0 auto; }
+  .wrap .prose { max-width: 780px; }
+
+  header h1 { font-size: 22px; font-weight: 650; margin: 0 0 6px; letter-spacing: -0.01em; }
+  header p.sub { font-size: 14px; color: var(--text-secondary); margin: 0 0 24px; line-height: 1.5; }
+
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px clamp(16px, 2vw, 32px) 8px;
+  }
+
+  .chart-caption {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 18px;
+    font-size: 12px; color: var(--text-secondary);
+    margin: 0 0 4px 4px;
+  }
+  .chart-caption .key { display: inline-flex; align-items: center; gap: 6px; }
+  .chart-caption .swatch-line { width: 14px; height: 2px; display: inline-block; }
+  .chart-caption .swatch-line.s1 { background: var(--series-1); }
+  .chart-caption .swatch-line.s3 { background: var(--series-3); }
+  .chart-caption .swatch-line.s4 { background: var(--series-4); }
+  .chart-caption .swatch-line.s5 { background: var(--series-5); }
+  .chart-caption .swatch-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--series-2); display: inline-block; }
+
+  svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .baseline { stroke: var(--baseline); stroke-width: 1; }
+  .axis-label { fill: var(--text-muted); font-size: 12px; }
+  .axis-title { font-size: 12px; font-weight: 650; fill: var(--text-secondary); }
+
+  .line-legacy { fill: none; stroke: var(--series-1); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+  .area-legacy { fill: var(--series-1-wash); stroke: none; }
+  .line-repo { fill: none; stroke: var(--series-3); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+  .line-catalogue { fill: none; stroke: var(--series-4); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+  .end-dot-legacy { fill: var(--series-1); stroke: var(--surface-1); stroke-width: 2; }
+  .peak-dot { fill: var(--series-1); stroke: var(--surface-1); stroke-width: 2; }
+  .step-dot { fill: var(--series-3); stroke: var(--surface-1); stroke-width: 2; }
+  .end-dot-repo { fill: var(--series-3); stroke: var(--surface-1); stroke-width: 2; }
+  .year-dot-catalogue { fill: var(--series-4); stroke: var(--surface-1); stroke-width: 2; }
+  .end-dot-catalogue { fill: var(--series-4); stroke: var(--surface-1); stroke-width: 2; }
+  .line-videos { fill: none; stroke: var(--series-5); stroke-width: 2.5; stroke-linejoin: round; stroke-linecap: round; }
+  .year-dot-videos { fill: var(--series-5); stroke: var(--surface-1); stroke-width: 2; }
+  .end-dot-videos { fill: var(--series-5); stroke: var(--surface-1); stroke-width: 2; }
+  .direct-label { fill: var(--text-primary); font-size: 12.5px; font-weight: 600; }
+  .direct-label-sub { fill: var(--text-secondary); font-size: 11.5px; }
+
+  .milestone-line { stroke: var(--series-2); stroke-width: 1.5; stroke-dasharray: 3,3; opacity: 0.6; }
+  .milestone-badge circle { fill: var(--series-2); }
+  .milestone-badge text { fill: #ffffff; font-size: 10px; font-weight: 700; }
+  .milestone-badge { cursor: default; }
+
+  .crosshair { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 2,2; opacity: 0; pointer-events: none; }
+  .hover-dot { stroke: var(--surface-1); stroke-width: 2; opacity: 0; pointer-events: none; }
+  .hit-rect { fill: transparent; }
+
+  .tooltip rect { fill: var(--text-primary); }
+  .tooltip .t-value-1 { fill: var(--page); font-size: 12px; font-weight: 700; }
+  .tooltip .t-value-3 { fill: var(--page); font-size: 12px; font-weight: 700; opacity: 0.9; }
+  .tooltip .t-value-4 { fill: var(--page); font-size: 12px; font-weight: 700; opacity: 0.9; }
+  .tooltip .t-value-raw { fill: var(--page); font-size: 11px; font-weight: 500; opacity: 0.6; }
+  .tooltip .t-date { fill: var(--page); font-size: 11px; opacity: 0.75; }
+  .tooltip { opacity: 0; pointer-events: none; transition: opacity 80ms linear; }
+
+  .milestones-list {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 12px 24px;
+  }
+  .milestone-item { display: flex; gap: 10px; padding-bottom: 12px; }
+  .m-badge {
+    flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--series-2); color: #fff; font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; margin-top: 1px;
+  }
+  .m-text .m-date { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
+  .m-text .m-desc { font-size: 13.5px; color: var(--text-primary); line-height: 1.4; margin-top: 1px; }
+
+  details.data-table { margin-top: 20px; max-width: 900px; }
+  details.data-table summary {
+    cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-secondary);
+    padding: 10px 0; border-top: 1px solid var(--border);
+    list-style: none;
+  }
+  details.data-table summary::-webkit-details-marker { display: none; }
+  details.data-table summary::before { content: "▸ "; }
+  details.data-table[open] summary::before { content: "▾ "; }
+  table.dt { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-bottom: 16px; }
+  table.dt th, table.dt td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--gridline); font-variant-numeric: tabular-nums; }
+  table.dt th { color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.02em; }
+  table.dt td.num { text-align: right; }
+  table.dt td.muted { color: var(--text-muted); }
+  table.dt caption { text-align: left; font-size: 12.5px; font-weight: 650; color: var(--text-primary); padding: 4px 10px 8px; caption-side: top; }
+
+  footer.note { margin-top: 18px; font-size: 11.5px; color: var(--text-muted); line-height: 1.6; max-width: 860px; }
+  footer.note a { color: var(--text-muted); }
+</style>
+
+<div class="viz-root">
+  <div class="wrap">
+    <header class="prose">
+      <h1>CDS migration progress, 2015–2026</h1>
+      <p class="sub">Legacy CDS (cds.cern.ch) total record count (estimated including restricted records), plotted on the same scale as cumulative records migrated into repository.cern, cumulative books held in catalogue.library.cern since its 21 April 2021 launch, and cumulative videos held on videos.cern.ch since the 2017 migration.</p>
+    </header>
+
+    <div class="card">
+      <div class="chart-caption">
+        <span class="key"><span class="swatch-line s1"></span> Legacy CDS total records (est. incl. restricted)</span>
+        <span class="key"><span class="swatch-line s3"></span> repository.cern cumulative records</span>
+        <span class="key"><span class="swatch-line s4"></span> catalogue.library.cern cumulative records</span>
+        <span class="key"><span class="swatch-line s5"></span> videos.cern.ch cumulative records</span>
+        <span class="key"><span class="swatch-dot"></span> Migration milestone</span>
+      </div>
+      <svg class="chart" id="chart" viewBox="0 0 1600 480" role="img" aria-label="Line chart from 2015 to 2026, single shared scale: legacy CDS total record count, repository.cern cumulative record count, catalogue.library.cern cumulative records since its 2021 launch, and videos.cern.ch cumulative records since its 2017 migration, with eight migration milestones annotated"></svg>
+    </div>
+
+    <div class="milestones-list" id="milestones-list"></div>
+
+    <details class="data-table">
+      <summary>View underlying data (Wayback Machine snapshots &amp; migration events)</summary>
+      <table class="dt">
+        <caption>Legacy CDS (cds.cern.ch) — Wayback Machine snapshots</caption>
+        <thead><tr><th>Snapshot date</th><th class="num">Public count (scraped)</th><th class="num">Retroactive adjustment</th><th class="num">Est. total incl. restricted (plotted)</th><th class="num">repository.cern migrated to date</th><th class="num">Net of repository.cern</th></tr></thead>
+        <tbody id="dt-body-legacy"></tbody>
+      </table>
+      <table class="dt">
+        <caption>repository.cern — migration events</caption>
+        <thead><tr><th>Date</th><th>Content migrated</th><th class="num">Records added</th><th class="num">Cumulative total</th></tr></thead>
+        <tbody id="dt-body-repo"></tbody>
+      </table>
+      <table class="dt">
+        <caption>catalogue.library.cern — books created per year (via /api/documents)</caption>
+        <thead><tr><th>Period</th><th class="num">Books created</th><th class="num">Cumulative total</th></tr></thead>
+        <tbody id="dt-body-catalogue"></tbody>
+      </table>
+      <table class="dt">
+        <caption>videos.cern.ch — videos created per year (via /api/records)</caption>
+        <thead><tr><th>Period</th><th class="num">Videos created</th><th class="num">Cumulative total</th></tr></thead>
+        <tbody id="dt-body-videos"></tbody>
+      </table>
+    </details>
+
+    <footer class="note">
+      Legacy CDS source: record counts scraped from the CDS homepage as captured by the Internet Archive Wayback
+      Machine (web.archive.org, cds.cern.ch), which reflects only <strong>publicly visible</strong> records. The
+      confirmed current total including restricted records is 592,089 (2 August 2026); comparing that to the
+      closest scraped snapshot (566,063, 18 July 2026) implies roughly 26,026 restricted records are not shown by
+      the public counter. Since we have no historical breakdown of restricted records, that offset is extrapolated
+      as a constant and added to every earlier scraped snapshot to estimate a total-including-restricted series
+      (shown in the data table); this assumes the restricted share has stayed roughly flat in absolute terms, which
+      is a simplification. The final point uses the confirmed live total (592,089, 2 August 2026) directly as its
+      total, rather than a scraped-plus-offset estimate. Every other plotted point carries a
+      <strong>retroactive adjustment</strong>, summing three components, so the total line depicts the drop each
+      repository.cern migration should produce even though the scraped public counter itself never dips at those
+      dates (that content isn't purged from legacy CDS on migration). Component A covers CERN Bulletin &amp;
+      Courier, IT department, and HR content (Nov 2025 &ndash; Jan 2026): every point from 2015 through Jan 2024
+      carries the same flat allowance (~111,000&ndash;114,000, an approximate reconstruction of that content's
+      size) since none of it had migrated yet; it tapers to +63,000 after CERN Bulletin and Courier moved (Nov
+      2025), +3,000 after IT department content moved (Dec 2025), and 0 once HR content had also moved (Jan
+      2026). Component B covers Staff Association content and the ALEPH/DELPHI/L3/OPAL research records (Jul
+      2026): a flat +13,000 on every point up to 29 July 2026, then 0. Component C covers theses (12,000): a flat
+      +12,000 on every point up to the 15 May 2025 migration, then 0. The three sum, so points before Nov 2024
+      carry all three, points from Nov 2024 through early May 2025 carry A and C, and points from late May 2025
+      through Jan 2026 carry only B (or A tapering alongside it from Nov 2025). Three points (Nov &amp; Dec 2024,
+      Oct 2025) have no underlying wayback snapshot and are linearly interpolated between the nearest real ones
+      before any adjustment is applied; the data table below marks every reconstructed or boosted point. A
+      <strong>net-of-repository.cern</strong> figure &mdash; the total minus the cumulative amount migrated to
+      repository.cern by that date &mdash; is also computed and shown in the hover tooltip and the data table, for
+      readers who want legacy CDS's content net of what's already been migrated out. Neither retroactive
+      adjustment nor the net-of-repository.cern subtraction applies to the videos.cern.ch or catalogue.library.cern
+      migrations, since that content did not move to repository.cern.
+      repository.cern source: cumulative total (130,000) built from known migration batch sizes at each event date
+      (no continuous archive exists for this newer platform), including a &plusmn;1,500 reconciliation against the
+      confirmed live total to account for imprecise per-event estimates. catalogue.library.cern source: current
+      total holdings (211,323) queried live from the public <code>/api/documents</code> endpoint; yearly
+      books-created counts from the same endpoint's <code>_created</code> field, from 21 April 2021 onward, account
+      for 84,508 of that total, with the remaining 126,815 reconstructed as the baseline migrated on launch day (its
+      original bibliographic creation dates are preserved from the legacy system, so it isn't separately
+      timestamped as "migrated"). videos.cern.ch source: current total holdings (39,000, including restricted)
+      queried live; yearly videos-created counts from the public <code>/api/records</code> endpoint's
+      <code>_created</code> field, from 2017 onward, account for 17,357 of that total, with the remaining 21,643
+      reconstructed as the baseline migrated during the 2017 bulk migration from legacy CDS. Both the
+      catalogue.library.cern and videos.cern.ch lines therefore step from 0 to their reconstructed baseline at
+      launch and grow to their live totals from there. All four series share a single record-count scale. Data
+      compiled 2 August 2026.
+    </footer>
+  </div>
+</div>
+
+<script>
+(function () {
+  var legacyDataRaw = [
+    ["2015-01-05", 1400797],
+    ["2016-01-07", 1465313],
+    ["2017-01-26", 1311296],
+    ["2017-03-06", 1287962],
+    ["2017-05-02", 1290040],
+    ["2017-06-02", 1292625],
+    ["2017-07-01", 1218913],
+    ["2017-08-07", 1208499],
+    ["2017-10-06", 766190],
+    ["2017-11-11", 684065],
+    ["2017-12-01", 666315],
+    ["2018-01-08", 656201],
+    ["2019-01-03", 662438],
+    ["2020-01-06", 671582],
+    ["2021-01-17", 681176],
+    ["2021-03-02", 681265],
+    ["2021-05-04", 687563],
+    ["2021-07-03", 538849],
+    ["2021-09-09", 540689],
+    ["2021-12-02", 542732],
+    ["2022-02-01", 544214],
+    ["2023-01-01", 563957],
+    ["2023-10-01", 574832],
+    ["2023-11-01", 577910],
+    ["2023-12-01", 579956],
+    ["2024-01-01", 532911],
+    ["2025-01-03", 551049],
+    ["2025-04-01", 554367],
+    ["2025-05-01", 555135],
+    ["2025-06-01", 556087],
+    ["2025-07-01", 557567],
+    ["2025-11-01", 561690],
+    ["2025-12-01", 562460],
+    ["2026-01-01", 563061],
+    // 2026-08-02: confirmed current total including restricted records (566,063 on 2026-07-18
+    // was the public-homepage count, which excludes restricted records).
+    ["2026-08-02", 592089]
+  ];
+
+  // No wayback snapshot exists for these dates, but they're needed for adequate resolution around
+  // the retroactive adjustment below. Baseline (pre-adjustment) values are linearly interpolated
+  // between the nearest real scraped snapshots.
+  var legacyReconstructed = [
+    ["2024-11-01", 548026],
+    ["2024-12-01", 549538],
+    ["2025-10-01", 560659]
+  ];
+
+  // Retroactive adjustment: the wayback-scraped public counter never dipped when this content
+  // moved to repository.cern (it wasn't purged from legacy CDS), so it doesn't show the expected
+  // drops. This boosts pre-migration points so the total line depicts the drop at each event once
+  // that content is known to have left. Two components, summed:
+  //
+  // Component A — milestones 5–7 (CERN Bulletin+Courier 38k, IT department 60k, HR content 3k),
+  // tapering off exactly as each migration happens. Any point before the tapering window (i.e.
+  // everything from 2015 through Jan 2024) gets the same flat allowance as Dec 2024–Jul 2025,
+  // since that content was equally "not yet migrated" the whole time before.
+  var legacyRetroBoostA = {
+    "2024-11-01": 114000,
+    "2024-12-01": 111000,
+    "2025-01-03": 111000,
+    "2025-04-01": 111000,
+    "2025-05-01": 111000,
+    "2025-06-01": 111000,
+    "2025-07-01": 111000,
+    "2025-10-01": 101000,
+    "2025-11-01": 63000,
+    "2025-12-01": 3000
+  };
+  var legacyBoostATaperStart = new Date("2024-11-01T00:00:00Z");
+  function legacyBoostA(rawStr, date) {
+    if (legacyRetroBoostA.hasOwnProperty(rawStr)) return legacyRetroBoostA[rawStr];
+    return date < legacyBoostATaperStart ? 111000 : 0;
+  }
+
+  // Component B — milestone 8 (Staff Association 3k + ALEPH/DELPHI/L3/OPAL 10k = 13k), applied
+  // for consistency with component A: flat before the 29 Jul 2026 migration, 0 after.
+  var legacyBoostBCutoff = new Date("2026-07-29T00:00:00Z");
+  function legacyBoostB(date) {
+    return date < legacyBoostBCutoff ? 13000 : 0;
+  }
+
+  // Component C — milestone 4 (theses, 12k), applied for the same reason: flat on every point
+  // before the 15 May 2025 migration, 0 after.
+  var legacyBoostCCutoff = new Date("2025-05-15T00:00:00Z");
+  function legacyBoostC(date) {
+    return date < legacyBoostCCutoff ? 12000 : 0;
+  }
+
+  var legacyCombined = legacyDataRaw.map(function (d) { return { rawStr: d[0], base: d[1], scraped: true }; })
+    .concat(legacyReconstructed.map(function (d) { return { rawStr: d[0], base: d[1], scraped: false }; }))
+    .sort(function (a, b) { return new Date(a.rawStr) - new Date(b.rawStr); });
+
+  // repository.cern migration events: [date, content, records added]
+  var repoEvents = [
+    ["2023-12-01", "Summer student notes (first repository.cern migration)", 2500],
+    ["2025-05-15", "Theses", 12000],
+    ["2025-11-05", "CERN Bulletin", 25000],
+    ["2025-11-20", "CERN Courier", 13000],
+    ["2025-12-01", "IT department content", 60000],
+    ["2026-01-01", "HR content", 3000],
+    ["2026-07-29", "Staff Association content", 3000],
+    ["2026-07-30", "ALEPH, DELPHI, L3, OPAL (first research records)", 10000],
+    ["2026-08-02", "Reconciliation vs. confirmed live total (130,000)", 1500]
+  ].map(function (e) { return { date: new Date(e[0] + "T00:00:00Z"), raw: e[0], content: e[1], added: e[2] }; });
+  var cum = 0;
+  repoEvents.forEach(function (e) { cum += e.added; e.cumulative = cum; });
+
+  function repoValueAt(date) {
+    var v = 0;
+    for (var i = 0; i < repoEvents.length; i++) {
+      if (date >= repoEvents[i].date) v = repoEvents[i].cumulative;
+    }
+    return v;
+  }
+
+  // catalogue.library.cern: current total holdings, queried live from /api/documents (2 Aug 2026): 211,323.
+  // Yearly "books created" counts (via the _created field) from the 2021-04-21 migration launch onward
+  // account for 84,508 of that total; the remainder (126,815) is the baseline migrated on launch day —
+  // reconstructed as total minus post-launch growth, since it isn't separately timestamped as "migrated".
+  var catalogueTotalNow = 211323;
+  var catalogueYearly = [
+    ["2021-04-21", "2021-12-31", "2021 (from launch)", 1846],
+    ["2022-01-01", "2022-12-31", "2022", 6553],
+    ["2023-01-01", "2023-12-31", "2023", 4302],
+    ["2024-01-01", "2024-12-31", "2024", 12607],
+    ["2025-01-01", "2025-12-31", "2025", 55790],
+    ["2026-01-01", "2026-08-02", "2026 (to date)", 3410]
+  ].map(function (r) { return { periodEnd: new Date(r[1] + "T00:00:00Z"), label: r[2], added: r[3] }; });
+  var catGrowthTotal = catalogueYearly.reduce(function (s, r) { return s + r.added; }, 0);
+  var catalogueBaseline = catalogueTotalNow - catGrowthTotal;
+  var catCum = catalogueBaseline;
+  var catalogueData = [
+    { date: new Date("2021-04-20T00:00:00Z"), cumulative: 0 },
+    { date: new Date("2021-04-21T00:00:00Z"), cumulative: catalogueBaseline }
+  ];
+  catalogueYearly.forEach(function (r) {
+    catCum += r.added;
+    r.cumulative = catCum;
+    catalogueData.push({ date: r.periodEnd, cumulative: catCum });
+  });
+
+  function interpAt(dataArr, date) {
+    if (date <= dataArr[0].date) return 0;
+    for (var i = 1; i < dataArr.length; i++) {
+      if (date <= dataArr[i].date) {
+        var a = dataArr[i - 1], b = dataArr[i];
+        var frac = (date - a.date) / (b.date - a.date);
+        return a.cumulative + frac * (b.cumulative - a.cumulative);
+      }
+    }
+    return dataArr[dataArr.length - 1].cumulative;
+  }
+  function catalogueValueAt(date) { return interpAt(catalogueData, date); }
+
+  // videos.cern.ch: current total holdings (39,000, including restricted), queried live. Yearly
+  // "videos created" counts (via the _created field on /api/records) from the 2017 bulk migration
+  // onward account for 17,357 of that total; the remainder (21,643) is the baseline migrated in 2017.
+  var videosTotalNow = 39000;
+  var videosYearly = [
+    ["2017-01-01", "2017-12-31", "2017 (from migration)", 1111],
+    ["2018-01-01", "2018-12-31", "2018", 1223],
+    ["2019-01-01", "2019-12-31", "2019", 1489],
+    ["2020-01-01", "2020-12-31", "2020", 1397],
+    ["2021-01-01", "2021-12-31", "2021", 2398],
+    ["2022-01-01", "2022-12-31", "2022", 2024],
+    ["2023-01-01", "2023-12-31", "2023", 2096],
+    ["2024-01-01", "2024-12-31", "2024", 1848],
+    ["2025-01-01", "2025-12-31", "2025", 2301],
+    ["2026-01-01", "2026-08-02", "2026 (to date)", 1470]
+  ].map(function (r) { return { periodEnd: new Date(r[1] + "T00:00:00Z"), label: r[2], added: r[3] }; });
+  var videosGrowthTotal = videosYearly.reduce(function (s, r) { return s + r.added; }, 0);
+  var videosBaseline = videosTotalNow - videosGrowthTotal;
+  var vidCum = videosBaseline;
+  var videosData = [
+    { date: new Date("2016-12-31T00:00:00Z"), cumulative: 0 },
+    { date: new Date("2017-01-01T00:00:00Z"), cumulative: videosBaseline }
+  ];
+  videosYearly.forEach(function (r) {
+    vidCum += r.added;
+    r.cumulative = vidCum;
+    videosData.push({ date: r.periodEnd, cumulative: vidCum });
+  });
+  function videosValueAt(date) { return interpAt(videosData, date); }
+
+  // Legacy CDS restricted-records extrapolation: the wayback-scraped counts are public-visible
+  // only. Comparing the confirmed current total (592,089, incl. restricted, 2 Aug 2026) against the
+  // closest scraped snapshot (566,063, 18 Jul 2026) implies ~26,026 restricted records are hidden
+  // from the public counter. With no historical breakdown available, that offset is treated as a
+  // constant and applied to every earlier scraped snapshot.
+  var confirmedTotalNow = 592089;
+  var closestScrapedPublic = 566063;
+  var restrictedOffset = confirmedTotalNow - closestScrapedPublic;
+
+  var legacyData = legacyCombined.map(function (d, i) {
+    var date = new Date(d.rawStr + "T00:00:00Z");
+    var isLatest = i === legacyCombined.length - 1;
+    var retroBoost = isLatest ? 0 : legacyBoostA(d.rawStr, date) + legacyBoostB(date) + legacyBoostC(date);
+    var provenance = isLatest ? "confirmed" : (d.scraped ? "scraped" : "reconstructed");
+    var scrapedPublic = provenance === "scraped" ? d.base : null;
+    // The final point is the confirmed live total already (no restricted-offset extrapolation or
+    // retroactive boost needed, since it already includes restricted records and reflects any
+    // migrations that already happened) — but the repository.cern subtraction still applies
+    // uniformly to every point, including this one, so consecutive points stay consistent: e.g.
+    // Jan 2026 vs Aug 2026 should differ by roughly what migrated to repository.cern in between
+    // (~13k in July 2026), not by the full cumulative total.
+    var totalEst = isLatest ? d.base : d.base + restrictedOffset + retroBoost;
+    var migrated = repoValueAt(date);
+    return { date: date, rawStr: d.rawStr, provenance: provenance, scrapedPublic: scrapedPublic, retroBoost: retroBoost, raw: totalEst, migrated: migrated, value: totalEst - migrated };
+  });
+
+  var milestones = [
+    { date: "2017-01-01", n: 1, label: "Videos migrated", detail: "2017: bulk migration of CDS video content to videos.cern.ch (~21,600 videos in the initial batch) — the legacy CDS record count drops sharply through H2 2017 as a result." },
+    { date: "2021-04-21", n: 2, label: "120k books migrated", detail: "21 Apr 2021: ~120,000 books migrated to catalogue.library.cern (CERN Library Catalogue)." },
+    { date: "2023-12-01", n: 3, label: "First repository.cern migration", detail: "Dec 2023: first migration to repository.cern — 2,500 summer student notes." },
+    { date: "2025-05-15", n: 4, label: "Theses migrated", detail: "15 May 2025: theses migrated to repository.cern (+12,000 records)." },
+    { date: "2025-11-12", n: 5, label: "CERN Bulletin & Courier migrated", detail: "Nov 2025: CERN Bulletin (+25,000 records) and CERN Courier (+13,000 records) migrated to repository.cern." },
+    { date: "2025-12-01", n: 6, label: "IT department migrated", detail: "Dec 2025: IT department content migrated to repository.cern (+60,000 records)." },
+    { date: "2026-01-01", n: 7, label: "HR content migrated", detail: "Jan 2026: HR content migrated to repository.cern (+3,000 records)." },
+    { date: "2026-07-29", n: 8, label: "Staff Association & first research records migrated", detail: "29–30 Jul 2026: Staff Association content (+3,000 records) and ALEPH, DELPHI, L3 and OPAL content (+10,000 records) migrated to repository.cern — the latter the first research records on the new platform." }
+  ].map(function (m) { return Object.assign({}, m, { dateObj: new Date(m.date + "T00:00:00Z") }); });
+
+  var W = 1600, H = 480;
+  var marginL = 74, marginR = 32, marginT = 54, marginB = 40;
+  var plotW = W - marginL - marginR;
+  var plotH = H - marginT - marginB;
+  var plotTop = marginT, plotBottom = marginT + plotH;
+
+  var minDate = new Date("2014-09-01T00:00:00Z");
+  var maxDate = new Date("2026-09-15T00:00:00Z");
+  var maxVal = 1500000; // single shared scale for both series
+
+  function xPix(d) { return marginL + (d - minDate) / (maxDate - minDate) * plotW; }
+  function yPix(v) { return plotTop + plotH - (v / maxVal) * plotH; }
+  function fmt(n) { return n.toLocaleString("en-US"); }
+  function monYear(d) { return d.toLocaleDateString("en-US", { month: "short", year: "numeric", timeZone: "UTC" }); }
+
+  var svg = document.getElementById("chart");
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  var svgNS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs) {
+    var e = document.createElementNS(svgNS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  // Single shared axis
+  var ticks = [0, 300000, 600000, 900000, 1200000, 1500000];
+  ticks.forEach(function (t) {
+    var y = yPix(t);
+    svg.appendChild(el("line", { class: "gridline", x1: marginL, x2: marginL + plotW, y1: y, y2: y }));
+    var label = el("text", { class: "axis-label", x: marginL - 10, y: y + 4, "text-anchor": "end" });
+    label.textContent = t === 0 ? "0" : (t / 1000) + "k";
+    svg.appendChild(label);
+  });
+  svg.appendChild(el("line", { class: "baseline", x1: marginL, x2: marginL + plotW, y1: plotBottom, y2: plotBottom }));
+  svg.appendChild((function () { var t = el("text", { class: "axis-title", x: marginL, y: 20 }); t.textContent = "Records"; return t; })());
+
+  // X ticks (years)
+  for (var y = 2015; y <= 2026; y++) {
+    var d = new Date(y + "-01-01T00:00:00Z");
+    var x = xPix(d);
+    var label = el("text", { class: "axis-label", x: x, y: plotBottom + 20, "text-anchor": "middle" });
+    label.textContent = y;
+    svg.appendChild(label);
+  }
+
+  // Legacy CDS line + area — adjusted values, shared scale
+  var sorted = legacyData.slice().sort(function (a, b) { return a.date - b.date; });
+  var linePtsLegacy = sorted.map(function (d) { return xPix(d.date) + "," + yPix(d.raw); });
+  var linePathLegacy = "M" + linePtsLegacy.join(" L");
+  var areaPathLegacy = linePathLegacy +
+    " L" + xPix(sorted[sorted.length - 1].date) + "," + plotBottom +
+    " L" + xPix(sorted[0].date) + "," + plotBottom + " Z";
+  svg.appendChild(el("path", { class: "area-legacy", d: areaPathLegacy }));
+  svg.appendChild(el("path", { class: "line-legacy", d: linePathLegacy }));
+
+  var peak = sorted.reduce(function (a, b) { return b.raw > a.raw ? b : a; });
+  var ppx = xPix(peak.date), ppy = yPix(peak.raw);
+  svg.appendChild(el("circle", { class: "peak-dot", cx: ppx, cy: ppy, r: 4.5 }));
+  var peakLabel = el("text", { class: "direct-label", x: ppx, y: ppy - 16, "text-anchor": "middle" });
+  peakLabel.textContent = "Peak: " + fmt(peak.raw);
+  svg.appendChild(peakLabel);
+  var peakSub = el("text", { class: "direct-label-sub", x: ppx, y: ppy - 3, "text-anchor": "middle" });
+  peakSub.textContent = monYear(peak.date);
+  svg.appendChild(peakSub);
+
+  var lastLegacy = sorted[sorted.length - 1];
+  var llX = xPix(lastLegacy.date), llY = yPix(lastLegacy.raw);
+  svg.appendChild(el("circle", { class: "end-dot-legacy", cx: llX, cy: llY, r: 4.5 }));
+  var endLabelLegacy = el("text", { class: "direct-label", x: llX - 10, y: llY + 18, "text-anchor": "end" });
+  endLabelLegacy.textContent = "Legacy CDS (total): " + fmt(lastLegacy.raw);
+  svg.appendChild(endLabelLegacy);
+
+  // repository.cern step growth line — shared scale
+  var stepPts = [[minDate, 0]];
+  var prevCum = 0;
+  repoEvents.forEach(function (e) {
+    var dayBefore = new Date(e.date.getTime() - 86400000);
+    stepPts.push([dayBefore, prevCum]);
+    stepPts.push([e.date, e.cumulative]);
+    prevCum = e.cumulative;
+  });
+  stepPts.push([maxDate, prevCum]);
+  var linePtsRepo = stepPts.map(function (p) { return xPix(p[0]) + "," + yPix(p[1]); });
+  var linePathRepo = "M" + linePtsRepo.join(" L");
+  svg.appendChild(el("path", { class: "line-repo", d: linePathRepo }));
+
+  repoEvents.forEach(function (e) {
+    var ex = xPix(e.date), ey = yPix(e.cumulative);
+    var dot = el("circle", { class: "step-dot", cx: ex, cy: ey, r: 4.5 });
+    var title = document.createElementNS(svgNS, "title");
+    title.textContent = monYear(e.date) + " — " + e.content + " (+" + fmt(e.added) + ") — cumulative " + fmt(e.cumulative);
+    dot.appendChild(title);
+    svg.appendChild(dot);
+  });
+
+  // (repository.cern's endpoint dot and hover title are already drawn by the repoEvents.forEach
+  // loop above — its value sits close to catalogue.library.cern's and videos.cern.ch's on this
+  // shared scale, so exact current totals live in the legend, tooltip, and data tables below
+  // rather than as a crowded direct label here.)
+
+  // catalogue.library.cern cumulative books-created line — shared scale
+  var linePtsCatalogue = catalogueData.map(function (p) { return xPix(p.date) + "," + yPix(p.cumulative); });
+  var linePathCatalogue = "M" + linePtsCatalogue.join(" L");
+  svg.appendChild(el("path", { class: "line-catalogue", d: linePathCatalogue }));
+
+  catalogueData.slice(1).forEach(function (p) {
+    var cx = xPix(p.date), cy = yPix(p.cumulative);
+    var dot = el("circle", { class: "year-dot-catalogue", cx: cx, cy: cy, r: 4 });
+    var title = document.createElementNS(svgNS, "title");
+    title.textContent = monYear(p.date) + " — cumulative books created in catalogue.library.cern since launch: " + fmt(p.cumulative);
+    dot.appendChild(title);
+    svg.appendChild(dot);
+  });
+
+  // (endpoint dot + hover title already drawn above via catalogueData.slice(1).)
+
+  // videos.cern.ch cumulative videos-created line — shared scale
+  var linePtsVideos = videosData.map(function (p) { return xPix(p.date) + "," + yPix(p.cumulative); });
+  var linePathVideos = "M" + linePtsVideos.join(" L");
+  svg.appendChild(el("path", { class: "line-videos", d: linePathVideos }));
+
+  videosData.slice(1).forEach(function (p) {
+    var vx = xPix(p.date), vy = yPix(p.cumulative);
+    var dot = el("circle", { class: "year-dot-videos", cx: vx, cy: vy, r: 4 });
+    var title = document.createElementNS(svgNS, "title");
+    title.textContent = monYear(p.date) + " — cumulative videos held on videos.cern.ch since migration: " + fmt(p.cumulative);
+    dot.appendChild(title);
+    svg.appendChild(dot);
+  });
+
+  // (endpoint dot + hover title already drawn above via videosData.slice(1).)
+
+  // Milestone verticals + numbered badges
+  var milestonesLayer = el("g", {});
+  milestones.forEach(function (m) {
+    var x = xPix(m.dateObj);
+    milestonesLayer.appendChild(el("line", { class: "milestone-line", x1: x, x2: x, y1: plotTop - 6, y2: plotBottom }));
+    var g = el("g", { class: "milestone-badge", transform: "translate(" + x + "," + (plotTop - 16) + ")" });
+    g.appendChild(el("circle", { r: 9 }));
+    var t = el("text", { x: 0, y: 3.4, "text-anchor": "middle" });
+    t.textContent = m.n;
+    g.appendChild(t);
+    var title = document.createElementNS(svgNS, "title");
+    title.textContent = m.label + " — " + m.detail;
+    g.appendChild(title);
+    milestonesLayer.appendChild(g);
+  });
+  svg.appendChild(milestonesLayer);
+
+  // Shared crosshair + hover dots + tooltip
+  var crosshair = el("line", { class: "crosshair", x1: 0, x2: 0, y1: plotTop, y2: plotBottom });
+  var hoverDotLegacy = el("circle", { class: "hover-dot", r: 5, fill: "var(--series-1)" });
+  var hoverDotRepo = el("circle", { class: "hover-dot", r: 5, fill: "var(--series-3)" });
+  var hoverDotCatalogue = el("circle", { class: "hover-dot", r: 5, fill: "var(--series-4)" });
+  var hoverDotVideos = el("circle", { class: "hover-dot", r: 5, fill: "var(--series-5)" });
+  svg.appendChild(crosshair);
+  svg.appendChild(hoverDotLegacy);
+  svg.appendChild(hoverDotRepo);
+  svg.appendChild(hoverDotCatalogue);
+  svg.appendChild(hoverDotVideos);
+
+  var tooltip = el("g", { class: "tooltip" });
+  var ttRect = el("rect", { rx: 6, width: 250, height: 106 });
+  var ttDate = el("text", { class: "t-date", x: 10, y: 16 });
+  var ttValueLegacy = el("text", { class: "t-value-1", x: 10, y: 33 });
+  var ttValueRepo = el("text", { class: "t-value-3", x: 10, y: 50 });
+  var ttValueCatalogue = el("text", { class: "t-value-4", x: 10, y: 67 });
+  var ttValueVideos = el("text", { class: "t-value-4", x: 10, y: 84 });
+  var ttValueRaw = el("text", { class: "t-value-raw", x: 10, y: 99 });
+  tooltip.appendChild(ttRect);
+  tooltip.appendChild(ttDate);
+  tooltip.appendChild(ttValueLegacy);
+  tooltip.appendChild(ttValueRepo);
+  tooltip.appendChild(ttValueCatalogue);
+  tooltip.appendChild(ttValueVideos);
+  tooltip.appendChild(ttValueRaw);
+  svg.appendChild(tooltip);
+
+  var hitRect = el("rect", { class: "hit-rect", x: marginL, y: plotTop, width: plotW, height: plotH });
+  svg.appendChild(hitRect);
+
+  function nearestLegacyPoint(mouseX) {
+    var best = sorted[0], bestDist = Infinity;
+    sorted.forEach(function (d) {
+      var dist = Math.abs(xPix(d.date) - mouseX);
+      if (dist < bestDist) { bestDist = dist; best = d; }
+    });
+    return best;
+  }
+
+  function handleMove(evt) {
+    var pt = svg.createSVGPoint();
+    pt.x = evt.clientX; pt.y = evt.clientY;
+    var loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+    var d = nearestLegacyPoint(loc.x);
+    var x = xPix(d.date);
+    var yL = yPix(d.raw);
+    var yR = yPix(d.migrated);
+    var catVal = catalogueValueAt(d.date);
+    var yC = yPix(catVal);
+    var vidVal = videosValueAt(d.date);
+    var yV = yPix(vidVal);
+
+    crosshair.setAttribute("x1", x);
+    crosshair.setAttribute("x2", x);
+    crosshair.style.opacity = 1;
+    hoverDotLegacy.setAttribute("cx", x); hoverDotLegacy.setAttribute("cy", yL); hoverDotLegacy.style.opacity = 1;
+    hoverDotRepo.setAttribute("cx", x); hoverDotRepo.setAttribute("cy", yR); hoverDotRepo.style.opacity = 1;
+    hoverDotCatalogue.setAttribute("cx", x); hoverDotCatalogue.setAttribute("cy", yC); hoverDotCatalogue.style.opacity = 1;
+    hoverDotVideos.setAttribute("cx", x); hoverDotVideos.setAttribute("cy", yV); hoverDotVideos.style.opacity = 1;
+
+    ttDate.textContent = monYear(d.date);
+    ttValueLegacy.textContent = "Legacy CDS (total): " + fmt(d.raw);
+    ttValueRepo.textContent = "repository.cern: " + fmt(d.migrated);
+    ttValueCatalogue.textContent = "catalogue.library.cern: " + fmt(Math.round(catVal));
+    ttValueVideos.textContent = "videos.cern.ch: " + fmt(Math.round(vidVal));
+    ttValueRaw.textContent = "legacy net of repository.cern: " + fmt(d.value);
+    var boxW = 250;
+    var tx = x + 14;
+    if (tx + boxW > marginL + plotW) tx = x - boxW - 14;
+    var ty = Math.max(plotTop, Math.min(yL, Math.min(yR, Math.min(yC, yV))) - 116);
+    tooltip.setAttribute("transform", "translate(" + tx + "," + ty + ")");
+    tooltip.style.opacity = 1;
+  }
+
+  function handleLeave() {
+    crosshair.style.opacity = 0;
+    hoverDotLegacy.style.opacity = 0;
+    hoverDotRepo.style.opacity = 0;
+    hoverDotCatalogue.style.opacity = 0;
+    hoverDotVideos.style.opacity = 0;
+    tooltip.style.opacity = 0;
+  }
+
+  hitRect.addEventListener("pointermove", handleMove);
+  hitRect.addEventListener("pointerleave", handleLeave);
+
+  // Milestones list (always-visible, accessible detail)
+  var listEl = document.getElementById("milestones-list");
+  milestones.forEach(function (m) {
+    var item = document.createElement("div");
+    item.className = "milestone-item";
+    var badge = document.createElement("div");
+    badge.className = "m-badge";
+    badge.textContent = m.n;
+    var text = document.createElement("div");
+    text.className = "m-text";
+    var dateEl = document.createElement("div");
+    dateEl.className = "m-date";
+    dateEl.textContent = monYear(m.dateObj);
+    var descEl = document.createElement("div");
+    descEl.className = "m-desc";
+    descEl.textContent = m.detail;
+    text.appendChild(dateEl);
+    text.appendChild(descEl);
+    item.appendChild(badge);
+    item.appendChild(text);
+    listEl.appendChild(item);
+  });
+
+  // Data tables
+  var dtLegacy = document.getElementById("dt-body-legacy");
+  sorted.forEach(function (d) {
+    var tr = document.createElement("tr");
+    var tdDate = document.createElement("td");
+    tdDate.textContent = d.rawStr;
+    var tdPublic = document.createElement("td");
+    tdPublic.className = "num muted";
+    tdPublic.textContent = d.provenance === "scraped" ? fmt(d.scrapedPublic)
+      : d.provenance === "reconstructed" ? "interpolated" : "confirmed";
+    var tdBoost = document.createElement("td");
+    tdBoost.className = "num muted";
+    tdBoost.textContent = d.retroBoost ? "+" + fmt(d.retroBoost) : "–";
+    var tdTotal = document.createElement("td");
+    tdTotal.className = "num";
+    tdTotal.textContent = fmt(d.raw);
+    var tdMig = document.createElement("td");
+    tdMig.className = "num muted";
+    tdMig.textContent = d.migrated ? "-" + fmt(d.migrated) : "-";
+    var tdVal = document.createElement("td");
+    tdVal.className = "num";
+    tdVal.textContent = fmt(d.value);
+    tr.appendChild(tdDate);
+    tr.appendChild(tdPublic);
+    tr.appendChild(tdBoost);
+    tr.appendChild(tdTotal);
+    tr.appendChild(tdMig);
+    tr.appendChild(tdVal);
+    dtLegacy.appendChild(tr);
+  });
+
+  var dtRepo = document.getElementById("dt-body-repo");
+  repoEvents.forEach(function (e) {
+    var tr = document.createElement("tr");
+    var tdDate = document.createElement("td");
+    tdDate.textContent = e.raw;
+    var tdContent = document.createElement("td");
+    tdContent.textContent = e.content;
+    var tdAdded = document.createElement("td");
+    tdAdded.className = "num";
+    tdAdded.textContent = "+" + fmt(e.added);
+    var tdCum = document.createElement("td");
+    tdCum.className = "num";
+    tdCum.textContent = fmt(e.cumulative);
+    tr.appendChild(tdDate);
+    tr.appendChild(tdContent);
+    tr.appendChild(tdAdded);
+    tr.appendChild(tdCum);
+    dtRepo.appendChild(tr);
+  });
+
+  var dtCatalogue = document.getElementById("dt-body-catalogue");
+  (function () {
+    var tr = document.createElement("tr");
+    var tdPeriod = document.createElement("td");
+    tdPeriod.textContent = "21 Apr 2021 (migration baseline)";
+    var tdAdded = document.createElement("td");
+    tdAdded.className = "num muted";
+    tdAdded.textContent = "+" + fmt(catalogueBaseline) + " (reconstructed)";
+    var tdCum = document.createElement("td");
+    tdCum.className = "num";
+    tdCum.textContent = fmt(catalogueBaseline);
+    tr.appendChild(tdPeriod);
+    tr.appendChild(tdAdded);
+    tr.appendChild(tdCum);
+    dtCatalogue.appendChild(tr);
+  })();
+  catalogueYearly.forEach(function (r) {
+    var tr = document.createElement("tr");
+    var tdPeriod = document.createElement("td");
+    tdPeriod.textContent = r.label;
+    var tdAdded = document.createElement("td");
+    tdAdded.className = "num";
+    tdAdded.textContent = "+" + fmt(r.added);
+    var tdCum = document.createElement("td");
+    tdCum.className = "num";
+    tdCum.textContent = fmt(r.cumulative);
+    tr.appendChild(tdPeriod);
+    tr.appendChild(tdAdded);
+    tr.appendChild(tdCum);
+    dtCatalogue.appendChild(tr);
+  });
+
+  var dtVideos = document.getElementById("dt-body-videos");
+  (function () {
+    var tr = document.createElement("tr");
+    var tdPeriod = document.createElement("td");
+    tdPeriod.textContent = "2017 (migration baseline)";
+    var tdAdded = document.createElement("td");
+    tdAdded.className = "num muted";
+    tdAdded.textContent = "+" + fmt(videosBaseline) + " (reconstructed)";
+    var tdCum = document.createElement("td");
+    tdCum.className = "num";
+    tdCum.textContent = fmt(videosBaseline);
+    tr.appendChild(tdPeriod);
+    tr.appendChild(tdAdded);
+    tr.appendChild(tdCum);
+    dtVideos.appendChild(tr);
+  })();
+  videosYearly.forEach(function (r) {
+    var tr = document.createElement("tr");
+    var tdPeriod = document.createElement("td");
+    tdPeriod.textContent = r.label;
+    var tdAdded = document.createElement("td");
+    tdAdded.className = "num";
+    tdAdded.textContent = "+" + fmt(r.added);
+    var tdCum = document.createElement("td");
+    tdCum.className = "num";
+    tdCum.textContent = fmt(r.cumulative);
+    tr.appendChild(tdPeriod);
+    tr.appendChild(tdAdded);
+    tr.appendChild(tdCum);
+    dtVideos.appendChild(tr);
+  });
+})();
+</script>
