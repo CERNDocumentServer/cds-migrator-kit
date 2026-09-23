@@ -95,7 +95,6 @@ _COMMITTEE_TYPE_OVERRIDES = {
     },
 }
 
-
 def _controlled_subject(term):
     """Build a subjects entry referencing a controlled-vocabulary term.
 

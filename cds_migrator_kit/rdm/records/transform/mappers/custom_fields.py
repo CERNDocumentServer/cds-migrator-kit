@@ -139,7 +139,7 @@ class AcceleratorsMapper(CustomFieldMapper):
             "cern:accelerators", []
         )
         for accelerator in accelerators:
-            if accelerator.lower().strip() in ["not applicable", "xx", "fermi"]:
+            if accelerator.lower().strip() in ["not applicable", "xx", "fermi", "cern recognized expt."]:
                 continue
             result = search_vocabulary(accelerator, "accelerators")
             if result and result not in accelerators_out:

@@ -1,16 +1,29 @@
 db_uri: postgresql://cds-rdm:cds-rdm@localhost:5432/cds-rdm
 records:
-  thesis:
-    data_dir: cds_migrator_kit/rdm/data/thesis
+  lcd_restr:
+    plots: true
+    data_dir: cds_migrator_kit/rdm/data/former_exp/lcd_restr
+    restricted: "True"
+    create_inclusion_request: true
     extract:
-      dirpath: cds_migrator_kit/rdm/data/thesis/dump/
+      dirpath: cds_migrator_kit/rdm/data/former_exp/lcd_restr
     transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/thesis/files/
+      files_dump_dir: cds_migrator_kit/rdm/data/former_exp/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f
-    load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/thesis/duplicated_pids.json
+        - "adc02716-780b-4bba-8e89-6316c9a11cf0"
+  lcd:
+    plots: true
+    create_inclusion_request: true
+    data_dir: cds_migrator_kit/rdm/data/former_exp/lcd
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/former_exp/lcd
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/former_exp/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "adc02716-780b-4bba-8e89-6316c9a11cf0"
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
   mous:
     data_dir: cds_migrator_kit/rdm/data/mous
     extract:

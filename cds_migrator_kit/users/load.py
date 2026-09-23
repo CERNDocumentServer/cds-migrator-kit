@@ -46,6 +46,7 @@ class CDSSubmitterLoad(Load):
         """Load users."""
         self._owner(entry)
         self._reviewers(entry)
+        self._access_grant_emails(entry)
 
     def _validate(self, entry):
         """Validate data before loading."""
@@ -73,6 +74,18 @@ class CDSSubmitterLoad(Load):
                 self._find_or_create_by_email(reviewer)
             else:
                 self._find_or_create_reviewer_by_name(reviewer)
+
+    def _access_grant_emails(self, json_entry):
+        """Fetch or create accounts for direct emails in access grants.
+
+        506 access restriction fields can name a person directly by email
+        (see the `access_grants` rule in
+        cds_migrator_kit/rdm/records/transform/xml_processing/rules/research.py)
+        instead of an e-group/role name - those need an account too, so the
+        record's actual access grant can later be resolved to a User.
+        """
+        for email in json_entry.get("access_grant_emails", []):
+            self._find_or_create_by_email(email)
 
     def _find_or_create_by_email(self, email):
         """Fetch or create a user account by email."""

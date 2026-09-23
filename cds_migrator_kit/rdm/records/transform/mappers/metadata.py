@@ -183,12 +183,23 @@ class SubjectsMapper(FieldMapper):
 
 
 class TableOfContentsMapper(FieldMapper):
-    """Folds table_of_content into additional_descriptions."""
+    """Folds table_of_content into additional_descriptions.
+
+    Also the single place where the final ``additional_descriptions`` list
+    is deduplicated: many different dojson rules append to it (520/246/
+    035/500/210/... across base.py and the various collection-specific
+    rule modules), some legacy records repeat the very same MARC field
+    (identical text, sometimes only differing in a provenance subfield
+    nothing here reads), and not every one of those rules remembers to
+    guard against re-adding an entry already present. Deduplicating once
+    here, after every rule has run, doesn't depend on each of them getting
+    that guard right.
+    """
 
     id = "additional_descriptions"
 
     def map_value(self, ctx):
-        """Move table_of_content into additional_descriptions and return it."""
+        """Move table_of_content into additional_descriptions and dedupe."""
         dojson_entry = ctx.dojson_entry
         toc = dojson_entry.get("table_of_content", [])
         additional_desc = dojson_entry.get("additional_descriptions", [])
@@ -198,6 +209,14 @@ class TableOfContentsMapper(FieldMapper):
             )
             dojson_entry["additional_descriptions"] = additional_desc
             dojson_entry.pop("table_of_content")
+
+        deduped = []
+        for description in dojson_entry.get("additional_descriptions", []):
+            if description not in deduped:
+                deduped.append(description)
+        if deduped:
+            dojson_entry["additional_descriptions"] = deduped
+
         return dojson_entry.get("additional_descriptions")
 
 
