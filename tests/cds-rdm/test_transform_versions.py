@@ -67,11 +67,18 @@ def _file_dump(
     }
 
 
-def _record():
+def _record(pids=None):
     """Build a minimal RecordEntry-shaped test double."""
-    return SimpleNamespace(
-        access_status="public",
-        body={"metadata": {"publication_date": "2020-01-01"}},
+    body = {"metadata": {"publication_date": "2020-01-01"}}
+    if pids:
+        body["pids"] = pids
+    return SimpleNamespace(access_status="public", body=body)
+
+
+def _external_doi_record():
+    """A record double whose DOI provider is "external" (not our prefix)."""
+    return _record(
+        pids={"doi": {"identifier": "10.1234/external", "provider": "external"}}
     )
 
 
@@ -179,6 +186,38 @@ def test_versions_no_files_falls_back_to_metadata_only_version(transform):
     assert versions[1]["access"] == {
         "access_obj": {"record": "public", "files": "public"}
     }
+
+
+def test_versions_external_doi_collapses_into_single_version(transform):
+    """An external DOI record gets one version with every file, not one per revision."""
+    raw_dump_entry = {
+        "recid": 123,
+        "files": [
+            _file_dump(file_version=1, checksum="checksum-v1"),
+            _file_dump(file_version=2, checksum="checksum-v2"),
+            _file_dump(full_name="test.pdf", file_version=1, checksum="checksum-v3"),
+        ],
+    }
+
+    versions = transform._versions(raw_dump_entry, _external_doi_record())
+
+    assert list(versions.keys()) == [2]
+    assert set(versions[2]["files"]) == {"draft.pdf", "test.pdf"}
+    # the latest revision of a same-named file wins, same as the regular
+    # cross-version carry-forward would produce
+    assert versions[2]["files"]["draft.pdf"]["version"] == 2
+    assert versions[2]["files"]["draft.pdf"]["checksum"] == "checksum-v2"
+    assert versions[2]["files"]["test.pdf"]["version"] == 1
+
+
+def test_versions_external_doi_with_no_files_falls_back_to_metadata_only(transform):
+    """An external DOI record with no files still gets the metadata-only fallback."""
+    raw_dump_entry = {"recid": 123, "files": []}
+
+    versions = transform._versions(raw_dump_entry, _external_doi_record())
+
+    assert list(versions.keys()) == [1]
+    assert versions[1]["files"] == {}
 
 
 def test_versions_individual_file_restriction_sets_access_meta(transform):
