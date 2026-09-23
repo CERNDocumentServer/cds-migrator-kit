@@ -23,6 +23,12 @@ class RecordVersionsTransform:
     file A gets uploaded, the later record version still needs to include
     file B too, so each version's file list is a cumulative snapshot, not
     just its own delta.
+
+    Exception: when the record's DOI is external (not minted by our
+    DataCite prefix - see ``RecordEntry._pids()``), we don't own/manage
+    that DOI, so its legacy per-file version history is collapsed into a
+    single RDM version holding every file, instead of one RDM version per
+    legacy file revision - see ``_is_external_doi()``.
     """
 
     def __init__(self, raw_dump_entry, record, files_dump_dir, plots, migration_logger):
@@ -58,6 +64,25 @@ class RecordVersionsTransform:
             own_file_dumps.setdefault(version_number, []).append(file_dump)
             representative_file.setdefault(version_number, file_dump)
 
+        if own_file_dumps and self._is_external_doi():
+            # collapse every legacy file revision into a single version -
+            # its files (see the carry-forward below, still a no-op for one
+            # version) and its access/publication_date (from the latest
+            # legacy version's own representative file, i.e. the current
+            # state) instead of one RDM version per legacy revision.
+            latest_version_number = max(own_file_dumps)
+            own_file_dumps = OrderedDict(
+                [
+                    (
+                        latest_version_number,
+                        [fd for fds in own_file_dumps.values() for fd in fds],
+                    )
+                ]
+            )
+            representative_file = {
+                latest_version_number: representative_file[latest_version_number]
+            }
+
         versions = OrderedDict(
             (
                 version_number,
@@ -88,6 +113,17 @@ class RecordVersionsTransform:
             ).build()
 
         return versions
+
+    def _is_external_doi(self):
+        """Return True if this record's DOI isn't minted through our prefix.
+
+        Mirrors the ``provider`` set in ``RecordEntry._pids()``
+        (``"external"`` when the DOI doesn't start with
+        ``current_app.config["DATACITE_PREFIX"]``); ``False`` (no
+        collapsing) when the record has no DOI at all.
+        """
+        doi = self.record.body.get("pids", {}).get("doi", {})
+        return doi.get("provider") == "external"
 
     def _should_skip_file(self, file_dump):
         if file_dump["subformat"] in FILE_SUBFORMATS_TO_DROP:
