@@ -77,6 +77,9 @@ def _date_precision(date_str):
     `normalize` keeps whichever separator it found, so "2021-05" and
     "2021/05" are both possible - split on both. For an interval only the
     start date is measured.
+
+    Year 1 (``0001-…`` / ``1-…``) has precision 0: if the MARC value has
+    no year, ``normalize`` fills in year 1.
     """
     if not date_str:
         return 0
@@ -84,6 +87,9 @@ def _date_precision(date_str):
     interval = _DATE_INTERVAL.match(date_str)
     if interval:
         date_str = interval.group("start")
+    year_match = re.match(r"^0*(\d+)", date_str)
+    if year_match and int(year_match.group(1)) <= 1:
+        return 0
     return min(len(re.split(r"[-/]", date_str)), 3)
 
 
