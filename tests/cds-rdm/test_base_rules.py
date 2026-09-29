@@ -234,6 +234,11 @@ class TestNormalize:
         result = normalize("2020")
         assert result == "2020"
 
+    def test_normalize_day_only_matches_linux_unpadded_year(self):
+        """Day-only fragments use an unpadded year (Linux strftime style)."""
+        assert normalize("19") == "1-01-19"
+        assert normalize("02") == "1-01-02"
+
 
 class TestUrls:
     """Test urls function from base.py."""

@@ -1203,6 +1203,17 @@ def validate_inspire_identifier(id_value, key):
         )
 
 
+def _format_date(dt, with_day=True):
+    """Format a datetime like Linux ``strftime`` (year not zero-padded).
+
+    macOS ``%Y`` yields ``0001-01-19`` for year 1; Linux/glibc yields
+    ``1-01-19``. Always use the unpadded form so both platforms match.
+    """
+    if with_day:
+        return f"{dt.year}-{dt.month:02d}-{dt.day:02d}"
+    return f"{dt.year}-{dt.month:02d}"
+
+
 # Helper function
 def normalize(date_str):
     """Normalize a date string to EDTF-compatible form."""
@@ -1215,12 +1226,12 @@ def normalize(date_str):
     if re.fullmatch(r"\d{4}[-/]\d{2}", date_str):  # YYYY-MM
         return date_str
     if re.fullmatch(r"\d{4}[-/]\d{2}[-/]\d{2}", date_str):  # YYYY-MM-DD
-        return parse(date_str).strftime("%Y-%m-%d")
+        return _format_date(parse(date_str))
 
     dt = parse(date_str, default=datetime.datetime(1, 1, 1), dayfirst=True)
 
     # If the user explicitly provided a day, keep the full date because the parse() adds day if not present
     if re.search(r"\b\d{1,2}(?:st|nd|rd|th)?\b", date_str, re.IGNORECASE):
-        return dt.strftime("%Y-%m-%d")
+        return _format_date(dt)
 
-    return dt.strftime("%Y-%m")
+    return _format_date(dt, with_day=False)
