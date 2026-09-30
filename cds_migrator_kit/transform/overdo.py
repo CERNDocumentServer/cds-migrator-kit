@@ -6,6 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM overdo model."""
+
 from copy import deepcopy
 
 from cds_dojson.overdo import Overdo
@@ -80,6 +81,10 @@ class CdsOverdo(Overdo):
             items = iteritems(blob)
         items = sorted(items, key=lambda item: item[0])
         for key, value in items:
+            # Skip completely empty datafields that have no subfields
+            # Some records might have these for unknown reasons (e.g. https://cds.cern.ch/record/2964767/export/xm?ln=en)
+            if isinstance(value, dict) and not value.keys():
+                continue
             try:
                 result = self.index.query(key)
                 if not result:
