@@ -22,6 +22,9 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     strip_output,
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
+from cds_migrator_kit.transform.xml_processing.rules.base import (
+    extract_contributor_names,
+)
 
 from ...config import (
     udc_pattern,
@@ -282,6 +285,7 @@ def journal(self, key, value):
         if self.get("_773_m_seen"):
             raise UnexpectedValue(
                 "Multiple 773__m seen. Record requires manual curation.",
+                subfield="m",
                 field=key,
                 value=value,
             )
@@ -290,6 +294,7 @@ def journal(self, key, value):
         if m_value != "publication":
             raise UnexpectedValue(
                 f'Only value "publication" can be ignored for 773__m. Value "{m_value}" requires manual curation.',
+                subfield="m",
                 field=key,
                 value=value,
             )
@@ -839,3 +844,39 @@ def ep_approval(self, key, value):
         }.items()
         if v
     }
+
+
+@model.over("contributors", "^270__")
+@for_each_value
+def contact_person(self, key, value):
+    """Extract the contact persond details, mapping the name if it's available and the email otherwise."""
+    contact_email = value.get("m")
+    contact_name = value.get("p")
+
+    if contact_name is not None:
+        # The contact name takes precedence over the email
+        names = extract_contributor_names(contact_name)
+        return {
+            "person_or_org": {"type": "personal", **names},
+            "role": {"id": "contactperson"},
+        }
+
+    if contact_email is not None:
+        if "@" not in contact_email:
+            raise UnexpectedValue(
+                "Value did not look like an email address",
+                subfield="m",
+                field=key,
+                value=value,
+            )
+
+        return {
+            "person_or_org": {
+                "type": "personal",
+                "name": contact_email,
+                "family_name": contact_email,
+            },
+            "role": {"id": "contactperson"},
+        }
+
+    raise IgnoreKey("contributors")
