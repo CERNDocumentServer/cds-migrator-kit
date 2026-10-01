@@ -7,16 +7,15 @@ IGNORE_SYSTEM_KEYS = {
     "0248_q",
     "852__c",  # holdings will be taken separately
     "852__h",
-    # "035__h",  # OAI harvest tag or timestamp
-    # "035__d",  # OAI harvest tag or timestamp
-    # "035__m",  # OAI harvest format (e.g. `marcxml`)
-    # "035__t",  # oai harvest tag
-    # "035__u",  # oai harvest tag
-    # "035__z",  # oai harvest tag
+    "035__h",  # OAI harvest tag or timestamp
+    "035__d",  # OAI harvest tag or timestamp
+    "035__m",  # OAI harvest format (e.g. `marcxml`)
+    "035__t",  # oai harvest tag
+    "035__u",  # oai harvest tag
+    "035__z",  # oai harvest tag
     "037__c",  # arxiv subject
     "100__m",  # email of contributor
     "245__9",  # Provenance of title
-    # "270__m",  # Contact email
     "300__a",  # number of pages
     "340__a",  # See decision log
     "500__9",  # Provenance of the note
@@ -28,8 +27,8 @@ IGNORE_SYSTEM_KEYS = {
     "700__m",  # email of contributor
     "773__t",  # from SIS: can be ignored
     "773__0",  # from SIS: can be ignored
-    # "773__o",  # from SIS: can be ignored
-    # "773__x",  # INSPIRE publication note
+    "773__o",  # from SIS: can be ignored
+    "773__x",  # INSPIRE publication note
     "8564_8",  # file id
     "8564_s",  # bibdoc id
     "8564_x",  # icon thumbnails sizes
@@ -37,6 +36,7 @@ IGNORE_SYSTEM_KEYS = {
     "8564_8",  # File information (done by file dump)
     "8564_q",  # File links File information (done by file dump)
     "8564_z",  # Websubmit "stamp" (migrated as file metadata)
+    "905__m",  # Submitter email address
     "916__y",  # year, redundant value
     "937__c",  # last modified by
     "937__s",  # last modification date

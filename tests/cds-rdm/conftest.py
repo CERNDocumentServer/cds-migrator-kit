@@ -1448,6 +1448,15 @@ def contributors_role_v(app, contributors_role_type):
             "type": "contributorsroles",
         },
     )
+    vocabulary_service.create(
+        system_identity,
+        {
+            "id": "contactperson",
+            "props": {"datacite": "ContactPerson"},
+            "title": {"en": "Contact person"},
+            "type": "contributorsroles",
+        },
+    )
 
     Vocabulary.index.refresh()
 
