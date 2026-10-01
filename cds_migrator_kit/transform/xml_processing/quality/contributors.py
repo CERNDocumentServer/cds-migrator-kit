@@ -6,6 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM contributors migration module."""
+
 import re
 
 import idutils
@@ -141,6 +142,22 @@ def get_contributor_affiliations(info):
     return parsed_affiliations
 
 
+def format_author_orcid(author_orcid):
+    """Format a single ORCiD value for a single author."""
+    author_orcid = author_orcid.replace("ORCID:", "")
+    if not author_orcid.lower().startswith("jacow-"):
+        if idutils.is_orcid(author_orcid):
+            new_id = {"identifier": author_orcid, "scheme": "orcid"}
+            return new_id
+        else:
+            raise UnexpectedValue(
+                message="Author has invalid orcid",
+                value=author_orcid,
+                stage="transform",
+            )
+    return None
+
+
 def extract_json_contributor_ids(info, orcid_subfield="k"):
     """Extract author IDs from MARC tags."""
     SOURCES = {
@@ -163,24 +180,32 @@ def extract_json_contributor_ids(info, orcid_subfield="k"):
 
     author_orcid = info.get(orcid_subfield)
     if author_orcid:
+        # If there are multiple ORCiDs (or ORCiD-like identifiers) they will be in a tuple
+        # We need to make sure the tuple only has one actual ORCiD. It can have other non-ORCiD
+        # identifiers, which we will skip/ignore if they are JACoW identifiers and error otherwise.
         if isinstance(author_orcid, tuple):
-            raise UnexpectedValue(
-                message="Multiple ORCID values found for a single author",
-                value=author_orcid,
-                stage="transform",
-            )
-        author_orcid = author_orcid.replace("ORCID:", "")
-        if not author_orcid.lower().startswith("jacow-"):
-            if idutils.is_orcid(author_orcid):
-                new_id = {"identifier": author_orcid, "scheme": "orcid"}
+            orcid_seen = False
+            for val in author_orcid:
+                new_id = format_author_orcid(val)
+                if new_id is None:
+                    # ID was a skippable non-ORCiD value
+                    continue
+
                 if new_id not in ids:
+                    if orcid_seen:
+                        raise UnexpectedValue(
+                            message="Multiple ORCID values found for a single author",
+                            value=author_orcid,
+                            stage="transform",
+                        )
+
+                    orcid_seen = True
                     ids.append(new_id)
-            else:
-                raise UnexpectedValue(
-                    message="Author has invalid orcid",
-                    value=author_orcid,
-                    stage="transform",
-                )
+        else:
+            new_id = format_author_orcid(author_orcid)
+            # new_id is None if it is a skippable non-ORCiD value
+            if new_id is not None and new_id not in ids:
+                ids.append(new_id)
 
     inspire = info.get("i", "")
     if inspire and inspire.startswith("INSPIRE-"):
