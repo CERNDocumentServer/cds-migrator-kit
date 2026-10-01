@@ -39,7 +39,6 @@ class ResearchModel(CdsOverdo):
         "037__c",  # arxiv subject
         "100__m",  # email of contributor
         "245__9",  # title provenance
-        "270__m",  # document contact email
         "300__a",  # number of pages
         "340__a",  # TODO ignore material?
         "540__3",  # TODO still ignore the material of the license?
