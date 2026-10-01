@@ -7,6 +7,8 @@
 
 """Creates and approves a migrated EP committee approval request."""
 
+from contextlib import contextmanager
+
 from cds_rdm.requests.committee_approval import APPRN_PID_TYPE, CommitteeApprovalRequest
 from flask import current_app
 from invenio_access.permissions import system_identity
@@ -15,6 +17,7 @@ from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_rdm_records.records.api import RDMParent
 from invenio_records_resources.services.uow import RecordCommitOp
+from invenio_requests.customizations import actions
 from invenio_requests.customizations.event_types import (
     LogEventType,
     ReviewersUpdatedType,
@@ -25,6 +28,22 @@ from invenio_requests.resolvers.registry import ResolverRegistry
 from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
 
 from .approval_request import ApprovalRequest
+
+
+@contextmanager
+def _create_without_submit(request_type):
+    """Use plain CreateAction for ``request_type`` (no submit side-effects/emails).
+
+    Same idea as ``CommunitySubmission`` / ``RequestLoad``: create in ``created``
+    status, then set status by hand. ``CommitteeApprovalRequest`` normally maps
+    create → create-and-submit (validates, grants referees, emails).
+    """
+    original = request_type.available_actions["create"]
+    request_type.available_actions["create"] = actions.CreateAction
+    try:
+        yield
+    finally:
+        request_type.available_actions["create"] = original
 
 
 class ApprovalRequestLoad:
@@ -74,8 +93,8 @@ class ApprovalRequestLoad:
         )
         self._mint_apprn_pid(restricted_record_state["latest_version_object_uuid"])
 
-    def _get_referee_group(self, restricted_parent):
-        """Get the EP approval referee group from the restricted record."""
+    def _get_community_config(self, restricted_parent):
+        """Return the CDS_COMMITTEE_APPROVAL_COMMUNITIES config for the record."""
         default_community_id = restricted_parent.get("communities", {}).get("default")
         if not default_community_id:
             raise UnexpectedValue(
@@ -95,7 +114,7 @@ class ApprovalRequestLoad:
                 stage="load",
                 priority="critical",
             )
-        return ep_config["referee_group"]
+        return ep_config
 
     def _mint_apprn_pid(self, restricted_version_uuid):
         """Mint the APPRN PID."""
@@ -213,28 +232,37 @@ class ApprovalRequestLoad:
             inner_uow.commit()
 
     def _build_request(self, restricted_recid, restricted_parent, uow):
-        """Register the request creation and its updates on the given uow."""
+        """Register the request creation and its updates on the given uow.
+
+        Mirrors ``RequestLoad.create_submission_request``: create without
+        submit/accept actions, then set status (and timeline) by hand so no
+        referee emails are queued.
+        """
         approval_request = self.approval_request
         expires_at = approval_request.parse_legacy_datetime(
             approval_request.waiting_entry.get("deadline")
         )
-        referee_group = self._get_referee_group(restricted_parent)
+        community_config = self._get_community_config(restricted_parent)
+        # Same source as cds-rdm's submit view — used in UI and email templates.
+        approval_label = community_config.get("label") or "Committee approval"
 
-        request_item = current_requests_service.create(
-            system_identity,
-            data={
-                "title": f'EP approval for "{approval_request.title}"',
-                "payload": {},
-            },
-            request_type=CommitteeApprovalRequest,
-            receiver={"group": referee_group},
-            creator=approval_request.resolve_user_by_email(
-                approval_request.waiting_entry.get("submitted_by"), "submitter"
-            ),
-            topic={"record": restricted_recid},
-            expires_at=expires_at,
-            uow=uow,
-        )
+        with _create_without_submit(CommitteeApprovalRequest):
+            request_item = current_requests_service.create(
+                system_identity,
+                data={
+                    "title": f'EP approval for "{approval_request.title}"',
+                    "payload": {"approval_label": approval_label},
+                },
+                request_type=CommitteeApprovalRequest,
+                receiver={"group": community_config["referee_group"]},
+                creator=approval_request.resolve_user_by_email(
+                    approval_request.waiting_entry.get("submitted_by"), "submitter"
+                ),
+                topic={"record": restricted_recid},
+                expires_at=expires_at,
+                uow=uow,
+            )
+
         request = request_item._record
         request.number = f"lrecid:{approval_request.legacy_recid}:ep-approval"
         request.status = "submitted"
