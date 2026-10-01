@@ -232,6 +232,9 @@ class JournalMapper(CustomFieldMapper):
 
     def apply(self, ctx):
         """Set ctx.custom_fields["journal:journal"]."""
+        # `_773_m_seen` is an internal bookkeeping field, just to check that we only have one 773__m
+        # per record as agreed with SIS.
+        ctx.dojson_entry.pop("_773_m_seen", None)
         journal = ctx.dojson_entry.get("custom_fields", {}).get("journal:journal", {})
         if journal and not journal.get("title"):
             ctx.flag_curation(
