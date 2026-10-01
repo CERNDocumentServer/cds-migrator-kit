@@ -276,6 +276,26 @@ def journal(self, key, value):
             related_ids.append(isbn_related_id)
         self["related_identifiers"] = related_ids
 
+    if "m" in value:
+        # As discussed with SIS, we only ignore 773__m if there is only one in the record
+        # and its value is `publication`
+        if self.get("_773_m_seen"):
+            raise UnexpectedValue(
+                "Multiple 773__m seen. Record requires manual curation.",
+                field=key,
+                value=value,
+            )
+
+        m_value = value.get("m")
+        if m_value != "publication":
+            raise UnexpectedValue(
+                f'Only value "publication" can be ignored for 773__m. Value "{m_value}" requires manual curation.',
+                field=key,
+                value=value,
+            )
+
+        self["_773_m_seen"] = True
+
     # p/n/v are journal-specific; c alone with w is a conference proceedings artid
     is_journal = any(f in value for f in ["p", "n", "v"])
     is_journal_year = any(f in value for f in ["p", "n", "v", "c"])
