@@ -70,6 +70,20 @@ class TestExtractJsonContributorIdsOrcid:
         ids = extract_json_contributor_ids({"j": "JACOW-1234567"}, orcid_subfield="j")
         assert ids == []
 
+    def test_tuple_orcid_and_jacow_allowed(self):
+        """Test that a tuple with one ORCID and one JACoW id yields only the ORCID."""
+        ids = extract_json_contributor_ids(
+            {"k": ("0000-0002-1825-0097", "JACOW-1234567")}
+        )
+        assert ids == [{"identifier": "0000-0002-1825-0097", "scheme": "orcid"}]
+
+    def test_tuple_multiple_orcids_raises_error(self):
+        """Test that a tuple with two different ORCIDs raises UnexpectedValue."""
+        with pytest.raises(UnexpectedValue):
+            extract_json_contributor_ids(
+                {"k": ("0000-0002-1825-0097", "0000-0001-5109-3700")}
+            )
+
 
 class TestExtractJsonContributorIdsOtherSources:
     """Test the non-ORCID identifier sources of extract_json_contributor_ids."""
