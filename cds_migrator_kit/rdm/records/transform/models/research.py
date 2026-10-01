@@ -43,8 +43,11 @@ class ResearchModel(CdsOverdo):
         "300__a",  # number of pages
         "340__a",  # TODO ignore material?
         "540__3",  # TODO still ignore the material of the license?
+        "540__8",  # agreed not to migrate open access related fields
         "540__9",  # TODO still ignore the material of the license?
+        "540__g",  # agreed not to migrate open access related fields
         "542__3",  # TODO still ignore the material of the license?
+        "542__8",  # agreed not to migrate open access related fields
         "595__i",  # TODO ??
         "695__e",  # some inspire tag
         "700__m",  # email of contributor
