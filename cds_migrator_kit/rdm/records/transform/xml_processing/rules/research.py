@@ -315,6 +315,8 @@ def journal(self, key, value):
         if conference_url:
             identifiers.append({"scheme": "URL", "identifier": conference_url})
         if conference_cnum:
+            # Some old records have slashes instead of hyphens in the INSPIRE conference cnum
+            conference_cnum = conference_cnum.replace("/", "-")
             identifiers.append({"scheme": "inspire", "identifier": conference_cnum})
             new_meeting["identifiers"] = identifiers
         if conference_acronym:
