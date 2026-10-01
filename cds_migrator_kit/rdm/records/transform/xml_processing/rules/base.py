@@ -931,6 +931,11 @@ def related_identifiers_787(self, key, value):
             "relation_type": {"id": "references"},
             "resource_type": {"id": "publication-preprint"},
         },
+        "talk": {
+            # Used for when an article has a related video of a talk where that article is explained/demonstrated
+            "relation_type": {"id": "isdocumentedby"},
+            "resource_type": {"id": "video"},
+        },
     }
 
     if recid:
