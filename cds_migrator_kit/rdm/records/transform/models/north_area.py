@@ -24,14 +24,12 @@ class NorthAreaModel(CdsOverdo):
     """
 
     __ignore_keys__ = IGNORE_SYSTEM_KEYS | {
-        "270__m",  # Email of contact person
         "500__9",  # Provenance of the note
         "595_Da",  # From SIS: these can be ignored
         "595_Dd",  # From SIS: these can be ignored
         "595_Ds",  # From SIS: these can be ignored
         "595__9",  # From SIS: these can be ignored
         "903__s",  # 'public'
-        "905__m",  # Submitter email address
         "995__a",  # "Inspire"
     }
 
