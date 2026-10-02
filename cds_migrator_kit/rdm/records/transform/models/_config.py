@@ -7,27 +7,27 @@ IGNORE_SYSTEM_KEYS = {
     "0248_q",
     "852__c",  # holdings will be taken separately
     "852__h",
-    # "035__h",  # OAI harvest tag or timestamp
-    # "035__d",  # OAI harvest tag or timestamp
-    # "035__m",  # OAI harvest format (e.g. `marcxml`)
-    # "035__t",  # oai harvest tag
-    # "035__u",  # oai harvest tag
-    # "035__z",  # oai harvest tag
+    "035__h",  # OAI harvest tag or timestamp
+    "035__d",  # OAI harvest tag or timestamp
+    "035__m",  # OAI harvest format (e.g. `marcxml`)
+    "035__t",  # oai harvest tag
+    "035__u",  # oai harvest tag
+    "035__z",  # oai harvest tag
     "037__c",  # arxiv subject
     "100__m",  # email of contributor
     "245__9",  # Provenance of title
-    # "270__m",  # Contact email
     "300__a",  # number of pages
     "500__9",  # Provenance of the note
     "520__9",  # Provenance of the description
-    # "540__3",  # Material of the license
-    # "540__9",  # Also material of the license
-    # "542__3",  # Also material of the license
+    "540__3",  # Material of the license
+    "540__9",  # Also material of the license
+    "540__g",  # From SIS (see decision log)
+    "542__3",  # Also material of the license
     "700__m",  # email of contributor
-    # "773__t",  # from SIS: can be ignored
-    # "773__0",  # from SIS: can be ignored
-    # "773__o",  # from SIS: can be ignored
-    # "773__x",  # INSPIRE publication note
+    "773__t",  # from SIS: can be ignored
+    "773__0",  # from SIS: can be ignored
+    "773__o",  # from SIS: can be ignored
+    "773__x",  # INSPIRE publication note
     "8564_8",  # file id
     "8564_s",  # bibdoc id
     "8564_x",  # icon thumbnails sizes
@@ -35,6 +35,7 @@ IGNORE_SYSTEM_KEYS = {
     "8564_8",  # File information (done by file dump)
     "8564_q",  # File links File information (done by file dump)
     "8564_z",  # Websubmit "stamp" (migrated as file metadata)
+    "905__m",  # Submitter email address
     "916__y",  # year, redundant value
     "937__c",  # last modified by
     "937__s",  # last modification date
@@ -68,4 +69,6 @@ IGNORE_SYSTEM_KEYS = {
     "999C6t",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
     "999C6v",  # https://cds.cern.ch/record/2284606/export/hm?ln=en
     "999C5d",  # old INSPIRE attr
+    "999C69",  # See decision log
+    "999C6c",  # See decision log
 }

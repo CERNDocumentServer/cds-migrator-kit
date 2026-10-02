@@ -134,7 +134,9 @@ class CDSToRDMRecordTransform:
             )
         timestamp, dojson_entry = dump.latest_revision
         self.dojson_entry = dojson_entry
-        self.record_state_logger.add_record(dojson_entry)
+        # mappers pop the keys they consume off dojson_entry, which would
+        # otherwise strip the logged dump record.
+        self.record_state_logger.add_record(deepcopy(dojson_entry))
         return dump
 
     def _parent(self, raw_dump_entry, record):

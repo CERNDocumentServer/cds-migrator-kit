@@ -7,7 +7,6 @@
 
 """CDS-RDM migration rules module."""
 
-
 import pycountry
 from cds_dojson.marc21.fields.utils import out_strip
 from dojson.errors import IgnoreKey
@@ -100,6 +99,18 @@ def languages(self, key, value):
         raise UnexpectedValue(field=key, subfield="a")
 
 
+def extract_contributor_names(names):
+    """Convert a single contributor string to family and potentially given name."""
+    names = names.strip().split(",")
+
+    if len(names) == 2:
+        names = {"family_name": names[0].strip(), "given_name": names[1].strip()}
+    else:
+        names = {"family_name": names[0].strip()}
+
+    return names
+
+
 def process_contributors(key, value, orcid_subfield="k"):
     """Utility processing contributors XML."""
     role = value.get("e")
@@ -117,7 +128,9 @@ def process_contributors(key, value, orcid_subfield="k"):
         _affiliations = force_list(value.get("t", ""))
         affiliations = []
         # just to avoid the missing rule exception
-        text = value.get("u") or value.get("v")
+        text_u = value.get("u")
+        text_v = value.get("v")
+        text = text_u or text_v
         grid_value = None
         for aff in _affiliations:
             if aff:
@@ -148,12 +161,8 @@ def process_contributors(key, value, orcid_subfield="k"):
     if type(names) == tuple or names is None:
         raise UnexpectedValue(field=key, subfield="a", value=names)
 
-    names = names.strip().split(",")
+    names = extract_contributor_names(names)
 
-    if len(names) == 2:
-        names = {"family_name": names[0].strip(), "given_name": names[1].strip()}
-    else:
-        names = {"family_name": names[0].strip()}
     contributor = {
         "person_or_org": {
             "type": "personal",

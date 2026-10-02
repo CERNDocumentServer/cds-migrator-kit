@@ -371,9 +371,9 @@ def irregular_exp_field(record):
         ],
         "cern:experiments": [
             {
-                "id": "COMPASS NA58",
+                "id": "NA58",
                 "title": {
-                    "en": "COMPASS NA58",
+                    "en": "NA58",
                 },
             },
         ],
