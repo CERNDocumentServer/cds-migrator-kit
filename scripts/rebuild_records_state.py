@@ -14,38 +14,44 @@ It ran exactly once per record, for only the latest version. Now fixed in code a
 file to attribute downloads, so any multi-version record migrated in that
 window lost every download event belonging to any version except the latest.
 
-This script rebuilds the state file from scratch, entirely from CDS-RDM,
-one stream/collection at a time - the same collection name used everywhere
-else (``invenio migration run --collection <name>``, and the folder name
-under ``cds_migrator_kit/rdm/data/`` and ``<CDS_MIGRATOR_KIT_LOGS_PATH>/``):
+This script rebuilds the state file from scratch, entirely from CDS-RDM, for
+a given collection's community id(s) (from that collection's
+``transform.communities_ids`` in ``streams.yaml`` / ``streams_done.yaml`` /
+``streams_shelved.yaml``):
 
-1. Resolve the collection's community id(s) from ``streams.yaml`` /
-   ``streams_done.yaml`` / ``streams_shelved.yaml`` (same as
-   cds_migrator_kit/runner/runner.py).
-2. Resolve those community ids to every parent record in them using ``RDMParentCommunity``.
-3. Resolve each parent to its legacy recid via the ``lrecid`` PID minted at migration time.
-4. Fetch every published version for that parent.
-5. Rebuild the state entry field-for-field like ``_load_record_state`` does,
-   reading current file metadata straight off each version.
+1. Resolve the given community id(s) to every parent record in them using
+   ``RDMParentCommunity``.
+2. Resolve each parent to its legacy recid via the ``lrecid`` PID minted at
+   migration time.
+3. Rebuild the state entry via the shared
+   ``cds_migrator_kit.rdm.records.load.entities.record.build_record_state_from_db``
+   - the same function ``CDSMigrationEntryLoad._should_skip_recid`` uses to
+   backfill a single record's state when it's found missing for an
+   already-migrated record (cds_migrator_kit/rdm/records/load/load.py).
 
-Output is written next to the original, as ``<collection>/rdm_records_state.fixed.json``.
+Output is written next to the original, as ``<collection>/rdm_records_state.fixed.json``,
+in batches of ``BATCH_SIZE`` entries at a time rather than all at once - a
+batch is merged into whatever's already on disk and the complete file is
+rewritten, so a crash loses at most one in-progress batch, and the file
+never has to be held in memory in full.
 
 On restart the script reads its own log file for DONE lines and skips any
 legacy recid already completed.
 
 Usage:
-    invenio shell scripts/rebuild_records_state.py
+    invenio shell
 
-    main(collection="it", dry_run=True)
-    main(collection="it", dry_run=False)
+    main(community_ids=["<community-id>"],
+         output_path="/migration/tmp/<name>/rdm_records_state.fixed.json",
+         log_file="/migration/tmp/<name>/records_state.log",
+         dry_run=True)
 """
 
 import json
 import traceback
 from pathlib import Path
 
-import yaml
-from flask import current_app
+from invenio_db import db
 from invenio_pidstore.models import PersistentIdentifier
 from invenio_rdm_records.records.api import RDMRecord
 from invenio_rdm_records.records.models import RDMParentCommunity, RDMRecordMetadata
@@ -104,7 +110,6 @@ def get_rdm_versions(parent_object_uuid):
     """
     version_models = (
         RDMRecordMetadata.query.filter_by(parent_id=parent_object_uuid)
-        .order_by(RDMRecordMetadata.created)
         .all()
     )
     records = {}
@@ -173,6 +178,9 @@ def build_state_entry(legacy_recid, rdm_versions):
     return recid_state
 
 
+BATCH_SIZE = 500
+
+
 def write_state_file(filepath, entries):
     """Write entries in the same JSON-list-of-compact-objects format
     ``RecordStateLogger.finalise()`` uses (cds_migrator_kit/reports/log.py),
@@ -187,15 +195,29 @@ def write_state_file(filepath, entries):
         f.write("]")
 
 
+def flush_batch(output_path, batch):
+    """Merge a batch of new entries into whatever is already on disk and
+    rewrite the complete file. Called every ``BATCH_SIZE`` entries instead
+    of once per entry (too slow, file never readable) or once for the whole
+    run (loses everything on a crash) - entries already flushed by a
+    previous batch are read back and re-written, not held in memory for the
+    rest of the run."""
+    existing = []
+    if Path(output_path).exists():
+        with open(output_path, encoding="utf-8") as f:
+            existing = json.load(f)
+    write_state_file(output_path, existing + batch)
+
+
 def main(community_ids, output_path, log_file, dry_run=True):
     """Rebuild ``rdm_records_state.json`` for one stream/collection.
 
-    :param community_ids: the community UUIDs passed inside the streams.yaml,
-        as used by ``invenio migration run --collection``.
+    :param community_ids: the community UUIDs for a collection, as set in
+        its ``transform.communities_ids`` in streams.yaml.
     :param output_path: should be `<CDS_MIGRATOR_KIT_LOGS_PATH>/<collection>/rdm_records_state.fixed.json`
         next to the original state file (no overwriting).
-    :param log_file: Log file.
-    :param dry_run: Pass dfry_run False to write generate state json data to file.
+    :param log_file: resumable progress log - DONE lines mark completed recids.
+    :param dry_run: pass dry_run=False to actually write entries to disk.
     """
     global log_fp
 
@@ -205,6 +227,24 @@ def main(community_ids, output_path, log_file, dry_run=True):
     if completed_recids:
         log(f"resuming — {len(completed_recids)} recid(s) already completed, skipping them")
 
+    batch = []
+    # legacy_recids pending in `batch` - only marked DONE once their batch
+    # is actually flushed, so a crash before that flush leaves them absent
+    # from completed_recids on resume, and state generation re-runs for
+    # them instead of being silently skipped as already done.
+    batch_recids = []
+
+    def flush_pending():
+        if batch:
+            flush_batch(output_path, batch)
+            for r in batch_recids:
+                log(f"DONE: legacy_recid={r}")
+            batch.clear()
+            batch_recids.clear()
+            # Do not hold the Record objects in DB session once the batch is flushed
+            # We are only reading from DB so this is safe
+            db.session.expunge_all()
+
     try:
         legacy_recids = find_legacy_recids(community_ids)
         log(
@@ -213,7 +253,6 @@ def main(community_ids, output_path, log_file, dry_run=True):
         )
 
         stats = {"checked": 0, "skipped_done": 0, "no_versions": 0, "fixed": 0, "errors": 0}
-        entries = []
 
         for i, (legacy_recid, parent_object_uuid) in enumerate(legacy_recids.items(), start=1):
             stats["checked"] += 1
@@ -231,11 +270,13 @@ def main(community_ids, output_path, log_file, dry_run=True):
                     stats["no_versions"] += 1
                     continue
 
-                entries.append(build_state_entry(legacy_recid, rdm_versions))
+                batch.append(build_state_entry(legacy_recid, rdm_versions))
                 stats["fixed"] += 1
 
                 if not dry_run:
-                    log(f"DONE: legacy_recid={legacy_recid}")
+                    batch_recids.append(legacy_recid)
+                    if len(batch) >= BATCH_SIZE:
+                        flush_pending()
 
             except Exception as exc:
                 log(f"unexpected error for legacy_recid={legacy_recid}: {exc}")
@@ -243,7 +284,7 @@ def main(community_ids, output_path, log_file, dry_run=True):
                 stats["errors"] += 1
 
         if not dry_run:
-            write_state_file(output_path, entries)
+            flush_pending()
             log(f"wrote {output_path}")
         else:
             log(f"dry run — would write {output_path}")
@@ -254,5 +295,7 @@ def main(community_ids, output_path, log_file, dry_run=True):
             f"errors={stats['errors']}"
         )
     finally:
+        if not dry_run:
+            flush_pending()
         log_fp.close()
         log_fp = None
