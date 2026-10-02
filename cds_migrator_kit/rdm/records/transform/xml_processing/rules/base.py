@@ -333,6 +333,9 @@ def report_number(self, key, value):
             raise IgnoreKey("related_identifiers")
         elif scheme.upper().startswith("B00"):
             raise IgnoreKey("related_identifiers")
+        elif key == "088__" and scheme.upper().startswith("SC000"):
+            # internal scanning/digitisation request number, to drop
+            raise IgnoreKey("related_identifiers")
         elif scheme.startswith("SCOO"):
             identifier = scheme
             scheme = "other"
@@ -828,6 +831,20 @@ def series_information(self, key, value):
     return {"description": series, "type": {"id": "series-information"}}
 
 
+@model.over("additional_descriptions", "^336__")
+@for_each_value
+def multiple_videos_note(self, key, value):
+    """Translate the video-system's "multiple videos" cross-reference note.
+
+    The only recognised 336__a content - any other value is unexpected and
+    flagged for manual curation rather than silently dropped.
+    """
+    note = StringValue(value.get("a", "")).parse()
+    if not note.startswith("Multiple videos have been identified with recid"):
+        raise UnexpectedValue(field=key, subfield="a", value=value)
+    return {"description": note, "type": {"id": "technical-info"}}
+
+
 @model.over("related_identifiers", "^084__")
 @for_each_value
 def yellow_reports(self, key, value):
@@ -931,6 +948,11 @@ def related_identifiers_787(self, key, value):
             "relation_type": {"id": "references"},
             "resource_type": {"id": "publication-preprint"},
         },
+        "related video": {
+            "relation_type": {"id": "references"},
+            "resource_type": {"id": "video"},
+        },
+
     }
 
     if recid:

@@ -263,6 +263,29 @@ class IdentifiersMapper(FieldMapper):
         return identifiers
 
 
+#: `setlink` is a CDS-internal redirector, not a real related resource -
+#: drop any related_identifiers entry pointing at it.
+_SETLINK_URL_PREFIX = "http://documents.cern.ch/cgi-bin/setlink?"
+
+
+class RelatedIdentifiersMapper(FieldMapper):
+    """Maps related_identifiers, dropping CDS-internal setlink URLs."""
+
+    id = "related_identifiers"
+
+    def map_value(self, ctx):
+        """Return related_identifiers with setlink URL entries removed."""
+        related_identifiers = ctx.dojson_entry.get("related_identifiers", [])
+        return [
+            item
+            for item in related_identifiers
+            if not (
+                (item.get("scheme") or "").upper() == "URL"
+                and (item.get("identifier") or "").startswith(_SETLINK_URL_PREFIX)
+            )
+        ]
+
+
 # Fields that pass through unchanged from dojson_entry - kept explicit in the
 # composed list (mappers/config equivalent) rather than open-ended, so the
 # "forgotten metadata key" completeness check in
@@ -275,7 +298,6 @@ PASSTHROUGH_METADATA_FIELDS = (
     "languages",
     "dates",
     "funding",
-    "related_identifiers",
     "rights",
     "copyright",
 )
