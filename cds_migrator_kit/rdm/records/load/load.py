@@ -22,7 +22,7 @@ from invenio_access.permissions import system_identity
 from invenio_db import db
 from invenio_db.uow import ModelCommitOp, UnitOfWork
 from invenio_i18n import _
-from invenio_pidstore.errors import PIDDoesNotExistError
+from invenio_pidstore.errors import PIDAlreadyExists, PIDDoesNotExistError
 from invenio_pidstore.models import PersistentIdentifier
 from invenio_rdm_migrator.load.base import Load
 from invenio_rdm_records.proxies import current_rdm_records_service
@@ -308,6 +308,22 @@ class CDSMigrationEntryLoad(Load):
                     # apply after record fully finished (does not sync at the spot, only enabled)
                     self._apply_clc_sync(recid_state_after_load, entry)
             return recid_state_after_load
+        except PIDAlreadyExists:
+            # The legacy recid's `lrecid` PID was minted by someone else
+            # between our _should_skip_recid() check above and now - e.g. a
+            # concurrently running migration of another collection whose
+            # dump cross-lists the same legacy recid (two former-experiment
+            # collections can both ship the same record). Treat it exactly
+            # like _should_skip_recid: already migrated, nothing to do.
+            # this happens when you run several mirations at the same time
+            self.migration_logger.add_information(
+                recid,
+                state={
+                    "message": "Record already migrated (lrecid PID already minted)",
+                    "value": recid,
+                },
+            )
+            self.migration_logger.finalise_record(recid)
         except (UnexpectedValue, ManualImportRequired, GrantCreationError) as e:
             self.migration_logger.add_log(e, record=entry)
         except (CDSMigrationException, ValidationError, InvalidRelationValue) as e:
