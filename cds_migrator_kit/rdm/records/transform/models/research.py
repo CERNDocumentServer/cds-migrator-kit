@@ -50,6 +50,7 @@ class ResearchModel(CdsOverdo):
         "542__8",  # agreed not to migrate open access related fields
         "595__i",  # TODO ??
         "695__e",  # some inspire tag
+        "695__9",  # bibclassify
         "700__m",  # email of contributor
         "700__q",  # TODO ignore? aliteration of the name, used for searching
         "700__v",  # TODO drop?
