@@ -11,6 +11,7 @@ from cds_rdm.requests.committee_approval import APPRN_PID_TYPE, CommitteeApprova
 from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_db.uow import UnitOfWork
+from invenio_notifications.services.uow import NotificationOp
 from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_rdm_records.records.api import RDMParent
@@ -74,8 +75,8 @@ class ApprovalRequestLoad:
         )
         self._mint_apprn_pid(restricted_record_state["latest_version_object_uuid"])
 
-    def _get_referee_group(self, restricted_parent):
-        """Get the EP approval referee group from the restricted record."""
+    def _get_community_config(self, restricted_parent):
+        """Return the CDS_COMMITTEE_APPROVAL_COMMUNITIES config for the record."""
         default_community_id = restricted_parent.get("communities", {}).get("default")
         if not default_community_id:
             raise UnexpectedValue(
@@ -95,7 +96,7 @@ class ApprovalRequestLoad:
                 stage="load",
                 priority="critical",
             )
-        return ep_config["referee_group"]
+        return ep_config
 
     def _mint_apprn_pid(self, restricted_version_uuid):
         """Mint the APPRN PID."""
@@ -212,22 +213,41 @@ class ApprovalRequestLoad:
             self._build_request(restricted_recid, restricted_parent, inner_uow)
             inner_uow.commit()
 
+    @staticmethod
+    def _drop_notification_ops(uow, from_index):
+        """Remove notification ops registered at/after ``from_index``.
+
+        ``CommitteeApprovalRequest``'s create action is a create-and-submit that
+        emails the referee group. Migrated (already-approved) requests must not
+        notify anyone.
+        """
+        uow._operations[from_index:] = [
+            op
+            for op in uow._operations[from_index:]
+            if not isinstance(op, NotificationOp)
+        ]
+
     def _build_request(self, restricted_recid, restricted_parent, uow):
         """Register the request creation and its updates on the given uow."""
         approval_request = self.approval_request
         expires_at = approval_request.parse_legacy_datetime(
             approval_request.waiting_entry.get("deadline")
         )
-        referee_group = self._get_referee_group(restricted_parent)
+        community_config = self._get_community_config(restricted_parent)
+        # Same source as cds-rdm's submit view — used in UI and email templates.
+        approval_label = community_config.get("label") or "Committee approval"
 
+        # Capture index so we can drop only the NotificationOp(s) registered by
+        # this create (create-and-submit emails the referee group).
+        ops_before = len(uow._operations)
         request_item = current_requests_service.create(
             system_identity,
             data={
                 "title": f'EP approval for "{approval_request.title}"',
-                "payload": {},
+                "payload": {"approval_label": approval_label},
             },
             request_type=CommitteeApprovalRequest,
-            receiver={"group": referee_group},
+            receiver={"group": community_config["referee_group"]},
             creator=approval_request.resolve_user_by_email(
                 approval_request.waiting_entry.get("submitted_by"), "submitter"
             ),
@@ -235,6 +255,8 @@ class ApprovalRequestLoad:
             expires_at=expires_at,
             uow=uow,
         )
+        self._drop_notification_ops(uow, ops_before)
+
         request = request_item._record
         request.number = f"lrecid:{approval_request.legacy_recid}:ep-approval"
         request.status = "submitted"
