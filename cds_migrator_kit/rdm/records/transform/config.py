@@ -169,3 +169,7 @@ EXPERIMENT_ALIASES = {
     "harp": "PS214",
     "dampe": "RE29",
 }
+
+# 693__e values that are keywords rather than real experiments (curated as
+# "mots clef"), mapped to subjects instead of cern:experiments
+EXPERIMENTS_AS_SUBJECTS = ["d3", "r104", "r105a"]

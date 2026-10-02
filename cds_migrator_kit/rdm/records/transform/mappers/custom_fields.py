@@ -12,7 +12,10 @@ from cds_migrator_kit.errors import (
     RecordFlaggedCuration,
     UnexpectedValue,
 )
-from cds_migrator_kit.rdm.records.transform.config import EXPERIMENT_ALIASES
+from cds_migrator_kit.rdm.records.transform.config import (
+    EXPERIMENT_ALIASES,
+    EXPERIMENTS_AS_SUBJECTS,
+)
 from cds_migrator_kit.rdm.records.transform.mappers.base import CustomFieldMapper
 from cds_migrator_kit.rdm.records.transform.mappers.vocabulary import search_vocabulary
 
@@ -33,6 +36,12 @@ class ExperimentsMapper(CustomFieldMapper):
         )
         for experiment in experiments:
             if experiment.lower().strip() in ["not applicable", "xx"]:
+                continue
+            if experiment.lower().strip() in EXPERIMENTS_AS_SUBJECTS:
+                # curated as keywords ("mots clef"), not real experiments
+                ctx.dojson_entry.setdefault("subjects", []).append(
+                    {"subject": experiment}
+                )
                 continue
             experiment = EXPERIMENT_ALIASES.get(experiment.lower().strip(), experiment)
             result = search_vocabulary(experiment, "experiments")
