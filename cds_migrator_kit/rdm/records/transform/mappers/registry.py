@@ -27,6 +27,7 @@ from cds_migrator_kit.rdm.records.transform.mappers.metadata import (
     PASSTHROUGH_METADATA_FIELDS,
     IdentifiersMapper,
     PublicationDateMapper,
+    RelatedIdentifiersMapper,
     ResourceTypeMapper,
     SubjectsMapper,
     TableOfContentsMapper,
@@ -45,6 +46,7 @@ METADATA_MAPPERS = (
     PublicationDateMapper(),
     SubjectsMapper(),
     IdentifiersMapper(),
+    RelatedIdentifiersMapper(),
     *(PassthroughMapper(field_name) for field_name in PASSTHROUGH_METADATA_FIELDS),
 )
 
