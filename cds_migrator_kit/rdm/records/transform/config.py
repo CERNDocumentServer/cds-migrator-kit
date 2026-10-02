@@ -161,5 +161,15 @@ FILE_SUBFORMATS_TO_DROP = ["pdfa", "unstamped"]
 
 # Legacy experiment names remapped to vocabulary ids before lookup
 EXPERIMENT_ALIASES = {
-    "t2k": "re13",
+    "t2k": "RE13",
+    "antares": "RE6",
+    "dirac": "PS212",
+    "dirac ps212": "PS212",
+    "harp ps214": "PS214",
+    "harp": "PS214",
+    "dampe": "RE29",
 }
+
+# 693__e values that are keywords rather than real experiments (curated as
+# "mots clef"), mapped to subjects instead of cern:experiments
+EXPERIMENTS_AS_SUBJECTS = ["d3", "r104", "r105a"]

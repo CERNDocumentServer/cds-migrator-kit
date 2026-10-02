@@ -146,7 +146,7 @@ class SubmitterModel(CdsOverdo):
         "542__u",  # https://cds.cern.ch/record/2285212/export/hm?ln=en
         "560172",  # https://cds.cern.ch/record/383486/export/hm?ln=en
         "56017a",  # https://cds.cern.ch/record/383486/export/hm?ln=en wrong keyword subfield
-        "506__m",  # mail
+        # "506__m",  # e-group/reader's email, used to find/recreate their account
         "590__b",  # abstract translation
         "590__a",  # abstract translation TODO https://cds.cern.ch/record/1476067/export/hm?ln=en
         "594__a",  # https://cds.cern.ch/record/466504/export/hm?ln=en, 455788
@@ -366,3 +366,9 @@ submitter_model = SubmitterModel(
     bases=(base_model,),
     entry_point_group="cds_migrator_kit.migrator.rules.submitter",
 )
+
+# Registers the 506 access-grant-emails rule directly on submitter_model,
+# after it has been built above - see access_grants.py's module docstring
+# for why this must be isolated to this instance instead of the shared
+# base_model.
+import cds_migrator_kit.rdm.users.transform.xml_processing.rules.access_grants  # noqa: E402,F401
