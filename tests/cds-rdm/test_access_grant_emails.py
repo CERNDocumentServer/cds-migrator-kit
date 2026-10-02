@@ -30,19 +30,22 @@ class TestAccessGrantEmailsRule:
     def test_extracts_email_from_subfield_d(self, base_app):
         """A direct email in 506__d (e.g. record 2045640) is picked up."""
         with base_app.app_context():
-            out = _do("""
+            out = _do(
+                """
                 <record>
                 <datafield tag="506" ind1=" " ind2=" ">
                   <subfield code="d">cds-edboard-dirac@cern.ch</subfield>
                 </datafield>
                 </record>
-                """)
+                """
+            )
         assert out["access_grant_emails"] == ["cds-edboard-dirac@cern.ch"]
 
     def test_ignores_egroup_names(self, base_app):
         """E-group names (subfield m/a, no "@") are not treated as emails."""
         with base_app.app_context():
-            out = _do("""
+            out = _do(
+                """
                 <record>
                 <datafield tag="506" ind1=" " ind2=" ">
                   <subfield code="m">cds-edboard-dirac [CERN]</subfield>
@@ -51,13 +54,15 @@ class TestAccessGrantEmailsRule:
                   <subfield code="m">cds-ph-ep-publications-referee-non-lhc [CERN]</subfield>
                 </datafield>
                 </record>
-                """)
+                """
+            )
         assert out.get("access_grant_emails", []) == []
 
     def test_deduplicates_and_lowercases(self, base_app):
         """Repeated/differently-cased emails across occurrences collapse to one."""
         with base_app.app_context():
-            out = _do("""
+            out = _do(
+                """
                 <record>
                 <datafield tag="506" ind1=" " ind2=" ">
                   <subfield code="d">Jane.Doe@cern.ch</subfield>
@@ -66,7 +71,8 @@ class TestAccessGrantEmailsRule:
                   <subfield code="m">jane.doe@cern.ch</subfield>
                 </datafield>
                 </record>
-                """)
+                """
+            )
         assert out["access_grant_emails"] == ["jane.doe@cern.ch"]
 
 
