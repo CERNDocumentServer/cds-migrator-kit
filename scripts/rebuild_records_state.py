@@ -21,22 +21,20 @@ a given collection's community id(s) (from that collection's
 
 1. Resolve the given community id(s) to every parent record in them using
    ``RDMParentCommunity``.
-2. Resolve each parent to its legacy recid via the ``lrecid`` PID minted at
-   migration time.
-3. Rebuild the state entry via the shared
-   ``cds_migrator_kit.rdm.records.load.entities.record.build_record_state_from_db``
-   - the same function ``CDSMigrationEntryLoad._should_skip_recid`` uses to
-   backfill a single record's state when it's found missing for an
-   already-migrated record (cds_migrator_kit/rdm/records/load/load.py).
+2. Resolve each parent to its legacy recid and its parent recid in one PID
+   query (``pid_type`` ``lrecid`` and ``recid``).
+3. Load every published version of those parents and the file rows. Each
+   query is limited to ``CHUNK_SIZE`` ids so one result set is not the whole
+   community. ``rdm_records_metadata.parent_id`` is not indexed, so this is a
+   handful of table scans instead of one scan per record.
+4. Resolve each record uuid to its recid through the ``recid`` PID. The
+   version query does not read the record JSON.
+5. Build the state list in memory. The latest version is the highest
+   ``index`` among those rows. File entries are not stored on the record
+   JSON (``FilesField(store=False)``); they come from ``rdm_records_files``.
 
-Output is written next to the original, as ``<collection>/rdm_records_state.fixed.json``,
-in batches of ``BATCH_SIZE`` entries at a time rather than all at once - a
-batch is merged into whatever's already on disk and the complete file is
-rewritten, so a crash loses at most one in-progress batch, and the file
-never has to be held in memory in full.
-
-On restart the script reads its own log file for DONE lines and skips any
-legacy recid already completed.
+Output is written once, next to the original, as
+``<collection>/rdm_records_state.fixed.json``.
 
 Usage:
     invenio shell
@@ -52,10 +50,13 @@ import traceback
 from pathlib import Path
 
 from invenio_db import db
-from invenio_pidstore.models import PersistentIdentifier
-from invenio_rdm_records.records.api import RDMRecord
-from invenio_rdm_records.records.models import RDMParentCommunity, RDMRecordMetadata
-
+from invenio_files_rest.models import FileInstance, ObjectVersion
+from invenio_pidstore.models import PersistentIdentifier, PIDStatus
+from invenio_rdm_records.records.models import (
+    RDMFileRecordMetadata,
+    RDMParentCommunity,
+    RDMRecordMetadata,
+)
 
 log_fp = None
 
@@ -67,118 +68,210 @@ def log(msg):
         log_fp.flush()
 
 
-def load_completed_recids(log_path):
-    """Return the set of legacy recids already marked DONE in a previous run."""
-    completed = set()
-    path = Path(log_path)
-    if not path.exists():
-        return completed
-    with open(log_path, "r") as f:
-        for line in f:
-            if line.startswith("DONE: legacy_recid="):
-                completed.add(line.strip().split("=")[1])
-    return completed
+CHUNK_SIZE = 10000
 
 
-def find_legacy_recids(community_ids):
-    """Return {legacy_recid: parent_object_uuid} for every migrated record in
-    any of the given communities.
+def chunked(items, size=CHUNK_SIZE):
+    """Yield ``items`` in slices of ``size``."""
+    items = list(items)
+    for start in range(0, len(items), size):
+        yield items[start : start + size]
 
-    Two plain queries, nothing read from disk: community ids -> parent
-    uuids (``RDMParentCommunity``), then parent uuids -> legacy recid via
-    the ``lrecid`` PID (mirrors the lookup
-    ``CDSMigrationEntryLoad._have_migrated_recid`` does one recid at a time,
-    cds_migrator_kit/rdm/records/load/load.py).
+
+def find_parent_pids(community_ids):
+    """Return legacy recids and parent recids for migrated records.
+
+    Community ids map to parent uuids via ``RDMParentCommunity``. One PID
+    query per chunk then splits ``lrecid`` and ``recid`` for those parents.
+
+    :returns: ``({legacy_recid: parent_uuid}, {parent_uuid: parent_recid})``
     """
-    parent_uuids = [
-        row.record_id
-        for row in RDMParentCommunity.query.filter(
-            RDMParentCommunity.community_id.in_(community_ids)
-        )
-    ]
-    pids = PersistentIdentifier.query.filter(
-        PersistentIdentifier.pid_type == "lrecid",
-        PersistentIdentifier.object_uuid.in_(parent_uuids),
-    )
-    return {pid.pid_value: str(pid.object_uuid) for pid in pids}
-
-
-def get_rdm_versions(parent_object_uuid):
-    """Return {version_index: RDMRecord} for every published version of a parent.
-
-    Soft-deleted records are excluded by ``RDMRecord.get_record()`` default.
-    """
-    version_models = (
-        RDMRecordMetadata.query.filter_by(parent_id=parent_object_uuid)
-        .all()
-    )
-    records = {}
-    for m in version_models:
-        try:
-            rdm_record = RDMRecord.get_record(str(m.id))
-            records[rdm_record.versions.index] = rdm_record
-        except Exception as exc:
-            log(f"could not load record {m.id}: {exc}")
-    return records
-
-
-def convert_file_format(file_entries, bucket_id):
-    """Mirror ``RecordLoad._load_record_state.convert_file_format``."""
-    return [
+    parent_uuids = list(
         {
-            "legacy_file_id": entry["metadata"]["legacy_file_id"],
-            "bucket_id": bucket_id,
-            "file_key": entry["key"],
-            "file_id": entry["file_id"],
-            "size": str(entry["size"]),
+            row.record_id
+            for row in RDMParentCommunity.query.filter(
+                RDMParentCommunity.community_id.in_(community_ids)
+            )
         }
-        for entry in file_entries.values()
+    )
+    legacy_recids = {}
+    parent_recids = {}
+    for batch in chunked(parent_uuids):
+        pids = PersistentIdentifier.query.filter(
+            PersistentIdentifier.pid_type.in_(("lrecid", "recid")),
+            PersistentIdentifier.object_type == "rec",
+            PersistentIdentifier.status == PIDStatus.REGISTERED,
+            PersistentIdentifier.object_uuid.in_(batch),
+        )
+        for pid in pids:
+            object_uuid = str(pid.object_uuid)
+            if pid.pid_type == "lrecid":
+                legacy_recids[pid.pid_value] = object_uuid
+            else:
+                parent_recids[object_uuid] = pid.pid_value
+    db.session.expunge_all()
+    return legacy_recids, parent_recids
+
+
+def load_pids(object_uuids, pid_type):
+    """Return ``{object_uuid: pid_value}`` for registered PIDs.
+
+    ``object_type`` is included so Postgres can use ``idx_object``
+    ``(object_type, object_uuid)`` instead of scanning ``pidstore_pid``.
+    """
+    found = {}
+    for batch in chunked(object_uuids):
+        pids = PersistentIdentifier.query.filter(
+            PersistentIdentifier.pid_type == pid_type,
+            PersistentIdentifier.object_type == "rec",
+            PersistentIdentifier.status == PIDStatus.REGISTERED,
+            PersistentIdentifier.object_uuid.in_(batch),
+        )
+        for pid in pids:
+            found[str(pid.object_uuid)] = pid.pid_value
+    db.session.expunge_all()
+    return found
+
+
+def load_versions(legacy_recids):
+    """Return ``({legacy_recid: {version_index: version dict}}, failed_recids)``.
+
+    Version rows are loaded without the JSON column. The recid is the
+    ``recid`` PID for that row's primary key. Soft-deleted rows (``json``
+    is NULL) are excluded, matching ``RDMRecord.get_record()``.
+    """
+    parent_of = {parent: recid for recid, parent in legacy_recids.items()}
+    versions = {}
+    parents = list(parent_of)
+    for n, batch in enumerate(chunked(parents), start=1):
+        rows = (
+            db.session.query(
+                RDMRecordMetadata.id,
+                RDMRecordMetadata.parent_id,
+                RDMRecordMetadata.index,
+                RDMRecordMetadata.bucket_id,
+            )
+            .filter(RDMRecordMetadata.parent_id.in_(batch))
+            .filter(RDMRecordMetadata.json.isnot(None))
+            .all()
+        )
+        for rec_id, parent_id, index, bucket_id in rows:
+            legacy_recid = parent_of[str(parent_id)]
+            versions.setdefault(legacy_recid, {})[index] = {
+                "record_uuid": str(rec_id),
+                "bucket_id": str(bucket_id) if bucket_id else None,
+                "parent_object_uuid": str(parent_id),
+                "files": [],
+            }
+        log(f"loaded version chunk {n}, legacy_recids with versions={len(versions)}")
+    db.session.expunge_all()
+
+    record_uuids = [
+        version["record_uuid"]
+        for by_index in versions.values()
+        for version in by_index.values()
     ]
+    record_recids = load_pids(record_uuids, "recid")
+    failed = set()
+    for legacy_recid, by_index in versions.items():
+        for version in by_index.values():
+            new_recid = record_recids.get(version["record_uuid"])
+            if not new_recid:
+                log(
+                    f"record {version['record_uuid']} has no recid PID, "
+                    f"legacy_recid={legacy_recid}"
+                )
+                failed.add(legacy_recid)
+                continue
+            version["new_recid"] = new_recid
+    return versions, failed
 
 
-def extract_record_version(record):
-    """Mirror ``RecordLoad._load_record_state.extract_record_version``."""
-    bucket_id = str(record.files.bucket_id)
-    files = record.__class__.files.dump(
-        record, record.files, include_entries=True
-    ).get("entries", {})
+def load_files(record_uuids):
+    """Return {record_uuid: [file dict, ...]} from ``rdm_records_files``.
+
+    ``record_id`` is indexed. ``file_id`` and ``size`` live on the object
+    version and its file instance, not on the record JSON.
+    """
+    files = {}
+    uuids = list(record_uuids)
+    for n, batch in enumerate(chunked(uuids), start=1):
+        rows = (
+            db.session.query(
+                RDMFileRecordMetadata.record_id,
+                RDMFileRecordMetadata.key,
+                RDMFileRecordMetadata.json,
+                ObjectVersion.file_id,
+                FileInstance.size,
+            )
+            .join(
+                ObjectVersion,
+                ObjectVersion.version_id == RDMFileRecordMetadata.object_version_id,
+            )
+            .join(FileInstance, FileInstance.id == ObjectVersion.file_id)
+            .filter(RDMFileRecordMetadata.record_id.in_(batch))
+            .filter(RDMFileRecordMetadata.json.isnot(None))
+            .all()
+        )
+        for record_id, key, file_json, file_id, size in rows:
+            metadata = (file_json or {}).get("metadata") or {}
+            files.setdefault(str(record_id), []).append(
+                {
+                    "legacy_file_id": metadata.get("legacy_file_id"),
+                    "file_key": key,
+                    "file_id": str(file_id),
+                    "size": str(size),
+                }
+            )
+        del rows
+        log(f"loaded file chunk {n}, records with files={len(files)}")
+    db.session.expunge_all()
+    return files
+
+
+def _file_for_state(bucket_id, file_entry):
+    """One file entry in the shape ``_load_record_state`` writes."""
+    legacy_file_id = file_entry["legacy_file_id"]
+    if legacy_file_id is None:
+        raise KeyError("legacy_file_id")
     return {
-        "new_recid": record.pid.pid_value,
-        "version": record.versions.index,
-        "files": convert_file_format(files, bucket_id),
+        "legacy_file_id": legacy_file_id,
+        "bucket_id": bucket_id,
+        "file_key": file_entry["file_key"],
+        "file_id": file_entry["file_id"],
+        "size": file_entry["size"],
     }
 
 
-def build_state_entry(legacy_recid, rdm_versions):
-    """Rebuild one ``rdm_records_state.json`` entry from live RDM versions.
+def build_state_entry(legacy_recid, rdm_versions, parent_recid):
+    """Rebuild one ``rdm_records_state.json`` entry.
 
-    Mirrors ``RecordLoad._load_record_state``
-    (cds_migrator_kit/rdm/records/load/entities/record.py) field-for-field,
-    reading current per-version file metadata straight off each version
-    instead of relying on the state the buggy loop bookkeeping produced.
+    Same fields as ``RecordLoad._load_record_state``
+    (cds_migrator_kit/rdm/records/load/entities/record.py). The latest
+    version is the highest ``index`` still published.
     """
-    recid_state = {"legacy_recid": str(legacy_recid), "versions": []}
-    parent_recid = None
-
+    recid_state = {
+        "legacy_recid": str(legacy_recid),
+        "parent_recid": parent_recid,
+        "versions": [],
+    }
     for version_index in sorted(rdm_versions):
-        record = rdm_versions[version_index]
-
-        if parent_recid is None:
-            parent_recid = record.parent.pid.pid_value
-            recid_state["parent_recid"] = parent_recid
-            recid_state["parent_object_uuid"] = str(record.parent.id)
-
-        recid_state["versions"].append(extract_record_version(record))
-
-        if "latest_version" not in recid_state:
-            latest = record.get_latest_by_parent(record.parent)
-            recid_state["latest_version"] = latest["id"]
-            recid_state["latest_version_object_uuid"] = str(latest.id)
-
+        version = rdm_versions[version_index]
+        if "parent_object_uuid" not in recid_state:
+            recid_state["parent_object_uuid"] = version["parent_object_uuid"]
+        recid_state["versions"].append(
+            {
+                "new_recid": version["new_recid"],
+                "version": version_index,
+                "files": [
+                    _file_for_state(version["bucket_id"], f) for f in version["files"]
+                ],
+            }
+        )
+    latest_version = rdm_versions[max(rdm_versions)]
+    recid_state["latest_version"] = latest_version["new_recid"]
+    recid_state["latest_version_object_uuid"] = latest_version["record_uuid"]
     return recid_state
-
-
-BATCH_SIZE = 500
 
 
 def write_state_file(filepath, entries):
@@ -195,20 +288,6 @@ def write_state_file(filepath, entries):
         f.write("]")
 
 
-def flush_batch(output_path, batch):
-    """Merge a batch of new entries into whatever is already on disk and
-    rewrite the complete file. Called every ``BATCH_SIZE`` entries instead
-    of once per entry (too slow, file never readable) or once for the whole
-    run (loses everything on a crash) - entries already flushed by a
-    previous batch are read back and re-written, not held in memory for the
-    rest of the run."""
-    existing = []
-    if Path(output_path).exists():
-        with open(output_path, encoding="utf-8") as f:
-            existing = json.load(f)
-    write_state_file(output_path, existing + batch)
-
-
 def main(community_ids, output_path, log_file, dry_run=True):
     """Rebuild ``rdm_records_state.json`` for one stream/collection.
 
@@ -216,86 +295,68 @@ def main(community_ids, output_path, log_file, dry_run=True):
         its ``transform.communities_ids`` in streams.yaml.
     :param output_path: should be `<CDS_MIGRATOR_KIT_LOGS_PATH>/<collection>/rdm_records_state.fixed.json`
         next to the original state file (no overwriting).
-    :param log_file: resumable progress log - DONE lines mark completed recids.
+    :param log_file: progress log for this run.
     :param dry_run: pass dry_run=False to actually write entries to disk.
     """
     global log_fp
 
-    completed_recids = load_completed_recids(log_file)
     log_fp = open(log_file, "a")
-
-    if completed_recids:
-        log(f"resuming — {len(completed_recids)} recid(s) already completed, skipping them")
-
-    batch = []
-    # legacy_recids pending in `batch` - only marked DONE once their batch
-    # is actually flushed, so a crash before that flush leaves them absent
-    # from completed_recids on resume, and state generation re-runs for
-    # them instead of being silently skipped as already done.
-    batch_recids = []
-
-    def flush_pending():
-        if batch:
-            flush_batch(output_path, batch)
-            for r in batch_recids:
-                log(f"DONE: legacy_recid={r}")
-            batch.clear()
-            batch_recids.clear()
-            # Do not hold the Record objects in DB session once the batch is flushed
-            # We are only reading from DB so this is safe
-            db.session.expunge_all()
-
     try:
-        legacy_recids = find_legacy_recids(community_ids)
+        legacy_recids, parent_recids = find_parent_pids(community_ids)
         log(
             f"starting, community_ids={str(community_ids)}, "
-            f"dry_run={dry_run}, found legacy_recids={len(legacy_recids)}]"
+            f"dry_run={dry_run}, found legacy_recids={len(legacy_recids)}"
         )
+        versions, failed = load_versions(legacy_recids)
+        record_uuids = [
+            version["record_uuid"]
+            for by_index in versions.values()
+            for version in by_index.values()
+        ]
+        files = load_files(record_uuids)
+        for by_index in versions.values():
+            for version in by_index.values():
+                version["files"] = files.get(version["record_uuid"], [])
 
-        stats = {"checked": 0, "skipped_done": 0, "no_versions": 0, "fixed": 0, "errors": 0}
-
-        for i, (legacy_recid, parent_object_uuid) in enumerate(legacy_recids.items(), start=1):
+        stats = {"checked": 0, "no_versions": 0, "fixed": 0, "errors": 0}
+        entries = []
+        for legacy_recid, parent_uuid in legacy_recids.items():
             stats["checked"] += 1
-
-            if legacy_recid in completed_recids:
-                stats["skipped_done"] += 1
+            if legacy_recid in failed:
+                stats["errors"] += 1
                 continue
-
-            log(f"[{i}/{len(legacy_recids)}] legacy_recid={legacy_recid}")
-
+            rdm_versions = versions.get(legacy_recid)
+            if not rdm_versions:
+                log(
+                    f"legacy_recid={legacy_recid} - no published versions found, skipping"
+                )
+                stats["no_versions"] += 1
+                continue
             try:
-                rdm_versions = get_rdm_versions(parent_object_uuid)
-                if not rdm_versions:
-                    log(f"legacy_recid={legacy_recid} - no published versions found, skipping")
-                    stats["no_versions"] += 1
-                    continue
-
-                batch.append(build_state_entry(legacy_recid, rdm_versions))
+                entries.append(
+                    build_state_entry(
+                        legacy_recid,
+                        rdm_versions,
+                        parent_recids[parent_uuid],
+                    )
+                )
                 stats["fixed"] += 1
-
-                if not dry_run:
-                    batch_recids.append(legacy_recid)
-                    if len(batch) >= BATCH_SIZE:
-                        flush_pending()
-
             except Exception as exc:
                 log(f"unexpected error for legacy_recid={legacy_recid}: {exc}")
                 log(traceback.format_exc())
                 stats["errors"] += 1
 
         if not dry_run:
-            flush_pending()
-            log(f"wrote {output_path}")
+            write_state_file(output_path, entries)
+            log(f"wrote {output_path} ({len(entries)} entries)")
         else:
-            log(f"dry run — would write {output_path}")
+            log(f"dry run — would write {output_path} ({len(entries)} entries)")
 
         log(
-            f"\nsummary:\nchecked={stats['checked']}\nalready_done={stats['skipped_done']}\n"
+            f"\nsummary:\nchecked={stats['checked']}\n"
             f"no_versions={stats['no_versions']}\nfixed={stats['fixed']}\n"
             f"errors={stats['errors']}"
         )
     finally:
-        if not dry_run:
-            flush_pending()
         log_fp.close()
         log_fp = None
