@@ -33,8 +33,7 @@ from .base import normalize
 
 @model.over("isbns", "^020__", override_tag=True)
 def isbn(self, key, value):
-    """Translates ISBN identifiers."""
-    _custom_fields = self.get("custom_fields", {})
+    """Translates ISBN identifiers into related_identifiers only."""
     _isbn = StringValue(value.get("a", "")).parse()
     _isbn_u = StringValue(value.get("u", "")).parse()
 
@@ -45,24 +44,19 @@ def isbn(self, key, value):
 
         except NotValidISBNError as e:
             raise UnexpectedValue("Not a valid ISBN.", field=key, value=value)
-        is_cern_isbn = _isbn.startswith("978-92-9083")
-        imprint_fields = _custom_fields.get("imprint:imprint", {})
-        imprint_fields["isbn"] = _isbn
-        _custom_fields["imprint:imprint"] = imprint_fields
 
-        destination = "related_identifiers"
+        # Keep ISBNs in related_identifiers only (not imprint).
         new_id = {
             "identifier": _isbn,
             "scheme": "isbn",
             "relation_type": {"id": "isvariantformof"},
             "resource_type": {"id": "publication-book"},
         }
-        ids = self.get(destination, [])
+        ids = self.get("related_identifiers", [])
 
         if new_id not in ids:
             ids.append(new_id)
-        self[destination] = ids
-    self["custom_fields"] = _custom_fields
+        self["related_identifiers"] = ids
     raise IgnoreKey("isbns")
 
 
