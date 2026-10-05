@@ -28,10 +28,14 @@ a given collection's community id(s) (from that collection's
    community. ``rdm_records_metadata.parent_id`` is not indexed, so this is a
    handful of table scans instead of one scan per record.
 4. Resolve each record uuid to its recid through the ``recid`` PID. The
-   version query does not read the record JSON.
-5. Build the state list in memory. The latest version is the highest
-   ``index`` among those rows. File entries are not stored on the record
-   JSON (``FilesField(store=False)``); they come from ``rdm_records_files``.
+   version query does not read the record JSON. Versions are stored once
+   per parent, so a redirect ``lrecid`` minted onto that parent gets the
+   same versions as the migrated record.
+5. Build the state list in memory. ``latest_version`` is the highest
+   ``index`` that still has a migrated file. A record migrated with no
+   files keeps the highest published index so pageviews have a target.
+   File entries are not stored on the record JSON
+   (``FilesField(store=False)``); they come from ``rdm_records_files``.
 
 Output is written once, next to the original, as
 ``<collection>/rdm_records_state.fixed.json``.
@@ -133,16 +137,18 @@ def load_pids(object_uuids, pid_type):
     return found
 
 
-def load_versions(legacy_recids):
-    """Return ``({legacy_recid: {version_index: version dict}}, failed_recids)``.
+def load_versions(parent_uuids):
+    """Return ``({parent_uuid: {version_index: version dict}}, failed_parents)``.
 
     Version rows are loaded without the JSON column. The recid is the
     ``recid`` PID for that row's primary key. Soft-deleted rows (``json``
     is NULL) are excluded, matching ``RDMRecord.get_record()``.
+
+    Keyed by parent so every ``lrecid`` on that parent (the migrated record
+    and any redirect minted onto it) can share one version list.
     """
-    parent_of = {parent: recid for recid, parent in legacy_recids.items()}
     versions = {}
-    parents = list(parent_of)
+    parents = list(dict.fromkeys(parent_uuids))
     for n, batch in enumerate(chunked(parents), start=1):
         rows = (
             db.session.query(
@@ -156,14 +162,14 @@ def load_versions(legacy_recids):
             .all()
         )
         for rec_id, parent_id, index, bucket_id in rows:
-            legacy_recid = parent_of[str(parent_id)]
-            versions.setdefault(legacy_recid, {})[index] = {
+            parent_uuid = str(parent_id)
+            versions.setdefault(parent_uuid, {})[index] = {
                 "record_uuid": str(rec_id),
                 "bucket_id": str(bucket_id) if bucket_id else None,
-                "parent_object_uuid": str(parent_id),
+                "parent_object_uuid": parent_uuid,
                 "files": [],
             }
-        log(f"loaded version chunk {n}, legacy_recids with versions={len(versions)}")
+        log(f"loaded version chunk {n}, parents with versions={len(versions)}")
     db.session.expunge_all()
 
     record_uuids = [
@@ -173,15 +179,15 @@ def load_versions(legacy_recids):
     ]
     record_recids = load_pids(record_uuids, "recid")
     failed = set()
-    for legacy_recid, by_index in versions.items():
+    for parent_uuid, by_index in versions.items():
         for version in by_index.values():
             new_recid = record_recids.get(version["record_uuid"])
             if not new_recid:
                 log(
                     f"record {version['record_uuid']} has no recid PID, "
-                    f"legacy_recid={legacy_recid}"
+                    f"parent_id={parent_uuid}"
                 )
-                failed.add(legacy_recid)
+                failed.add(parent_uuid)
                 continue
             version["new_recid"] = new_recid
     return versions, failed
@@ -230,10 +236,14 @@ def load_files(record_uuids):
 
 
 def _file_for_state(bucket_id, file_entry):
-    """One file entry in the shape ``_load_record_state`` writes."""
-    legacy_file_id = file_entry["legacy_file_id"]
+    """One file entry in the shape ``_load_record_state`` writes.
+
+    Files added after migration have no ``legacy_file_id``. Those are not
+    part of the state file; the caller logs and drops the ``None``.
+    """
+    legacy_file_id = file_entry.get("legacy_file_id")
     if legacy_file_id is None:
-        raise KeyError("legacy_file_id")
+        return None
     return {
         "legacy_file_id": legacy_file_id,
         "bucket_id": bucket_id,
@@ -243,32 +253,58 @@ def _file_for_state(bucket_id, file_entry):
     }
 
 
+def _version_files(legacy_recid, version_index, version):
+    """Migrated files for one version. Non-migrated files are logged and skipped."""
+    files = []
+    for file_entry in version["files"]:
+        formatted = _file_for_state(version["bucket_id"], file_entry)
+        if formatted is None:
+            log(
+                "skipping (non-migrated record) file with no legacy_file_id: "
+                f"legacy_recid={legacy_recid} "
+                f"version={version_index} "
+                f"new_recid={version['new_recid']} "
+                f"record_uuid={version['record_uuid']} "
+                f"file_key={file_entry.get('file_key')}"
+            )
+            continue
+        files.append(formatted)
+    return files
+
+
 def build_state_entry(legacy_recid, rdm_versions, parent_recid):
     """Rebuild one ``rdm_records_state.json`` entry.
 
     Same fields as ``RecordLoad._load_record_state``
-    (cds_migrator_kit/rdm/records/load/entities/record.py). The latest
-    version is the highest ``index`` still published.
+    (cds_migrator_kit/rdm/records/load/entities/record.py). ``latest_version``
+    is the highest ``index`` that still has a migrated file. A record
+    migrated with no files keeps the highest published index so pageviews
+    have a target.
     """
     recid_state = {
         "legacy_recid": str(legacy_recid),
         "parent_recid": parent_recid,
         "versions": [],
     }
+    latest_version = None
     for version_index in sorted(rdm_versions):
         version = rdm_versions[version_index]
         if "parent_object_uuid" not in recid_state:
             recid_state["parent_object_uuid"] = version["parent_object_uuid"]
+        files = _version_files(legacy_recid, version_index, version)
+        if not files:
+            # No migrated files: created after migration, or the files are gone.
+            continue
         recid_state["versions"].append(
             {
                 "new_recid": version["new_recid"],
                 "version": version_index,
-                "files": [
-                    _file_for_state(version["bucket_id"], f) for f in version["files"]
-                ],
+                "files": files,
             }
         )
-    latest_version = rdm_versions[max(rdm_versions)]
+        latest_version = version
+    if latest_version is None:
+        latest_version = rdm_versions[max(rdm_versions)]
     recid_state["latest_version"] = latest_version["new_recid"]
     recid_state["latest_version_object_uuid"] = latest_version["record_uuid"]
     return recid_state
@@ -285,7 +321,7 @@ def write_state_file(filepath, entries):
             json_str = json.dumps(entry, ensure_ascii=False, separators=(",", ":"))
             comma = "," if i < len(entries) - 1 else ""
             f.write(f"{json_str}{comma}\n")
-        f.write("]")
+        f.write("]\n")
 
 
 def main(community_ids, output_path, log_file, dry_run=True):
@@ -307,7 +343,7 @@ def main(community_ids, output_path, log_file, dry_run=True):
             f"starting, community_ids={str(community_ids)}, "
             f"dry_run={dry_run}, found legacy_recids={len(legacy_recids)}"
         )
-        versions, failed = load_versions(legacy_recids)
+        versions, failed = load_versions(legacy_recids.values())
         record_uuids = [
             version["record_uuid"]
             for by_index in versions.values()
@@ -322,10 +358,10 @@ def main(community_ids, output_path, log_file, dry_run=True):
         entries = []
         for legacy_recid, parent_uuid in legacy_recids.items():
             stats["checked"] += 1
-            if legacy_recid in failed:
+            if parent_uuid in failed:
                 stats["errors"] += 1
                 continue
-            rdm_versions = versions.get(legacy_recid)
+            rdm_versions = versions.get(parent_uuid)
             if not rdm_versions:
                 log(
                     f"legacy_recid={legacy_recid} - no published versions found, skipping"
