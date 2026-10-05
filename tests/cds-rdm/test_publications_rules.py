@@ -32,21 +32,30 @@ class TestIsbn:
     """Test isbn function from publications.py."""
 
     def test_isbn_valid_isbn13(self):
-        """Test valid ISBN-13."""
+        """Test valid ISBN-13 goes to related_identifiers only."""
         record = {}
         with pytest.raises(IgnoreKey):
             isbn(record, "020__", {"a": "978-3-16-148410-0"})
-        # ISBN should be normalized with hyphens
-        assert "isbn" in record["custom_fields"]["imprint:imprint"]
-        assert "978-3-16-148410-0" == record["custom_fields"]["imprint:imprint"]["isbn"]
+        isbn_entry = next(
+            id_item
+            for id_item in record["related_identifiers"]
+            if id_item["scheme"] == "isbn"
+        )
+        assert isbn_entry["identifier"] == "978-3-16-148410-0"
+        assert "isbn" not in record.get("custom_fields", {}).get("imprint:imprint", {})
 
     def test_isbn_valid_isbn10(self):
-        """Test valid ISBN-10."""
+        """Test valid ISBN-10 is converted to ISBN-13 in related_identifiers."""
         record = {}
         with pytest.raises(IgnoreKey):
             isbn(record, "020__", {"a": "0-306-40615-2"})
-        # ISBN-10 should be converted to ISBN-13
-        assert "isbn" in record["custom_fields"]["imprint:imprint"]
+        isbn_entry = next(
+            id_item
+            for id_item in record["related_identifiers"]
+            if id_item["scheme"] == "isbn"
+        )
+        assert isbn_entry["identifier"].startswith("978-")
+        assert "isbn" not in record.get("custom_fields", {}).get("imprint:imprint", {})
 
     def test_isbn_adds_to_related_identifiers(self):
         """Test ISBN is added to related_identifiers."""
