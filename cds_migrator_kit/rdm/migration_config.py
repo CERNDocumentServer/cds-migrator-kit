@@ -606,10 +606,20 @@ CDS_COMMITTEE_APPROVAL_COMMUNITIES = {
             "counter_digits": 3,
         },
     },
-    "7277793b-5fce-458a-a3c4-e05a6cc43c69": {
+    "8b213ed1-31a6-408a-b474-c0c39734c2e3": {
         # ship
         "label": "EP approval",  # shown in UI buttons/headings
         "referee_group": "cds-ph-ep-publications-referee-non-lhc",  # CERN e-group slug
+        "report_number": {
+            "prefix": "CERN-EP",  # literal prefix, e.g. "CERN-EP"
+            "include_year": True,  # append the current year after prefix
+            "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
+    "31bf228a-ae6e-462b-b70e-345d3e74b8ca": {
+        # lhcf
+        "label": "EP approval",  # shown in UI buttons/headings
+        "referee_group": "cds-ph-ep-publication",  # CERN e-group slug
         "report_number": {
             "prefix": "CERN-EP",  # literal prefix, e.g. "CERN-EP"
             "include_year": True,  # append the current year after prefix

@@ -331,3 +331,30 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - "e5de962b-5e2c-408f-be69-2823fda1f732"
+  ship:
+    data_dir: cds_migrator_kit/rdm/data/ship
+    plots: true
+    create_inclusion_request: true
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/ship/dump
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/ship/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "8b213ed1-31a6-408a-b474-c0c39734c2e3"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/ship/legacy_pids_to_redirect.json
+  ship-restricted:
+    data_dir: cds_migrator_kit/rdm/data/ship-restricted
+    plots: true
+    create_inclusion_request: true
+    restricted: "True"
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/ship-restricted/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/ship-restricted/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - "8b213ed1-31a6-408a-b474-c0c39734c2e3"
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/ship-restricted/legacy_pids_to_redirect.json
