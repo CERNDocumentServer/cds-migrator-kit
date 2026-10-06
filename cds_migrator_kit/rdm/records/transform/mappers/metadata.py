@@ -274,14 +274,22 @@ class RelatedIdentifiersMapper(FieldMapper):
     id = "related_identifiers"
 
     def map_value(self, ctx):
-        """Return related_identifiers with setlink URL entries removed."""
+        """Return related_identifiers without setlink URLs or the record's own DOI."""
         related_identifiers = ctx.dojson_entry.get("related_identifiers", [])
+        record_doi = ((ctx.pids or {}).get("doi") or {}).get("identifier")
+        record_doi = record_doi.strip().lower() if record_doi else None
         return [
             item
             for item in related_identifiers
             if not (
                 (item.get("scheme") or "").upper() == "URL"
                 and (item.get("identifier") or "").startswith(_SETLINK_URL_PREFIX)
+            )
+            # the record's own DOI is already in pids, don't repeat it
+            and not (
+                record_doi
+                and (item.get("scheme") or "").lower() == "doi"
+                and (item.get("identifier") or "").strip().lower() == record_doi
             )
         ]
 

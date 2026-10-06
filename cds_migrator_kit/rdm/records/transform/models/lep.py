@@ -20,6 +20,7 @@ class LEPResearchModel(ResearchModel):
 
     __ignore_keys__ = {
         "594__a",  # can be ignored for this collection
+        "852__a",  # location
         "775__p",  # can be ignored for this collection - title of another volume
         "775__c",  # year of volume
         "596__a",  # multivolume tag
