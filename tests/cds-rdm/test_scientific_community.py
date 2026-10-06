@@ -7,7 +7,7 @@
 
 """Tests for auto-inclusion in the CERN Research community."""
 
-from unittest.mock import MagicMock
+from types import SimpleNamespace
 
 import pytest
 
@@ -15,16 +15,16 @@ from cds_migrator_kit.errors import MissingConfiguration
 from cds_migrator_kit.rdm.records.transform.config import (
     CERN_SCIENTIFIC_RESOURCE_TYPES,
 )
-from cds_migrator_kit.rdm.records.transform.transform import CDSToRDMRecordTransform
+from cds_migrator_kit.rdm.records.transform.entities.parent import RecordParent
 
 
-def _test_record(
+def _record(
     access="public",
     resource_type="publication-preprint",
-    communities=[],
+    restricted=False,
     recid="123456",
 ):
-    """Build a minimal CDSToRDMRecordEntry.transform() output for community tests."""
+    """Build a minimal RecordEntry stand-in (only what RecordParent reads)."""
     metadata = {
         "title": "Test record",
         "publication_date": "2020-01-01",
@@ -32,47 +32,46 @@ def _test_record(
     if resource_type is not None:
         metadata["resource_type"] = {"id": resource_type}
 
-    return {
-        "recid": recid,
-        "access": access,
-        "communities": communities,
-        "json": {
-            "files": {"enabled": False},
-            "metadata": metadata,
-        },
-    }
-
-
-def _test_entry(files_restricted=False):
-    """Build a minimal raw dump entry for community tests."""
-    status = "restricted" if files_restricted else ""
-    return {"files": [{"status": status}]}
-
-
-@pytest.fixture
-def transform(tmp_path, community):
-    """Transform instance with a collection community configured."""
-    return CDSToRDMRecordTransform(
-        files_dump_dir=tmp_path,
-        missing_users=tmp_path,
-        communities_ids=[str(community.id)],
-        migration_logger=MagicMock(),
+    return SimpleNamespace(
+        recid=recid,
+        access_status=access,
+        restricted=restricted,
+        body={"metadata": metadata},
     )
 
 
-class TestCommunitiesIds:
-    """Test CDSToRDMRecordTransform._communities_ids()."""
+def _dojson_entry(files_restricted=False, communities=None):
+    """Build a minimal DOJSON-processed entry for community tests."""
+    status = "restricted" if files_restricted else ""
+    return {"files": [{"status": status}], "communities": communities or []}
 
-    def test_adds_scientific_community_for_public_research_test_record(
-        self, transform, community, cern_scientific_community
+
+def _build_communities(communities_ids, record, dojson_entry):
+    """Run RecordParent's community resolution."""
+    parent = RecordParent(
+        record=record,
+        raw_dump_entry={"recid": record.recid},
+        dojson_entry=dojson_entry,
+        communities_ids=communities_ids,
+        access_grants_view=None,
+    )
+    return parent._build_communities()
+
+
+@pytest.fixture
+def communities_ids(community):
+    """Collection community configured for the migration run."""
+    return [str(community.id)]
+
+
+class TestBuildCommunities:
+    """Test RecordParent._build_communities()."""
+
+    def test_adds_scientific_community_for_public_research_record(
+        self, communities_ids, community, cern_scientific_community
     ):
         """Public research records are included in the CERN Scientific community."""
-        record = _test_record()
-        record["json"]["files"] = {"enabled": True}
-        result = transform._communities_ids(
-            _test_entry(),
-            record,
-        )
+        result = _build_communities(communities_ids, _record(), _dojson_entry())
 
         assert result == {
             "ids": [str(community.id), str(cern_scientific_community.id)],
@@ -80,12 +79,13 @@ class TestCommunitiesIds:
         }
 
     def test_keep_collection_community_as_default(
-        self, transform, community, cern_scientific_community
+        self, communities_ids, community, cern_scientific_community
     ):
         """Collection community remains the default when CERN Scientific community is added."""
-        result = transform._communities_ids(
-            _test_entry(),
-            _test_record(communities=["test-community"]),
+        result = _build_communities(
+            communities_ids,
+            _record(),
+            _dojson_entry(communities=["test-community"]),
         )
 
         assert result["default"] == str(community.id)
@@ -97,22 +97,24 @@ class TestCommunitiesIds:
 
     @pytest.mark.parametrize("resource_type", CERN_SCIENTIFIC_RESOURCE_TYPES)
     def test_research_resource_types(
-        self, transform, cern_scientific_community, resource_type
+        self, communities_ids, cern_scientific_community, resource_type
     ):
         """All configured public research resource types trigger inclusion."""
-        result = transform._communities_ids(
-            _test_entry(), _test_record(resource_type=resource_type)
+        result = _build_communities(
+            communities_ids,
+            _record(resource_type=resource_type),
+            _dojson_entry(),
         )
 
         assert str(cern_scientific_community.id) in result["ids"]
-        assert cern_scientific_community.id != result["default"]
+        assert str(cern_scientific_community.id) != result["default"]
 
-    def test_skip_restricted_test_record(
-        self, transform, community, cern_scientific_community
+    def test_skip_restricted_record(
+        self, communities_ids, community, cern_scientific_community
     ):
         """Restricted records are not included in the CERN Research community."""
-        result = transform._communities_ids(
-            _test_entry(), _test_record(access="restricted")
+        result = _build_communities(
+            communities_ids, _record(access="restricted"), _dojson_entry()
         )
 
         assert result == {
@@ -121,11 +123,11 @@ class TestCommunitiesIds:
         }
 
     def test_skip_restricted_files(
-        self, transform, community, cern_scientific_community
+        self, communities_ids, community, cern_scientific_community
     ):
         """Records with restricted files are not included in the CERN Scientific community."""
-        result = transform._communities_ids(
-            _test_entry(files_restricted=True), _test_record()
+        result = _build_communities(
+            communities_ids, _record(), _dojson_entry(files_restricted=True)
         )
 
         assert result == {
@@ -134,11 +136,11 @@ class TestCommunitiesIds:
         }
 
     def test_skip_non_research_resource_type(
-        self, transform, community, cern_scientific_community
+        self, communities_ids, community, cern_scientific_community
     ):
         """Non-research resource types are not included in the CERN Scientific community."""
-        result = transform._communities_ids(
-            _test_entry(), _test_record(resource_type="other")
+        result = _build_communities(
+            communities_ids, _record(resource_type="other"), _dojson_entry()
         )
 
         assert result == {
@@ -147,18 +149,12 @@ class TestCommunitiesIds:
         }
 
     def test_skip_when_stream_is_restricted(
-        self, tmp_path, community, cern_scientific_community
+        self, communities_ids, community, cern_scientific_community
     ):
         """Records on restricted migration streams are not included in the CERN Scientific community."""
-        transform = CDSToRDMRecordTransform(
-            files_dump_dir=tmp_path,
-            missing_users=tmp_path,
-            communities_ids=[str(community.id)],
-            restricted=True,
-            migration_logger=MagicMock(),
+        result = _build_communities(
+            communities_ids, _record(restricted=True), _dojson_entry()
         )
-
-        result = transform._communities_ids(_test_entry(), _test_record())
 
         assert result == {
             "ids": [str(community.id)],
@@ -166,10 +162,10 @@ class TestCommunitiesIds:
         }
 
     def test_raise_when_cern_scientific_community_not_configured(
-        self, test_app, transform, community, monkeypatch
+        self, test_app, communities_ids, monkeypatch
     ):
-        """No CERN Scientific community is added when config is unset."""
+        """Missing CERN Scientific community config raises."""
         monkeypatch.setitem(test_app.config, "CDS_CERN_SCIENTIFIC_COMMUNITY_ID", None)
 
         with pytest.raises(MissingConfiguration):
-            transform._communities_ids(_test_entry(), _test_record())
+            _build_communities(communities_ids, _record(), _dojson_entry())
