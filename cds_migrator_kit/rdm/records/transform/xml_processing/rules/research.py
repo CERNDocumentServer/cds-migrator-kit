@@ -22,6 +22,9 @@ from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     strip_output,
 )
 from cds_migrator_kit.transform.xml_processing.quality.parsers import StringValue
+from cds_migrator_kit.transform.xml_processing.rules.base import (
+    extract_contributor_names,
+)
 
 from ...config import (
     udc_pattern,
@@ -276,6 +279,28 @@ def journal(self, key, value):
             related_ids.append(isbn_related_id)
         self["related_identifiers"] = related_ids
 
+    if "m" in value:
+        # As discussed with SIS, we only ignore 773__m if there is only one in the record
+        # and its value is `publication`
+        if self.get("_773_m_seen"):
+            raise UnexpectedValue(
+                "Multiple 773__m seen. Record requires manual curation.",
+                subfield="m",
+                field=key,
+                value=value,
+            )
+
+        m_value = value.get("m")
+        if m_value != "publication":
+            raise UnexpectedValue(
+                f'Only value "publication" can be ignored for 773__m. Value "{m_value}" requires manual curation.',
+                subfield="m",
+                field=key,
+                value=value,
+            )
+
+        self["_773_m_seen"] = True
+
     # p/n/v are journal-specific; c alone with w is a conference proceedings artid
     is_journal = any(f in value for f in ["p", "n", "v"])
     is_journal_year = any(f in value for f in ["p", "n", "v", "c"])
@@ -290,6 +315,8 @@ def journal(self, key, value):
         if conference_url:
             identifiers.append({"scheme": "URL", "identifier": conference_url})
         if conference_cnum:
+            # Some old records have slashes instead of hyphens in the INSPIRE conference cnum
+            conference_cnum = conference_cnum.replace("/", "-")
             identifiers.append({"scheme": "inspire", "identifier": conference_cnum})
             new_meeting["identifiers"] = identifiers
         if conference_acronym:
@@ -819,3 +846,39 @@ def ep_approval(self, key, value):
         }.items()
         if v
     }
+
+
+@model.over("contributors", "^270__")
+@for_each_value
+def contact_person(self, key, value):
+    """Extract the contact persond details, mapping the name if it's available and the email otherwise."""
+    contact_email = value.get("m")
+    contact_name = value.get("p")
+
+    if contact_name is not None:
+        # The contact name takes precedence over the email
+        names = extract_contributor_names(contact_name)
+        return {
+            "person_or_org": {"type": "personal", **names},
+            "role": {"id": "contactperson"},
+        }
+
+    if contact_email is not None:
+        if "@" not in contact_email:
+            raise UnexpectedValue(
+                "Value did not look like an email address",
+                subfield="m",
+                field=key,
+                value=value,
+            )
+
+        return {
+            "person_or_org": {
+                "type": "personal",
+                "name": contact_email,
+                "family_name": contact_email,
+            },
+            "role": {"id": "contactperson"},
+        }
+
+    raise IgnoreKey("contributors")

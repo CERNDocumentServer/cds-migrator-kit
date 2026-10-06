@@ -441,3 +441,25 @@ class TestImprintInfo269:
         record = {"custom_fields": {}}
         with pytest.raises(UnexpectedValue):
             imprint_info(record, "269__", {"c": "not-a-valid-date"})
+
+
+class TestEmptyDatafields:
+    """Test that datafields without any subfields are skipped."""
+
+    def test_empty_datafield_is_ignored(self):
+        """Test that an empty 540 is skipped while a sibling 540 is kept."""
+        from cds_dojson.marc21.utils import create_record
+
+        from cds_migrator_kit.rdm.records.transform.models.base_record import (
+            rdm_base_record_model,
+        )
+
+        marc_record = create_record(
+            '<record><controlfield tag="001">12345</controlfield>'
+            '<datafield tag="540" ind1=" " ind2=" "></datafield>'
+            '<datafield tag="540" ind1=" " ind2=" ">'
+            '<subfield code="a">CC-BY</subfield></datafield>'
+            "</record>"
+        )
+        result = rdm_base_record_model.do(marc_record)
+        assert result["rights"] == [{"title": {"en": "CC-BY"}}]

@@ -877,9 +877,9 @@ def experiments_v(app, exp_type):
     vocab = vocabulary_service.create(
         system_identity,
         {
-            "id": "COMPASS NA58",
+            "id": "NA58",
             "title": {
-                "en": "COMPASS NA58",
+                "en": "NA58",
             },
             "props": {"link": "http://bla.web.cern.ch/lhcb/"},
             "type": "experiments",
@@ -1445,6 +1445,15 @@ def contributors_role_v(app, contributors_role_type):
             "id": "hostinginstitution",
             "props": {"datacite": "Hosting institution"},
             "title": {"en": "Hosting institution"},
+            "type": "contributorsroles",
+        },
+    )
+    vocabulary_service.create(
+        system_identity,
+        {
+            "id": "contactperson",
+            "props": {"datacite": "ContactPerson"},
+            "title": {"en": "Contact person"},
             "type": "contributorsroles",
         },
     )
