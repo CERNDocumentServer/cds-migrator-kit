@@ -168,7 +168,7 @@ class RecordEntry:
         files = dump.files
         return {"enabled": bool(files)}
 
-    def _metadata(self, dojson_entry, raw_dump_entry):
+    def _metadata(self, dojson_entry, raw_dump_entry, pids=None):
         """Build the metadata dict by running the composed field mappers.
 
         Whether every ``dojson_entry`` key ended up consumed *somewhere* in
@@ -183,6 +183,7 @@ class RecordEntry:
             raw_dump_entry=raw_dump_entry,
             migration_logger=self.migration_logger,
             affiliations_mapping=self.affiliations_mapping,
+            pids=pids or {},
         )
         metadata = ctx.metadata
         # Order matters: ResourceTypeMapper must run before TitleMapper reads
@@ -259,10 +260,11 @@ class RecordEntry:
         # same reason as _pids()/_access()'s record_restriction pop.
         internal_notes = dojson_entry.pop("internal_notes", None)
 
+        pids = self._pids(dojson_entry)
         record_json_output = {
             "files": self._files(dump),
-            "pids": self._pids(dojson_entry),
-            "metadata": self._metadata(dojson_entry, raw_dump_entry),
+            "pids": pids,
+            "metadata": self._metadata(dojson_entry, raw_dump_entry, pids),
             "internal_notes": internal_notes,
             "custom_fields": custom_fields,
         }
