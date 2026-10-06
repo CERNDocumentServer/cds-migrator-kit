@@ -13,7 +13,12 @@ from flask import current_app
 from invenio_accounts.models import User
 from sqlalchemy.exc import NoResultFound
 
-from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
+from cds_migrator_kit.errors import (
+    ManualImportRequired,
+    MissingConfiguration,
+    UnexpectedValue,
+)
+from cds_migrator_kit.rdm.records.transform.config import CERN_SCIENTIFIC_RESOURCE_TYPES
 from cds_migrator_kit.rdm.records.transform.mappers.base import RecordTransformContext
 from cds_migrator_kit.rdm.records.transform.mappers.record import AccessGrantsMapper
 
@@ -98,10 +103,32 @@ class RecordParent:
                 )
         return {"owned_by": {"user": owner}}
 
+    def _should_add_scientific_community(self):
+        if self.record.restricted or self.record.access_status != "public":
+            return False
+        if any(file.get("status") for file in self.dojson_entry.get("files", [])):
+            return False
+        resource_type_id = (
+            self.record.body.get("metadata", {}).get("resource_type", {}).get("id")
+        )
+        return resource_type_id in CERN_SCIENTIFIC_RESOURCE_TYPES
+
     def _build_communities(self):
         """Combine the configured target communities with the record's own."""
         communities = self.dojson_entry.pop("communities", [])
         communities = self.communities_ids + [slug for slug in communities]
+
+        scientific_community = current_app.config.get(
+            "CDS_CERN_SCIENTIFIC_COMMUNITY_ID"
+        )
+        if not scientific_community:
+            raise MissingConfiguration(
+                "CDS_CERN_SCIENTIFIC_COMMUNITY_ID is not configured"
+            )
+        if self._should_add_scientific_community():
+            if scientific_community not in communities:
+                communities.append(scientific_community)
+
         if communities:
             return {"ids": communities, "default": self.communities_ids[0]}
         return {}

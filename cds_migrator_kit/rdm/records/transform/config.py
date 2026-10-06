@@ -163,3 +163,20 @@ FILE_SUBFORMATS_TO_DROP = ["pdfa", "unstamped"]
 EXPERIMENT_ALIASES = {
     "t2k": "re13",
 }
+
+# Public research publication resource types that are auto-included in the CERN Research community.
+CERN_SCIENTIFIC_RESOURCE_TYPES = {
+    "publication-dissertation",  # Already included by the migrator for thesis records.
+    "publication-book",
+    "publication-section",
+    "publication-conferencepaper",
+    "publication-conferenceproceeding",
+    "publication-conferencenote",
+    "publication-journal",
+    "publication-article",
+    "publication-preprint",
+    "publication-report",
+    "publication-technicalnote",
+    "publication-note",
+    "publication",
+}

@@ -19,6 +19,7 @@ from cds_migrator_kit.rdm.records.load.entities.ep_split import (
     EPPHAPP_FILE_TYPE,
     PublicEntry,
     RestrictedEntry,
+    _cern_scientific_community_id,
 )
 from cds_migrator_kit.rdm.records.transform.entities.parent import RecordParent
 from cds_migrator_kit.rdm.records.transform.entities.record import RecordEntry
@@ -585,20 +586,20 @@ class TestPublicEntryModifications:
             entry, _make_approval_request(), _make_migration_logger()
         ).build()
 
-        assert CDS_CERN_SCIENTIFIC_COMMUNITY_ID in result["parent"].communities["ids"]
+        assert _cern_scientific_community_id() in result["parent"].communities["ids"]
 
     def test_public_does_not_duplicate_community(self, app):
         entry = _make_entry(_versions_with_epphapp())
         entry["parent"].communities["ids"] = [
             "example-community",
-            CDS_CERN_SCIENTIFIC_COMMUNITY_ID,
+            _cern_scientific_community_id(),
         ]
         result = PublicEntry(
             entry, _make_approval_request(), _make_migration_logger()
         ).build()
 
         community_ids = result["parent"].communities["ids"]
-        assert community_ids.count(CDS_CERN_SCIENTIFIC_COMMUNITY_ID) == 1
+        assert community_ids.count(_cern_scientific_community_id()) == 1
 
 
 class TestEntryImmutability:
