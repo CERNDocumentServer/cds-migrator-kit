@@ -19,7 +19,7 @@ from cds_migrator_kit.rdm.records.transform.entities.migration import MigrationE
 from cds_migrator_kit.rdm.records.transform.entities.version import VersionEntry
 
 EPPHAPP_FILE_TYPE = "EPPHAPP_FILE"
-EP_APPROVAL_REPORT_NUMBER_PREFIX = "CERN-EP"
+EP_APPROVAL_REPORT_NUMBER_PREFIX_RE = re.compile(r"^CERN-(?:PH-)?EP-")
 EP_APPROVAL_REPORT_NUMBER_RE = re.compile(r"^CERN-(?:PH-)?EP-\d{2,4}-\d+$")
 
 
@@ -223,7 +223,7 @@ class PublicEntry(MetadataEntry):
                 kept.append(id_entry)
                 continue
             identifier = id_entry.get("identifier", "")
-            if identifier.startswith(EP_APPROVAL_REPORT_NUMBER_PREFIX):
+            if EP_APPROVAL_REPORT_NUMBER_PREFIX_RE.match(identifier):
                 removed.append(identifier)
             else:
                 kept.append(id_entry)
@@ -331,10 +331,10 @@ class RestrictedEntry(MetadataEntry):
             elif scheme != "cdsrn":
                 kept.append(id_entry)
                 continue
-            if not identifier.startswith(EP_APPROVAL_REPORT_NUMBER_PREFIX):
+            if not EP_APPROVAL_REPORT_NUMBER_PREFIX_RE.match(identifier):
                 kept.append(id_entry)
                 continue
-            # Remove CERN-EP-YYYY-NNN but keep CERN-EP-DRAFT report number
+            # Remove CERN-(PH-)?EP-YYYY-NNN but keep *-DRAFT report numbers.
             if EP_APPROVAL_REPORT_NUMBER_RE.match(identifier):
                 if identifier != self.approval_request.report_number:
                     raise UnexpectedValue(

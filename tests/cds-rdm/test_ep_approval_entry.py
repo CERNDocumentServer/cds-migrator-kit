@@ -442,7 +442,14 @@ class TestPublicEntryIdentifiers:
     """Test identifier handling in the public split."""
 
     def test_public_removes_cern_ep_report_numbers(self, app):
-        entry = _make_entry(_versions_with_epphapp())
+        legacy_draft_rn = "CERN-PH-EP-DRAFT-LHCF-2015-001"
+        identifiers = [
+            {"identifier": RECID, "scheme": "cds"},
+            {"scheme": "cdsrn", "identifier": APPROVED_REPORT_NUMBER},
+            {"scheme": "cdsrn", "identifier": DRAFT_REPORT_NUMBER},
+            {"scheme": "cdsrn", "identifier": legacy_draft_rn},
+        ]
+        entry = _make_entry(_versions_with_epphapp(), identifiers=identifiers)
         result = PublicEntry(
             entry, _make_approval_request(), _make_migration_logger()
         ).build()
@@ -451,6 +458,8 @@ class TestPublicEntryIdentifiers:
         cdsrn_values = {i["identifier"] for i in identifiers if i["scheme"] == "cdsrn"}
 
         assert APPROVED_REPORT_NUMBER not in cdsrn_values
+        assert DRAFT_REPORT_NUMBER not in cdsrn_values
+        assert legacy_draft_rn not in cdsrn_values
         assert any(
             i["scheme"] == "apprn" and i["identifier"] == APPROVED_REPORT_NUMBER
             for i in identifiers
@@ -510,7 +519,14 @@ class TestRestrictedEntryIdentifiers:
         )
 
     def test_restricted_keeps_draft_report_number(self, app):
-        entry = _make_entry(_versions_with_epphapp())
+        legacy_draft_rn = "CERN-PH-EP-DRAFT-LHCF-2015-001"
+        identifiers = [
+            {"identifier": RECID, "scheme": "cds"},
+            {"scheme": "cdsrn", "identifier": APPROVED_REPORT_NUMBER},
+            {"scheme": "cdsrn", "identifier": DRAFT_REPORT_NUMBER},
+            {"scheme": "cdsrn", "identifier": legacy_draft_rn},
+        ]
+        entry = _make_entry(_versions_with_epphapp(), identifiers=identifiers)
         result = RestrictedEntry(
             entry, _make_approval_request(), _make_migration_logger()
         ).build()
@@ -522,6 +538,7 @@ class TestRestrictedEntryIdentifiers:
         }
 
         assert DRAFT_REPORT_NUMBER in cdsrn_values
+        assert legacy_draft_rn in cdsrn_values
 
     def test_restricted_raises_on_mismatched_report_number(self, app):
         identifiers = [
