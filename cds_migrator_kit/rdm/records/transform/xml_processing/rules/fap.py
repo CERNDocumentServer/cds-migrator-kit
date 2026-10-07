@@ -11,6 +11,8 @@ from dojson.errors import IgnoreKey
 from dojson.utils import for_each_value
 
 from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.transform.xml_processing.quality.decorators import require
+from cds_migrator_kit.transform.xml_processing.rules.base import process_contributors
 
 from ...models.fap import fap_model as model
 
@@ -35,3 +37,24 @@ def resource_type(self, key, value):
     if value != "INTNOTEFAPPUBL":
         raise UnexpectedValue("Unknown resource type (FAP)", field=key, value=value)
     raise IgnoreKey("resource_type")
+
+
+@model.over("creators", "^100__", override=True)
+@for_each_value
+@require(["a"])
+def creators(self, key, value):
+    """Translates the creators field."""
+    affiliation_text = value.get("u")
+    name = value.get("a")
+    if affiliation_text == "CERN":
+        return process_contributors(key, value, orcid_subfield="j")
+    last, first = name.split(",")
+    org = first.strip() + " " + last.strip()
+    if org == "FAP Department":
+        raise IgnoreKey("creators")
+    return {
+        "person_or_org": {
+            "type": "organizational",
+            "name": org,
+        }
+    }
