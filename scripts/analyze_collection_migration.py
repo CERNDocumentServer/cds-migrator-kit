@@ -107,6 +107,14 @@ def search_dups(collection_query):
     dupl_recids_by_title = [obj[0] for obj in duplicate_records_by_title]
     possible_duplicates = list(set(dupl_recids_by_desc) & set(dupl_recids_by_title))
 
+    # recid -> titles / descriptions (needed so shared checksum alone is not enough)
+    titles_by_recid = {}
+    for recid, title in duplicate_records_by_title:
+        titles_by_recid.setdefault(recid, set()).add(title)
+    descs_by_recid = {}
+    for recid, desc in duplicate_records_by_description:
+        descs_by_recid.setdefault(recid, set()).add(desc)
+
     checksums = {}
     for recid in possible_duplicates:
         res = run_sql(
@@ -140,6 +148,25 @@ def search_dups(collection_query):
                 rec[0] for rec in recids_list if rec[0] != recid_to_keep
             ]
             for recid_to_redirect in recids_to_redirect:
+                # Require a shared title AND description, not only a shared file
+                # checksum (avoids false pairs linked by placeholder plots).
+                if not (
+                    titles_by_recid.get(recid_to_redirect, set())
+                    & titles_by_recid.get(recid_to_keep, set())
+                    and descs_by_recid.get(recid_to_redirect, set())
+                    & descs_by_recid.get(recid_to_keep, set())
+                ):
+                    continue
+                if record_exists(recid_to_redirect) != 1:
+                    # DELETED: only redirect when 970__d points to a survivor.
+                    dests = get_fieldvalues(recid_to_redirect, "970__d") or []
+                    if not dests:
+                        continue
+                    try:
+                        redirect_map[recid_to_redirect] = int(str(dests[0]).strip())
+                    except (TypeError, ValueError):
+                        continue
+                    continue
                 redirect_map[recid_to_redirect] = recid_to_keep
     _print_green(
         "Found {} duplicates to check with same title, description and file checksums.".format(
