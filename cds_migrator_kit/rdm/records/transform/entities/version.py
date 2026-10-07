@@ -14,6 +14,8 @@ import arrow
 from arrow import Arrow
 from typing_extensions import Required
 
+from cds_migrator_kit.errors import ManualImportRequired
+
 LEGACY_FILES_PATH_ROOT = Path("/opt/cdsweb/var/data/files/")
 
 
@@ -93,8 +95,7 @@ class RecordVersion:
         record_access,
         files_dump_dir,
         migration_logger,
-        representative_file=None,
-        own_file_dumps=None,
+        raw_file_dumps=None,
         publication_date=None,
     ):
         """Constructor.
@@ -103,36 +104,30 @@ class RecordVersion:
             (``RecordEntryData["access_status"]``).
         :param files_dump_dir: local EOS mirror root for file content.
         :param migration_logger: for individual-file-restriction logging.
-        :param representative_file: the raw legacy file dump this version's
-            access is derived from (the first raw file dump encountered
-            for this version - see ``RecordVersionsTransform``), or
-            ``None`` for the metadata-only fallback version (no files at
-            all for the record).
-        :param own_file_dumps: this version's own raw legacy file dumps -
+        :param raw_file_dumps: this version's own raw legacy file dumps -
             NOT including files carried forward from earlier versions,
             that's ``RecordVersionsTransform``'s job.
-        :param publication_date: used as-is when ``representative_file``
-            is ``None`` (the metadata-only fallback - a plain ISO date
-            string copied from the record's own publication date, rather
-            than an Arrow instance derived from a file's creation date).
+        :param publication_date: Arrow instance (when derived from a file's
+            creation date by the caller) or plain ISO date string (metadata-
+            only fallback copied from the record's publication date).
         """
         self.record_access = record_access
         self.files_dump_dir = files_dump_dir
         self.migration_logger = migration_logger
-        self.representative_file = representative_file
-        self.own_file_dumps = own_file_dumps or []
+        self.raw_file_dumps = raw_file_dumps or []
         self.publication_date = publication_date
         self.files = None
         self.access = None
 
+    @property
+    def representative_file(self):
+        """First file dump for this version, or None when there are no files."""
+        return self.raw_file_dumps[0] if self.raw_file_dumps else None
+
     def build(self):
-        """Populate ``files``/``access``/``publication_date``; return this version's dict."""
+        """Populate ``files``/``access``; return this version's dict."""
         self.files = self.compute_files()
         self.access = self.compute_access()
-        if self.representative_file is not None:
-            self.publication_date = arrow.get(
-                self.representative_file["creation_date"]
-            ).replace(tzinfo=None)
         return {
             "files": self.files,
             "publication_date": self.publication_date,
@@ -140,34 +135,70 @@ class RecordVersion:
         }
 
     def compute_access(self):
-        """Return this version's access dict, from its representative file."""
+        """Return this version's access dict, from this version's files."""
         file = self.representative_file
         record_access = self.record_access
-        if file is None or not file["status"]:
+        if file is None:
             return {
                 "access_obj": {
                     "record": record_access,
                     "files": record_access,
                 }
             }
-        # if we have anything in the status string, it means the file is
-        # restricted; we pass this information to parse later in load step
+
+        # A version carries a single access state + a single `meta`, so every
+        # file in it must share the same status. Any non-uniform mix — some
+        # public and some restricted, and/or several distinct restriction
+        # statuses — can't be represented, so hard-stop for manual review.
+        recid = str(file["recid"])
+        distinct_statuses = {f["status"] for f in self.raw_file_dumps}
+        if len(distinct_statuses) > 1:
+            raise ManualImportRequired(
+                message=(
+                    "Mixed file restrictions in one version. "
+                    "Cannot auto-assign access — manual review required."
+                ),
+                field="files",
+                subfield="status",
+                stage="transform",
+                recid=recid,
+                priority="critical",
+                value=", ".join(
+                    f"{f['full_name']}: {f['status']}" for f in self.raw_file_dumps
+                ),
+            )
+
+        # All files share one status: public (empty) or a single restriction.
+        # Note: we do NOT validate the status against CDS_ACCESS_GROUP_MAPPINGS
+        # here. Recognising/resolving the restriction string (mapping keyword,
+        # firerole, bare [CERN] e-group, ...) is RecordParent.resolve_grants()'s
+        # job at load time; it hard-raises on anything it can't resolve. Here we
+        # only decide public-vs-restricted and carry the raw status as `meta`.
+        status = distinct_statuses.pop()
+        if not status:
+            return {
+                "access_obj": {
+                    "record": record_access,
+                    "files": record_access,
+                }
+            }
+
         self.migration_logger.add_information(
-            str(file["recid"]),
+            recid,
             {
                 "message": "Record has individual file restrictions",
-                "value": file["status"],
+                "value": status,
             },
         )
         return {
             "access_obj": {"record": record_access, "files": "restricted"},
-            "meta": file["status"],
+            "meta": status,
         }
 
     def compute_files(self):
         """Transform this version's own raw file dumps into RDM file entries."""
         files = {}
-        for file_dump in self.own_file_dumps:
+        for file_dump in self.raw_file_dumps:
             files[file_dump["full_name"]] = self._compute_file(file_dump)
         return files
 

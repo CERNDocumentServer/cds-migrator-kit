@@ -361,7 +361,7 @@ records:
       files_dump_dir: cds_migrator_kit/rdm/data/isolde/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - "1c46ceab-af68-4502-a436-cdf5a4cfbbe0"
+        - "77d6a84a-596e-414f-817b-1c43e9c66258"
     load:
       legacy_pids_to_redirect: cds_migrator_kit/rdm/data/isolde/duplicated_pids.json
   hie_isolde:

@@ -8,7 +8,8 @@
 """Builds all of a record's versions - ``MigrationEntry["versions"]``."""
 
 from collections import OrderedDict
-from copy import deepcopy
+
+import arrow
 
 from cds_migrator_kit.rdm.records.transform.config import FILE_SUBFORMATS_TO_DROP
 from cds_migrator_kit.rdm.records.transform.entities.version import RecordVersion
@@ -17,12 +18,13 @@ from cds_migrator_kit.rdm.records.transform.entities.version import RecordVersio
 class RecordVersionsTransform:
     """Builds all of a record's versions - ``MigrationEntry["versions"]``.
 
-    Groups the legacy file dumps by version, builds each version's own
-    files/access via ``RecordVersion``, then carries files forward across
-    versions: lets say a record has 2 files, A & B - if a new version of
-    file A gets uploaded, the later record version still needs to include
-    file B too, so each version's file list is a cumulative snapshot, not
-    just its own delta.
+    Groups the legacy file dumps by version, then builds each version via
+    ``RecordVersion`` from its cumulative file set: lets say a record has 2
+    files, A & B - if a new version of file A gets uploaded, the later record
+    version still needs to include file B too, so each version's file list is
+    a cumulative snapshot (latest revision per file), not just its own delta.
+    Access is computed over that same cumulative set, so a restricted file
+    carried into a later version still counts (see ``RecordVersion``).
 
     Exception: when the record's DOI is external (not minted by our
     DataCite prefix - see ``RecordEntry._pids()``), we don't own/manage
@@ -53,57 +55,68 @@ class RecordVersionsTransform:
         record_access = self.record.access_status
 
         # group non-skipped raw file dumps by legacy version number, in
-        # first-seen order - own_file_dumps[v] is version v's own files
-        # (not yet carrying anything forward from earlier versions).
-        own_file_dumps = OrderedDict()
+        # first-seen order - raw_file_dumps_by_version[v] is version v's own
+        # files (not yet carrying anything forward from earlier versions).
+        raw_file_dumps_by_version = OrderedDict()
         representative_file = {}
         for file_dump in self.raw_dump_entry["files"]:
             if self._should_skip_file(file_dump):
                 continue
             version_number = file_dump["version"]
-            own_file_dumps.setdefault(version_number, []).append(file_dump)
+            raw_file_dumps_by_version.setdefault(version_number, []).append(file_dump)
             representative_file.setdefault(version_number, file_dump)
 
-        if own_file_dumps and self._is_external_doi():
+        # Derive publication dates now, before any external-DOI collapse
+        # reorders raw_file_dumps_by_version. Each version's date comes from
+        # its first (representative) file — the current/latest state per version.
+        publication_dates = {
+            v: arrow.get(fd["creation_date"]).replace(tzinfo=None)
+            for v, fd in representative_file.items()
+        }
+
+        if raw_file_dumps_by_version and self._is_external_doi():
             # collapse every legacy file revision into a single version -
             # its files (see the carry-forward below, still a no-op for one
             # version) and its access/publication_date (from the latest
-            # legacy version's own representative file, i.e. the current
-            # state) instead of one RDM version per legacy revision.
-            latest_version_number = max(own_file_dumps)
-            own_file_dumps = OrderedDict(
+            # legacy version's representative file, i.e. the current state)
+            # instead of one RDM version per legacy revision.
+            latest_version_number = max(raw_file_dumps_by_version)
+            raw_file_dumps_by_version = OrderedDict(
                 [
                     (
                         latest_version_number,
-                        [fd for fds in own_file_dumps.values() for fd in fds],
+                        [
+                            fd
+                            for fds in raw_file_dumps_by_version.values()
+                            for fd in fds
+                        ],
                     )
                 ]
             )
-            representative_file = {
-                latest_version_number: representative_file[latest_version_number]
+            publication_dates = {
+                latest_version_number: publication_dates[latest_version_number]
             }
 
-        versions = OrderedDict(
-            (
-                version_number,
-                RecordVersion(
-                    record_access=record_access,
-                    files_dump_dir=self.files_dump_dir,
-                    migration_logger=self.migration_logger,
-                    representative_file=representative_file[version_number],
-                    own_file_dumps=own_file_dumps[version_number],
-                ).build(),
-            )
-            for version_number in own_file_dumps
-        )
+        # Build each version from its CUMULATIVE file set (its own files plus
+        # every earlier version's latest file revision). Computing access over
+        # the cumulative set - not just the version's new files - means a
+        # restricted file carried into a later version is still seen by
+        # RecordVersion.compute_access(), so a version that mixes it with a
+        # public file hard-fails instead of silently going public.
+        cumulative_raw_dumps = {}  # full_name -> latest raw dump seen so far
+        versions = OrderedDict()
+        for version_number, own_dumps in raw_file_dumps_by_version.items():
+            for file_dump in own_dumps:
+                cumulative_raw_dumps[file_dump["full_name"]] = file_dump
+            versions[version_number] = RecordVersion(
+                record_access=record_access,
+                files_dump_dir=self.files_dump_dir,
+                migration_logger=self.migration_logger,
+                publication_date=publication_dates[version_number],
+                raw_file_dumps=list(cumulative_raw_dumps.values()),
+            ).build()
 
-        # carry files forward across versions (see class docstring)
-        versioned_files = {}
-        for version_number in versions:
-            versioned_files |= versions[version_number]["files"]
-            versions[version_number]["files"] = deepcopy(versioned_files)
-
-        if not versioned_files:
+        if not versions:
             # Record has no files. Add metadata-only record as single version
             versions[1] = RecordVersion(
                 record_access=record_access,

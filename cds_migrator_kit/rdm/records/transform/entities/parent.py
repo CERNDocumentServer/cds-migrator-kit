@@ -132,69 +132,10 @@ class RecordParent:
             these are consumed to create the actual grants.
         """
         default_permission = "view"
-        groups = set()
-        emails = set()
         grants_with_perms = {}
 
         # ----Parse file status metadata----#
-        if specific_file_restrictions:
-            group_mappings = current_app.config.get("CDS_ACCESS_GROUP_MAPPINGS", {})
-
-            if specific_file_restrictions in group_mappings:
-                try:
-                    groups.update(group_mappings[specific_file_restrictions])
-                except KeyError:
-                    raise ManualImportRequired(
-                        message="Missing permission mapping",
-                        field="access",
-                        subfield="subject.id",
-                        stage="load",
-                        recid=self.record.recid,
-                        priority="critical",
-                        value=specific_file_restrictions,
-                    )
-            elif specific_file_restrictions == "restricted":
-                # https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showroledetails?id_role=69
-                groups.add("cern-personnel")
-            elif specific_file_restrictions.strip().endswith("[CERN]") and not any(
-                kw in specific_file_restrictions for kw in ("firerole:", "allow ")
-            ):
-                # bare CERN e-group name, e.g.
-                # "cds-ph-ep-publications-referee-non-lhc [CERN]"
-                groups.add(self._normalize_group_name(specific_file_restrictions))
-            else:
-                if not any(
-                    kw in specific_file_restrictions
-                    for kw in ("firerole: allow group", "allow email")
-                ):
-                    raise ManualImportRequired(
-                        message="Unexpected permission format.",
-                        field="access",
-                        subfield="subject.id",
-                        stage="load",
-                        recid=self.record.recid,
-                        priority="critical",
-                        value=specific_file_restrictions,
-                    )
-
-                meta_str = specific_file_restrictions.replace("\r\n", "\n")
-
-                # Parse groups
-                group_matches = re.search(
-                    r'allow group\s+((?:"[^"]+",?\s*)+)', meta_str
-                )
-                if group_matches:
-                    group_values = re.findall(r'"([^"]+)"', group_matches.group(1))
-                    for g in group_values:
-                        groups.add(self._normalize_group_name(g))
-
-                # Parse emails
-                email_matches = re.search(
-                    r'allow email\s+((?:"[^"]+",?\s*)+)', meta_str
-                )
-                if email_matches:
-                    email_values = re.findall(r'"([^"]+)"', email_matches.group(1))
-                    emails.update(email_values)
+        groups, emails = self._resolve_restriction_groups(specific_file_restrictions)
 
         # ----Parse record access grants----#
         for grant_info in self.access_grants:
@@ -216,6 +157,71 @@ class RecordParent:
                     groups.add(self._normalize_group_name(subject))
 
         return groups, emails, grants_with_perms
+
+    def _resolve_restriction_groups(self, specific_file_restrictions):
+        """Resolve the groups/emails implied by a file-restriction string.
+
+        Covers every form a legacy file ``status`` can take (see
+        ``docs/legacy_restriction_paths.md``): the literal ``"restricted"``, a
+        bare ``"<name> [CERN]"`` e-group name, a ``firerole:`` expression, or -
+        as a last resort - a key in ``CDS_ACCESS_GROUP_MAPPINGS``. Raises
+        ``ManualImportRequired`` for anything unrecognised.
+
+        :param specific_file_restrictions: the ``meta`` value from a
+            version's access dict, or "" when the version has no individual
+            file restriction.
+        :return: ``(groups, emails)`` - the groups/emails this restriction
+            string grants view access to.
+        """
+        groups = set()
+        emails = set()
+        if not specific_file_restrictions:
+            return groups, emails
+
+        group_mappings = current_app.config.get("CDS_ACCESS_GROUP_MAPPINGS", {})
+
+        if specific_file_restrictions == "restricted":
+            # https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showroledetails?id_role=69
+            groups.add("cern-personnel")
+        elif specific_file_restrictions.strip().endswith("[CERN]") and not any(
+            kw in specific_file_restrictions for kw in ("firerole:", "allow ")
+        ):
+            # bare CERN e-group name, e.g.
+            # "cds-ph-ep-publications-referee-non-lhc [CERN]"
+            groups.add(self._normalize_group_name(specific_file_restrictions))
+        elif any(
+            kw in specific_file_restrictions
+            for kw in ("firerole: allow group", "allow email")
+        ):
+            meta_str = specific_file_restrictions.replace("\r\n", "\n")
+
+            # Parse groups
+            group_matches = re.search(r'allow group\s+((?:"[^"]+",?\s*)+)', meta_str)
+            if group_matches:
+                group_values = re.findall(r'"([^"]+)"', group_matches.group(1))
+                for g in group_values:
+                    groups.add(self._normalize_group_name(g))
+
+            # Parse emails
+            email_matches = re.search(r'allow email\s+((?:"[^"]+",?\s*)+)', meta_str)
+            if email_matches:
+                email_values = re.findall(r'"([^"]+)"', email_matches.group(1))
+                emails.update(email_values)
+        elif specific_file_restrictions in group_mappings:
+            # last resort: a simple keyword mapped to CERN e-group(s)
+            groups.update(group_mappings[specific_file_restrictions])
+        else:
+            raise ManualImportRequired(
+                message="Unexpected permission format.",
+                field="access",
+                subfield="subject.id",
+                stage="load",
+                recid=self.record.recid,
+                priority="critical",
+                value=specific_file_restrictions,
+            )
+
+        return groups, emails
 
     @staticmethod
     def _normalize_group_name(subject):
