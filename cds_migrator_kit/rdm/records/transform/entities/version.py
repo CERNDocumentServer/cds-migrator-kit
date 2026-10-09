@@ -12,7 +12,7 @@ from typing import Dict, Optional, TypedDict, Union
 
 import arrow
 from arrow import Arrow
-from typing_extensions import Required
+from typing_extensions import NotRequired, Required
 
 from cds_migrator_kit.errors import ManualImportRequired
 
@@ -79,6 +79,10 @@ class VersionEntry(TypedDict):
     # RecordVersionsTransform.build().
     publication_date: Union[Arrow, str]
     access: VersionAccess
+    # Optional version-owned PIDs (e.g. CDS DataCite DOI on the latest
+    # version only). Set by ``RecordVersionsTransform``; load includes them
+    # in that version's create/update payload.
+    pids: NotRequired[Dict[str, Dict[str, str]]]
 
 
 class RecordVersion:
