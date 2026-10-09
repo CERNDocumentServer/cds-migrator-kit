@@ -239,15 +239,21 @@ class RecordLoad:
         """Create (or version) and process a draft before publish."""
         files = versions[version]["files"]
         access = versions[version]["access"]
+        # Transform may attach version-owned pids (e.g. CDS DOI on latest only).
+        version_pids = versions[version].get("pids")
 
         if version == 1 or (version > 1 and draft is None):
             # when draft is None, it means the initial version one was hard deleted
             # and we don't have index 1
             # we decided to skip it and act normal
+            data = self.record_entry.body
+            if version_pids:
+                data = {
+                    **data,
+                    "pids": {**(data.get("pids") or {}), **version_pids},
+                }
             try:
-                draft = current_rdm_records_service.create(
-                    identity, data=self.record_entry.body, uow=uow
-                )
+                draft = current_rdm_records_service.create(identity, data=data, uow=uow)
                 self.assign_rep_numbers(draft)
             except (UniqueViolation, IntegrityError) as e:
                 raise ManualImportRequired(message=str(e))
@@ -284,6 +290,11 @@ class RecordLoad:
                     "publication_date": publication_date.date().isoformat(),
                 },
             }
+            if version_pids:
+                missing_data["pids"] = {
+                    **(draft_dict.get("pids") or {}),
+                    **version_pids,
+                }
             draft = current_rdm_records_service.update_draft(
                 identity, draft["id"], data=missing_data, uow=uow
             )
@@ -298,20 +309,16 @@ class RecordLoad:
         """Update migrated DOIs post publish."""
         if not self.is_final_record:
             return
-        migrated_pids = self.record_entry.body["pids"]
-        for pid_type, identifier in migrated_pids.items():
-            if pid_type == "doi":
-                # If a DOI was already minted from legacy then on publish the datacite
-                # will return a warning that "This DOI has already been taken"
-                # In that case, we edit and republish to force an update of the doi with
-                # the new published metadata as in the new system we have more information available
-                _draft = current_rdm_records_service.edit(
-                    identity, record["id"], uow=uow
-                )
-                record = current_rdm_records_service.publish(
-                    identity, _draft["id"], uow=uow
-                )
-                return record
+        # Skip versions that do not carry a DOI (e.g. older versions of a
+        # multi-version CDS DOI record - DOI lives only on the latest).
+        if "doi" not in (record.to_dict().get("pids") or {}):
+            return
+        # If a DOI was already minted from legacy then on publish the datacite
+        # will return a warning that "This DOI has already been taken"
+        # In that case, we edit and republish to force an update of the doi with
+        # the new published metadata as in the new system we have more information available
+        _draft = current_rdm_records_service.edit(identity, record["id"], uow=uow)
+        return current_rdm_records_service.publish(identity, _draft["id"], uow=uow)
 
     def after_publish_update_created(self, record, version_data, version, uow):
         """Update created timestamp post publish.

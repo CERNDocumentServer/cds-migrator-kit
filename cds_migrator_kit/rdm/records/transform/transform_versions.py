@@ -10,6 +10,7 @@
 from collections import OrderedDict
 
 import arrow
+from flask import current_app
 
 from cds_migrator_kit.rdm.records.transform.config import FILE_SUBFORMATS_TO_DROP
 from cds_migrator_kit.rdm.records.transform.entities.version import RecordVersion
@@ -31,6 +32,10 @@ class RecordVersionsTransform:
     that DOI, so its legacy per-file version history is collapsed into a
     single RDM version holding every file, instead of one RDM version per
     legacy file revision - see ``_is_external_doi()``.
+
+    CDS DataCite DOIs are the opposite: we do own them, so on multi-version
+    records the DOI is moved off the shared body onto the latest version
+    entry (``_assign_cds_doi_to_latest``) and load imports that as-is.
     """
 
     def __init__(
@@ -137,7 +142,46 @@ class RecordVersionsTransform:
                 publication_date=self.record.body["metadata"]["publication_date"],
             ).build()
 
+        self._assign_cds_doi_to_latest(versions)
         return versions
+
+    def _cds_doi(self):
+        """Return the CDS DataCite DOI dict from the record body, or ``None``.
+
+        Detection follows ``DATACITE_PREFIX`` on the identifier (same rule as
+        ``RecordEntry._pids()``), not the provider label.
+        """
+        doi = (self.record.body.get("pids") or {}).get("doi")
+        if not doi:
+            return None
+        prefix = current_app.config["DATACITE_PREFIX"]
+        if doi.get("identifier", "").startswith(prefix):
+            return doi
+        return None
+
+    def _assign_cds_doi_to_latest(self, versions):
+        """Keep a CDS DataCite DOI only on the latest version.
+
+        Multi-version records share one transformed body. Leaving the CDS DOI
+        there would put it on every version at load. Move it onto the latest
+        version entry so load can import as-is; single-version records keep
+        the DOI on the body.
+        """
+        doi = self._cds_doi()
+        if not doi or len(versions) <= 1:
+            return
+
+        pids = dict(self.record.body.get("pids") or {})
+        pids.pop("doi", None)
+        if pids:
+            self.record.body["pids"] = pids
+        else:
+            self.record.body.pop("pids", None)
+
+        latest = versions[max(versions)]
+        latest_pids = dict(latest.get("pids") or {})
+        latest_pids["doi"] = doi
+        latest["pids"] = latest_pids
 
     def _is_external_doi(self):
         """Return True if this record's DOI isn't minted through our prefix.

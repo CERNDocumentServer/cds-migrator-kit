@@ -14,6 +14,9 @@ import pytest
 
 from cds_migrator_kit.errors import ManualImportRequired
 from cds_migrator_kit.rdm.records.transform.transform import CDSToRDMRecordTransform
+from cds_migrator_kit.rdm.records.transform.transform_versions import (
+    RecordVersionsTransform,
+)
 
 
 def _file_dump(
@@ -76,16 +79,28 @@ def _record(pids=None):
     return SimpleNamespace(access_status="public", body=body)
 
 
+CDS_DOI = {
+    "identifier": "10.17181/cds.12345",
+    "provider": "datacite",
+}
+EXTERNAL_DOI = {
+    "identifier": "10.1234/external",
+    "provider": "external",
+}
+
+
 def _external_doi_record():
     """A record double whose DOI provider is "external" (not our prefix)."""
-    return _record(
-        pids={"doi": {"identifier": "10.1234/external", "provider": "external"}}
-    )
+    return _record(pids={"doi": EXTERNAL_DOI})
 
 
 @pytest.fixture
-def transform(tmp_path):
+def transform(tmp_path, monkeypatch):
     """Transform instance."""
+    monkeypatch.setattr(
+        "cds_migrator_kit.rdm.records.transform.transform_versions.current_app",
+        SimpleNamespace(config={"DATACITE_PREFIX": "10.17181"}),
+    )
     return CDSToRDMRecordTransform(
         files_dump_dir=tmp_path,
         missing_users=tmp_path,
@@ -396,3 +411,116 @@ def test_versions_restriction_lifted_on_only_file_becomes_public(transform):
         "access_obj": {"record": "public", "files": "public"}
     }
     assert versions[2]["files"]["A.pdf"]["version"] == 2
+
+
+def _patch_datacite_prefix(monkeypatch, prefix="10.17181"):
+    """Point version DOI helpers at a fixed DATACITE_PREFIX without a full app."""
+    monkeypatch.setattr(
+        "cds_migrator_kit.rdm.records.transform.transform_versions.current_app",
+        SimpleNamespace(config={"DATACITE_PREFIX": prefix}),
+    )
+
+
+def _versions_transform(record, raw_dump_entry, tmp_path):
+    """Build a RecordVersionsTransform for DOI-placement unit tests."""
+    return RecordVersionsTransform(
+        raw_dump_entry=raw_dump_entry,
+        record=record,
+        files_dump_dir=tmp_path,
+        plots=False,
+        migration_logger=MagicMock(),
+    )
+
+
+def test_cds_doi_uses_datacite_prefix_not_provider(monkeypatch, tmp_path):
+    """CDS DOI detection follows DATACITE_PREFIX, not the provider label."""
+    _patch_datacite_prefix(monkeypatch)
+    mistyped_provider = {
+        "identifier": "10.17181/cds.12345",
+        "provider": "external",
+    }
+    wrong_prefix = {
+        "identifier": "10.1234/external",
+        "provider": "datacite",
+    }
+    assert (
+        _versions_transform(
+            _record(pids={"doi": mistyped_provider}), {"files": []}, tmp_path
+        )._cds_doi()
+        == mistyped_provider
+    )
+    assert (
+        _versions_transform(
+            _record(pids={"doi": wrong_prefix}), {"files": []}, tmp_path
+        )._cds_doi()
+        is None
+    )
+    assert (
+        _versions_transform(
+            _record(pids={"doi": CDS_DOI}), {"files": []}, tmp_path
+        )._cds_doi()
+        == CDS_DOI
+    )
+
+
+def test_cds_doi_stays_on_body_for_single_version(monkeypatch, transform):
+    """Single-version CDS DOI records keep the DOI on the shared body."""
+    _patch_datacite_prefix(monkeypatch)
+    record = _record(pids={"doi": CDS_DOI})
+    raw_dump_entry = {
+        "recid": 123,
+        "files": [_file_dump(full_name="main.pdf", file_version=1)],
+    }
+
+    versions = transform._versions(raw_dump_entry, record)
+
+    assert list(versions) == [1]
+    assert record.body["pids"]["doi"] == CDS_DOI
+    assert "pids" not in versions[1]
+
+
+def test_cds_doi_moves_to_latest_version_when_multiple(monkeypatch, transform):
+    """Multi-version CDS DOI is stripped from the body and set on latest only."""
+    _patch_datacite_prefix(monkeypatch)
+    record = _record(pids={"doi": CDS_DOI})
+    raw_dump_entry = {
+        "recid": 123,
+        "files": [
+            _file_dump(full_name="main.pdf", file_version=1),
+            _file_dump(
+                full_name="main.pdf",
+                file_version=2,
+                creation_date="2020-02-01T00:00:00+00:00",
+            ),
+        ],
+    }
+
+    versions = transform._versions(raw_dump_entry, record)
+
+    assert list(versions) == [1, 2]
+    assert "doi" not in record.body.get("pids", {})
+    assert "pids" not in versions[1]
+    assert versions[2]["pids"]["doi"] == CDS_DOI
+
+
+def test_external_doi_stays_on_body_when_versions_collapsed(monkeypatch, transform):
+    """External DOI collapse keeps a single version and leaves the DOI on body."""
+    _patch_datacite_prefix(monkeypatch)
+    record = _external_doi_record()
+    raw_dump_entry = {
+        "recid": 123,
+        "files": [
+            _file_dump(full_name="main.pdf", file_version=1),
+            _file_dump(
+                full_name="main.pdf",
+                file_version=2,
+                creation_date="2020-02-01T00:00:00+00:00",
+            ),
+        ],
+    }
+
+    versions = transform._versions(raw_dump_entry, record)
+
+    assert list(versions) == [2]
+    assert record.body["pids"]["doi"] == EXTERNAL_DOI
+    assert "pids" not in versions[2]
