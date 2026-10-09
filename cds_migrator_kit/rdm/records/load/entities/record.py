@@ -8,6 +8,7 @@
 """Creates, versions, and publishes a single RDM record from a ``RecordEntry``."""
 
 import os
+from copy import deepcopy
 from typing import Dict
 
 import arrow
@@ -195,6 +196,39 @@ class RecordLoad:
                         f"Report number {report_number} already exists."
                     )
 
+    def _cds_doi(self):
+        """Return the CDS DataCite DOI dict, or ``None``."""
+        doi = (self.record_entry.body.get("pids") or {}).get("doi")
+        if doi and doi.get("provider") == "datacite":
+            return doi
+        return None
+
+    def _create_payload(self, versions):
+        """Return create() body, without CDS DOI when multiple versions exist."""
+        if not (self._cds_doi() and len(versions) > 1):
+            return self.record_entry.body
+        data = deepcopy(self.record_entry.body)
+        pids = dict(data.get("pids") or {})
+        pids.pop("doi", None)
+        if pids:
+            data["pids"] = pids
+        else:
+            data.pop("pids", None)
+        return data
+
+    def _put_cds_doi_on_latest_draft(self, identity, draft, versions, version, uow):
+        """Attach the CDS DOI to the latest version draft when needed."""
+        doi = self._cds_doi()
+        if not (doi and len(versions) > 1 and version == max(versions)):
+            return draft
+        draft_dict = draft.to_dict()
+        pids = dict(draft_dict.get("pids") or {})
+        pids["doi"] = doi
+        draft_dict["pids"] = pids
+        return current_rdm_records_service.update_draft(
+            identity, draft["id"], data=draft_dict, uow=uow
+        )
+
     def pre_publish(self, identity, versions, version, draft, uow):
         """Create (or version) and process a draft before publish."""
         files = versions[version]["files"]
@@ -206,7 +240,7 @@ class RecordLoad:
             # we decided to skip it and act normal
             try:
                 draft = current_rdm_records_service.create(
-                    identity, data=self.record_entry.body, uow=uow
+                    identity, data=self._create_payload(versions), uow=uow
                 )
                 self.assign_rep_numbers(draft)
             except (UniqueViolation, IntegrityError) as e:
@@ -248,6 +282,9 @@ class RecordLoad:
                 identity, draft["id"], data=missing_data, uow=uow
             )
 
+        draft = self._put_cds_doi_on_latest_draft(
+            identity, draft, versions, version, uow
+        )
         self.load_access(draft, access, uow)
         self.load_files(draft, files, uow)
 
@@ -257,7 +294,10 @@ class RecordLoad:
         """Update migrated DOIs post publish."""
         if not self.is_final_record:
             return
-        migrated_pids = self.record_entry.body["pids"]
+        # Skip versions that do not carry the DOI (non-latest CDS DOI versions).
+        if "doi" not in (record.get("pids") or {}):
+            return
+        migrated_pids = self.record_entry.body.get("pids") or {}
         for pid_type, identifier in migrated_pids.items():
             if pid_type == "doi":
                 # If a DOI was already minted from legacy then on publish the datacite
