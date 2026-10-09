@@ -12,6 +12,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from cds_migrator_kit.errors import ManualImportRequired
 from cds_migrator_kit.rdm.records.transform.transform import CDSToRDMRecordTransform
 
 
@@ -241,3 +242,157 @@ def test_versions_individual_file_restriction_sets_access_meta(transform):
     assert recid == "123"
     assert info["message"] == "Record has individual file restrictions"
     assert info["value"] == status
+
+
+def test_versions_keyword_file_restriction_is_status_form_agnostic(transform):
+    """A plain keyword status flows through as restricted + meta.
+
+    compute_access no longer validates the status against
+    CDS_ACCESS_GROUP_MAPPINGS (hence no app context needed here); recognising
+    the keyword is resolve_grants' job at load time.
+    """
+    raw_dump_entry = {
+        "recid": 123,
+        "files": [_file_dump(status="SSO")],
+    }
+
+    versions = transform._versions(raw_dump_entry, _record())
+
+    assert versions[1]["access"] == {
+        "access_obj": {"record": "public", "files": "restricted"},
+        "meta": "SSO",
+    }
+
+
+def test_versions_all_public_files_stay_public(transform):
+    """A version whose files all have empty status stays fully public."""
+    raw_dump_entry = {
+        "recid": 123,
+        "files": [
+            _file_dump(full_name="a.pdf", bibdocid=1, status=""),
+            _file_dump(full_name="b.pdf", bibdocid=2, status=""),
+        ],
+    }
+
+    versions = transform._versions(raw_dump_entry, _record())
+
+    assert set(versions[1]["files"]) == {"a.pdf", "b.pdf"}
+    assert versions[1]["access"] == {
+        "access_obj": {"record": "public", "files": "public"}
+    }
+    transform.migration_logger.add_information.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "files",
+    [
+        # public + restricted (dump order must not matter)
+        [("restricted.pdf", "SSO"), ("public.pdf", "")],
+        [("public.pdf", ""), ("restricted.pdf", "SSO")],
+        # two distinct restriction statuses
+        [("a.pdf", "SSO"), ("b.pdf", "ITDepRestrFile")],
+        # public + two distinct restriction statuses
+        [("public.pdf", ""), ("a.pdf", "SSO"), ("b.pdf", "ITDepRestrFile")],
+    ],
+)
+def test_versions_non_uniform_file_statuses_raise_and_report_all(transform, files):
+    """A version whose files don't all share one status hard-stops.
+
+    All files must share a single status (all public, or all the same
+    restriction). Any other mix is unrepresentable and raises - independent of
+    dump order - reporting every file with its status for manual review.
+    """
+    raw_dump_entry = {
+        "recid": 123,
+        "files": [
+            _file_dump(full_name=name, bibdocid=i + 1, status=status)
+            for i, (name, status) in enumerate(files)
+        ],
+    }
+
+    with pytest.raises(ManualImportRequired) as exc_info:
+        transform._versions(raw_dump_entry, _record())
+
+    reported = exc_info.value.value
+    for name, status in files:
+        assert f"{name}: {status}" in reported
+
+
+def test_versions_carry_forward_restricted_into_public_version_raises(transform):
+    """Access is evaluated over a version's CUMULATIVE (carried-forward) files.
+
+    Legacy: A v1 restricted + B v1 restricted, then A v2 public (B stays v1).
+    v2's cumulative file set is {A public, B restricted} - a mix - so it must
+    hard-stop rather than silently marking the version (and restricted B)
+    public.
+    """
+    raw_dump_entry = {
+        "recid": 123,
+        "files": [
+            _file_dump(
+                full_name="A.pdf",
+                file_version=1,
+                bibdocid=1,
+                status="SSO",
+                creation_date="2020-01-01T00:00:00+00:00",
+            ),
+            _file_dump(
+                full_name="B.pdf",
+                file_version=1,
+                bibdocid=2,
+                status="SSO",
+                creation_date="2020-01-01T00:00:00+00:00",
+            ),
+            _file_dump(
+                full_name="A.pdf",
+                file_version=2,
+                bibdocid=1,
+                status="",
+                creation_date="2020-02-01T00:00:00+00:00",
+            ),
+        ],
+    }
+
+    with pytest.raises(ManualImportRequired) as exc_info:
+        transform._versions(raw_dump_entry, _record())
+
+    assert "A.pdf: " in exc_info.value.value
+    assert "B.pdf: SSO" in exc_info.value.value
+
+
+def test_versions_restriction_lifted_on_only_file_becomes_public(transform):
+    """A lone file whose restriction is lifted in a new revision: no false mix.
+
+    v1 is restricted, v2 (the same file, now public) is public - the cumulative
+    set per version uses the latest revision per file, so there is no mix.
+    """
+    raw_dump_entry = {
+        "recid": 123,
+        "files": [
+            _file_dump(
+                full_name="A.pdf",
+                file_version=1,
+                bibdocid=1,
+                status="SSO",
+                creation_date="2020-01-01T00:00:00+00:00",
+            ),
+            _file_dump(
+                full_name="A.pdf",
+                file_version=2,
+                bibdocid=1,
+                status="",
+                creation_date="2020-02-01T00:00:00+00:00",
+            ),
+        ],
+    }
+
+    versions = transform._versions(raw_dump_entry, _record())
+
+    assert versions[1]["access"] == {
+        "access_obj": {"record": "public", "files": "restricted"},
+        "meta": "SSO",
+    }
+    assert versions[2]["access"] == {
+        "access_obj": {"record": "public", "files": "public"}
+    }
+    assert versions[2]["files"]["A.pdf"]["version"] == 2
