@@ -189,12 +189,23 @@ class SubjectsMapper(FieldMapper):
 
 
 class TableOfContentsMapper(FieldMapper):
-    """Folds table_of_content into additional_descriptions."""
+    """Folds table_of_content into additional_descriptions.
+
+    Also the single place where the final ``additional_descriptions`` list
+    is deduplicated: many different dojson rules append to it (520/246/
+    035/500/210/... across base.py and the various collection-specific
+    rule modules), some legacy records repeat the very same MARC field
+    (identical text, sometimes only differing in a provenance subfield
+    nothing here reads), and not every one of those rules remembers to
+    guard against re-adding an entry already present. Deduplicating once
+    here, after every rule has run, doesn't depend on each of them getting
+    that guard right.
+    """
 
     id = "additional_descriptions"
 
     def map_value(self, ctx):
-        """Move table_of_content into additional_descriptions and return it."""
+        """Move table_of_content into additional_descriptions and dedupe."""
         dojson_entry = ctx.dojson_entry
         toc = dojson_entry.get("table_of_content", [])
         additional_desc = dojson_entry.get("additional_descriptions", [])
@@ -204,6 +215,14 @@ class TableOfContentsMapper(FieldMapper):
             )
             dojson_entry["additional_descriptions"] = additional_desc
             dojson_entry.pop("table_of_content")
+
+        deduped = []
+        for description in dojson_entry.get("additional_descriptions", []):
+            if description not in deduped:
+                deduped.append(description)
+        if deduped:
+            dojson_entry["additional_descriptions"] = deduped
+
         return dojson_entry.get("additional_descriptions")
 
 
@@ -244,6 +263,37 @@ class IdentifiersMapper(FieldMapper):
         return identifiers
 
 
+#: `setlink` is a CDS-internal redirector, not a real related resource -
+#: drop any related_identifiers entry pointing at it.
+_SETLINK_URL_PREFIX = "http://documents.cern.ch/cgi-bin/setlink?"
+
+
+class RelatedIdentifiersMapper(FieldMapper):
+    """Maps related_identifiers, dropping CDS-internal setlink URLs."""
+
+    id = "related_identifiers"
+
+    def map_value(self, ctx):
+        """Return related_identifiers without setlink URLs or the record's own DOI."""
+        related_identifiers = ctx.dojson_entry.get("related_identifiers", [])
+        record_doi = ((ctx.pids or {}).get("doi") or {}).get("identifier")
+        record_doi = record_doi.strip().lower() if record_doi else None
+        return [
+            item
+            for item in related_identifiers
+            if not (
+                (item.get("scheme") or "").upper() == "URL"
+                and (item.get("identifier") or "").startswith(_SETLINK_URL_PREFIX)
+            )
+            # the record's own DOI is already in pids, don't repeat it
+            and not (
+                record_doi
+                and (item.get("scheme") or "").lower() == "doi"
+                and (item.get("identifier") or "").strip().lower() == record_doi
+            )
+        ]
+
+
 # Fields that pass through unchanged from dojson_entry - kept explicit in the
 # composed list (mappers/config equivalent) rather than open-ended, so the
 # "forgotten metadata key" completeness check in
@@ -256,7 +306,6 @@ PASSTHROUGH_METADATA_FIELDS = (
     "languages",
     "dates",
     "funding",
-    "related_identifiers",
     "rights",
     "copyright",
 )
