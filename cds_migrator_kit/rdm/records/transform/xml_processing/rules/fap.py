@@ -39,7 +39,7 @@ def resource_type(self, key, value):
     raise IgnoreKey("resource_type")
 
 
-@model.over("creators", "^100__", override=True)
+@model.over("creators", "(^100__)|(^720__)", override_tag=True)
 @for_each_value
 @require(["a"])
 def creators(self, key, value):
