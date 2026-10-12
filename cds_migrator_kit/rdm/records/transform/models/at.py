@@ -18,11 +18,12 @@ class ATModel(CdsOverdo):
     """Translation model for AT records."""
 
     __query__ = """
-        (980__:ARTICLE OR 980__:PREPRINT)
-        AND
-        (710__.5:NPA OR 710__.5:AT)
-        -710__.5:SI -710__.5:SC -710__.5:SL -710__.5:PS -710__.5:MPS -710__.5:ISR -710__.5:MSC -710__.5:AC -710__.5:SPS
-        -710__.5:LEP -710__.5:AB -710__.5:AR -710__.5:TS -710__.5:ST -710__.5:MT -710__.5:EST -710__.5:SB -710__.5:LHC
+        (980__:ARTICLE OR 980__:PREPRINT) AND
+        (
+          ((710__.5:NPA OR 710__.5:AT) -710__.5:LHC)
+          OR
+          (710__.5:LHC AND (037__:CERN-LHC-9* OR 037__:CERN-LHC-20* OR 088__:CERN-LHC-9* OR 088__:CERN-LHC-20*))
+        )
         -980__:DELETED -980__c:MERGED
     """
 
@@ -35,6 +36,7 @@ class ATModel(CdsOverdo):
         "518__g",  # Meeting/conference identification
         "520__9",  # Source of the additional description (e.g. arxiv)
         "542__3",  # Part of the license
+        "540__3",  # TODO: Confirm with SIS
         "595__i",  # INSPEC number
         "773__a",  # Duplicate DOI
         "901__u",  # Affiliation at Conversion?
