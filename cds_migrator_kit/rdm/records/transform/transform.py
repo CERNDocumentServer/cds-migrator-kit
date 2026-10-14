@@ -184,7 +184,7 @@ class CDSToRDMRecordTransform:
             record = self._record(raw_dump_entry, dump)
 
             if record:
-                versions = self._versions(raw_dump_entry, record)
+                versions = self._versions(raw_dump_entry, record, bool(ep_approval))
                 # RecordParent is the last entity to touch dojson_entry -
                 # it pops submitter/communities/access_grants - so the
                 # forgotten-keys check must run after it.
@@ -242,13 +242,14 @@ class CDSToRDMRecordTransform:
         entry_builder.build()
         return entry_builder
 
-    def _versions(self, raw_dump_entry, record: RecordEntry):
+    def _versions(self, raw_dump_entry, record: RecordEntry, has_ep_approval=False):
         return RecordVersionsTransform(
             raw_dump_entry=raw_dump_entry,
             record=record,
             files_dump_dir=self.files_dump_dir,
             plots=self.plots,
             migration_logger=self.migration_logger,
+            has_ep_approval=has_ep_approval,
         ).build()
 
     def _load_migrated_recids(self):
