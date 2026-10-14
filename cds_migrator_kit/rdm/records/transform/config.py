@@ -159,6 +159,9 @@ udc_pattern = r"\b\d+(?:\.\d+)*-?\d*(?:\.\d+)*\b"
 
 FILE_SUBFORMATS_TO_DROP = ["pdfa", "unstamped"]
 
+# Known empty/corrupt legacy PDF stub (Ghostscript zero-page placeholder).
+EMPTY_PDF_CHECKSUM = "6f58aa0bfac8a909ac578c1595d55a60"
+
 # Legacy experiment names remapped to vocabulary ids before lookup
 EXPERIMENT_ALIASES = {
     "t2k": "re13",
