@@ -97,6 +97,7 @@ class RecordVersion:
         migration_logger,
         raw_file_dumps=None,
         publication_date=None,
+        has_ep_approval=False,
     ):
         """Constructor.
 
@@ -110,12 +111,16 @@ class RecordVersion:
         :param publication_date: Arrow instance (when derived from a file's
             creation date by the caller) or plain ISO date string (metadata-
             only fallback copied from the record's publication date).
+        :param has_ep_approval: the record has an EP approval history, so it
+            is split into a public and a restricted record at load time
+            (by per-file access); a public/restricted file mix is expected.
         """
         self.record_access = record_access
         self.files_dump_dir = files_dump_dir
         self.migration_logger = migration_logger
         self.raw_file_dumps = raw_file_dumps or []
         self.publication_date = publication_date
+        self.has_ep_approval = has_ep_approval
         self.files = None
         self.access = None
 
@@ -152,6 +157,14 @@ class RecordVersion:
         # statuses — can't be represented, so hard-stop for manual review.
         recid = str(file["recid"])
         distinct_statuses = {f["status"] for f in self.raw_file_dumps}
+        restrictions = distinct_statuses - {""}
+        if self.has_ep_approval and restrictions:
+            # EP approval records are split into public/restricted records at
+            # load (ep_split), which sorts files by their own status - so a
+            # public + single-restriction mix is excused. The restriction is
+            # kept as `meta` for the restricted split's grants.
+            if len(restrictions) == 1:
+                distinct_statuses = restrictions
         if len(distinct_statuses) > 1:
             raise ManualImportRequired(
                 message=(

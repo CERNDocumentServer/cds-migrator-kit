@@ -111,8 +111,14 @@ class CDSMigrationEntryLoad(Load):
         ``restricted``. Runs as the last step of the load, inside the unit of
         work, so raising rolls the whole record back.
 
+        EP approval entries are excused: they are split into a public and a
+        restricted record anyway, so the public one legitimately has public files.
+
         :raises ManualImportRequired: with ``critical`` priority on any mismatch.
         """
+        if entry.get("ep_approval"):
+            return
+
         recid = entry["record"].recid
         restricted_keys = [
             file_data["key"]

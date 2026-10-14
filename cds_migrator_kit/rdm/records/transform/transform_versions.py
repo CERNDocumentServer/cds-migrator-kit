@@ -33,7 +33,15 @@ class RecordVersionsTransform:
     legacy file revision - see ``_is_external_doi()``.
     """
 
-    def __init__(self, raw_dump_entry, record, files_dump_dir, plots, migration_logger):
+    def __init__(
+        self,
+        raw_dump_entry,
+        record,
+        files_dump_dir,
+        plots,
+        migration_logger,
+        has_ep_approval=False,
+    ):
         """Constructor.
 
         :param raw_dump_entry: the original harvested legacy entry (needs
@@ -43,12 +51,15 @@ class RecordVersionsTransform:
         :param files_dump_dir: local EOS mirror root for file content.
         :param plots: whether to keep Plot-type files.
         :param migration_logger: for skip/restriction logging.
+        :param has_ep_approval: record is split at load by EP approval, so
+            mixed public/restricted files in a version are allowed.
         """
         self.raw_dump_entry = raw_dump_entry
         self.record = record
         self.files_dump_dir = files_dump_dir
         self.plots = plots
         self.migration_logger = migration_logger
+        self.has_ep_approval = has_ep_approval
 
     def build(self):
         """Group legacy files by version, build + carry files forward, return."""
@@ -114,6 +125,7 @@ class RecordVersionsTransform:
                 migration_logger=self.migration_logger,
                 publication_date=publication_dates[version_number],
                 raw_file_dumps=list(cumulative_raw_dumps.values()),
+                has_ep_approval=self.has_ep_approval,
             ).build()
 
         if not versions:
