@@ -11,7 +11,11 @@ from collections import OrderedDict
 
 import arrow
 
-from cds_migrator_kit.rdm.records.transform.config import FILE_SUBFORMATS_TO_DROP
+from cds_migrator_kit.errors import ManualImportRequired
+from cds_migrator_kit.rdm.records.transform.config import (
+    EMPTY_PDF_CHECKSUM,
+    FILE_SUBFORMATS_TO_DROP,
+)
 from cds_migrator_kit.rdm.records.transform.entities.version import RecordVersion
 
 
@@ -73,6 +77,15 @@ class RecordVersionsTransform:
         for file_dump in self.raw_dump_entry["files"]:
             if self._should_skip_file(file_dump):
                 continue
+            if self._is_empty_or_corrupt_file(file_dump):
+                raise ManualImportRequired(
+                    message="Empty/corrupt PDF detected; curator review required.",
+                    field="files",
+                    value=file_dump["full_name"],
+                    stage="transform",
+                    recid=str(file_dump["recid"]),
+                    priority="critical",
+                )
             version_number = file_dump["version"]
             raw_file_dumps_by_version.setdefault(version_number, []).append(file_dump)
             representative_file.setdefault(version_number, file_dump)
@@ -149,6 +162,11 @@ class RecordVersionsTransform:
         """
         doi = self.record.body.get("pids", {}).get("doi", {})
         return doi.get("provider") == "external"
+
+    @staticmethod
+    def _is_empty_or_corrupt_file(file_dump):
+        """Return True for the known empty/corrupt Ghostscript PDF stub."""
+        return file_dump["checksum"] == EMPTY_PDF_CHECKSUM
 
     def _should_skip_file(self, file_dump):
         if file_dump["subformat"] in FILE_SUBFORMATS_TO_DROP:
