@@ -13,6 +13,7 @@ from cds_migrator_kit.errors import (
     UnexpectedValue,
 )
 from cds_migrator_kit.rdm.records.transform.config import (
+    ACCELERATOR_ALIASES,
     EXPERIMENT_ALIASES,
     EXPERIMENTS_AS_SUBJECTS,
 )
@@ -169,6 +170,9 @@ class AcceleratorsMapper(CustomFieldMapper):
                 "cern recognized expt.",
             ]:
                 continue
+            accelerator = ACCELERATOR_ALIASES.get(
+                accelerator.lower().strip(), accelerator
+            )
             result = search_vocabulary(accelerator, "accelerators")
             if result and result not in accelerators_out:
                 accelerators_out.append(result)
