@@ -101,12 +101,12 @@ def resource_type(self, key, value):
         value = value.strip().lower()
     if value in ["rp_restricted"]:
         raise IgnoreKey("resource_type")
-    # TODO: what if more than one resource type exists?
     map = {
         "conferencepaper": {"id": "publication-conferencepaper"},
         "article": {"id": "publication-article"},
         "preprint": {"id": "publication-preprint"},
         "report": {"id": "publication-report"},
+        "note": {"id": "publication-technicalnote"},
     }
     try:
         return map[value]

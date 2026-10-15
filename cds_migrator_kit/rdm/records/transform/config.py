@@ -227,11 +227,17 @@ EXPERIMENT_ALIASES = {
     "witch is433": "IS433",
     "isoltrap": "IS394",
     "is485 (rex-isolde)": "IS485",
+    "charm": "ea-irrad mixed-field",
 }
 
 # 693__e values that are keywords rather than real experiments (curated as
 # "mots clef"), mapped to subjects instead of cern:experiments
 EXPERIMENTS_AS_SUBJECTS = ["d3", "r104", "r105a"]
+
+# Legacy accelerator names remapped to vocabulary ids before lookup
+ACCELERATOR_ALIASES = {
+    "cern aa": "antiproton accumulator",
+}
 
 # Public research publication resource types that are auto-included in the CERN Research community.
 CERN_SCIENTIFIC_RESOURCE_TYPES = {
