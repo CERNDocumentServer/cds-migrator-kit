@@ -13,6 +13,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from cds_migrator_kit.errors import ManualImportRequired
+from cds_migrator_kit.rdm.records.transform.config import EMPTY_PDF_CHECKSUM
 from cds_migrator_kit.rdm.records.transform.transform import CDSToRDMRecordTransform
 
 
@@ -396,3 +397,30 @@ def test_versions_restriction_lifted_on_only_file_becomes_public(transform):
         "access_obj": {"record": "public", "files": "public"}
     }
     assert versions[2]["files"]["A.pdf"]["version"] == 2
+
+
+def test_known_corrupt_checksum_raises_manual_import(transform):
+    """Known empty/corrupt stub checksum fails for curator review."""
+    raw_dump_entry = {
+        "recid": 123,
+        "files": [
+            _file_dump(
+                full_name="cer-002523122.pdf",
+                checksum=EMPTY_PDF_CHECKSUM,
+            ),
+            # pdfa sibling is still dropped; we fail instead of falling back to it
+            _file_dump(
+                full_name="cer-002523122.pdf",
+                file_version=2,
+                subformat="pdfa",
+                checksum="valid-pdfa",
+            ),
+        ],
+    }
+
+    with pytest.raises(ManualImportRequired) as exc_info:
+        transform._versions(raw_dump_entry, _record())
+
+    assert exc_info.value.recid == "123"
+    assert exc_info.value.value == "cer-002523122.pdf"
+    assert "curator review required" in exc_info.value.message

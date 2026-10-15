@@ -8,6 +8,7 @@
 """Creates, versions, and publishes a single RDM record from a ``RecordEntry``."""
 
 import os
+import re
 from typing import Dict
 
 import arrow
@@ -33,6 +34,12 @@ from cds_migrator_kit.rdm.records.transform.entities.version import (
 
 from .parent import ParentLoad
 
+# /Type /Pages … /Count 0 inside one object (before endobj).
+_PDF_ZERO_PAGES_RE = re.compile(
+    rb"/Type\s*/Pages\b(?:(?!endobj).)*?/Count\s+0\b",
+    re.DOTALL,
+)
+
 
 def import_legacy_files(filepath):
     """Download file from legacy."""
@@ -43,6 +50,12 @@ def import_legacy_files(filepath):
         filepath = os.path.join(base_path, "rdm/data/files/dummy.pdf")
     filestream = open(filepath, "rb")
     return filestream
+
+
+def pdf_has_zero_pages(filepath):
+    """Return True if the PDF's /Pages dictionary has /Count 0."""
+    with open(filepath, "rb") as stream:
+        return _PDF_ZERO_PAGES_RE.search(stream.read()) is not None
 
 
 class RecordLoad:
@@ -118,6 +131,19 @@ class RecordLoad:
                     ],
                     uow=uow,
                 )
+                if file_data["mimetype"] == "application/pdf" and pdf_has_zero_pages(
+                    file_data["eos_tmp_path"]
+                ):
+                    raise ManualImportRequired(
+                        message=(
+                            "Empty/corrupt PDF detected; curator review required."
+                        ),
+                        field="files",
+                        stage="load",
+                        recid=recid,
+                        priority="critical",
+                        value=file_data["key"],
+                    )
                 current_rdm_records_service.draft_files.set_file_content(
                     identity,
                     draft.id,
