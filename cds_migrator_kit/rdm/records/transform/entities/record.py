@@ -120,7 +120,7 @@ class RecordEntry:
 
     def has_any_restricted_file(self):
         """True if any of the legacy files carries a restriction status."""
-        return any(file.get("status") for file in self.dojson_entry.get("files", []))
+        return any(file.get("status") for file in self.raw_dump_entry["files"])
 
     def has_any_restrictions(self):
         """True if the record, its stream or any of its files is restricted."""

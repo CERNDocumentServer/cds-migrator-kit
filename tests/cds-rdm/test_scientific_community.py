@@ -21,20 +21,43 @@ from cds_migrator_kit.rdm.records.transform.entities.record import RecordEntry
 RECID = "123456"
 
 
-def _dojson_entry(access="public", files_restricted=False, communities=None):
-    """Build a minimal DOJSON-processed entry for community tests."""
-    status = "restricted" if files_restricted else ""
+def _file_dump(version=1, status="", full_name="draft.pdf"):
+    """Build a minimal legacy file dump, as found in ``raw_dump_entry["files"]``."""
+    return {
+        "recid": int(RECID),
+        "full_name": full_name,
+        "version": version,
+        "status": status,
+        "hidden": False,
+        "subformat": "",
+        "type": "Main",
+    }
+
+
+def _dojson_entry(access="public", communities=None):
+    """Build a minimal DOJSON-processed entry (it carries no ``files`` key)."""
     return {
         "record_restriction": access,
-        "files": [{"status": status}],
         "communities": communities or [],
     }
 
 
-def _record(dojson_entry, resource_type="publication-preprint", restricted=False):
-    """Build a minimal RecordEntry stand-in (only what RecordParent reads)."""
+def _record(
+    dojson_entry,
+    files=None,
+    resource_type="publication-preprint",
+    restricted=False,
+):
+    """Build a real RecordEntry, skipping only the heavy ``build()`` step.
+
+    ``access_status`` and the restriction helpers come from the actual class;
+    ``body`` (normally produced by ``build()``) is set to the one field
+    RecordParent reads from it.
+    """
     record = RecordEntry(
-        dump=SimpleNamespace(data={"recid": RECID}, first_created=None),
+        dump=SimpleNamespace(
+            data={"recid": RECID, "files": files or []}, first_created=None
+        ),
         dojson_entry=dojson_entry,
         restricted=restricted,
     )
@@ -48,19 +71,48 @@ def _record(dojson_entry, resource_type="publication-preprint", restricted=False
 def _build_communities(
     communities_ids,
     dojson_entry,
+    files=None,
     resource_type="publication-preprint",
     restricted=False,
 ):
     """Run RecordParent's community resolution."""
-    record = _record(dojson_entry, resource_type, restricted)
+    record = _record(dojson_entry, files, resource_type, restricted)
     parent = RecordParent(
         record=record,
-        raw_dump_entry={"recid": RECID},
+        raw_dump_entry=record.raw_dump_entry,
         dojson_entry=dojson_entry,
         communities_ids=communities_ids,
         access_grants_view=None,
     )
     return parent._build_communities()
+
+
+class TestRecordEntryRestrictions:
+    """Test RecordEntry.has_any_restricted_file()/has_any_restrictions()."""
+
+    def test_public_files_in_all_versions(self):
+        """Public files in every version: no restrictions."""
+        files = [_file_dump(version=1), _file_dump(version=2)]
+        record = _record(_dojson_entry(), files=files)
+
+        assert not record.has_any_restricted_file()
+        assert not record.has_any_restrictions()
+
+    def test_restricted_file_in_latest_version(self):
+        """A restricted file in the latest version is detected."""
+        files = [_file_dump(version=1), _file_dump(version=2, status="restricted")]
+        record = _record(_dojson_entry(), files=files)
+
+        assert record.has_any_restricted_file()
+        assert record.has_any_restrictions()
+
+    def test_restricted_file_in_older_version(self):
+        """A restricted file in an older version is detected, even if the latest is public."""
+        files = [_file_dump(version=1, status="restricted"), _file_dump(version=2)]
+        record = _record(_dojson_entry(), files=files)
+
+        assert record.has_any_restricted_file()
+        assert record.has_any_restrictions()
 
 
 @pytest.fixture
@@ -127,7 +179,24 @@ class TestBuildCommunities:
     ):
         """Records with restricted files are not included in the CERN Scientific community."""
         result = _build_communities(
-            communities_ids, _dojson_entry(files_restricted=True)
+            communities_ids,
+            _dojson_entry(),
+            files=[_file_dump(status="restricted")],
+        )
+
+        assert result == {
+            "ids": [str(community.id)],
+            "default": str(community.id),
+        }
+
+    def test_skip_restricted_file_in_older_version(
+        self, communities_ids, community, cern_scientific_community
+    ):
+        """A restricted file in an older version excludes the whole parent."""
+        result = _build_communities(
+            communities_ids,
+            _dojson_entry(),
+            files=[_file_dump(version=1, status="restricted"), _file_dump(version=2)],
         )
 
         assert result == {
