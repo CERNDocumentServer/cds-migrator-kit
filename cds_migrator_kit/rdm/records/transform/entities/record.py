@@ -118,6 +118,18 @@ class RecordEntry:
             )
         return restrictions
 
+    def has_any_restricted_file(self):
+        """True if any of the legacy files carries a restriction status."""
+        return any(file.get("status") for file in self.dojson_entry.get("files", []))
+
+    def has_any_restrictions(self):
+        """True if the record, its stream or any of its files is restricted."""
+        return (
+            self.restricted
+            or self.access_status != "public"
+            or self.has_any_restricted_file()
+        )
+
     def _recid(self, dump):
         """Returns the recid of the record."""
         return str(dump.data["recid"])

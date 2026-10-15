@@ -16,41 +16,46 @@ from cds_migrator_kit.rdm.records.transform.config import (
     CERN_SCIENTIFIC_RESOURCE_TYPES,
 )
 from cds_migrator_kit.rdm.records.transform.entities.parent import RecordParent
+from cds_migrator_kit.rdm.records.transform.entities.record import RecordEntry
+
+RECID = "123456"
 
 
-def _record(
-    access="public",
-    resource_type="publication-preprint",
-    restricted=False,
-    recid="123456",
-):
-    """Build a minimal RecordEntry stand-in (only what RecordParent reads)."""
-    metadata = {
-        "title": "Test record",
-        "publication_date": "2020-01-01",
-    }
-    if resource_type is not None:
-        metadata["resource_type"] = {"id": resource_type}
-
-    return SimpleNamespace(
-        recid=recid,
-        access_status=access,
-        restricted=restricted,
-        body={"metadata": metadata},
-    )
-
-
-def _dojson_entry(files_restricted=False, communities=None):
+def _dojson_entry(access="public", files_restricted=False, communities=None):
     """Build a minimal DOJSON-processed entry for community tests."""
     status = "restricted" if files_restricted else ""
-    return {"files": [{"status": status}], "communities": communities or []}
+    return {
+        "record_restriction": access,
+        "files": [{"status": status}],
+        "communities": communities or [],
+    }
 
 
-def _build_communities(communities_ids, record, dojson_entry):
+def _record(dojson_entry, resource_type="publication-preprint", restricted=False):
+    """Build a minimal RecordEntry stand-in (only what RecordParent reads)."""
+    record = RecordEntry(
+        dump=SimpleNamespace(data={"recid": RECID}, first_created=None),
+        dojson_entry=dojson_entry,
+        restricted=restricted,
+    )
+    metadata = {}
+    if resource_type is not None:
+        metadata["resource_type"] = {"id": resource_type}
+    record.body = {"metadata": metadata}
+    return record
+
+
+def _build_communities(
+    communities_ids,
+    dojson_entry,
+    resource_type="publication-preprint",
+    restricted=False,
+):
     """Run RecordParent's community resolution."""
+    record = _record(dojson_entry, resource_type, restricted)
     parent = RecordParent(
         record=record,
-        raw_dump_entry={"recid": record.recid},
+        raw_dump_entry={"recid": RECID},
         dojson_entry=dojson_entry,
         communities_ids=communities_ids,
         access_grants_view=None,
@@ -71,7 +76,7 @@ class TestBuildCommunities:
         self, communities_ids, community, cern_scientific_community
     ):
         """Public research records are included in the CERN Scientific community."""
-        result = _build_communities(communities_ids, _record(), _dojson_entry())
+        result = _build_communities(communities_ids, _dojson_entry())
 
         assert result == {
             "ids": [str(community.id), str(cern_scientific_community.id)],
@@ -84,7 +89,6 @@ class TestBuildCommunities:
         """Collection community remains the default when CERN Scientific community is added."""
         result = _build_communities(
             communities_ids,
-            _record(),
             _dojson_entry(communities=["test-community"]),
         )
 
@@ -101,9 +105,7 @@ class TestBuildCommunities:
     ):
         """All configured public research resource types trigger inclusion."""
         result = _build_communities(
-            communities_ids,
-            _record(resource_type=resource_type),
-            _dojson_entry(),
+            communities_ids, _dojson_entry(), resource_type=resource_type
         )
 
         assert str(cern_scientific_community.id) in result["ids"]
@@ -113,9 +115,7 @@ class TestBuildCommunities:
         self, communities_ids, community, cern_scientific_community
     ):
         """Restricted records are not included in the CERN Research community."""
-        result = _build_communities(
-            communities_ids, _record(access="restricted"), _dojson_entry()
-        )
+        result = _build_communities(communities_ids, _dojson_entry(access="restricted"))
 
         assert result == {
             "ids": [str(community.id)],
@@ -127,7 +127,7 @@ class TestBuildCommunities:
     ):
         """Records with restricted files are not included in the CERN Scientific community."""
         result = _build_communities(
-            communities_ids, _record(), _dojson_entry(files_restricted=True)
+            communities_ids, _dojson_entry(files_restricted=True)
         )
 
         assert result == {
@@ -140,7 +140,7 @@ class TestBuildCommunities:
     ):
         """Non-research resource types are not included in the CERN Scientific community."""
         result = _build_communities(
-            communities_ids, _record(resource_type="other"), _dojson_entry()
+            communities_ids, _dojson_entry(), resource_type="other"
         )
 
         assert result == {
@@ -152,9 +152,7 @@ class TestBuildCommunities:
         self, communities_ids, community, cern_scientific_community
     ):
         """Records on restricted migration streams are not included in the CERN Scientific community."""
-        result = _build_communities(
-            communities_ids, _record(restricted=True), _dojson_entry()
-        )
+        result = _build_communities(communities_ids, _dojson_entry(), restricted=True)
 
         assert result == {
             "ids": [str(community.id)],
@@ -168,4 +166,4 @@ class TestBuildCommunities:
         monkeypatch.setitem(test_app.config, "CDS_CERN_SCIENTIFIC_COMMUNITY_ID", None)
 
         with pytest.raises(MissingConfiguration):
-            _build_communities(communities_ids, _record(), _dojson_entry())
+            _build_communities(communities_ids, _dojson_entry())
