@@ -104,9 +104,7 @@ class RecordParent:
         return {"owned_by": {"user": owner}}
 
     def _should_add_scientific_community(self):
-        if self.record.restricted or self.record.access_status != "public":
-            return False
-        if any(file.get("status") for file in self.dojson_entry.get("files", [])):
+        if self.record.has_any_restrictions():
             return False
         resource_type_id = (
             self.record.body.get("metadata", {}).get("resource_type", {}).get("id")
