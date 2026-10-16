@@ -170,11 +170,17 @@ EXPERIMENT_ALIASES = {
     "dampe": "RE29",
     "compass": "NA58",
     "compass na58": "NA58",
+    "charm": "ea-irrad mixed-field",
 }
 
 # 693__e values that are keywords rather than real experiments (curated as
 # "mots clef"), mapped to subjects instead of cern:experiments
 EXPERIMENTS_AS_SUBJECTS = ["d3", "r104", "r105a"]
+
+# Legacy accelerator names remapped to vocabulary ids before lookup
+ACCELERATOR_ALIASES = {
+    "cern aa": "antiproton accumulator",
+}
 
 # Public research publication resource types that are auto-included in the CERN Research community.
 CERN_SCIENTIFIC_RESOURCE_TYPES = {

@@ -317,6 +317,28 @@ records:
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
         - ""
+  hse:
+    data_dir: cds_migrator_kit/rdm/data/hse/papers
+    restricted: "False"
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hse/papers/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hse/papers/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - ""
+  radio_protection:
+    data_dir: cds_migrator_kit/rdm/data/hse/radio_protection
+    restricted: "True"
+    extract:
+      dirpath: cds_migrator_kit/rdm/data/hse/radio_protection/dump/
+    transform:
+      files_dump_dir: cds_migrator_kit/rdm/data/hse/radio_protection/files/
+      missing_users: cds_migrator_kit/rdm/data/users
+      communities_ids:
+        - ""
+    load:
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hse/radio_protection/duplicated_pids.json
   at:
     data_dir: cds_migrator_kit/rdm/data/at
     restricted: "False"
