@@ -4,6 +4,8 @@ import re
 
 from dateutil.parser import ParserError, parse
 from dojson.errors import IgnoreKey
+from idutils.normalizers import normalize_isbn
+from isbnlib import NotValidISBNError
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
@@ -22,6 +24,29 @@ from .base import (
     urls,
 )
 from .research import journal, related_identifiers
+
+
+@model.over("isbns", "^020__")
+def isbn(self, key, value):
+    """Map ISBN (020 $a) into related_identifiers — e.g. CERN-HR-Note-2025-019."""
+    _isbn = StringValue(value.get("a", "")).parse()
+    if not _isbn:
+        raise IgnoreKey("isbns")
+    try:
+        _isbn = normalize_isbn(_isbn)
+    except NotValidISBNError:
+        raise UnexpectedValue("Not a valid ISBN.", field=key, value=value)
+    new_id = {
+        "identifier": _isbn,
+        "scheme": "isbn",
+        "relation_type": {"id": "isvariantformof"},
+        "resource_type": {"id": "publication-book"},
+    }
+    ids = self.get("related_identifiers", [])
+    if new_id not in ids:
+        ids.append(new_id)
+    self["related_identifiers"] = ids
+    raise IgnoreKey("isbns")
 
 
 @model.over("access_grants", "^506[1_]_")
@@ -131,6 +156,9 @@ def collection(self, key, value):
         "intnote",
         "operational circular",
         "publhr",
+        "pulhr",  # typo seen on CERN-HR-Note leftovers
+        "report",
+        "cernofficialpressbrochure",
     ]:
         raise UnexpectedValue(subfield="a", value=value, field=key)
     raise IgnoreKey("collection")
@@ -178,6 +206,9 @@ def resource_type(self, key, value):
         "hr-smc": {"id": "administrative-regulation"},
         "ccp": {"id": "other"},
         "conferencepaper": {"id": "publication-conferencepaper"},
+        # CERN-HR-* leftovers (#623): generic 980 tags scoped via 710 $5 HR
+        "report": {"id": "publication-report"},
+        "brochure": {"id": "publication-brochure"},
     }
     try:
 
@@ -261,7 +292,11 @@ def custom_fields(self, key, value):
         except IgnoreKey:
             author = None
         if author:
-            contributors.append(author[0])
+            contributor = author[0]
+            # RDM requires a role on contributors (creators may omit it)
+            if "role" not in contributor:
+                contributor["role"] = {"id": "other"}
+            contributors.append(contributor)
             self["contributors"] = contributors
 
     raise IgnoreKey("administrative_unit")

@@ -242,6 +242,10 @@ def test_resource_type_mapping():
     assert resource_type({}, "980__", {"a": "conferencepaper"}) == {
         "id": "publication-conferencepaper"
     }
+    assert resource_type({}, "980__", {"a": "report"}) == {"id": "publication-report"}
+    assert resource_type({}, "980__", {"a": "brochure"}) == {
+        "id": "publication-brochure"
+    }
 
 
 def test_resource_type_ignored_values():
