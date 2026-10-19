@@ -25,7 +25,9 @@ class HrModel(CdsOverdo):
                    980__:CHISBULLETIN OR
                    980__:CCP OR
                    980__:CERN-ADMIN-E-GUIDE OR
-                   980__:HR-SMC
+                   980__:HR-SMC OR
+                   (980__:REPORT AND 710__.5:HR) OR
+                   (980__:BROCHURE AND 710__.5:HR)
                    """
 
     __ignore_keys__ = {
