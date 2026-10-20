@@ -385,7 +385,7 @@ class CDSMigrationEntryLoad(Load):
             self.migration_logger.add_log(exc, record=entry)
         except Exception as e:
             exc = ManualImportRequired(
-                message=str(e),
+                message=repr(e) + str(e.__dict__),
                 field="validation",
                 stage="load",
                 recid=recid,

@@ -189,6 +189,22 @@ class RecordVersion:
         # only decide public-vs-restricted and carry the raw status as `meta`.
         status = distinct_statuses.pop()
         if not status:
+            if record_access == "restricted":
+                # If the record is restricted but the legacy files carry no restriction to
+                # derive grants from, files would end up restricted with no one able to access them.
+                raise ManualImportRequired(
+                    message=(
+                        f"Record is '{record_access}' but its files have no "
+                        "legacy restriction status - no grants can be derived. "
+                        "Manual review required."
+                    ),
+                    field="files",
+                    subfield="status",
+                    stage="transform",
+                    recid=recid,
+                    priority="critical",
+                    value=", ".join(f["full_name"] for f in self.raw_file_dumps),
+                )
             return {
                 "access_obj": {
                     "record": record_access,

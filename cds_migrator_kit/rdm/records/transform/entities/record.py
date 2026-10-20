@@ -89,7 +89,8 @@ class RecordEntry:
         self.raw_dump_entry = dump.data
         self.dojson_entry = dojson_entry
         self.affiliations_mapping = affiliations_mapping
-        self.restricted = restricted
+        # streams.yaml has this as a string ("True"/"False")
+        self.restricted = str(restricted).strip().lower() == "true"
         self.migration_logger = migration_logger
         self.body = None
 
