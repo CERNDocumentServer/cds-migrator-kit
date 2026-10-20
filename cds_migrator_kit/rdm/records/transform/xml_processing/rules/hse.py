@@ -26,23 +26,11 @@ from .base import identifiers as base_identifiers
 from .base import licenses as base_licenses
 from .base import note as base_note
 from .base import report_number as base_report_number
-from .base import title as base_title
 from .hr import corpo_author
 from .it import imprint
 
 model.over("creators", "(^110__)")(corpo_author)
 model.over("imprint_info", "(^250__)")(imprint)  # Only one record: 156663
-
-
-@model.over("collection", "^690C_", override=True)
-@for_each_value
-def collection(self, key, value):
-    """Translates collection field."""
-    collection = value.get("a").strip().lower()
-    # TODO: should we use these collections?
-    if collection not in ["cern", "preprint", "article", "report"]:
-        raise UnexpectedValue(subfield="a", value=value, field=key)
-    raise IgnoreKey("collection")
 
 
 @model.over("physical_copies", "^964__", override=True)
@@ -71,47 +59,49 @@ def physical_medium(self, key, value):
     raise IgnoreKey("physical_medium")
 
 
-@model.over("access_note", "^506__", override=True)
-@for_each_value
-def access_note(self, key, value):
-    """Translates physical medium field."""
-    access_note = value.get("a").strip()
-    if access_note and access_note.lower() not in ["free", "restricted"]:
-        raise UnexpectedValue(subfield="a", value=access_note, field=key)
-    raise IgnoreKey("access_note")
-
-
 @model.over("internal_notes", "^595__")
 @for_each_value
 def note_hse(self, key, value):
     """Translates notes. HSE Articles query is 595__:CERN-HSE."""
-    _note = force_list(value.get("a", ""))
-    if _note == ("CERN-HSE",):
-        self["resource_type"] = {"id": "publication-article"}
+    _note = (value.get("a") or "").strip()
+    if _note in ("CERN-HSE", "To be check by Salome"):
         raise IgnoreKey("internal_notes")
     else:
         return base_note(self, key, value)
 
 
+def resolve_resource_type(values, priority):
+    """Pick the resource type of the highest priority legacy value.
+
+    ``priority`` maps legacy value -> RDM id, ordered first = highest
+    priority. Values that are not listed are ignored. Returns ``None`` if no
+    value is listed.
+    """
+    legacy = list(priority)
+    candidates = [v for v in values if v in priority]
+    if not candidates:
+        return None
+    return {"id": priority[min(candidates, key=legacy.index)]}
+
+
+# first has highest priority
+RESOURCE_TYPES = {
+    "conferencepaper": "publication-conferencepaper",
+    "article": "publication-article",
+    "preprint": "publication-preprint",
+    "report": "publication-report",
+}
+
+
 @model.over("resource_type", "^980__", override=True)
 def resource_type(self, key, value):
     """Translates resource_type."""
-    value = value.get("a")
-    if value:
-        value = value.strip().lower()
-    if value in ["rp_restricted"]:
-        raise IgnoreKey("resource_type")
-    map = {
-        "conferencepaper": {"id": "publication-conferencepaper"},
-        "article": {"id": "publication-article"},
-        "preprint": {"id": "publication-preprint"},
-        "report": {"id": "publication-report"},
-        "note": {"id": "publication-technicalnote"},
-    }
-    try:
-        return map[value]
-    except KeyError:
-        raise UnexpectedValue("Unknown resource type (HSE)", field=key, value=value)
+    values = [(v.get("a") or "").strip().lower() for v in force_list(value)]
+    resource_type = resolve_resource_type(values, RESOURCE_TYPES)
+    if not resource_type:
+        # HSE papers have no default resource type
+        raise UnexpectedValue("Missing resource type (HSE)", field=key, value=value)
+    return resource_type
 
 
 @model.over("identifiers", "(^035__)|(^037__)|(^088__)|(^970__)", override=True)
