@@ -15,7 +15,7 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 class HseModel(CdsOverdo):
     """Translation model for HSE records."""
 
-    __query__ = """980__:RP_RESTRICTED OR 595__:CERN-HSE"""
+    __query__ = """595__:CERN-HSE"""
 
     __ignore_keys__ = {
         "0247_9",
@@ -29,6 +29,10 @@ class HseModel(CdsOverdo):
         "245__9",  # only value is submitter
         "300__a",  # number of pages
         "300__c",  # value only '9 p': 2712787, 2789695
+        "340__a",  # ignore, decision log
+        "506__a",  # Access note restrictions, only 2 records have "Free" but they are restricted
+        "595__a",  # Unneeded: CERN-HSE or "To be check by ..."
+        "690C_a",  # Duplicate of 980__a resource type
         "6531_9",  # keyword scheme
         "700__m",
         "7870_r",  # detailed description of record relation (2862345)
@@ -47,8 +51,8 @@ class HseModel(CdsOverdo):
         "981__a",  # duplicate record id
         "852__c",  # Physical Location https://cds.cern.ch/record/184322/export # TODO
         "852__h",  # Physical Location https://cds.cern.ch/record/184322/export # TODO
-        "100__j",  # TODO: Can we ignore this? 2 records: 2808737, 2808721
-        "700__j",  # TODO: Can we ignore this? same records with 100__j
+        "100__j",
+        "700__j",
         # Drop citation field https://cds.cern.ch/record/202927/
         "913__t",  # Citation field
         "913__y",  # Citation field
@@ -57,10 +61,8 @@ class HseModel(CdsOverdo):
     }
 
     _default_fields = {
-        "resource_type": {"id": "publication-other"},
         "custom_fields": {},
-        # TODO: do we need this creator / what should be the value?
-        "creators": [{"person_or_org": {"type": "organizational", "name": "HR"}}],
+        "record_restriction": "public", # All HSE papers are public, but some of them are missing 963:PUBLIC
     }
 
 

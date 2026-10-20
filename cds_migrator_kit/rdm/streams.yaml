@@ -318,27 +318,28 @@ records:
       communities_ids:
         - ""
   hse:
-    data_dir: cds_migrator_kit/rdm/data/hse/papers
-    restricted: "False"
+    data_dir: cds_migrator_kit/rdm/data/hse
+    preferred_model: hse
     extract:
-      dirpath: cds_migrator_kit/rdm/data/hse/papers/dump/
+      dirpath: cds_migrator_kit/rdm/data/hse/dump/
     transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/hse/papers/files/
+      files_dump_dir: cds_migrator_kit/rdm/data/hse/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - ""
+        - "d18f2763-cf21-403c-a9c6-6bf8e06bc584"
   radio_protection:
-    data_dir: cds_migrator_kit/rdm/data/hse/radio_protection
+    data_dir: cds_migrator_kit/rdm/data/radio_protection
+    preferred_model: radio_protection
     restricted: "True"
     extract:
-      dirpath: cds_migrator_kit/rdm/data/hse/radio_protection/dump/
+      dirpath: cds_migrator_kit/rdm/data/radio_protection/dump/
     transform:
-      files_dump_dir: cds_migrator_kit/rdm/data/hse/radio_protection/files/
+      files_dump_dir: cds_migrator_kit/rdm/data/radio_protection/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
-        - ""
+        - "db1912ff-dc06-4830-b07e-7c78b9b09637"
     load:
-      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/hse/radio_protection/duplicated_pids.json
+      legacy_pids_to_redirect: cds_migrator_kit/rdm/data/radio_protection/duplicated_pids.json
   at:
     data_dir: cds_migrator_kit/rdm/data/at
     restricted: "False"
