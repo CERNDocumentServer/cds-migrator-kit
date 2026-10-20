@@ -36,7 +36,7 @@ IGNORE_SYSTEM_KEYS = {
     "540__g",  # From SIS (see decision log)
     "542__3",  # Also material of the license
     "595__i",  # From SIS: see decision log
-    "696__9",  # From SIS: see decision log
+    "695__9",  # From SIS: see decision log
     "700__m",  # email of contributor
     "773__t",  # from SIS: can be ignored
     "773__0",  # from SIS: can be ignored
