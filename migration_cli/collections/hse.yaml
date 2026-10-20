@@ -1,0 +1,6 @@
+name: hse
+queries:
+  - q: "595__:CERN-HSE"
+    dump_file_prefix: hse
+communities:
+    - hse

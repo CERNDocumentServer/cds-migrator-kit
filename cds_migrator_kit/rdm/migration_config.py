@@ -370,11 +370,6 @@ A relative path is relative to the root of the repository, not to the current
 directory."""
 
 RDM_RECORDS_IDENTIFIERS_SCHEMES = {
-    "edms": {
-        "label": _("EDMS"),
-        "validator": always_valid,
-        "datacite": "EDMS",
-    },
     "cdsrn": {
         "label": _("CDS Reference"),
         "validator": always_valid,

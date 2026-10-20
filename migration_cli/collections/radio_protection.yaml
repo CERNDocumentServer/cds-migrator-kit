@@ -1,0 +1,8 @@
+name: radio_protection
+queries:
+  - q: "980__:RP_RESTRICTED"
+    dump_file_prefix: radio_protection
+flags:
+  restricted: true
+communities:
+    - radio-protection
