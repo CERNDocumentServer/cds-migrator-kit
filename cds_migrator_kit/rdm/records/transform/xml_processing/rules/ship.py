@@ -30,29 +30,3 @@ def document_type(self, key, value):
     ]:
         raise UnexpectedValue(f"Invalid document type: {document_type}")
     raise IgnoreKey("document_type")
-
-
-@model.over("related_identifiers", "(^78502|^78002)")
-@for_each_value
-def related_works(self, key, value):
-    """Translates related identifiers."""
-    description = StringValue(value.get("i")).parse().strip().lower()
-    recid = value.get("w")
-    report_number = value.get("r")
-    rel_ids = self.get("related_identifiers", [])
-    if "superseded by" == description:
-        relation_type = "isobsoletedby"
-    elif "supersedes" == description:
-        relation_type = "obsoletes"
-    else:
-        raise UnexpectedValue(f"Invalid relation type: {description}")
-    new_id = {
-        "identifier": recid,
-        "scheme": "cds",
-        "relation_type": {"id": relation_type},
-        "resource_type": {"id": "other"},
-    }
-    if new_id not in rel_ids:
-        return new_id
-
-    raise IgnoreKey("related_identifiers")
