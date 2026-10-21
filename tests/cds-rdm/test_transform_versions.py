@@ -13,6 +13,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from cds_migrator_kit.errors import ManualImportRequired
+from cds_migrator_kit.rdm.records.load.entities.record import RecordLoad
 from cds_migrator_kit.rdm.records.transform.transform import CDSToRDMRecordTransform
 
 
@@ -76,11 +77,19 @@ def _record(pids=None):
     return SimpleNamespace(access_status="public", body=body)
 
 
+CDS_DOI = {
+    "identifier": "10.17181/cds.12345",
+    "provider": "datacite",
+}
+EXTERNAL_DOI = {
+    "identifier": "10.1234/external",
+    "provider": "external",
+}
+
+
 def _external_doi_record():
     """A record double whose DOI provider is "external" (not our prefix)."""
-    return _record(
-        pids={"doi": {"identifier": "10.1234/external", "provider": "external"}}
-    )
+    return _record(pids={"doi": EXTERNAL_DOI})
 
 
 @pytest.fixture
@@ -396,3 +405,96 @@ def test_versions_restriction_lifted_on_only_file_becomes_public(transform):
         "access_obj": {"record": "public", "files": "public"}
     }
     assert versions[2]["files"]["A.pdf"]["version"] == 2
+
+
+def _record_load(pids):
+    """Build a RecordLoad with only the record body needed for DOI helpers."""
+    return RecordLoad(
+        record_entry=SimpleNamespace(
+            body={"pids": pids, "metadata": {"publication_date": "2020-01-01"}},
+            recid="123",
+        ),
+        record_parent=MagicMock(),
+        migration_logger=MagicMock(),
+    )
+
+
+class _DraftItem(dict):
+    """Minimal stand-in for an RDM draft item (supports ``[]`` and ``to_dict``)."""
+
+    def to_dict(self):
+        return dict(self)
+
+
+def _patch_datacite_prefix(monkeypatch, prefix="10.17181"):
+    """Point load helpers at a fixed DATACITE_PREFIX without a full app."""
+    monkeypatch.setattr(
+        "cds_migrator_kit.rdm.records.load.entities.record.current_app",
+        SimpleNamespace(config={"DATACITE_PREFIX": prefix}),
+    )
+
+
+def test_cds_doi_uses_datacite_prefix_not_provider(monkeypatch):
+    """CDS DOI detection follows DATACITE_PREFIX, not the provider label."""
+    _patch_datacite_prefix(monkeypatch)
+    mistyped_provider = {
+        "identifier": "10.17181/cds.12345",
+        "provider": "external",
+    }
+    wrong_prefix = {
+        "identifier": "10.1234/external",
+        "provider": "datacite",
+    }
+    assert _record_load({"doi": mistyped_provider})._cds_doi() == mistyped_provider
+    assert _record_load({"doi": wrong_prefix})._cds_doi() is None
+    assert _record_load({"doi": CDS_DOI})._cds_doi() == CDS_DOI
+
+
+def test_create_payload_keeps_cds_doi_for_single_version(monkeypatch):
+    """Single-version CDS DOI records keep the DOI on create."""
+    _patch_datacite_prefix(monkeypatch)
+    payload = _record_load({"doi": CDS_DOI})._create_payload(versions={1: {}})
+    assert payload["pids"]["doi"] == CDS_DOI
+
+
+def test_create_payload_strips_cds_doi_when_multiple_versions(monkeypatch):
+    """Multi-version CDS DOI records strip the DOI from the first create."""
+    _patch_datacite_prefix(monkeypatch)
+    payload = _record_load({"doi": CDS_DOI})._create_payload(versions={1: {}, 2: {}})
+    assert "doi" not in payload.get("pids", {})
+
+
+def test_put_cds_doi_only_on_latest_of_multiple_versions(monkeypatch):
+    """CDS DOI is attached only when publishing the latest version."""
+    _patch_datacite_prefix(monkeypatch)
+    load = _record_load({"doi": CDS_DOI})
+    draft = _DraftItem({"id": "draft-id", "pids": {}, "metadata": {}})
+    updated_draft = _DraftItem(
+        {"id": "draft-id", "pids": {"doi": CDS_DOI}, "metadata": {}}
+    )
+
+    identity = MagicMock()
+    uow = MagicMock()
+    service = MagicMock()
+    service.update_draft.return_value = updated_draft
+    monkeypatch.setattr(
+        "cds_migrator_kit.rdm.records.load.entities.record.current_rdm_records_service",
+        service,
+    )
+
+    out = load._put_cds_doi_on_latest_draft(
+        identity, draft, versions={1: {}, 2: {}}, version=1, uow=uow
+    )
+    assert out is draft
+    service.update_draft.assert_not_called()
+
+    out = load._put_cds_doi_on_latest_draft(
+        identity, draft, versions={1: {}, 2: {}}, version=2, uow=uow
+    )
+    assert out is updated_draft
+    service.update_draft.assert_called_once_with(
+        identity,
+        "draft-id",
+        data={"id": "draft-id", "pids": {"doi": CDS_DOI}, "metadata": {}},
+        uow=uow,
+    )
