@@ -40,9 +40,14 @@ class Runner:
         collection,
         keep_logs,
         workers=None,
+        config=None,
     ):
-        """Constructor."""
-        config = self._read_config(config_filepath)
+        """Constructor.
+
+        ``config`` (already loaded, e.g. built from a migration_conf.yaml)
+        takes precedence over ``config_filepath``.
+        """
+        config = config or self._read_config(config_filepath)
         self.collection = collection
         self.keep_logs = keep_logs
         self.db_uri = config.get("db_uri")
@@ -69,7 +74,9 @@ class Runner:
                     "access_grants_view", False
                 )
                 self.plots = stream_config[collection].get("plots", False)
-                self.preferred_model = stream_config[collection].get("preferred_model", None)
+                self.preferred_model = stream_config[collection].get(
+                    "preferred_model", None
+                )
                 self.data_dir.mkdir(parents=True, exist_ok=True)
 
                 StandardLogger.initialize()
@@ -135,8 +142,6 @@ class Runner:
                 raise e
             finally:
                 elapsed = time.perf_counter() - t0
-                perf_logger.info(
-                    f"Stream '{stream.name}' finished in {elapsed:.1f}s"
-                )
+                perf_logger.info(f"Stream '{stream.name}' finished in {elapsed:.1f}s")
                 self.migration_logger.finalise()
                 self.record_state_logger.finalise()

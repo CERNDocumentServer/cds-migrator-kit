@@ -1,0 +1,13 @@
+name: dep_mt
+queries:
+  - q: '710__5:MT 980:ARTICLE -980:CLINOT -690C_:LHCPROJECTREPORT'
+    dump_file_prefix: mt_dep_article
+  - q: '710__5:MT 980:PREPRINT -980__c:MIGRATED -980:CLINOT -690C_:LHCPROJECTREPORT'
+    dump_file_prefix: mt_dep_preprint
+flags:
+  include_plots: true
+  preferred_model: technical_support
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - mt-dep   # slug of the community (local id was ad4469fa-5a17-41b9-825f-8010c379ba23)

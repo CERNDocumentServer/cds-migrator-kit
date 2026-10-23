@@ -6,6 +6,7 @@
 # the terms of the MIT License; see LICENSE file for more details.
 
 """CDS-RDM migration data cleaning module."""
+
 import re
 from abc import ABC, abstractmethod
 

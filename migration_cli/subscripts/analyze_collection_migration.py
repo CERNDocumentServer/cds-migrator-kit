@@ -7,15 +7,18 @@ Steps:
     1. Connect to the CDS-legacy migration node
     2. Run this script with --collection-name and --collection-q.
     3. Duplicate recids and 981__a merges are written to
-           /tmp/<collection_name>/legacy_pids_to_redirect.json
+           <output dir>/duplicated_pids.json
     4. EP report numbers shared with other CDS records are written to
-           /tmp/<collection_name>/ep_report_number_dups.json
+           <output dir>/ep_report_number_dups.json
+
+<output dir> is --output-dir: the collection working directory on EOS, the one
+with its migration_conf.yaml (`collection_migration.py prepare` passes it).
 
 Do not use -980:DELETED -980:HIDDEN -980__c:MIGRATED -980__a:DUMMY in the
 query.
 
 Example:
-    python2 scripts/analyze_collection_migration.py \\
+    python2 migration_cli/subscripts/analyze_collection_migration.py \\
         --collection-name faser \\
         --collection-q '980__a:ARTICLE or 980__a:PREPRINT and 693:"FASER"'
 """
@@ -296,7 +299,7 @@ def parse_args():
     parser.add_argument(
         "--collection-name",
         required=True,
-        help="Collection name used for the dump directory (/tmp/<collection_name>).",
+        help="Collection name, only used in the output messages.",
     )
     parser.add_argument(
         "--collection-q",
@@ -306,6 +309,11 @@ def parse_args():
             "-980:HIDDEN -980__c:MIGRATED -980__a:DUMMY."
         ),
     )
+    parser.add_argument(
+        "--output-dir",
+        required=True,
+        help="Collection working directory the results are written to.",
+    )
     return parser.parse_args()
 
 
@@ -314,7 +322,7 @@ def main():
     collection_name = args.collection_name
     collection_q = args.collection_q
 
-    json_dump_dir = "/tmp/{}".format(collection_name)
+    json_dump_dir = args.output_dir
     if not os.path.exists(json_dump_dir):
         os.makedirs(json_dump_dir)
 
@@ -327,14 +335,10 @@ def main():
     redirect_map = search_dups(collection_q)
     redirect_map.update(search_merges(collection_q))
 
-    with open("{}/legacy_pids_to_redirect.json".format(json_dump_dir), "w+") as fp:
+    redirect_path = os.path.join(json_dump_dir, "duplicated_pids.json")
+    with open(redirect_path, "w+") as fp:
         json.dump(redirect_map, fp)
-    _print_green(
-        "Wrote {} duplicates to {}".format(
-            len(redirect_map),
-            "{}/legacy_pids_to_redirect.json".format(json_dump_dir),
-        )
-    )
+    _print_green("Wrote {} duplicates to {}".format(len(redirect_map), redirect_path))
 
     _print_green("--------------------------------")
     _print_green("Searching for EP report number duplicates...")

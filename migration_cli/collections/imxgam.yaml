@@ -1,0 +1,11 @@
+name: imxgam
+folder: imXgam
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+flags:
+  restricted: true
+  include_plots: true
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - imxgam   # slug of the community (id was 88a5cdf4-974a-44d4-b145-d19ee6346bb8)
+  - cern-research

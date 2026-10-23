@@ -1,0 +1,9 @@
+name: na64
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+flags:
+  include_plots: true
+  create_inclusion_request: true
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - TODO   # slug of the community

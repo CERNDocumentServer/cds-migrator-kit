@@ -1,0 +1,7 @@
+name: phi3_comm
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - cern-research
+  - TODO   # slug of the community (local id was c35d2da3-8a47-420b-879e-be87b8b602c7)
