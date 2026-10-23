@@ -1,0 +1,9 @@
+name: dirac
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+flags:
+  plots: true
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - dirac   # slug of the community (id was 6a289642-5378-4daf-87b5-bb58af00487a)
+  - cern-research

@@ -1,351 +1,196 @@
-# Migration model manual
+# Migrating a collection locally (example: `antares`)
 
-## Dump users
+How to run a collection migration on your own machine, isolated from EOS and OpenShift: the migration data lives in a local folder, and the legacy system is only used to produce the dumps.
 
-! Attention If you need to dump the users from legacy DB or you need to process the people collection
+Other documents:
 
-https://gitlab.cern.ch/cds-team/production_scripts/-/blob/master/cds-rdm/migration/dump_users.py?ref_type=heads
+- migration on the test environments: `migration_cli/migrating-a-collection.md`
+- each stage in detail: `migration_cli/step_by_step_documentation.md`
+- writing the transformation models: `cds_migrator_kit/rdm/readme_models.md`
 
+## What is different locally
 
+With `CDS_MIGRATOR_KIT_ENV` set to `local` the loader does not read the legacy files: **every file is replaced by a dummy PDF**, and the checksum and access-grant verifications are skipped. So you only need the records dump (and the comments metadata); there is no need to copy the legacy files.
 
-## Dump a subset of records on legacy
+## 0. Prerequisites
 
-on webnode: `cds-migration-01`
+- the services running (PostgreSQL, OpenSearch, RabbitMQ, Redis) and a Celery worker
+- the package installed: `pip install -e ".[rdm]"`
+- `people.csv` of the environment, see step 2
 
-```bash
-inveniomigrator dump records -q '980:INTNOTECMSPUBL 980:NOTE -980:DELETED' --file-prefix cms-notes --chunk-size=1000
+### Initialise the instance (first time only)
 
+Run in the cds-rdm environment, on empty database and indices (the commands are those of `reinit-instance.sh`):
+
+```shell
+invenio db init
+invenio index init
+invenio rdm-records custom-fields init
+invenio communities custom-fields init
+invenio rdm-records fixtures      # vocabularies, the CERN Research community (the common community id used in the confs), ...
+invenio rdm fixtures              # static pages
+invenio rdm rebuild-all-indices
 ```
 
-## Define transforming models and rules resolution
+`invenio rdm-records fixtures` loads everything declared in cds-rdm's `app_data/` (`vocabularies.yaml`: subjects, affiliations, funders, awards, experiments, departments, committees, accelerators, beams, programmes, resource types, community types, ...; and `communities.yaml`). When the files in `app_data/` change later, update the existing entries with `invenio rdm-records add-to-fixture <name>` (`programmes`, `subjects`, `accelerators`, `awards`, `experiments`, `resourcetypes`, `communitytypes`).
 
-You can adapt XML processing to different subsets of records by implementing different data models for each subset (f.e. collection).
-Let's take CMS notes as an example:
+Then populate the vocabularies that are not shipped as fixtures: the ROR affiliations and the ORCID names. They are the Celery task `process_datastream` of invenio-vocabularies, which you can call from `invenio shell`, using the configuration of the corresponding jobs. The Celery worker must be running: the tasks only read the source and hand the entries over to the worker.
 
 ```python
+# invenio shell
+from invenio_vocabularies.jobs import ImportORCIDJob, ProcessRORAffiliationsJob
+from invenio_vocabularies.services.tasks import process_datastream
 
-class CMSNote(CdsOverdo):
-    """Translation Index for CDS Books."""
+# ROR affiliations
+process_datastream.delay(**ProcessRORAffiliationsJob.build_task_arguments(None))
 
-    __query__ = (
-        '980__:INTNOTECMSPUBL 980__:NOTE'
+# ORCID names
+process_datastream.delay(**ImportORCIDJob._build_task_arguments(None))
+```
+
+- `ProcessRORAffiliationsJob` downloads the ROR dump into the affiliations vocabulary (the fixtures only load the subset in `app_data/vocabularies/affiliations_ror.yaml`).
+- `ImportORCIDJob` reads the ORCID summaries from the ORCID S3 bucket, and needs `VOCABULARIES_ORCID_ACCESS_KEY` and `VOCABULARIES_ORCID_SECRET_KEY` in your configuration. `VOCABULARIES_ORCID_SYNC_SINCE` limits how far back it goes.
+- `.delay(...)` queues the task and returns at once, follow it in the Celery worker log. To run the reading in the shell itself, call `process_datastream(**...)` without `.delay`.
+
+### Save a "clean slate" snapshot
+
+The instance takes long to initialise (vocabularies, ROR, ORCID), and every migration run leaves records behind. Right after the initialisation, and before any migration, dump the clean state with `scripts/snapshot.sh` (PostgreSQL and OpenSearch together, in `snapshots/<name>/`):
+
+```shell
+scripts/snapshot.sh dump clean-slate
+```
+
+and bring the instance back to it in a few minutes whenever you want to rerun a migration from scratch:
+
+```shell
+scripts/snapshot.sh restore clean-slate        # asks before destroying the current data, FORCE=1 skips it
+```
+
+The script expects a running PostgreSQL container and the cds-rdm virtualenv in `../cds-rdm/.venv` (`CDS_RDM_VENV_ACTIVATE` to change it), see its header. `scripts/postgres-init.sh` and `scripts/opensearch-init.sh` do each half on its own.
+
+**Keep the snapshot up to date.** It stores the data model as it was when it was taken, so refresh it after upgrading cds-rdm or invenio:
+
+1. restore the snapshot, then upgrade the database schema: `invenio alembic upgrade`
+2. update the OpenSearch indices to the new mappings: the restore recreates the indices from the code with `invenio index init`, but an index that already exists is changed with `invenio index update <index>`; then reindex with `invenio rdm rebuild-all-indices`
+3. run `invenio rdm-records custom-fields init` and `invenio communities custom-fields init` if custom fields were added, and `invenio rdm-records add-to-fixture ...` for changed fixtures
+4. dump it again: `scripts/snapshot.sh dump clean-slate` (same name overwrites it, or use a dated name)
+
+## 1. Local data folder
+
+The local "root" of the migration data is the folder `migration_cli/rdm-data/` of this repository (the default of the `local` environment; relative paths are relative to the repository root, whatever the directory you run `invenio` from). The commands below are run from the repository root. The working directory of a collection is `<root>/<collection>/`:
+
+```
+<repo>/migration_cli/rdm-data/        <- the root (default of the local environment)
+    users/people.csv                   shared by all collections
+    antares/                           <- the working directory of the collection
+        dump/                          records dump
+        comments/                      optional, comments of the collection
+```
+
+```shell
+mkdir -p migration_cli/rdm-data/users migration_cli/rdm-data/antares
+```
+
+`people.csv` is the people authority export of the environment. Copy it to `migration_cli/rdm-data/users/people.csv` from the EOS `users` folder, or recreate it as described in `migration_cli/migrating-a-collection.md`.
+
+## 2. Configuration
+
+The configuration of a collection is the file `migration_cli/collections/antares.yaml` of the repository, the same for every environment (all the options in `migration_cli/collections/_example.yaml`):
+
+```yaml
+name: antares
+queries:
+  - '<TODO legacy query of the collection>'
+flags:
+  plots: true
+communities:
+  - cern-research
+  - antares
+```
+
+The communities are given by slug and are resolved to ids by the migration, so they must exist in your local instance. `cern-research` is created by the fixtures (step 0). Create the collection community, in `invenio shell`:
+
+```python
+from invenio_access.permissions import system_identity
+from invenio_communities.proxies import current_communities
+
+service = current_communities.service
+try:
+    service.read(system_identity, "antares")
+except Exception:  # not created yet
+    service.create(
+        system_identity,
+        {"slug": "antares", "metadata": {"title": "Antares"}, "access": {"visibility": "public"}},
     )
-
-    __model_ignore_keys__ = {}
-
-    _default_fields = {}
-
-
-
-model = CMSNote(bases=(),
-                entry_point_group="cds_rdm.migrator.rules"
-                )
-
 ```
 
-**query** - defines the MARC fields to which specific record should match. Attention: It does not recognise regexes that are used to specify the collection query in the admin interface of legacy CDS.
+## 3. Get the dumps from the legacy system
 
-\***\*model_ignore_keys\*\*** - set of keys to be ignored for this data model - fields will not be migrated
+The legacy tools exist only on `cds-migration-01`. Run the script there with a scratch folder as root (not on EOS), then download the result:
 
-**bases** - by defining bases of models you can specify a parent model which fits all the subsets of records (f.e. 245 - title field MARC to JSON translation could be the same for all the models)
+```shell
+# on cds-migration-01
+S=/opt/cds-migrator-kit/migration_cli      # a checkout that has the configuration of the collection
+python $S/collection_migration.py dump records --collection antares --env local --root /tmp/antares-root
+ipython $S/collection_migration.py -- dump comments --collection antares --env local --root /tmp/antares-root   # optional
+python $S/collection_migration.py prepare --collection antares --env local --root /tmp/antares-root             # optional
 
-**entry_point_group** - reference to where the model should lookup for the set of the MARC translation rules, see the entrypoints below.
-
-After defining your model and set of rules,you have to register them in the entrypoints of your application, in setup.cfg:
-
-```editorconfig
-
-[options.entry_points]
-cds_migrator_kit.migrator.models =
-    cms_note = cds_rdm.migration.transform.models.note:model
-cds_migrator_kit.migrator.rules =
-    base = cds_rdm.migration.transform.xml_processing.rules
-
+# on your machine
+rsync -av cds-migration-01:/tmp/antares-root/antares/dump/ migration_cli/rdm-data/antares/dump/
+rsync -av cds-migration-01:/tmp/antares-root/antares/comments/ migration_cli/rdm-data/antares/comments/   # optional
+rsync -av cds-migration-01:/tmp/antares-root/antares/{duplicated_pids,ep_report_number_dups}.json migration_cli/rdm-data/antares/   # optional, after prepare
 ```
 
-## Full migration workflow of one collection
+`prepare` is optional: it searches the collection for duplicated records (same title, description and file checksums, and `981__a` merges) and writes the legacy recids to redirect in `duplicated_pids.json` (and the EP report numbers shared with other records in `ep_report_number_dups.json`) in the working directory of the collection. Run it if you want to test the redirections: when `duplicated_pids.json` is there, the migration reads it, otherwise nothing is redirected. It needs `analyze_collection_migration.py` and the legacy Invenio, like the dumps, and for several queries the `analyze_query` of the collection configuration.
 
-### To visualise the errors (locally):
+The dumps change only when the legacy records change (f.e. when curators intervene) , so they do not need to be refreshed on every run. `dump files` is not needed locally.
+
+## 4. Environment
+
+Nothing to set: `CDS_MIGRATOR_KIT_ENV` is `local` and the data root is `CDS_MIGRATOR_KIT_LOCAL_MIGRATION_ROOT` (`migration_cli/rdm-data` of the repository) by default in `migration_config.py`. To use another folder, export `INVENIO_CDS_MIGRATOR_KIT_MIGRATION_ROOT` with an absolute path, or a path relative to the repository root.
+
+The root holds `users/` and the collection folders. The configuration is read from `migration_cli/collections/` of the checkout (`INVENIO_CDS_MIGRATOR_KIT_COLLECTIONS_DIR` to change it). Logs and the records state file go to `INVENIO_CDS_MIGRATOR_KIT_LOGS_PATH` (default `cds_migrator_kit/tmp/logs/`).
+
+## 5. Migrate
+
+Try each command with `--dry-run` first.
+
+```shell
+invenio migration users submitters run --collection antares
+invenio migration run --collection antares
+
+# only if you dumped the comments
+invenio migration users commenters run --collection antares
+invenio migration comments run --collection antares
+```
+
+Then reindex, to see the missing user accounts in the UI:
+
+```shell
+invenio rdm rebuild-all-indices -o users
+```
+
+The migration report can be browsed with:
 
 ```shell
 gunicorn -b :8080 --timeout 120 --graceful-timeout 60 cds_migrator_kit.app:app --reload --log-level debug --capture-output --access-logfile '-' --error-logfile '-'
 ```
 
-### Legacy
+## 6. Statistics (optional in local)
 
-This is the recipe on how to dump the metadata and files. For local tests it is not necessary to do it often, especially for files which are static.
-It makes sense to dump metadata if any changes are applied on legacy
-
-```shell
-ssh cds-migration-01 # inveniomigrator tool installed here
-cd /tmp/current-collection-dump
-inveniomigrator dump records -q '037__:CERN-STUDENTS-Note-* -980:DELETED' --file-prefix summer-studends-notes --latest-only --chunk-size=1000
-
-cd /eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump
-kinit cdsrdmeosdev
-cp /tmp/current-collection-dump/* .
-
-
-# copy over all files to temporary location
-ipython
-# run script available in /scripts/copy_collection_files.py
-# destination_prefix = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes/files"
-# working_dir = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes"
-# json_dump_dir = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump"
-```
-
-Identify and dump duplicated records i.e. records with same title, description and file
-checksums (excluding deleted files) on EOS. If duplicates found, then we keep the recid
-that has restricted files or if not any, then the first one from the list.
-
-In a python shell run the script `scripts/dump_legacy_recids_to_redirect.py`.
-
-#### How to mount eos locally on MAC (to copy over the dumps and files)
-
-1. Go to Finder icon on your dock
-2. right click to get the contextual menu
-3. choose connect to server
-4. type `https://cernbox.cern.ch/cernbox/webdav/eos/media/cds/cds-rdm/dev/migration`
-5. click connect
-6. use eos account dev credentials
-
-### Openshift migration pod
-
-#### Collect and dump affiliation mapping
-
-In order to collect all affiliations from the collection dump folder run the following
-command pointing to the `cds_migrator_kit.rdm.data.summer_student_reports.dump`
-folder:
-
-```
-invenio migration affiliations run --filepath /path/to/cds_migrator_kit/rdm/migration/data/summer_student_reports/dump
-```
-
-This will collect and check each affiliation against the ROR organization API, and store them in the `cds_rdm.legacy.models.CDSMigrationAffiliationMapping` table.
-
-The model is then used during record migration to normalize the affiliation content following the below principles
-to map the legacy input to a normalized value:
-
-1. If curated affiliation that might or not have a ROR ID exists then this value is used.
-2. A ROR exact match
-3. A ROR not exact match with a level of confidence of >= 90%. This will also flag the
-   record for further curation to validate the value.
-4. The legacy affiliation value, and flag the record.
-
-#### Community id dump
-
-Dump the community id to migration `streams.yaml`(if the slug exists then it will read and dump the id only):
+The legacy events are read from the legacy OpenSearch, so this needs access to it: export `CDS_MIGRATOR_KIT_SRC_SEARCH_HOSTS` as described in `migration_cli/step_by_step_documentation.md`, then:
 
 ```shell
-invenio migration community dump --slug 'sspn' --title 'Summer Student Project Notes' --filepath /path/to/cds_migrator_kit/rdm/migration/streams.yaml
+invenio migration stats events run --collection antares
+invenio migration stats aggregate
 ```
 
-#### Missing Users files
+## 7. Rerun from a clean state
 
-Make sure to add the user files required to be able to run the migration. The files can be found in `/eos/media/cds/cds-rdm/dev/migration/users/`. They should be stored in path indicated in the streams.yaml, the value that corresponds to the `record.transform.missing_users` key.
-
-#### Records migration
-
-Run the below command to migrate records in the created community from before:
+Restore the clean-slate snapshot taken in step 0, then run step 5 again:
 
 ```shell
-invenio migration run
+scripts/snapshot.sh restore clean-slate
 ```
 
-#### EP approval records
-
-EP approval records are detected automatically per-record (via the `9031_:EPPHAPP` history popped during transform) and split into a public/restricted pair by the loader - no separate flag or stream is needed, they can be migrated in the same run as regular records.
-
-1. **Dump** them filtered by `9031_:EPPHAPP`, for example (FASER):
-
-```bash
-inveniomigrator dump records -q '980__a:ARTICLE or 980__a:PREPRINT and 693:"FASER" not 980:CONFERENCEPAPER not 591__b:"Draft" 9031_:EPPHAPP -980:DELETED -980:HIDDEN -980__c:MIGRATED -980__a:DUMMY' --file-prefix faser-papers-cern-ep --chunk-size=1000
-```
-
-2. Configure a collection entry in `streams.yaml` pointing at that dump.
-
-3. **Migrate** normally (dry run first):
-
-```shell
-invenio migration run --collection faser-ep --dry-run
-invenio migration run --collection faser-ep
-```
-
-#### Comments migration
-
-Configure the collection under `comments` in `streams.yaml` (`dir_path`, `reviewers`). Paths and reviewers are loaded from there when you pass `--collection`.
-
-1. Dump comments for the collection and generate commenter metadata:
-
-```shell
-# on cds-migration-01
-ipython ./scripts/dump_comments_to_migrate.py
-```
-
-Output: `comments_metadata.json`. The script also generates `missing_commentors_from_ldap.json`.
-
-**Do not rename these files** — the runners expect exactly `comments_metadata.json` under `dir_path` and `missing_commentors_from_ldap.json` under `dir_path/users/`.
-
-2. Ensure files are in place (paths should match `streams.yaml`):
-
-- `comments_metadata.json` under the collection `dir_path`
-- `people.csv` and `missing_commentors_from_ldap.json` under `dir_path/users/`
-
-```shell
-cp /eos/media/cds/cds-rdm/<env>/migration/users/people.csv /eos/media/cds/cds-rdm/<env>/migration/<collection>/comments/users/
-```
-
-3. Pre-create commenter accounts (dry run first):
-
-```shell
-# on migration pod
-invenio migration comments commenters-run --collection <COLLECTION> --dry-run
-invenio migration comments commenters-run --collection <COLLECTION>
-```
-
-After running, make sure the users are indexed and not only created in the DB.
-
-4. Migrate comments (dry run first):
-
-```shell
-# on migration pod
-invenio migration comments run --collection <COLLECTION> --dry-run
-invenio migration comments run --collection <COLLECTION>
-```
-
-The comments runner can be re-run after errors; already migrated comments are skipped.
-
-### Migrate the statistics for the successfully migrated records
-
-When the `invenio migration run` command ends it will produce a `rdm_records_state.json` file which has linked information about the migrated records and the old system. The format will be similar to below:
-
-```json
-{
-  "legacy_recid": "2884810",
-  "parent_recid": "zts3q-6ef46",
-  "parent_object_uuid": "155be22f-3038-49e0-9f17-9518eaac783a",
-  "latest_version": "1mae4-skq89",
-  "latest_version_object_uuid": "155be22f-3038-49e0-9f17-9518eaac783a",
-  "versions": [
-    {
-      "new_recid": "1mae4-skq89",
-      "version": 2,
-      "files": [
-        {
-          "legacy_file_id": 1568736,
-          "bucket_id": "155be22f-3038-49e0-9f17-9518eaac783a",
-          "file_key": "Summer student program report.pdf",
-          "file_id": "06cdb9d2-635f-4dbe-89fe-4b27afddeaa2",
-          "size": "1690854"
-        }
-      ]
-    }
-  ]
-}
-```
-
-- Open the `cds_migrator_kit/rdm/migration/stats/config.py` and
-
-  - export the below 2 environmental variables
-    - `CDS_MIGRATOR_KIT_SRC_SEARCH_HOSTS`: e.g `export CDS_MIGRATOR_KIT_SRC_SEARCH_HOSTS='[{"host": "os-cds-legacy.cern.ch", "url_prefix": "/os", "timeout": 30, "port": 443, "use_ssl": true, "verify_certs": false, "http_auth": ["LEGACY_PRODUCTION_OPENSEARCH_USERNAME", "<LEGACY_PRODUCTION_OPENSEARCH_PASSWORD>"]}]'`
-      - you find the credentials for `LEGACY_PRODUCTION_OPENSEARCH_PASSWORD` by `tbag show LEGACY_PRODUCTION_OPENSEARCH_PASSWORD --hg cds`
-      - you find the credentials for `LEGACY_PRODUCTION_OPENSEARCH_USERNAME` by `tbag show LEGACY_PRODUCTION_OPENSEARCH_USERNAME --hg cds`
-
-- Open a shell and run the following commands
-
-```bash
-$ invenio migration stats run --filepath "path/to/file/of/rdm_records_state.json"
-```
-
-This will migrate only the raw statistic events. When all events are ingested to the new cluster then we will need to aggregate them.
-
-To do so, you need to run after you have set the correct bookmark for each event:
-
-on opensearch
-
-```shell
-DELETE /cds-rdm-stats-bookmarks
-
-POST /cds-rdm-stats-bookmarks/_doc
-{
-  "date": "2000-06-26T15:56:05.755394",
-  "aggregation_type": "file-download-agg"
-}
-POST /cds-rdm-stats-bookmarks/_doc
-{
-  "date": "2000-06-26T15:56:05.755394",
-  "aggregation_type": "record-view-agg"
-}
-POST /cds-rdm-stats-bookmarks/_doc
-{
-  "date": "2000-06-26T15:56:05.755394",
-  "aggregation_type": "stats_reindex"
-}
-```
-
-```
-from invenio_stats.tasks import aggregate_events
-
-start_date = '2000-01-01'
-end_date = '2024-12-01'
-
-aggregations = ["record-view-agg", "file-download-agg"]
-aggregate_events(aggregations)
-
-from invenio_rdm_records.services.tasks import reindex_stats
-stats_indices = [ "stats-record-view", "stats-file-download",]
-
-reindex_stats(stats_indices)
-```
-
-visit https://migration-cds-rdm-dev.app.cern.ch for report
-
-## Local rerun migration from clean state without setup everything again
-
-If you want to cleanup a previous migration run without having to re setup everything
-i.e not repopulating all vocabularies which takes a lot of time, then run the following
-recipe:
-
-- Cleanup db tables from pgadmin (**!!! ONLY ON DEV or local !!!**)
-
-```sql
-DELETE FROM rdm_versions_state;
-DELETE FROM rdm_records_files;
-DELETE FROM rdm_drafts_files;
-DELETE FROM rdm_records_metadata;
-DELETE FROM rdm_drafts_metadata;
-DELETE FROM rdm_parents_metadata;
-DELETE FROM communities_files;
-DELETE FROM oaiserver_set;
-DELETE FROM communities_metadata;
-DELETE FROM files_objecttags;
-DELETE FROM files_object;
-DELETE FROM files_buckettags;
-DELETE FROM files_bucket;
-DELETE FROM files_files;
-DELETE FROM pidstore_pid WHERE pid_type = 'lrecid';
-DELETE FROM pidstore_pid WHERE pid_type = 'recid';
-DELETE FROM pidstore_pid WHERE pid_type = 'doi';
-DELETE FROM cds_clc_record_sync;
-DELETE FROM cds_migration_legacy_records;
-```
-
-- Cleanup indexed documents from opensearch
-
-```
-POST /cds-rdm-dev-rdmrecords/_delete_by_query
-{
-  "query": {
-    "match_all": {}
-  }
-}
-POST /cds-rdm-dev-communities/_delete_by_query
-{
-  "query": {
-    "match_all": {}
-  }
-}
-```
-
-- Rerun `invenio migration community dump --slug 'sspn' --title 'Summer Student Project Notes' --filepath /path/to/cds_migrator_kit/rdm/migration/streams.yaml`
-- Rerun `invenio migration run`
+It restores PostgreSQL and OpenSearch to the state before the migration, and resets the file location of the instance. This replaces the manual cleanup described in `migration_cli/step_by_step_documentation.md` ("Local rerun migration from clean state"), which is only needed when there is no snapshot. Only do it on a local instance. If the snapshot is old, update it first as described in step 0.

@@ -17,7 +17,13 @@ def file_md5(path):
     return md5.hexdigest()
 
 
-def copy_collection_file(dump_files, destination_prefix, working_dir, skip_plots=False):
+def copy_collection_file(
+    dump_files,
+    destination_prefix,
+    working_dir,
+    skip_plots=False,
+    legacy_files_root="/opt/cdsweb/var/data/files/",
+):
     file_log = open(os.path.join(working_dir, "files.log"), "wb")
 
     for i, dump_file in enumerate(dump_files):
@@ -38,7 +44,7 @@ def copy_collection_file(dump_files, destination_prefix, working_dir, skip_plots
                         continue
                     full_path = legacy_record_file["full_path"]
                     # important: last slash
-                    path_to_replace = "/opt/cdsweb/var/data/files/"
+                    path_to_replace = legacy_files_root
 
                     rel_path = full_path.replace(path_to_replace, "")
                     destination_path = os.path.join(destination_prefix, rel_path)
@@ -83,17 +89,40 @@ def get_dump_files_paths(json_dump_dir):
     return dump_files
 
 
-collection = "lep/aleph_drafts"
-environment = "dev"
-skip_plots = False
+def main():
+    parser = argparse.ArgumentParser(
+        description="Copy the files of a dumped collection to EOS."
+    )
+    parser.add_argument(
+        "--collection", required=True, help="collection folder, e.g. small_exp/ua8"
+    )
+    parser.add_argument(
+        "--environment", required=True, help="dev / sandbox / prod"
+    )
+    parser.add_argument(
+        "--root",
+        default="/eos/media/cds/cds-rdm/{env}/migration",
+        help="migration data root, {env} is replaced by --environment",
+    )
+    parser.add_argument(
+        "--skip-plots",
+        required=True,
+        choices=["true", "false"],
+        help="do not copy the files of type Plot",
+    )
+    args = parser.parse_args()
 
-destination_prefix = "/eos/media/cds/cds-rdm/{0}/migration/{1}/files".format(
-    environment, collection
-)
-working_dir = "/eos/media/cds/cds-rdm/{0}/migration/{1}".format(environment, collection)
-json_dump_dir = "/eos/media/cds/cds-rdm/{0}/migration/{1}/dump".format(
-    environment, collection
-)
+    base = os.path.join(
+        args.root.format(env=args.environment).rstrip("/"), args.collection
+    )
+    dump_files = get_dump_files_paths(os.path.join(base, "dump"))
+    copy_collection_file(
+        dump_files,
+        os.path.join(base, "files"),
+        base,
+        skip_plots=args.skip_plots == "true",
+    )
 
-dump_files = get_dump_files_paths(json_dump_dir)
-copy_collection_file(dump_files, destination_prefix, working_dir, skip_plots=skip_plots)
+
+if __name__ == "__main__":
+    main()

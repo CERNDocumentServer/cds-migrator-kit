@@ -40,9 +40,14 @@ class Runner:
         collection,
         keep_logs,
         workers=None,
+        config=None,
     ):
-        """Constructor."""
-        config = self._read_config(config_filepath)
+        """Constructor.
+
+        ``config`` (already loaded, e.g. built from a migration_conf.yaml)
+        takes precedence over ``config_filepath``.
+        """
+        config = config or self._read_config(config_filepath)
         self.collection = collection
         self.keep_logs = keep_logs
         self.db_uri = config.get("db_uri")

@@ -1,20 +1,22 @@
 """
 One-shot export of a collection's legacy comments (run on cds-migration-01).
 
-Consolidates, in this order:
-  1. dump_comments_to_migrate.py   -> comments_metadata.json
-                                      + active_commentors.json
-                                      + missing_commentors_from_ldap.json
-  2. copying people.csv            -> <comments dir>/users/people.csv
-  3. copy_comments_attached_files.py -> <comments dir>/<recid>/...
+Its functions are used by migration_cli/collection_migration.py (`dump comments`
+and `dump files`), which is the way to run the export. Run on its own, it does,
+in this order:
+  1. dump the comments    -> comments_metadata.json
+                             + active_commentors.json
+                             + missing_commentors_from_ldap.json
+  2. copy people.csv      -> <comments dir>/users/people.csv
+  3. copy the attachments -> <comments dir>/<recid>/...
 
 Usage (Python 2 / ipython of the legacy Invenio, so no f-strings here):
 
-    ipython ./scripts/export_collection_comments.py -- \
+    ipython ./migration_cli/subscripts/export_collection_comments.py -- \
         --env dev --collection antares_restr --queries-file antares_queries.txt
 
     # or pass queries inline (repeatable)
-    ipython ./scripts/export_collection_comments.py -- \
+    ipython ./migration_cli/subscripts/export_collection_comments.py -- \
         --env dev --collection antares_restr --query '980__a:PRIVANTARES ...'
 
 The queries file has one legacy search query per line (blank lines and lines
@@ -27,7 +29,9 @@ Output (everything under /eos/media/cds/cds-rdm/<env>/migration/<collection>/com
     users/people.csv, users/active_commentors.json,
     users/missing_commentors_from_ldap.json
 
-Afterwards, on the migration pod, run scripts/migrate_collection_comments.sh.
+Afterwards, on the migration pod, run
+`invenio migration users commenters run --collection <collection>` and
+`invenio migration comments run --collection <collection>`.
 
 The script is safe to re-run: files are overwritten and already copied
 attachment folders are skipped.
@@ -350,10 +354,10 @@ def main():
 
     print("\nDone. Next, on the migration pod:")
     print(
-        "  ./scripts/migrate_collection_comments.sh --collection {}".format(
-            args.collection
-        )
+        "  invenio migration users commenters run --collection {0}\n"
+        "  invenio migration comments run --collection {0}".format(args.collection)
     )
 
 
-main()
+if __name__ == "__main__":
+    main()
