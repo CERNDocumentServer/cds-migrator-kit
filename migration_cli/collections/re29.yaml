@@ -1,0 +1,10 @@
+name: re29
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+flags:
+  plots: true
+  create_inclusion_request: true
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - re29   # slug of the community (id was aff67e22-9027-4401-a16f-1aaac2cd2c27)
+  - cern-research

@@ -11,6 +11,7 @@ records:
       files_dump_dir: cds_migrator_kit/rdm/data/former_exp/files/
       missing_users: cds_migrator_kit/rdm/data/users
       communities_ids:
+        - "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
         - "adc02716-780b-4bba-8e89-6316c9a11cf0"
   lcd:
     plots: true

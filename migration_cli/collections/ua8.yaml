@@ -1,0 +1,9 @@
+name: ua8
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+flags:
+  plots: true
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - ua8   # slug of the community (id was 2dbeb56c-b4ab-4cad-8d82-5a1f90499bd7)
+  - cern-research

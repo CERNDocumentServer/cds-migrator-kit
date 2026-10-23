@@ -1,0 +1,8 @@
+name: ts_dep
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+flags:
+  plots: true
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - TODO   # slug of the community (local id was 97ffcddd-ee1f-4e21-ac7b-b78612dc81d8)

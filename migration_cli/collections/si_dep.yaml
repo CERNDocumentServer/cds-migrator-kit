@@ -1,0 +1,10 @@
+name: si_dep
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+flags:
+  plots: true
+  create_inclusion_request: true
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - TODO   # slug of the community (local id was db44a69b-babc-48e8-9c03-29436b5bff07)
+  - cern-research

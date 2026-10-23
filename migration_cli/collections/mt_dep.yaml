@@ -1,0 +1,8 @@
+name: mt_dep
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+flags:
+  plots: true
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - TODO   # slug of the community (local id was ad4469fa-5a17-41b9-825f-8010c379ba23)

@@ -1,0 +1,43 @@
+# Configuration of one collection: copy this file to <name>.yaml in this folder.
+# It is the same on every environment. It is read by
+# migration_cli/collection_migration.py on the legacy host and by the
+# `invenio migration ... --collection <name>` commands on the pod, so there is no
+# streams.yaml entry to add. The data (dump, files, comments) goes to
+# <root of the migration data>/<name>/, see migrating-a-collection.md.
+name: antares_restr
+# folder: former_exp/antares_restr  # working directory under the root (default: name)
+filename_prefix: antares_restr      # dump file prefix (default: name)
+chunk_size: 1000                    # records per dump file (default: 1000)
+
+# Legacy search queries WITHOUT the standard exclusions (-980:DELETED, ...):
+# the script appends them. With several queries, each is dumped separately.
+queries:
+  - '980__a:PRIVANTARES'
+
+# Needed with several queries: ONE query for the duplicates analysis, without
+# -980:DELETED -980:HIDDEN -980__c:MIGRATED -980__a:DUMMY
+# analyze_query: '980__a:PRIVANTARES OR 980__a:PRIVANTARESPLOT'
+
+flags:
+  restricted: true
+  plots: true
+  # create_inclusion_request: true
+  # update_new_version_publication_date: false  # only for administrative docs
+  # preferred_model: research
+  # access_grants_view: false
+  # skip_plot_files: false    # do not copy the files of type "Plot"
+  # workers: 4                # threads for the records transformation
+
+# Slugs of the communities the records are added to. The same in every
+# environment: they are resolved to ids on the pod, and must exist there.
+communities:
+  - cern-research          # common community
+  - antares                # the collection community
+
+# Queries to find the records whose comments are migrated (default: `queries`).
+# comments_queries:
+#   - '980__a:PRIVANTARES'
+
+# Reviewers for the comments migration
+# reviewers:
+#   - { group: antares-all }
