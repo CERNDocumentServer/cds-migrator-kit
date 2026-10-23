@@ -1,0 +1,10 @@
+name: mps_div
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+flags:
+  include_plots: true
+  create_inclusion_request: true
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - TODO   # slug of the community (local id was 510206fb-2f80-44ee-8944-57f5dcfae5f0)
+  - cern-research

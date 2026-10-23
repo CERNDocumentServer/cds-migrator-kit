@@ -1,0 +1,70 @@
+# Configuration of one collection: copy this file to <name>.yaml in this folder.
+# It is the same on every environment. It is read by
+# migration_cli/collection_migration.py on the legacy host and by the
+# `invenio migration ... --collection <name>` commands on the pod, so there is no
+# streams.yaml entry to add. The data (dump, files, comments) goes to
+# <root of the migration data>/<name>/, see migrating-a-collection.md.
+name: antares_restr
+# folder: former_exp/antares_restr  # working directory under the root (default: name)
+filename_prefix: antares_restr      # dump file prefix (default: name)
+chunk_size: 1000                    # records per dump file (default: 1000)
+
+# Legacy search queries WITHOUT the standard exclusions (-980:DELETED, ...):
+# the script appends them. With several queries, each is dumped separately, to
+# files named `<filename_prefix>-<n>*` unless the query sets its own prefix:
+#   queries:
+#     - q: '980__a:PRIVANTARES'
+#       dump_file_prefix: antares_restr_private   # must differ between queries, and
+#                                                 # not start another one's prefix
+#     - '980__a:PRIVANTARESPLOT'                  # a plain string works too
+queries:
+  - '980__a:PRIVANTARES'
+
+# Needed with several queries: ONE query for the duplicates analysis, without
+# -980:DELETED -980:HIDDEN -980__c:MIGRATED -980__a:DUMMY
+# analyze_query: '980__a:PRIVANTARES OR 980__a:PRIVANTARESPLOT'
+
+# Options of the migration of the records (all optional, default: off).
+flags:
+  # Make every record of the collection restricted, whatever its legacy
+  # restriction. Without it the restriction is read from each record, and a record
+  # with none is flagged for curation instead of being published as public.
+  restricted: true
+  # Migrate the files of type "Plot" (figures). Without it they are not copied
+  # from the legacy system (`dump files`) and are dropped when migrating the
+  # records (logged as "Plot file dropped").
+  include_plots: true
+  # Create the community-inclusion request of the records that have one. Without
+  # it a record with request data is flagged "Detected request data, enable the
+  # requests" and needs a manual import.
+  create_inclusion_request: true
+  # Version dates: by default every new version gets the publication date of the
+  # record. Set to true to use the date of each legacy version instead. Only for
+  # administrative documents (e.g. HR), where each version is dated on its own.
+  update_new_version_publication_date: false
+  # When a legacy record matches several transformation models, use the one with
+  # this name instead of failing with "multiple models matched" (the record is
+  # still flagged with a warning). Name of a model, e.g. research.
+  preferred_model: research
+  # Groups that get view access to every record of the collection, on top of the
+  # legacy permissions. For restricted collections that a whole group (e.g. all of
+  # CERN) should see, when the legacy records do not list it.
+  access_grants_view: []            # e.g. [cern-personnel]
+  # Number of parallel workers for the transformation of the records. The
+  # `--workers` option of `invenio migration run` takes precedence.
+  # workers: 4
+
+# Slugs of the communities the records are added to. The same in every
+# environment: they are resolved to ids on the pod, and must exist there.
+communities:
+  - antares                # the DEFAULT collection community
+  - cern-research          # common community
+
+# To set only if for some reason comments query differ from the records query.
+# If not set, global queries will kick in.
+# comments_queries:
+#   - '980__a:PRIVANTARES'
+
+# Reviewers assigned to all the requests in this community
+community_reviewers:
+   - { group: antares-all }

@@ -1,0 +1,7 @@
+name: scp_adv
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - cern-research
+  - TODO   # slug of the community (local id was dbcc1269-a481-4d40-8ef9-66305c831840)

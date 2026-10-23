@@ -1,0 +1,10 @@
+name: isolde
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+flags:
+  include_plots: true
+  create_inclusion_request: true
+  preferred_model: isolde
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - TODO   # slug of the community (local id was 1c46ceab-af68-4502-a436-cdf5a4cfbbe0)

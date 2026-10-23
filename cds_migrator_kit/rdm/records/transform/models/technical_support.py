@@ -16,10 +16,10 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 class TechnicalSupportModel(CdsOverdo):
     """Translation model for MoUs."""
 
-    __query__ = """980__:ARTICLE OR
+    __query__ = """(980__:ARTICLE OR
                    980__:PREPRINT OR
                    980__:DEMSUPPLIERS OR
-                   980__:INTNOTETSPUBL OR 690C_:INTNOTETSPUBL
+                   980__:INTNOTETSPUBL OR 690C_:INTNOTETSPUBL)
                    AND 710__.5:TS OR 710__.5:ST OR 710__.5:MT OR 710__.5:EST OR 710__.5:SB
                    """
 
@@ -40,6 +40,7 @@ class TechnicalSupportModel(CdsOverdo):
         "300__a",  # number of pages
         "700__m",  # email of contributor
         "520__9",
+        "540__3",  # license qualifier
         "852__a",  # Physical Location
         "852__c",  # holdings will be taken separately
         "852__h",

@@ -1,69 +1,13 @@
-# Migration model manual
+# Step by step documentation
 
-## Dump users
+The detailed, manual description of each migration stage, kept as a reference.
+The migration of a collection is described in `migrating-a-collection.md`
+(`migration_cli/collection_migration.py` covers most of the stages below), and
+the local flow in `cds_migrator_kit/rdm/README.md`.
 
-! Attention If you need to dump the users from legacy DB or you need to process the people collection
+## Local analysis
 
-https://gitlab.cern.ch/cds-team/production_scripts/-/blob/master/cds-rdm/migration/dump_users.py?ref_type=heads
-
-
-
-## Dump a subset of records on legacy
-
-on webnode: `cds-migration-01`
-
-```bash
-inveniomigrator dump records -q '980:INTNOTECMSPUBL 980:NOTE -980:DELETED' --file-prefix cms-notes --chunk-size=1000
-
-```
-
-## Define transforming models and rules resolution
-
-You can adapt XML processing to different subsets of records by implementing different data models for each subset (f.e. collection).
-Let's take CMS notes as an example:
-
-```python
-
-class CMSNote(CdsOverdo):
-    """Translation Index for CDS Books."""
-
-    __query__ = (
-        '980__:INTNOTECMSPUBL 980__:NOTE'
-    )
-
-    __model_ignore_keys__ = {}
-
-    _default_fields = {}
-
-
-
-model = CMSNote(bases=(),
-                entry_point_group="cds_rdm.migrator.rules"
-                )
-
-```
-
-**query** - defines the MARC fields to which specific record should match. Attention: It does not recognise regexes that are used to specify the collection query in the admin interface of legacy CDS.
-
-\***\*model_ignore_keys\*\*** - set of keys to be ignored for this data model - fields will not be migrated
-
-**bases** - by defining bases of models you can specify a parent model which fits all the subsets of records (f.e. 245 - title field MARC to JSON translation could be the same for all the models)
-
-**entry_point_group** - reference to where the model should lookup for the set of the MARC translation rules, see the entrypoints below.
-
-After defining your model and set of rules,you have to register them in the entrypoints of your application, in setup.cfg:
-
-```editorconfig
-
-[options.entry_points]
-cds_migrator_kit.migrator.models =
-    cms_note = cds_rdm.migration.transform.models.note:model
-cds_migrator_kit.migrator.rules =
-    base = cds_rdm.migration.transform.xml_processing.rules
-
-```
-
-## Full migration workflow of one collection
+This is a detailed information on each stage of migration, but now they were all covered by migration_cli/collection_migration.py
 
 ### To visualise the errors (locally):
 
@@ -88,7 +32,7 @@ cp /tmp/current-collection-dump/* .
 
 # copy over all files to temporary location
 ipython
-# run script available in /scripts/copy_collection_files.py
+# run script available in migration_cli/subscripts/copy_collection_files.py
 # destination_prefix = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes/files"
 # working_dir = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes"
 # json_dump_dir = "/eos/media/cds/cds-rdm/dev/migration/summer-student-notes/dump"
@@ -98,7 +42,7 @@ Identify and dump duplicated records i.e. records with same title, description a
 checksums (excluding deleted files) on EOS. If duplicates found, then we keep the recid
 that has restricted files or if not any, then the first one from the list.
 
-In a python shell run the script `scripts/dump_legacy_recids_to_redirect.py`.
+Run `migration_cli/collection_migration.py prepare` (it runs `migration_cli/subscripts/analyze_collection_migration.py`).
 
 #### How to mount eos locally on MAC (to copy over the dumps and files)
 
@@ -173,13 +117,13 @@ invenio migration run --collection faser-ep
 
 #### Comments migration
 
-Configure the collection under `comments` in `streams.yaml` (`dir_path`, `reviewers`). Paths and reviewers are loaded from there when you pass `--collection`.
+Configure the collection under `comments` in `streams.yaml` (`dir_path`, `community_reviewers`). Paths and community reviewers are loaded from there when you pass `--collection`.
 
 1. Dump comments for the collection and generate commenter metadata:
 
 ```shell
 # on cds-migration-01
-ipython ./scripts/dump_comments_to_migrate.py
+ipython ./migration_cli/collection_migration.py -- dump comments --collection <COLLECTION>
 ```
 
 Output: `comments_metadata.json`. The script also generates `missing_commentors_from_ldap.json`.

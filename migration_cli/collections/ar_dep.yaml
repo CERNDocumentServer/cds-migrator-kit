@@ -1,0 +1,10 @@
+name: ar_dep
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+flags:
+  include_plots: true
+  create_inclusion_request: true
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - TODO   # slug of the community (local id was 2bf2998b-b310-4f36-9344-71e47560ae16)
+  - cern-research

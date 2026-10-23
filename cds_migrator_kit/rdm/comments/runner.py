@@ -27,10 +27,16 @@ class CommentsRunner:
     """ETL streams runner."""
 
     def __init__(
-        self, stream_definition, config_filepath, log_dir, collection, dry_run
+        self,
+        stream_definition,
+        config_filepath,
+        log_dir,
+        collection,
+        dry_run,
+        config=None,
     ):
         """Constructor."""
-        config = read_config(config_filepath)
+        config = config or read_config(config_filepath)
         collection_config = config["comments"][collection]
 
         self.log_dir = Path(log_dir)
@@ -50,7 +56,7 @@ class CommentsRunner:
                 dry_run=dry_run,
                 logger=self.logger,
                 collection=collection,
-                reviewers=collection_config.get("reviewers", []),
+                reviewers=collection_config.get("community_reviewers", []),
             ),
         )
 
@@ -68,13 +74,22 @@ class CommenterRunner:
     """ETL streams runner dedicated to pre-create commenters accounts."""
 
     def __init__(
-        self, stream_definition, config_filepath, log_dir, collection, dry_run
+        self,
+        stream_definition,
+        config_filepath,
+        log_dir,
+        collection,
+        dry_run,
+        config=None,
     ):
         """Constructor."""
-        config = read_config(config_filepath)
+        config = config or read_config(config_filepath)
         collection_config = config["comments"][collection]
         dirpath = collection_config["dir_path"]
-        missing_users_dir = os.path.join(dirpath, "users")
+        # missing_commentors_from_ldap.json is always under <dir_path>/users,
+        # people.csv can be read from the shared users folder
+        ldap_users_dir = os.path.join(dirpath, "users")
+        missing_users_dir = collection_config.get("users_dir", ldap_users_dir)
         filename = "missing_commentors_from_ldap.json"
 
         self.log_dir = Path(log_dir)
@@ -85,12 +100,13 @@ class CommenterRunner:
         self.stream = Stream(
             stream_definition.name,
             extract=stream_definition.extract_cls(
-                os.path.join(missing_users_dir, filename)
+                os.path.join(ldap_users_dir, filename)
             ),
             transform=stream_definition.transform_cls(),
             load=stream_definition.load_cls(
                 dry_run=dry_run,
                 missing_users_dir=missing_users_dir,
+                missing_ldap_users_dir=ldap_users_dir,
                 missing_ldap_users_filename=filename,
                 logger=self.logger,
                 user_api_cls=CDSMigrationUserAPI,

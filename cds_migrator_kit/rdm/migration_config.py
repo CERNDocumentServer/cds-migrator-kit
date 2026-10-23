@@ -352,6 +352,23 @@ CDS_MIGRATOR_KIT_LOGS_PATH = (
 
 CDS_MIGRATOR_KIT_STREAM_CONFIG = "cds_migrator_kit/rdm/streams.yaml"
 
+CDS_MIGRATOR_KIT_COLLECTIONS_DIR = None
+"""Folder with the per-collection configuration files. Defaults to
+migration_cli/collections of the checkout; set it when the package is not
+installed from the checkout (e.g. INVENIO_CDS_MIGRATOR_KIT_COLLECTIONS_DIR)."""
+
+CDS_MIGRATOR_KIT_MIGRATION_ROOT = None
+"""Root of the migration data (users/ and one folder per collection). Leave it
+unset on dev, sandbox and prod: it defaults to the EOS path of
+CDS_MIGRATOR_KIT_ENV, and a value here would override it. A relative path is
+relative to the root of the repository."""
+
+CDS_MIGRATOR_KIT_LOCAL_MIGRATION_ROOT = "migration_cli/rdm-data"
+"""Root of the migration data when CDS_MIGRATOR_KIT_ENV is `local` and
+CDS_MIGRATOR_KIT_MIGRATION_ROOT is not set. Other environments ignore it.
+A relative path is relative to the root of the repository, not to the current
+directory."""
+
 RDM_RECORDS_IDENTIFIERS_SCHEMES = {
     "cdsrn": {
         "label": _("CDS Reference"),

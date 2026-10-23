@@ -73,4 +73,7 @@ target/
 snapshots/
 
 **.DS_Store
-**/cds_migrator_kit/rdm/data/
+# local migration data (dumps, files, people.csv...): real data, never commit it.
+# Only the rdm-data folder itself is kept, through its .gitkeep
+migration_cli/rdm-data/*
+!migration_cli/rdm-data/.gitkeep

@@ -1,0 +1,7 @@
+name: istc_comm
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - cern-research
+  - TODO   # slug of the community (local id was 84c28df7-fbee-4332-883b-7b9b77480e1f)

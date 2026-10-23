@@ -1,0 +1,13 @@
+name: dep_sb
+queries:
+  - q: '710__5:SB 980:ARTICLE -980:CLINOT -690C_:LHCPROJECTREPORT'
+    dump_file_prefix: sb_dep_article
+  - q: '710__5:SB 980:PREPRINT -980:CLINOT -690C_:LHCPROJECTREPORT'
+    dump_file_prefix: sb_dep_preprint
+flags:
+  include_plots: true
+  preferred_model: technical_support
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - sb-dep  # slug of the community (local id was ca71c1ab-2eb3-4a43-a593-b8b140fe6123)

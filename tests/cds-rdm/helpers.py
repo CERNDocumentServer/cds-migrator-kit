@@ -39,7 +39,7 @@ def config(mocker, community, orcid_name_data):
                         "communities_ids": [f"{str(community.id)}"],
                     },
                     "load": {
-                        "legacy_pids_to_redirect": "cds_migrator_kit/rdm/data/summer_student_reports/duplicated_pids.json"
+                        "legacy_pids_to_redirect": "tests/cds-rdm/data/sspn/duplicated_pids.json"
                     },
                 },
                 "it": {
@@ -113,7 +113,7 @@ def config(mocker, community, orcid_name_data):
                         "communities_ids": [f"{str(community.id)}"],
                     },
                     "load": {
-                        "legacy_pids_to_redirect": "cds_migrator_kit/rdm/data/summer_student_reports/duplicated_pids.json"
+                        "legacy_pids_to_redirect": "tests/cds-rdm/data/sspn/duplicated_pids.json"
                     },
                 },
                 "sspn_publication_date_consistency": {
@@ -128,7 +128,7 @@ def config(mocker, community, orcid_name_data):
                         "communities_ids": [f"{str(community.id)}"],
                     },
                     "load": {
-                        "legacy_pids_to_redirect": "cds_migrator_kit/rdm/data/summer_student_reports/duplicated_pids.json"
+                        "legacy_pids_to_redirect": "tests/cds-rdm/data/sspn/duplicated_pids.json"
                     },
                 },
                 "lcd_restr": {

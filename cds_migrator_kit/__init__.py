@@ -8,7 +8,6 @@
 
 """Migration tool kit from old Invenio to new Invenio."""
 
-
 from .ext import CdsMigratorKit
 
 __all__ = ("__version__", "CdsMigratorKit")

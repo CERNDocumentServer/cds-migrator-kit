@@ -59,7 +59,7 @@ def write_comments_stream_config(
                 "comments": {
                     collection: {
                         "dir_path": dir_path or COMMENTS_DATA_DIR,
-                        "reviewers": (
+                        "community_reviewers": (
                             reviewers
                             if reviewers is not None
                             else [{"group": "test-comments-reviewers"}]
