@@ -30,6 +30,7 @@ from cds_migrator_kit.rdm.records.transform.config import (
     CONTROLLED_SUBJECTS_SCHEMES,
     IDENTIFIERS_SCHEMES_TO_DROP,
     KEYWORD_SCHEMES_TO_DROP,
+    EXPERIMENTS_AS_STUDIES,
     PID_SCHEMES_TO_STORE_IN_IDENTIFIERS,
     PID_SCHEMES_TO_STORE_IN_RELATED_IDENTIFIERS,
     RECOGNISED_KEYWORD_SCHEMES,
@@ -241,6 +242,15 @@ def custom_fields_693(self, key, value):
     for custom_field_name, subfield in fields_map.items():
         custom_field = _custom_fields.get(custom_field_name, [])
         new_values = [v for v in force_list(value.get(subfield, "")) if v]
+
+        if custom_field_name == "cern:experiments":
+            studies = [v for v in new_values if v.upper() in EXPERIMENTS_AS_STUDIES]
+            new_values = [
+                v for v in new_values if v.upper() not in EXPERIMENTS_AS_STUDIES
+            ]
+            if studies:
+                _custom_fields.setdefault("cern:studies", []).extend(studies)
+
         custom_field += new_values
         _custom_fields[custom_field_name] = custom_field
 
