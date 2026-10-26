@@ -705,6 +705,63 @@ class TestJournal:
         assert result[0]["resource_type"] == {"id": "publication-conferenceproceeding"}
         assert record["custom_fields"]["journal:journal"]["title"] == "Journal"
 
+    @pytest.mark.parametrize("m_value", ["publication", "erratum"])
+    def test_773_m_known_value_is_ignored(self, m_value):
+        """773__m publication/erratum is ignored.
+
+        The erratum linking is handled at the DOI level, so the note itself
+        carries no extra data: the record still migrates and the journal
+        fields are populated normally.
+        """
+        record = {}
+        result = journal(record, "773__", {"p": "Nature", "v": "5", "m": m_value})
+
+        journal_info = result.get("journal:journal", {})
+        assert journal_info["title"] == "Nature"
+        assert journal_info["volume"] == "5"
+
+    def test_773_m_known_value_case_insensitive(self):
+        """773__m matching is case/whitespace insensitive."""
+        record = {}
+        result = journal(record, "773__", {"p": "Nature", "m": "  Erratum "})
+        assert result["journal:journal"]["title"] == "Nature"
+
+    def test_773_m_unexpected_value_raises(self):
+        """An unknown 773__m value is surfaced for manual curation."""
+        with pytest.raises(UnexpectedValue, match="Unexpected 773__m value"):
+            journal({}, "773__", {"p": "Nature", "m": "something-else"})
+
+    def test_773_m_repeated_all_known_ignored(self):
+        """Repeated 773__m (a tuple) is accepted when every value is known."""
+        record = {}
+        result = journal(
+            record, "773__", {"p": "Nature", "m": ("publication", "erratum")}
+        )
+        assert result["journal:journal"]["title"] == "Nature"
+
+    def test_773_m_repeated_with_one_unknown_raises(self):
+        """Repeated 773__m raises if any value is unknown."""
+        with pytest.raises(UnexpectedValue, match="Unexpected 773__m value"):
+            journal({}, "773__", {"p": "Nature", "m": ("publication", "bogus")})
+
+    def test_773_c_repeated_raises_for_curation(self):
+        """A repeated 773__c (a tuple) is ambiguous and flagged for curation.
+
+        dojson returns the subfield as a tuple; rather than crashing on it (or
+        silently picking one value) the record is surfaced for manual curation.
+        """
+        with pytest.raises(UnexpectedValue, match="Multiple 773__c values"):
+            journal(
+                {},
+                "773__",
+                {"p": "Phys. Lett. B", "m": "publication", "c": ("062701", "209904")},
+            )
+
+    def test_773_c_repeated_in_conference_raises_for_curation(self):
+        """A repeated 773__c in a conference 773 is also flagged for curation."""
+        with pytest.raises(UnexpectedValue, match="Multiple 773__c values"):
+            journal({}, "773__", {"w": "C05-03-12", "c": ("175-181", "WEC02")})
+
 
 class TestMeetingDateFrom518:
     """Test meeting date (518__r/__d) handling in related_identifiers.
