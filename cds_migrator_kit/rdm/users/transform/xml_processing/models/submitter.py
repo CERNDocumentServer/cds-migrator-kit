@@ -24,9 +24,7 @@
 # snapshot of base_model.rules at construction time, and this model's own
 # entry_point_group is only collected lazily on first use - too late for a
 # rule registered there to make it into that snapshot.
-import cds_migrator_kit.rdm.users.transform.xml_processing.rules.reviewers  # noqa: E402,F401
 from cds_migrator_kit.transform.overdo import CdsOverdo
-from cds_migrator_kit.transform.xml_processing.models.base import model as base_model
 
 
 class SubmitterModel(CdsOverdo):
@@ -361,9 +359,16 @@ class SubmitterModel(CdsOverdo):
     }
 
 
+# Deliberately no `bases=(base_model,)`: the submitter transform only reads
+# `submitter`, `reviewers` and `access_grant_emails`. Inheriting the base rules
+# would run unrelated ones (languages, title, contributors...) and any of them
+# raising makes SubmitterTransform drop the whole entry. `__ignore_keys__` does
+# not prevent this, it only silences the missing-fields check.
 submitter_model = SubmitterModel(
     # use base rules (859__f submitter) plus the reviewers rules (903__m/p)
-    bases=(base_model,),
+    # (now: no base rules, 859__f lives in rules/submitter.py, and the
+    # reviewers rules in rules/reviewers.py, both registered on this model)
+    bases=(),
     entry_point_group="cds_migrator_kit.migrator.rules.submitter",
 )
 
@@ -371,4 +376,9 @@ submitter_model = SubmitterModel(
 # after it has been built above - see access_grants.py's module docstring
 # for why this must be isolated to this instance instead of the shared
 # base_model.
+# The 859__f submitter and 906__ reviewers rules follow the same pattern: they
+# are registered directly on submitter_model, so they must be
+# imported after it has been built.
 import cds_migrator_kit.rdm.users.transform.xml_processing.rules.access_grants  # noqa: E402,F401
+import cds_migrator_kit.rdm.users.transform.xml_processing.rules.reviewers  # noqa: E402,F401
+import cds_migrator_kit.rdm.users.transform.xml_processing.rules.submitter  # noqa: E402,F401

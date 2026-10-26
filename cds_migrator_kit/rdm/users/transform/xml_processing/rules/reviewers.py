@@ -16,10 +16,12 @@ listed in 906__m/906__p, later used to find or recreate their accounts.
 from dojson.errors import IgnoreKey
 
 from cds_migrator_kit.errors import UnexpectedValue
-from cds_migrator_kit.transform.xml_processing.models.base import model
+from cds_migrator_kit.rdm.users.transform.xml_processing.models.submitter import (
+    submitter_model,
+)
 
 
-@model.over("reviewers", "^906__")
+@submitter_model.over("reviewers", "^906__")
 def record_reviewer(self, key, value):
     r"""Translate request reviewers.
 
