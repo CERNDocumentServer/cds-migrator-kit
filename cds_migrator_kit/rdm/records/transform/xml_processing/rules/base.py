@@ -503,6 +503,18 @@ def _pids(self, key, value):
     if not is_doi_id and is_handle_id and (scheme == "doi" or scheme == "urn/hdl"):
         scheme = "handle"
 
+    if qualifier == "erratum":
+        related_identifiers = self.get("related_identifiers", [])
+        new_id = {
+            "identifier": identifier,
+            "scheme": scheme,
+            "relation_type": {"id": "issupplementedby"},
+        }
+        if new_id not in related_identifiers:
+            related_identifiers.append(new_id)
+            self["related_identifiers"] = related_identifiers
+        raise IgnoreKey("_pids")
+
     if qualifier == "publication" or qualifier == "thesis":
         # if we have a qualifier for one of these two, we know it references
         # an external resource (checked in DB and individually on records)

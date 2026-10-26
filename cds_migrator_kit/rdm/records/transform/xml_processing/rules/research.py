@@ -273,27 +273,35 @@ def journal(self, key, value):
             related_ids.append(isbn_related_id)
         self["related_identifiers"] = related_ids
 
+    # 773__m qualifies the journal reference (e.g. the main publication or an
+    # erratum). Per the curators' decision, the erratum linking is handled
+    # entirely at the DOI level (0247_ $q -> related identifier with
+    # "issupplementedby"), so this note carries no extra information and is
+    # ignored. Any other value is surfaced for curation.
     if "m" in value:
-        # As discussed with SIS, we only ignore 773__m if there is only one in the record
-        # and its value is `publication`
-        if self.get("_773_m_seen"):
-            raise UnexpectedValue(
-                "Multiple 773__m seen. Record requires manual curation.",
-                subfield="m",
-                field=key,
-                value=value,
-            )
+        allowed_m_values = {"publication", "erratum"}
+        m_values = value.get("m")
+        if not isinstance(m_values, (list, tuple)):
+            m_values = (m_values,)
+        for m_value in m_values:
+            if StringValue(m_value).parse().lower() not in allowed_m_values:
+                raise UnexpectedValue(
+                    "Unexpected 773__m value. Record requires manual curation.",
+                    subfield="m",
+                    field=key,
+                    value=value,
+                )
 
-        m_value = value.get("m")
-        if m_value != "publication":
-            raise UnexpectedValue(
-                f'Only value "publication" can be ignored for 773__m. Value "{m_value}" requires manual curation.',
-                subfield="m",
-                field=key,
-                value=value,
-            )
-
-        self["_773_m_seen"] = True
+    # A repeated 773__c (dojson returns a tuple) is ambiguous page/session data
+    # that can't be reduced to a single value - flag for manual curation instead
+    # of crashing on the tuple when it is parsed downstream.
+    if isinstance(value.get("c"), (list, tuple)):
+        raise UnexpectedValue(
+            "Multiple 773__c values. Record requires manual curation.",
+            subfield="c",
+            field=key,
+            value=value,
+        )
 
     # p/n/v are journal-specific; c alone with w is a conference proceedings artid
     is_journal = any(f in value for f in ["p", "n", "v"])
