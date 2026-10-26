@@ -7,6 +7,7 @@
 
 """CDS-RDM ISOLDE model."""
 
+from cds_migrator_kit.rdm.records.transform.models._config import IGNORE_SYSTEM_KEYS
 from cds_migrator_kit.rdm.records.transform.models.base_publication_record import (
     rdm_base_publication_model,
 )
@@ -19,11 +20,7 @@ class ISOLDEModel(CdsOverdo):
 
     __query__ = '693__.a:"CERN ISOLDE" AND (980__:ARTICLE OR 980__:PREPRINT OR 980__:conferencepaper OR 980__:NOTE OR 980__:REPORT) -980__:DELETED -980__:DUMMY'
 
-    # ResearchModel.__ignore_keys__ covers the shared publication baseline
-    # (035__ oai tags, 852__h/c holdings, 999C5*/6* citations, 8564_ file
-    # subfields, 773__ SIS fields, contributor emails, etc.).
-    # Only ISOLDE-specific additions are listed here.
-    __ignore_keys__ = ResearchModel.__ignore_keys__
+    __ignore_keys__ = IGNORE_SYSTEM_KEYS | ResearchModel.__ignore_keys__
 
     _default_fields = {
         "custom_fields": {},

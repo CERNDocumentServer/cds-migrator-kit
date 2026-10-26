@@ -85,4 +85,5 @@ IGNORE_SYSTEM_KEYS = {
     "999C5d",  # old INSPIRE attr
     "999C69",  # See decision log
     "999C6c",  # See decision log
+    "999C5e",  # See decision log
 }
