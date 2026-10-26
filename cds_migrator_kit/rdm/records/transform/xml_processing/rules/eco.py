@@ -37,7 +37,7 @@ from .bulletin_issue import (
     urls_bulletin,
 )
 from .it import corporate_author
-from .publications import internal_notes, journal, organisation, related_identifiers
+from .research import internal_notes, journal, organisation, related_identifiers
 
 model.over("additional_titles", "(^246_[1_])", override=True)(
     additional_titles_bulletin
@@ -65,28 +65,28 @@ def internal_notes(self, key, value):
     raise IgnoreKey("internal_notes")
 
 
-@model.over("eco_report_number", "(^037__)|(^088__)", override=True)
-@for_each_value
-def eco_report_number(self, key, value):
-    """Translates report number."""
-    identifier = value.get("a", "")
-    # Check it's email TODO: how to handle?
-    if key == "088__" and "@" in identifier:
-        pass
-    else:
-        provenance = value.get("9", "")
-        identifiers = self.get("identifiers", [])
-        if provenance == "submitter" and identifier.startswith("FERMILAB-POSTER"):
-            new_id = {"identifier": identifier, "scheme": "cdsrn"}
-            if new_id not in identifiers:
-                identifiers.append(new_id)
-                raise IgnoreKey("eco_report_number")
-        _identifier = report_number(self, key, value)
+# @model.over("eco_report_number", "(^037__)|(^088__)", override=True)
+# @for_each_value
+# def eco_report_number(self, key, value):
+#     """Translates report number."""
+#     identifier = value.get("a", "")
+#     # Check it's email TODO: how to handle?
+#     if key == "088__" and "@" in identifier:
+#         pass
+#     else:
+#         provenance = value.get("9", "")
+#         identifiers = self.get("identifiers", [])
+#         if provenance == "submitter" and identifier.startswith("FERMILAB-POSTER"):
+#             new_id = {"identifier": identifier, "scheme": "cdsrn"}
+#             if new_id not in identifiers:
+#                 identifiers.append(new_id)
+#                 raise IgnoreKey("eco_report_number")
+#         _identifier = report_number(self, key, value)
 
-        if _identifier and _identifier not in identifiers:
-            identifiers += _identifier
-        self["identifiers"] = identifiers
-    raise IgnoreKey("eco_report_number")
+#         if _identifier and _identifier not in identifiers:
+#             identifiers += _identifier
+#         self["identifiers"] = identifiers
+#     raise IgnoreKey("eco_report_number")
 
 
 @model.over("eco_related_identifiers", "(^962__)", override=True)
@@ -212,10 +212,10 @@ def submitter_info(self, key, value):
     raise IgnoreKey("submitter_info")
 
 
-@model.over("languages", "^041__", override=True)
+@model.over("languages", "^041__", override_tag=True)
 @for_each_value
 @require(["a"])
-def language(self, key, value):
+def languages(self, key, value):
     """Translates languages fields."""
     langs = value.get("a")
     languages = self.get("languages", [])
