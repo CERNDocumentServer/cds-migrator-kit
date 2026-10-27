@@ -23,6 +23,7 @@ from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import
     issn,
     journal,
     meeting,
+    organisation,
     resource_type,
     udc,
 )
@@ -1034,6 +1035,70 @@ class TestAbbreviation:
         record = {}
         with pytest.raises(IgnoreKey):
             abbreviation(record, "691__", {"a": ""})
+
+
+class TestOrganisation:
+    """Test organisation function from research.py (901__ rule)."""
+
+    def _org(self, name):
+        return {
+            "person_or_org": {"type": "organizational", "name": name},
+            "role": {"id": "hostinginstitution"},
+        }
+
+    def test_single_affiliation(self):
+        """A single 901__u becomes one organizational contributor."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            organisation(record, "901__", {"u": "CERN"})
+        assert record["contributors"] == [self._org("CERN")]
+
+    def test_multiple_affiliations_as_tuple(self):
+        """Multiple 901__u values each become a separate contributor."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            organisation(
+                record,
+                "901__",
+                {
+                    "u": (
+                        "Darmstadt, Tech. Hochsch.",
+                        "Munich, Tech. U.",
+                        "Leuven U.",
+                    )
+                },
+            )
+        assert record["contributors"] == [
+            self._org("Darmstadt, Tech. Hochsch."),
+            self._org("Munich, Tech. U."),
+            self._org("Leuven U."),
+        ]
+
+    def test_appends_to_existing_contributors(self):
+        """901__ organisations are appended after existing contributors."""
+        existing = {
+            "person_or_org": {
+                "type": "personal",
+                "family_name": "Doe",
+                "given_name": "Jane",
+            },
+            "role": {"id": "other"},
+        }
+        record = {"contributors": [existing]}
+        with pytest.raises(IgnoreKey):
+            organisation(record, "901__", {"u": ("CERN", "DESY")})
+        assert record["contributors"] == [
+            existing,
+            self._org("CERN"),
+            self._org("DESY"),
+        ]
+
+    def test_empty_values_skipped(self):
+        """Empty / whitespace-only 901__u values are skipped."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            organisation(record, "901__", {"u": ("", "  ", "CERN")})
+        assert record["contributors"] == [self._org("CERN")]
 
 
 class TestMeetingFrom111And711:

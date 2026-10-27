@@ -442,15 +442,27 @@ def internal_notes(self, key, value):
 @model.over("contributors", "^901__")
 @for_each_value
 def organisation(self, key, value):
-    """Translates organisation contributors."""
-    contributor = value.get("u", "")
-    return {
-        "person_or_org": {
-            "type": "organizational",
-            "name": contributor,
-        },
-        "role": {"id": "hostinginstitution"},
-    }
+    """Translates organisation contributors.
+
+    901__ may carry multiple ``u`` affiliation values; each becomes its own
+    organizational contributor.
+    """
+    contributors = self.get("contributors", [])
+    for name in force_list(value.get("u", "")):
+        name = StringValue(name).parse().strip()
+        if not name:
+            continue
+        contributors.append(
+            {
+                "person_or_org": {
+                    "type": "organizational",
+                    "name": name,
+                },
+                "role": {"id": "hostinginstitution"},
+            }
+        )
+    self["contributors"] = contributors
+    raise IgnoreKey("contributors")
 
 
 @model.over("request_reviewers", "^906__", override=True)

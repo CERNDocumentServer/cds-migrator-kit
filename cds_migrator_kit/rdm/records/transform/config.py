@@ -204,10 +204,10 @@ EXPERIMENTS_AS_STUDIES = {
     "IS01-C",
     "IS01-D",
     "IS01-E",
-    # "IS250",
+    "IS250",
     # "IS",
     # "IS02",
-    # "IS142",
+    "IS142",
 }
 
 # Legacy experiment names remapped to vocabulary ids before lookup

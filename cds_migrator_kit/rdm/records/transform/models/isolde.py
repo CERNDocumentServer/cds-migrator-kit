@@ -18,7 +18,13 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 class ISOLDEModel(CdsOverdo):
     """Translation model for ISOLDE."""
 
-    __query__ = '693__.a:"CERN ISOLDE" AND (980__:ARTICLE OR 980__:PREPRINT OR 980__:conferencepaper OR 980__:NOTE OR 980__:REPORT) -980__:DELETED -980__:DUMMY'
+    __query__ = (
+        '(693__.a:"CERN ISOLDE" OR 693__.a:"CERN Isolde") AND '
+        "(980__:ARTICLE OR 980__:Article OR 980__:PREPRINT OR "
+        "980__:ConferencePaper OR 980__:conferencepaper OR "
+        "980__:NOTE OR 980__:REPORT) "
+        "-980__:DELETED -980__:DUMMY"
+    )
 
     __ignore_keys__ = IGNORE_SYSTEM_KEYS | ResearchModel.__ignore_keys__
 

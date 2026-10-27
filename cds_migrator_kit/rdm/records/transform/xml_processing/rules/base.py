@@ -379,6 +379,8 @@ def aleph_number(self, key, value):
 
     Attention:  035 might contain aleph number
     https://github.com/CERNDocumentServer/cds-migrator-kit/issues/21
+    
+    If the record is migrated to the repository, it has 970__d with redirection URL.
     """
     aleph = StringValue(value.get("a")).parse()
     identifiers = self.get("identifiers")
@@ -386,6 +388,9 @@ def aleph_number(self, key, value):
     if aleph and new_id not in identifiers:
         return {"scheme": "aleph", "identifier": aleph}
     else:
+        d_value = value.get("d", "").strip().lower()
+        if d_value and not d_value.startswith("https://repository.cern"):
+            raise UnexpectedValue(field=key, subfield="d", value=value, stage="transform")
         raise IgnoreKey("identifiers")
 
 
@@ -715,6 +720,9 @@ def licenses(self, key, value):
             self["custom_fields"] = _custom_fields
 
     if not license_id:
+        # Bronze meaning no license on the document
+        if qualifier == "bronze":
+            raise IgnoreKey("rights")
         # 540__f/b without a license id — side effects (funding model, copyright) already applied
         raise UnexpectedValue(
             "License title missing", field=key, subfield="a", value=value
@@ -749,7 +757,7 @@ def licenses(self, key, value):
         _license = {
             "title": {"en": license_id},
             "link": license_url,
-            "description": description,
+            "description": {"en": description} if description else None,
         }
     return _license
 
