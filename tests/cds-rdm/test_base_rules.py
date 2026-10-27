@@ -12,6 +12,7 @@ from dojson.errors import IgnoreKey
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
+    _pids,
     custom_fields_693,
     imprint_info,
     normalize,
@@ -463,3 +464,66 @@ class TestEmptyDatafields:
         )
         result = rdm_base_record_model.do(marc_record)
         assert result["rights"] == [{"title": {"en": "CC-BY"}}]
+
+
+class TestPidsDOI:
+    """Test the _pids rule (0247_) DOI handling.
+
+    Per the curators' decision the erratum linking is handled at the DOI
+    level: the main (non-erratum) DOI becomes the record DOI, while each
+    erratum DOI goes to related_identifiers with an "issupplementedby"
+    relation.
+    """
+
+    def test_non_erratum_doi_becomes_main_record_doi(self):
+        """A DOI without an erratum qualifier is stored as the record DOI."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            _pids(record, "0247_", {"2": "DOI", "a": "10.1103/PhysRevLett.1.1"})
+        assert record["_pids"]["doi"] == {"identifier": "10.1103/PhysRevLett.1.1"}
+        assert "related_identifiers" not in record
+
+    def test_erratum_doi_goes_to_related_identifiers_as_supplement(self):
+        """An erratum DOI becomes a related identifier, not the record DOI."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            _pids(
+                record,
+                "0247_",
+                {"2": "DOI", "a": "10.1103/PhysRevLett.1.2", "q": "erratum"},
+            )
+        assert record["related_identifiers"] == [
+            {
+                "identifier": "10.1103/PhysRevLett.1.2",
+                "scheme": "doi",
+                "relation_type": {"id": "issupplementedby"},
+            }
+        ]
+        # the erratum DOI must not be promoted to the main record DOI
+        assert "_pids" not in record or "doi" not in record.get("_pids", {})
+
+    def test_multiple_erratum_dois_each_added_as_supplement(self):
+        """One or more erratum DOIs are all kept as related identifiers.
+
+        dojson yields repeated 0247_ fields separately, so the rule is
+        invoked once per field; each erratum DOI accumulates.
+        """
+        record = {}
+        for doi in ("10.1/err.a", "10.1/err.b"):
+            with pytest.raises(IgnoreKey):
+                _pids(record, "0247_", {"2": "DOI", "a": doi, "q": "erratum"})
+
+        identifiers = [r["identifier"] for r in record["related_identifiers"]]
+        assert identifiers == ["10.1/err.a", "10.1/err.b"]
+        assert all(
+            r["relation_type"] == {"id": "issupplementedby"}
+            for r in record["related_identifiers"]
+        )
+
+    def test_erratum_doi_not_duplicated(self):
+        """The same erratum DOI seen twice is only stored once."""
+        record = {}
+        for _ in range(2):
+            with pytest.raises(IgnoreKey):
+                _pids(record, "0247_", {"2": "DOI", "a": "10.1/err.a", "q": "erratum"})
+        assert len(record["related_identifiers"]) == 1

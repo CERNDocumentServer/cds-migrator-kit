@@ -326,6 +326,8 @@ DELETE FROM files_files;
 DELETE FROM pidstore_pid WHERE pid_type = 'lrecid';
 DELETE FROM pidstore_pid WHERE pid_type = 'recid';
 DELETE FROM pidstore_pid WHERE pid_type = 'doi';
+DELETE FROM pidstore_pid WHERE pid_type = 'cdsrn';
+DELETE FROM pidstore_pid WHERE pid_type = 'apprn';
 DELETE FROM cds_clc_record_sync;
 DELETE FROM cds_migration_legacy_records;
 ```
@@ -333,13 +335,13 @@ DELETE FROM cds_migration_legacy_records;
 - Cleanup indexed documents from opensearch
 
 ```
-POST /cds-rdm-dev-rdmrecords/_delete_by_query
+POST /cds-rdm-rdmrecords/_delete_by_query
 {
   "query": {
     "match_all": {}
   }
 }
-POST /cds-rdm-dev-communities/_delete_by_query
+POST /cds-rdm-communities/_delete_by_query
 {
   "query": {
     "match_all": {}

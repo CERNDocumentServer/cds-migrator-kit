@@ -156,6 +156,42 @@ class RecordLoad:
                 self.migration_logger.add_log(exc, record={"record": self.record_entry})
                 raise e
 
+    def set_default_preview(self, identity, draft, version_files, uow):
+        """Set default_preview to the first file not labelled erratum or addendum.
+
+        Files whose 8564_y description contains 'erratum' or 'addendum'
+        (case-insensitive) are supplementary documents and must not become
+        the record's preview file.  If every file carries such a label there
+        is nothing useful to promote, so we leave the field unset.
+        """
+        if not version_files:
+            return
+
+        _skip = {"erratum", "addendum"}
+        preview_key = next(
+            (
+                file_data["key"]
+                for file_data in version_files.values()
+                if not any(
+                    term in (file_data["metadata"].get("description") or "").lower()
+                    for term in _skip
+                )
+            ),
+            None,
+        )
+
+        if preview_key is None:
+            return
+
+        draft_dict = draft.to_dict()
+        draft_dict.setdefault("files", {})["default_preview"] = preview_key
+        # Preserve access set by load_access; to_dict() still has public defaults.
+        draft_dict["access"]["record"] = draft._record.access.protection.record
+        draft_dict["access"]["files"] = draft._record.access.protection.files
+        current_rdm_records_service.update_draft(
+            identity, draft["id"], data=draft_dict, uow=uow
+        )
+
     def load_access(self, draft, access_dict: VersionAccess, uow):
         """Set this version's access on the published record."""
         record = draft._record
@@ -250,6 +286,7 @@ class RecordLoad:
 
         self.load_access(draft, access, uow)
         self.load_files(draft, files, uow)
+        self.set_default_preview(identity, draft, files, uow)
 
         return draft
 

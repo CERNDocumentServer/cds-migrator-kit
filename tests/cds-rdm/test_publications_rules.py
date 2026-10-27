@@ -23,6 +23,7 @@ from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import
     issn,
     journal,
     meeting,
+    organisation,
     resource_type,
     udc,
 )
@@ -705,6 +706,63 @@ class TestJournal:
         assert result[0]["resource_type"] == {"id": "publication-conferenceproceeding"}
         assert record["custom_fields"]["journal:journal"]["title"] == "Journal"
 
+    @pytest.mark.parametrize("m_value", ["publication", "erratum"])
+    def test_773_m_known_value_is_ignored(self, m_value):
+        """773__m publication/erratum is ignored.
+
+        The erratum linking is handled at the DOI level, so the note itself
+        carries no extra data: the record still migrates and the journal
+        fields are populated normally.
+        """
+        record = {}
+        result = journal(record, "773__", {"p": "Nature", "v": "5", "m": m_value})
+
+        journal_info = result.get("journal:journal", {})
+        assert journal_info["title"] == "Nature"
+        assert journal_info["volume"] == "5"
+
+    def test_773_m_known_value_case_insensitive(self):
+        """773__m matching is case/whitespace insensitive."""
+        record = {}
+        result = journal(record, "773__", {"p": "Nature", "m": "  Erratum "})
+        assert result["journal:journal"]["title"] == "Nature"
+
+    def test_773_m_unexpected_value_raises(self):
+        """An unknown 773__m value is surfaced for manual curation."""
+        with pytest.raises(UnexpectedValue, match="Unexpected 773__m value"):
+            journal({}, "773__", {"p": "Nature", "m": "something-else"})
+
+    def test_773_m_repeated_all_known_ignored(self):
+        """Repeated 773__m (a tuple) is accepted when every value is known."""
+        record = {}
+        result = journal(
+            record, "773__", {"p": "Nature", "m": ("publication", "erratum")}
+        )
+        assert result["journal:journal"]["title"] == "Nature"
+
+    def test_773_m_repeated_with_one_unknown_raises(self):
+        """Repeated 773__m raises if any value is unknown."""
+        with pytest.raises(UnexpectedValue, match="Unexpected 773__m value"):
+            journal({}, "773__", {"p": "Nature", "m": ("publication", "bogus")})
+
+    def test_773_c_repeated_raises_for_curation(self):
+        """A repeated 773__c (a tuple) is ambiguous and flagged for curation.
+
+        dojson returns the subfield as a tuple; rather than crashing on it (or
+        silently picking one value) the record is surfaced for manual curation.
+        """
+        with pytest.raises(UnexpectedValue, match="Multiple 773__c values"):
+            journal(
+                {},
+                "773__",
+                {"p": "Phys. Lett. B", "m": "publication", "c": ("062701", "209904")},
+            )
+
+    def test_773_c_repeated_in_conference_raises_for_curation(self):
+        """A repeated 773__c in a conference 773 is also flagged for curation."""
+        with pytest.raises(UnexpectedValue, match="Multiple 773__c values"):
+            journal({}, "773__", {"w": "C05-03-12", "c": ("175-181", "WEC02")})
+
 
 class TestMeetingDateFrom518:
     """Test meeting date (518__r/__d) handling in related_identifiers.
@@ -979,6 +1037,70 @@ class TestAbbreviation:
             abbreviation(record, "691__", {"a": ""})
 
 
+class TestOrganisation:
+    """Test organisation function from research.py (901__ rule)."""
+
+    def _org(self, name):
+        return {
+            "person_or_org": {"type": "organizational", "name": name},
+            "role": {"id": "hostinginstitution"},
+        }
+
+    def test_single_affiliation(self):
+        """A single 901__u becomes one organizational contributor."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            organisation(record, "901__", {"u": "CERN"})
+        assert record["contributors"] == [self._org("CERN")]
+
+    def test_multiple_affiliations_as_tuple(self):
+        """Multiple 901__u values each become a separate contributor."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            organisation(
+                record,
+                "901__",
+                {
+                    "u": (
+                        "Darmstadt, Tech. Hochsch.",
+                        "Munich, Tech. U.",
+                        "Leuven U.",
+                    )
+                },
+            )
+        assert record["contributors"] == [
+            self._org("Darmstadt, Tech. Hochsch."),
+            self._org("Munich, Tech. U."),
+            self._org("Leuven U."),
+        ]
+
+    def test_appends_to_existing_contributors(self):
+        """901__ organisations are appended after existing contributors."""
+        existing = {
+            "person_or_org": {
+                "type": "personal",
+                "family_name": "Doe",
+                "given_name": "Jane",
+            },
+            "role": {"id": "other"},
+        }
+        record = {"contributors": [existing]}
+        with pytest.raises(IgnoreKey):
+            organisation(record, "901__", {"u": ("CERN", "DESY")})
+        assert record["contributors"] == [
+            existing,
+            self._org("CERN"),
+            self._org("DESY"),
+        ]
+
+    def test_empty_values_skipped(self):
+        """Empty / whitespace-only 901__u values are skipped."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            organisation(record, "901__", {"u": ("", "  ", "CERN")})
+        assert record["contributors"] == [self._org("CERN")]
+
+
 class TestMeetingFrom111And711:
     """Tests for meeting (111__/711__ rule) - builds meeting:meeting custom field."""
 
@@ -1218,7 +1340,7 @@ class TestLicenseAndFundingFrom540:
 
     def test_bronze_does_not_set_funding_model(self):
         record = {"custom_fields": {}}
-        with pytest.raises(UnexpectedValue):
+        with pytest.raises(IgnoreKey):
             oa_level_from_license(record, "540__", {"f": "Bronze"})
         assert "cern:oa_funding_model" not in self._cf(record)
         assert "cern:oa_level" not in self._cf(record)

@@ -28,6 +28,7 @@ from cds_migrator_kit.rdm.records.load.entities.ep_split import (
 )
 from cds_migrator_kit.rdm.records.transform.config import (
     CONTROLLED_SUBJECTS_SCHEMES,
+    EXPERIMENTS_AS_STUDIES,
     IDENTIFIERS_SCHEMES_TO_DROP,
     KEYWORD_SCHEMES_TO_DROP,
     PID_SCHEMES_TO_STORE_IN_IDENTIFIERS,
@@ -241,6 +242,15 @@ def custom_fields_693(self, key, value):
     for custom_field_name, subfield in fields_map.items():
         custom_field = _custom_fields.get(custom_field_name, [])
         new_values = [v for v in force_list(value.get(subfield, "")) if v]
+
+        if custom_field_name == "cern:experiments":
+            studies = [v for v in new_values if v.upper() in EXPERIMENTS_AS_STUDIES]
+            new_values = [
+                v for v in new_values if v.upper() not in EXPERIMENTS_AS_STUDIES
+            ]
+            if studies:
+                _custom_fields.setdefault("cern:studies", []).extend(studies)
+
         custom_field += new_values
         _custom_fields[custom_field_name] = custom_field
 
@@ -369,6 +379,8 @@ def aleph_number(self, key, value):
 
     Attention:  035 might contain aleph number
     https://github.com/CERNDocumentServer/cds-migrator-kit/issues/21
+
+    If the record is migrated to the repository, it has 970__d with redirection URL.
     """
     aleph = StringValue(value.get("a")).parse()
     identifiers = self.get("identifiers")
@@ -376,6 +388,11 @@ def aleph_number(self, key, value):
     if aleph and new_id not in identifiers:
         return {"scheme": "aleph", "identifier": aleph}
     else:
+        d_value = value.get("d", "").strip().lower()
+        if d_value and not d_value.startswith("https://repository.cern"):
+            raise UnexpectedValue(
+                field=key, subfield="d", value=value, stage="transform"
+            )
         raise IgnoreKey("identifiers")
 
 
@@ -492,6 +509,18 @@ def _pids(self, key, value):
     is_handle_id = not is_doi_id and is_handle(identifier)
     if not is_doi_id and is_handle_id and (scheme == "doi" or scheme == "urn/hdl"):
         scheme = "handle"
+
+    if qualifier == "erratum":
+        related_identifiers = self.get("related_identifiers", [])
+        new_id = {
+            "identifier": identifier,
+            "scheme": scheme,
+            "relation_type": {"id": "issupplementedby"},
+        }
+        if new_id not in related_identifiers:
+            related_identifiers.append(new_id)
+            self["related_identifiers"] = related_identifiers
+        raise IgnoreKey("_pids")
 
     if qualifier == "publication" or qualifier == "thesis":
         # if we have a qualifier for one of these two, we know it references
@@ -693,6 +722,9 @@ def licenses(self, key, value):
             self["custom_fields"] = _custom_fields
 
     if not license_id:
+        # Bronze meaning no license on the document
+        if qualifier == "bronze":
+            raise IgnoreKey("rights")
         # 540__f/b without a license id — side effects (funding model, copyright) already applied
         raise UnexpectedValue(
             "License title missing", field=key, subfield="a", value=value
@@ -727,7 +759,7 @@ def licenses(self, key, value):
         _license = {
             "title": {"en": license_id},
             "link": license_url,
-            "description": description,
+            "description": {"en": description} if description else None,
         }
     return _license
 
