@@ -100,7 +100,8 @@ The configuration of a collection is the file `migration_cli/collections/antares
 ```yaml
 name: antares
 queries:
-  - '<TODO legacy query of the collection>'
+  - q: '<TODO legacy query of the collection>'
+    dump_file_prefix: antares
 flags:
   include_plots: true
 communities:

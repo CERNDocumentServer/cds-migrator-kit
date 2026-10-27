@@ -6,19 +6,18 @@
 # <root of the migration data>/<name>/, see migrating-a-collection.md.
 name: antares_restr
 # folder: former_exp/antares_restr  # working directory under the root (default: name)
-filename_prefix: antares_restr      # dump file prefix (default: name)
 chunk_size: 1000                    # records per dump file (default: 1000)
 
 # Legacy search queries WITHOUT the standard exclusions (-980:DELETED, ...):
-# the script appends them. With several queries, each is dumped separately, to
-# files named `<filename_prefix>-<n>*` unless the query sets its own prefix:
-#   queries:
-#     - q: '980__a:PRIVANTARES'
-#       dump_file_prefix: antares_restr_private   # must differ between queries, and
-#                                                 # not start another one's prefix
-#     - '980__a:PRIVANTARESPLOT'                  # a plain string works too
+# the script appends them. Each query is dumped separately, and needs a
+# `dump_file_prefix` (mandatory): the name of its dump files, and of the files
+# that tag its records as MIGRATED. It must differ between queries and must not
+# start another one's prefix.
 queries:
-  - '980__a:PRIVANTARES'
+  - q: '980__a:PRIVANTARES'
+    dump_file_prefix: antares_restr
+  # - q: '980__a:PRIVANTARESPLOT'
+  #   dump_file_prefix: antares_restr_plot
 
 # Optional. `prepare` (duplicates analysis) searches the records of all the
 # `queries` together, without -980:DELETED -980:HIDDEN -980__c:MIGRATED
