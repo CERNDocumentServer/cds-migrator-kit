@@ -42,9 +42,9 @@ Copy `migration_cli/collections/_example.yaml` to `migration_cli/collections/<TO
 
 ```yaml
 name: <TODO collection name>
-filename_prefix: <TODO collection name>
 queries:
-  - '980__a:PRIVANTARES'
+  - q: '980__a:PRIVANTARES'
+    dump_file_prefix: <TODO collection name>
 flags:
   restricted: true
   include_plots: true
@@ -54,7 +54,7 @@ communities:
 ```
 
 - Write the queries **without** the standard exclusions: the script appends `-690C_:SCICOM -595:*ARCHIVE* -980:ANNOUNCEMENT -980:DELETED -980:HIDDEN -980__a:DUMMY -690C_:movingimages -970__b:MERGE-* -980:GREYBOOK`. `-980__c:MIGRATED` is not excluded on purpose, some records belong to several communities.
-- Each query is dumped to its own files. By default `<filename_prefix>` (one query) or `<filename_prefix>-0`, `-1`, ... (several); to name them, write the query as `q: ...` with a `dump_file_prefix: ...` (different for each query, and not the start of another one's prefix). A plain string is still accepted.
+- Each query is dumped to its own files, named after its `dump_file_prefix` (**mandatory**). The prefixes must differ between queries, and one must not be the start of another (`mt` and `mt_article`).
 - `prepare` (duplicates analysis) searches the records of **all** the `queries` together. It drops `-980:DELETED -980:HIDDEN -980__c:MIGRATED -980__a:DUMMY` from them if present, so deleted, hidden and already migrated records, which duplicates are redirected to, are searched too. Nothing to set; `analyze_query` is only an optional override.
 - `communities` are slugs, the same in every environment. The community must already exist in the environment where you migrate: the pod resolves the slugs to ids and stops if one does not exist.
 - Optional: `folder` (working directory under the data root, default the name), `comments_queries` (default `queries`) and `community_reviewers` for the comments, and the `flags` (`update_new_version_publication_date: true` only for administrative documents, e.g. HR; `workers`; ...).
@@ -145,7 +145,17 @@ It resets the `stats-bookmarks` index (with the index prefix of the environment)
 - [ ] reindex all users `invenio rdm rebuild-all-indices -o users` to add missing migrated accounts
 - [ ] set the community slug and deploy the redirections: [TODO PR with redirection]
 - [ ] merge the Puppet `qa` branch to `master` to activate the submissions/collections/search redirections
-- [ ] run the MIGRATED tagging on old CDS: https://gitlab.cern.ch/cds-team/production_scripts/-/blob/master/cds/set_records_migrated_to_rdm.py
+- [ ] tag the migrated records as MIGRATED on old CDS (on `cds-migration-01`, needs the legacy Invenio):
+
+```shell
+ipython $S/collection_migration.py -- tag migrated --collection <TODO collection name>
+```
+
+  It searches the records of the dump (the `queries` of the collection with the standard exclusions), skips those already tagged and writes `/tmp/<TODO collection name>-migrated/<dump_file_prefix>_migrated_<N>.xml`, one set of files per query (500 records each, `--chunk-size` to change). Nothing is changed on the legacy system yet: the script prints the upload commands, run them as it says:
+
+```shell
+sudo -u apache /opt/cdsweb/bin/bibupload --append /tmp/<TODO collection name>-migrated/<dump_file_prefix>_migrated_<N>.xml
+```
 
 ## Notes
 

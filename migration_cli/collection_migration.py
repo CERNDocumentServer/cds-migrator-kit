@@ -30,8 +30,12 @@ See docs in migration_cli/migrating-a-collection.md.
     python $S/collection_migration.py dump users    # once per environment
     python $S/collection_migration.py prepare       --collection antares_restr
 
-`dump comments` needs the legacy Invenio libraries: run it with the interpreter
-that has them (`ipython $S/collection_migration.py -- dump comments ...`).
+    # after the migration: tag the migrated records on the legacy system
+    ipython $S/collection_migration.py -- tag migrated --collection antares_restr
+
+`dump comments` and `tag migrated` need the legacy Invenio libraries: run them
+with the interpreter that has them (`ipython $S/collection_migration.py -- dump
+comments ...`).
 Python 2 compatible on purpose (legacy host).
 
 Layout of the working directory:
@@ -193,7 +197,6 @@ class Context(object):
             sys.exit(
                 "`queries` is not set in {}: fill in the legacy queries".format(path)
             )
-        conf.setdefault("filename_prefix", conf["name"])
         conf.setdefault("chunk_size", 1000)
         conf.setdefault("flags", {})
         return conf
@@ -210,32 +213,30 @@ class Context(object):
 # dump records
 # --------------------------------------------------------------------------
 def query_texts(conf):
-    """The legacy queries of the configuration, as plain strings.
-
-    An item of `queries` is a string, or a mapping `{q: ..., dump_file_prefix: ...}`.
-    """
-    texts = []
-    for item in conf["queries"]:
-        text = item.get("q") if isinstance(item, dict) else item
-        if not text:
-            sys.exit("A query of `queries` has no text (`q`): {!r}".format(item))
-        texts.append(text)
-    return texts
+    """The legacy queries of the configuration, as plain strings."""
+    return [query for query, _ in dump_jobs(conf)]
 
 
 def dump_jobs(conf):
-    """(query, dump file prefix) for each query, so the dump files never mix.
+    """(query, dump file prefix) for each query of the configuration.
 
-    The prefix is the `dump_file_prefix` of the query when it has one, else
-    `filename_prefix` (one query) or `<filename_prefix>-<n>` (several queries).
+    Every item of `queries` is a mapping `{q: ..., dump_file_prefix: ...}`. The
+    prefix names the files of the dump, and of the tagging as MIGRATED, of the
+    query, so it is mandatory and different for each query.
     """
-    base, count = conf["filename_prefix"], len(conf["queries"])
     jobs = []
-    for index, (item, text) in enumerate(zip(conf["queries"], query_texts(conf))):
-        prefix = item.get("dump_file_prefix") if isinstance(item, dict) else None
-        if not prefix:
-            prefix = base if count == 1 else "{}-{}".format(base, index)
-        jobs.append((text, prefix))
+    for item in conf["queries"]:
+        if not isinstance(item, dict) or not item.get("q"):
+            sys.exit(
+                "Each query of `queries` must be `q: ...` with a "
+                "`dump_file_prefix: ...`, got {!r}".format(item)
+            )
+        if not item.get("dump_file_prefix"):
+            sys.exit(
+                "The query `{}` has no `dump_file_prefix` (the name of its dump "
+                "files, mandatory)".format(item["q"])
+            )
+        jobs.append((item["q"], item["dump_file_prefix"]))
     prefixes = [prefix for _, prefix in jobs]
     if len(set(prefixes)) != len(prefixes):
         sys.exit(
@@ -333,6 +334,86 @@ def cmd_dump_comments(ctx, args):
         os.path.join(ctx.comments_users, "active_commentors.json"),
         os.path.join(ctx.comments_users, "missing_commentors_from_ldap.json"),
     )
+
+
+# --------------------------------------------------------------------------
+# tag migrated
+# --------------------------------------------------------------------------
+LEGACY_RECORD_URL = "https://repository.cern/legacy/record/"
+BIBUPLOAD = "sudo -u apache /opt/cdsweb/bin/bibupload --append"
+
+
+def cmd_tag_migrated(ctx, args):
+    """Write the bibupload files that tag the migrated records as MIGRATED.
+
+    The records are those of the dump (the queries of the collection, with the
+    standard exclusions), the ones already tagged are left out. The files are
+    named after the `dump_file_prefix` of the query. Nothing is
+    changed on the legacy system: the bibupload commands are printed.
+    """
+    try:
+        from invenio.bibrecord import (
+            record_add_field,
+            record_get_field_values,
+            record_xml_output,
+        )
+        from invenio.search_engine import get_record, search_pattern
+    except ImportError as exc:
+        sys.exit(
+            "The legacy Invenio libraries are not available ({}): run this "
+            "command with the legacy interpreter, e.g. `ipython {} -- tag "
+            "migrated`".format(exc, os.path.relpath(__file__))
+        )
+
+    output = "/tmp/{}-migrated".format(ctx.conf["name"])
+    _makedirs(output)
+    for name in os.listdir(output):  # a stale file must not be uploaded again
+        if name.endswith(".xml"):
+            os.remove(os.path.join(output, name))
+
+    paths = []
+    seen = set()  # a record found by several queries is tagged once
+    for query, prefix in dump_jobs(ctx.conf):
+        found = search_pattern(p="{} {}".format(query.strip(), DUMP_EXCLUSIONS))
+        recids = sorted(int(recid) for recid in found if int(recid) not in seen)
+        seen.update(recids)
+        pending = [
+            recid
+            for recid in recids
+            if "MIGRATED"
+            not in record_get_field_values(get_record(recid), "980", code="c")
+        ]
+        print(
+            "{}: {} records to tag ({} already tagged or found by a previous "
+            "query)".format(prefix, len(pending), len(found) - len(pending))
+        )
+        for index, start in enumerate(range(0, len(pending), args.chunk_size), 1):
+            collection = "<collection>\n"
+            for recid in pending[start : start + args.chunk_size]:
+                record = {}
+                record_add_field(record, "001", controlfield_value=str(recid))
+                record_add_field(
+                    record,
+                    "970",
+                    " ",
+                    " ",
+                    "",
+                    [("d", LEGACY_RECORD_URL + str(recid))],
+                )
+                record_add_field(record, "980", " ", " ", "", [("c", "MIGRATED")])
+                collection += record_xml_output(record)
+            collection += "</collection>"
+            path = os.path.join(output, "{}_migrated_{}.xml".format(prefix, index))
+            with open(path, "w") as fp:
+                fp.write(collection)
+            paths.append(path)
+
+    if not paths:
+        print("No records to tag.")
+        return
+    print("Written {} file(s) in {}. To tag the records, run:".format(len(paths), output))
+    for path in paths:
+        print("  {} {}".format(BIBUPLOAD, path))
 
 
 # --------------------------------------------------------------------------
@@ -485,6 +566,22 @@ def build_parser():
                 default=LEGACY_FILES_ROOT,
                 help="where the legacy files are (default: %(default)s)",
             )
+
+    tag = commands.add_parser("tag", help="tag the records on the legacy system")
+    tag_targets = tag.add_subparsers(dest="target")
+    tag_targets.required = True
+    migrated = tag_targets.add_parser(
+        "migrated",
+        parents=[common],
+        help="write the bibupload files that tag the migrated records as MIGRATED",
+    )
+    migrated.add_argument(
+        "--chunk-size",
+        type=int,
+        default=500,
+        help="records per bibupload file (default: %(default)s)",
+    )
+    migrated.set_defaults(func=cmd_tag_migrated, needs_conf=True)
 
     prepare = commands.add_parser(
         "prepare", parents=[common], help="find the duplicates to redirect"
