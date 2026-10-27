@@ -141,7 +141,7 @@ rsync -av cds-migration-01:/tmp/antares-root/antares/comments/ migration_cli/rdm
 rsync -av cds-migration-01:/tmp/antares-root/antares/{duplicated_pids,ep_report_number_dups}.json migration_cli/rdm-data/antares/   # optional, after prepare
 ```
 
-`prepare` is optional: it searches the collection for duplicated records (same title, description and file checksums, and `981__a` merges) and writes the legacy recids to redirect in `duplicated_pids.json` (and the EP report numbers shared with other records in `ep_report_number_dups.json`) in the working directory of the collection. Run it if you want to test the redirections: when `duplicated_pids.json` is there, the migration reads it, otherwise nothing is redirected. It needs `analyze_collection_migration.py` and the legacy Invenio, like the dumps, and for several queries the `analyze_query` of the collection configuration.
+`prepare` is optional: it searches the collection for duplicated records (same title, description and file checksums, and `981__a` merges) and writes the legacy recids to redirect in `duplicated_pids.json` (and the EP report numbers shared with other records in `ep_report_number_dups.json`) in the working directory of the collection. Run it if you want to test the redirections: when `duplicated_pids.json` is there, the migration reads it, otherwise nothing is redirected. It needs `analyze_collection_migration.py` and the legacy Invenio, like the dumps. It searches the records of all the `queries` of the collection configuration together.
 
 The dumps change only when the legacy records change (f.e. when curators intervene) , so they do not need to be refreshed on every run. `dump files` is not needed locally.
 

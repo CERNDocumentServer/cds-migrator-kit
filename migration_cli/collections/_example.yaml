@@ -20,8 +20,10 @@ chunk_size: 1000                    # records per dump file (default: 1000)
 queries:
   - '980__a:PRIVANTARES'
 
-# Needed with several queries: ONE query for the duplicates analysis, without
-# -980:DELETED -980:HIDDEN -980__c:MIGRATED -980__a:DUMMY
+# Optional. `prepare` (duplicates analysis) searches the records of all the
+# `queries` together, without -980:DELETED -980:HIDDEN -980__c:MIGRATED
+# -980__a:DUMMY (it drops them from the queries). Set this only to search another
+# set of records instead:
 # analyze_query: '980__a:PRIVANTARES OR 980__a:PRIVANTARESPLOT'
 
 # Options of the migration of the records (all optional, default: off).

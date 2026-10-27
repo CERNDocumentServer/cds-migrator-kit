@@ -18,13 +18,14 @@ The data of the collection is kept apart, under the root of the migration data o
 
 ## 1. Data analysis (before moving to environments)
 
-Prepare the data locally first, see https://digital-repositories.web.cern.ch/cds/cds.cern.ch/migration/ and note the results in the issue:
+Prepare the data locally first, see [local migration recipe](../cds_migrator_kit/rdm/local_migration_recipe.md):
 
-- [ ] check the permissions references and submissions (Submissions tab of the reference spreadsheet)
+- [ ] check the permissions references and submissions (Submissions tab of the reference [spreadsheet]([https://docs.google.com/spreadsheets/d/1w7CBeYNqyj_IaXD7lvbdDKcbZ9zpL0G0KRDJiZl0vQE/edit?gid=883371968#gid=883371968]))
 - [ ] check whether the e-group with the SBI right is still used; if yes, contact them
 - [ ] check the fields of the submission form for unknown fields
 - [ ] check the submission elements for hidden restrictions (specific emails and such)
 - [ ] check the already submitted records and which collections they belong to, and which migration rules are missing
+- [ ] report the preliminary errors to the curators (create github task and spreadsheet with errors in https://drive.google.com/drive/u/0/folders/1t85ewhosbtFiVdFFoOd3GcWWWsh1sAaO)
 
 Community details (fill in with the community):
 
@@ -54,11 +55,11 @@ communities:
 
 - Write the queries **without** the standard exclusions: the script appends `-690C_:SCICOM -595:*ARCHIVE* -980:ANNOUNCEMENT -980:DELETED -980:HIDDEN -980__a:DUMMY -690C_:movingimages -970__b:MERGE-* -980:GREYBOOK`. `-980__c:MIGRATED` is not excluded on purpose, some records belong to several communities.
 - Each query is dumped to its own files. By default `<filename_prefix>` (one query) or `<filename_prefix>-0`, `-1`, ... (several); to name them, write the query as `q: ...` with a `dump_file_prefix: ...` (different for each query, and not the start of another one's prefix). A plain string is still accepted.
-- With several queries, also set `analyze_query`: one query, without `-980:DELETED -980:HIDDEN -980__c:MIGRATED -980__a:DUMMY` (duplicates are searched among them to be redirected to).
+- `prepare` (duplicates analysis) searches the records of **all** the `queries` together. It drops `-980:DELETED -980:HIDDEN -980__c:MIGRATED -980__a:DUMMY` from them if present, so deleted, hidden and already migrated records, which duplicates are redirected to, are searched too. Nothing to set; `analyze_query` is only an optional override.
 - `communities` are slugs, the same in every environment. The community must already exist in the environment where you migrate: the pod resolves the slugs to ids and stops if one does not exist.
 - Optional: `folder` (working directory under the data root, default the name), `comments_queries` (default `queries`) and `community_reviewers` for the comments, and the `flags` (`update_new_version_publication_date: true` only for administrative documents, e.g. HR; `workers`; ...).
 
-Merge it and update the checkout on `cds-migration-01` (`/opt/cds-migrator-kit`) and the image of the migration pod before going further.
+Merge it and pull the latest master on `cds-migration-01` (`/opt/cds-migrator-kit`) and the image of the migration pod before going further.
 
 ## 3. Block the submissions
 
