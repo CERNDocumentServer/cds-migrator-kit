@@ -15,7 +15,8 @@ Steps:
 with its migration_conf.yaml (`collection_migration.py prepare` passes it).
 
 Do not use -980:DELETED -980:HIDDEN -980__c:MIGRATED -980__a:DUMMY in the
-query.
+query. --collection-q can be repeated, the collection is the records matching any
+of the queries.
 
 Example:
     python2 migration_cli/subscripts/analyze_collection_migration.py \\
@@ -57,8 +58,14 @@ def _print_green(msg):
 ########################################################
 
 
-def _search_recids(query):
-    return [int(recid) for recid in list(search_pattern(p=query))]
+def _search_recids(queries):
+    """Recids matching any of the queries (a query, or a list of queries)."""
+    if isinstance(queries, str):
+        queries = [queries]
+    recids = set()
+    for query in queries:
+        recids.update(int(recid) for recid in list(search_pattern(p=query)))
+    return sorted(recids)
 
 
 def search_dups(collection_query):
@@ -304,9 +311,11 @@ def parse_args():
     parser.add_argument(
         "--collection-q",
         required=True,
+        action="append",
         help=(
-            "CDS search query for the collection. Do not use -980:DELETED "
-            "-980:HIDDEN -980__c:MIGRATED -980__a:DUMMY."
+            "CDS search query for the collection, can be given several times: "
+            "the collection is then the records matching any of them. Do not use "
+            "-980:DELETED -980:HIDDEN -980__c:MIGRATED -980__a:DUMMY."
         ),
     )
     parser.add_argument(
@@ -329,7 +338,8 @@ def main():
     _print_green("--------------------------------")
     _print_green("Collection: {}".format(collection_name))
     _print_green("--------------------------------")
-    _print_green("Collection query: {}".format(collection_q))
+    for query in collection_q:
+        _print_green("Collection query: {}".format(query))
     _print_green("--------------------------------")
     _print_green("Searching for duplicate records...")
     redirect_map = search_dups(collection_q)

@@ -72,6 +72,13 @@ COPY_RETRIES = 3
 LEGACY_FILES_ROOT = "/opt/cdsweb/var/data/files/"
 
 # Applied to every collection dump.
+# the duplicates analysis searches these records too (it redirects to them)
+ANALYSIS_FORBIDDEN = (
+    "-980:DELETED",
+    "-980:HIDDEN",
+    "-980__c:MIGRATED",
+    "-980__a:DUMMY",
+)
 DUMP_EXCLUSIONS = (
     "-690C_:SCICOM -595:*ARCHIVE* -980:ANNOUNCEMENT -980:DELETED -980:HIDDEN "
     "-980__a:DUMMY -690C_:movingimages -970__b:MERGE-* -980:GREYBOOK"
@@ -393,19 +400,25 @@ def cmd_dump_users(ctx, args):
 # --------------------------------------------------------------------------
 # prepare
 # --------------------------------------------------------------------------
+def _without_analysis_exclusions(query):
+    """The query without the exclusions the duplicates analysis must not have."""
+    for exclusion in ANALYSIS_FORBIDDEN:
+        query = re.sub(r"\s*{}(?=\s|$)".format(re.escape(exclusion)), "", query)
+    return query.strip()
+
+
 def cmd_prepare(ctx, args):
     """Find the duplicates to redirect and check the configuration."""
     conf = ctx.conf
-    queries = query_texts(conf)
-    analyze_query = conf.get("analyze_query") or (
-        queries[0] if len(queries) == 1 else None
-    )
-    if not analyze_query:
-        sys.exit(
-            "The collection has several queries: set `analyze_query` in {} "
-            "(one query, without -980:DELETED -980:HIDDEN -980__c:MIGRATED "
-            "-980__a:DUMMY)".format("collections/{}.yaml".format(conf["name"]))
-        )
+    # the queries of the dump, searched together; the exclusions of the dump
+    # queries are left out so the deleted/hidden/migrated records, which the
+    # duplicates may be redirected to, are searched too
+    if conf.get("analyze_query"):  # optional override of the queries
+        analyze_queries = [conf["analyze_query"]]
+    else:
+        analyze_queries = [
+            _without_analysis_exclusions(query) for query in query_texts(conf)
+        ]
     ctx.ensure_dirs()
 
     # the analysis writes duplicated_pids.json and ep_report_number_dups.json
@@ -415,11 +428,10 @@ def cmd_prepare(ctx, args):
         args.analyze_script,
         "--collection-name",
         conf["name"],
-        "--collection-q",
-        analyze_query,
-        "--output-dir",
-        ctx.base,
     ]
+    for query in analyze_queries:
+        command += ["--collection-q", query]
+    command += ["--output-dir", ctx.base]
     print("Running: {}".format(" ".join(command)))
     subprocess.check_call(command)
 
