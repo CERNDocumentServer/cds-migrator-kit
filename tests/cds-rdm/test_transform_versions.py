@@ -283,7 +283,6 @@ def test_versions_all_public_files_stay_public(transform):
     transform.migration_logger.add_information.assert_not_called()
 
 
-<<<<<<< HEAD
 @pytest.mark.parametrize(
     "files",
     [
@@ -302,31 +301,18 @@ def test_versions_non_uniform_file_statuses_raise_and_report_all(transform, file
     All files must share a single status (all public, or all the same
     restriction). Any other mix is unrepresentable and raises - independent of
     dump order - reporting every file with its status for manual review.
-=======
-def test_versions_mixed_public_and_restricted_raises_restricted_first(transform):
-    """A version mixing a restricted and a public file hard-stops.
-
-    All files in a version must share one status; a restricted file with a
-    public sibling is unrepresentable regardless of dump order, so it raises.
->>>>>>> 8214940 (fix(files-access): flag mixed file restrictions for curation)
     """
     raw_dump_entry = {
         "recid": 123,
         "files": [
-<<<<<<< HEAD
             _file_dump(full_name=name, bibdocid=i + 1, status=status)
             for i, (name, status) in enumerate(files)
-=======
-            _file_dump(full_name="restricted.pdf", bibdocid=1, status="SSO"),
-            _file_dump(full_name="public.pdf", bibdocid=2, status=""),
->>>>>>> 8214940 (fix(files-access): flag mixed file restrictions for curation)
         ],
     }
 
     with pytest.raises(ManualImportRequired) as exc_info:
         transform._versions(raw_dump_entry, _record())
 
-<<<<<<< HEAD
     reported = exc_info.value.value
     for name, status in files:
         assert f"{name}: {status}" in reported
@@ -364,25 +350,12 @@ def test_versions_carry_forward_restricted_into_public_version_raises(transform)
                 status="",
                 creation_date="2020-02-01T00:00:00+00:00",
             ),
-=======
-    assert "restricted.pdf: SSO" in exc_info.value.value
-
-
-def test_versions_mixed_public_and_restricted_raises_public_first(transform):
-    """Same mix, reversed order: still hard-stops (order-independent)."""
-    raw_dump_entry = {
-        "recid": 123,
-        "files": [
-            _file_dump(full_name="public.pdf", bibdocid=1, status=""),
-            _file_dump(full_name="restricted.pdf", bibdocid=2, status="SSO"),
->>>>>>> 8214940 (fix(files-access): flag mixed file restrictions for curation)
         ],
     }
 
     with pytest.raises(ManualImportRequired) as exc_info:
         transform._versions(raw_dump_entry, _record())
 
-<<<<<<< HEAD
     assert "A.pdf: " in exc_info.value.value
     assert "B.pdf: SSO" in exc_info.value.value
 
@@ -392,22 +365,10 @@ def test_versions_restriction_lifted_on_only_file_becomes_public(transform):
 
     v1 is restricted, v2 (the same file, now public) is public - the cumulative
     set per version uses the latest revision per file, so there is no mix.
-=======
-    assert "restricted.pdf: SSO" in exc_info.value.value
-
-
-def test_versions_multiple_distinct_restriction_statuses_raises(transform):
-    """A version with two different restriction statuses can't be represented.
-
-    A version carries a single access state + meta, so it cannot express more
-    than one distinct restriction. Two restricted files with different statuses
-    must hard-stop (otherwise the second status is silently dropped).
->>>>>>> 8214940 (fix(files-access): flag mixed file restrictions for curation)
     """
     raw_dump_entry = {
         "recid": 123,
         "files": [
-<<<<<<< HEAD
             _file_dump(
                 full_name="A.pdf",
                 file_version=1,
@@ -435,39 +396,3 @@ def test_versions_multiple_distinct_restriction_statuses_raises(transform):
         "access_obj": {"record": "public", "files": "public"}
     }
     assert versions[2]["files"]["A.pdf"]["version"] == 2
-=======
-            _file_dump(full_name="a.pdf", bibdocid=1, status="SSO"),
-            _file_dump(full_name="b.pdf", bibdocid=2, status="ITDepRestrFile"),
-        ],
-    }
-
-    with pytest.raises(ManualImportRequired) as exc_info:
-        transform._versions(raw_dump_entry, _record())
-
-    assert "a.pdf: SSO" in exc_info.value.value
-    assert "b.pdf: ITDepRestrFile" in exc_info.value.value
-
-
-def test_versions_public_plus_two_distinct_restricted_statuses_raises(transform):
-    """One public + two restricted files with distinct statuses: hard-stop.
-
-    The single merged error reports every file with its status, including the
-    public one, so a reviewer sees the full picture of the mix.
-    """
-    raw_dump_entry = {
-        "recid": 123,
-        "files": [
-            _file_dump(full_name="public.pdf", bibdocid=1, status=""),
-            _file_dump(full_name="a.pdf", bibdocid=2, status="SSO"),
-            _file_dump(full_name="b.pdf", bibdocid=3, status="ITDepRestrFile"),
-        ],
-    }
-
-    with pytest.raises(ManualImportRequired) as exc_info:
-        transform._versions(raw_dump_entry, _record())
-
-    assert "a.pdf: SSO" in exc_info.value.value
-    assert "b.pdf: ITDepRestrFile" in exc_info.value.value
-    # every file is reported, including the public one
-    assert "public.pdf: " in exc_info.value.value
->>>>>>> 8214940 (fix(files-access): flag mixed file restrictions for curation)

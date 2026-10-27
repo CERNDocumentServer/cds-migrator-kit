@@ -185,6 +185,9 @@ class RecordLoad:
 
         draft_dict = draft.to_dict()
         draft_dict.setdefault("files", {})["default_preview"] = preview_key
+        # Preserve access set by load_access; to_dict() still has public defaults.
+        draft_dict["access"]["record"] = draft._record.access.protection.record
+        draft_dict["access"]["files"] = draft._record.access.protection.files
         current_rdm_records_service.update_draft(
             identity, draft["id"], data=draft_dict, uow=uow
         )

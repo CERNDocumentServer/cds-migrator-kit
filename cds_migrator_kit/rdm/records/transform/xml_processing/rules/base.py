@@ -28,9 +28,9 @@ from cds_migrator_kit.rdm.records.load.entities.ep_split import (
 )
 from cds_migrator_kit.rdm.records.transform.config import (
     CONTROLLED_SUBJECTS_SCHEMES,
+    EXPERIMENTS_AS_STUDIES,
     IDENTIFIERS_SCHEMES_TO_DROP,
     KEYWORD_SCHEMES_TO_DROP,
-    EXPERIMENTS_AS_STUDIES,
     PID_SCHEMES_TO_STORE_IN_IDENTIFIERS,
     PID_SCHEMES_TO_STORE_IN_RELATED_IDENTIFIERS,
     RECOGNISED_KEYWORD_SCHEMES,
@@ -379,7 +379,7 @@ def aleph_number(self, key, value):
 
     Attention:  035 might contain aleph number
     https://github.com/CERNDocumentServer/cds-migrator-kit/issues/21
-    
+
     If the record is migrated to the repository, it has 970__d with redirection URL.
     """
     aleph = StringValue(value.get("a")).parse()
@@ -390,7 +390,9 @@ def aleph_number(self, key, value):
     else:
         d_value = value.get("d", "").strip().lower()
         if d_value and not d_value.startswith("https://repository.cern"):
-            raise UnexpectedValue(field=key, subfield="d", value=value, stage="transform")
+            raise UnexpectedValue(
+                field=key, subfield="d", value=value, stage="transform"
+            )
         raise IgnoreKey("identifiers")
 
 

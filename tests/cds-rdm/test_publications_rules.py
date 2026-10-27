@@ -1340,7 +1340,7 @@ class TestLicenseAndFundingFrom540:
 
     def test_bronze_does_not_set_funding_model(self):
         record = {"custom_fields": {}}
-        with pytest.raises(UnexpectedValue):
+        with pytest.raises(IgnoreKey):
             oa_level_from_license(record, "540__", {"f": "Bronze"})
         assert "cern:oa_funding_model" not in self._cf(record)
         assert "cern:oa_level" not in self._cf(record)
