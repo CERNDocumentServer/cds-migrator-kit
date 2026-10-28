@@ -48,18 +48,16 @@ Layout of the working directory:
     duplicated_pids.json           legacy recids to redirect (`prepare`)
     ep_report_number_dups.json     EP report numbers to review (`prepare`)
 
-Every step can be re-run: copies are verified (size + checksum) and files that
-are already correct are skipped.
+Every step can be re-run: the dump files are replaced, and the files already
+copied (verified by size + checksum) are skipped.
 """
 
 from __future__ import print_function
 
 import argparse
-import hashlib
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 
@@ -72,7 +70,6 @@ ENV_FOLDERS = {"production": "prod"}
 EOS_ROOT_RE = re.compile(r"^(/eos/media/cds/cds-rdm/([^/]+)/migration)(/|$)")
 ANALYZE_SCRIPT = os.path.join(SUBSCRIPTS_DIR, "analyze_collection_migration.py")
 DUPLICATES_FILENAME = "duplicated_pids.json"
-COPY_RETRIES = 3
 LEGACY_FILES_ROOT = "/opt/cdsweb/var/data/files/"
 
 # Applied to every collection dump.
@@ -101,41 +98,9 @@ def _fs(path):
     return path
 
 
-def _hash(path, algo="sha256"):
-    digest = hashlib.new(algo)
-    with open(_fs(path), "rb") as handle:
-        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 def _makedirs(path):
     if not os.path.isdir(_fs(path)):
         os.makedirs(_fs(path))
-
-
-def copy_verified(source, destination):
-    """Copy a file and check size + sha256 on the destination.
-
-    EOS copies can end up truncated, so every copy is read back and compared;
-    it is retried a few times. Returns False if the destination was already ok.
-    """
-    expected = _hash(source)
-    if os.path.exists(_fs(destination)) and _hash(destination) == expected:
-        return False
-    for attempt in range(1, COPY_RETRIES + 1):
-        shutil.copyfile(_fs(source), _fs(destination))
-        if (
-            os.path.getsize(_fs(source)) == os.path.getsize(_fs(destination))
-            and _hash(destination) == expected
-        ):
-            return True
-        print(
-            "Copy verification failed ({}/{}): {}".format(
-                attempt, COPY_RETRIES, destination
-            )
-        )
-    raise IOError("Could not copy {} correctly".format(destination))
 
 
 class Context(object):
@@ -171,7 +136,6 @@ class Context(object):
             self.files = os.path.join(self.base, "files")
             self.comments = os.path.join(self.base, "comments")
             self.comments_users = os.path.join(self.comments, "users")
-            self.staging = "/tmp/{}".format(self.conf["name"])
 
     def _load_conf(self, args):
         if not args.collection:
@@ -256,15 +220,10 @@ def dump_jobs(conf):
 def cmd_dump_records(ctx, args):
     ctx.ensure_dirs()
     conf = ctx.conf
-    if os.path.isdir(ctx.staging) and os.listdir(ctx.staging):
-        sys.exit(
-            "Staging folder {} is not empty, remove it first (a stale dump "
-            "must not be mixed with the new one)".format(ctx.staging)
-        )
     jobs = dump_jobs(conf)
     prefixes = [prefix for _, prefix in jobs]
-    _makedirs(ctx.staging)
 
+    # dumped straight into the dump folder: the files of the same name are replaced
     for query, prefix in jobs:
         command = [
             "inveniomigrator",
@@ -276,23 +235,16 @@ def cmd_dump_records(ctx, args):
             prefix,
             "--chunk-size={}".format(conf["chunk_size"]),
         ]
-        print("Running: {}".format(" ".join(command)))
-        subprocess.check_call(command, cwd=ctx.staging)
+        print("Running in {}: {}".format(ctx.dump, " ".join(command)))
+        subprocess.check_call(command, cwd=_fs(ctx.dump))
 
     dumped = sorted(
         name
-        for name in os.listdir(ctx.staging)
+        for name in os.listdir(_fs(ctx.dump))
         if any(name.startswith(prefix) for prefix in prefixes)
     )
     if not dumped:
-        sys.exit("The dump produced no files in {}".format(ctx.staging))
-    # dumped locally first, then copied checked: EOS can truncate a big write
-    for name in dumped:
-        copied = copy_verified(
-            os.path.join(ctx.staging, name), os.path.join(ctx.dump, name)
-        )
-        print("{} {}".format("Copied" if copied else "Already there", name))
-    shutil.rmtree(ctx.staging)
+        sys.exit("The dump produced no files in {}".format(ctx.dump))
     print("Dump placed in {} ({} file(s))".format(ctx.dump, len(dumped)))
 
 
