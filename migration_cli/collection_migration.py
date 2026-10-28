@@ -186,7 +186,8 @@ def dump_jobs(conf):
 
     Every item of `queries` is a mapping `{q: ..., dump_file_prefix: ...}`. The
     prefix names the files of the dump, and of the tagging as MIGRATED, of the
-    query, so it is mandatory and different for each query.
+    query, so it is mandatory and different for each query (one prefix may start
+    another, e.g. `clic_notes` and `clic_notes_dp`).
     """
     jobs = []
     for item in conf["queries"]:
@@ -201,19 +202,14 @@ def dump_jobs(conf):
                 "files, mandatory)".format(item["q"])
             )
         jobs.append((item["q"], item["dump_file_prefix"]))
-    prefixes = [prefix for _, prefix in jobs]
-    if len(set(prefixes)) != len(prefixes):
-        sys.exit(
-            "Two queries dump to the same file prefix {}: set a different "
-            "`dump_file_prefix` on each".format(sorted(prefixes))
-        )
-    # a prefix that starts another one would claim its files when collecting them
-    for prefix in prefixes:
-        if any(other != prefix and other.startswith(prefix) for other in prefixes):
+    seen = {}
+    for query, prefix in jobs:
+        if prefix in seen:
             sys.exit(
-                "The dump file prefix `{}` is the start of another prefix: files "
-                "could not be told apart, rename it".format(prefix)
+                "The `dump_file_prefix` `{}` is used by two queries, set a "
+                "different one on each:\n  {}\n  {}".format(prefix, seen[prefix], query)
             )
+        seen[prefix] = query
     return jobs
 
 

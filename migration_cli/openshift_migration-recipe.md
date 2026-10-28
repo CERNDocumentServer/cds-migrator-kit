@@ -54,7 +54,7 @@ communities:
 ```
 
 - Write the queries **without** the standard exclusions: the script appends `-690C_:SCICOM -595:*ARCHIVE* -980:ANNOUNCEMENT -980:DELETED -980:HIDDEN -980__a:DUMMY -690C_:movingimages -970__b:MERGE-* -980:GREYBOOK`. `-980__c:MIGRATED` is not excluded on purpose, some records belong to several communities.
-- Each query is dumped to its own files, named after its `dump_file_prefix` (**mandatory**). The prefixes must differ between queries, and one must not be the start of another (`mt` and `mt_article`).
+- Each query is dumped to its own files, named after its `dump_file_prefix` (**mandatory**). The prefixes must differ between queries (one may start another, e.g. `clic_notes` and `clic_notes_dp`).
 - `prepare` (duplicates analysis) searches the records of **all** the `queries` together. It drops `-980:DELETED -980:HIDDEN -980__c:MIGRATED -980__a:DUMMY` from them if present, so deleted, hidden and already migrated records, which duplicates are redirected to, are searched too. Nothing to set; `analyze_query` is only an optional override.
 - `communities` are slugs, the same in every environment. The community must already exist in the environment where you migrate: the pod resolves the slugs to ids and stops if one does not exist.
 - Optional: `folder` (working directory under the data root, default the name), `comments_queries` (default `queries`) and `community_reviewers` for the comments, and the `flags` (`update_new_version_publication_date: true` only for administrative documents, e.g. HR; `workers`; ...).

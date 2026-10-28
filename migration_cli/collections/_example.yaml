@@ -11,8 +11,7 @@ chunk_size: 1000                    # records per dump file (default: 1000)
 # Legacy search queries WITHOUT the standard exclusions (-980:DELETED, ...):
 # the script appends them. Each query is dumped separately, and needs a
 # `dump_file_prefix` (mandatory): the name of its dump files, and of the files
-# that tag its records as MIGRATED. It must differ between queries and must not
-# start another one's prefix.
+# that tag its records as MIGRATED. It must differ between queries.
 queries:
   - q: '980__a:PRIVANTARES'
     dump_file_prefix: antares_restr
