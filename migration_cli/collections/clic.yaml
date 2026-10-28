@@ -1,4 +1,4 @@
-name: dep_est
+name: clic
 queries:
   - q: '980:LCD-Notes AND 591__b:"approved" -980:PHOTOLAB -980:PHOTOARC -980:VIDEOARC'
     dump_file_prefix: lcd_notes
