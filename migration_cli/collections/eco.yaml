@@ -1,0 +1,6 @@
+name: eco
+queries: "TODO"
+flags:
+  preferred_model: eco
+communities:
+  - eco
