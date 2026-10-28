@@ -851,7 +851,11 @@ def yellow_reports(self, key, value):
     """Translate related records - yellow reports."""
     scheme = value.get("2", "").strip()
     provenance = value.get("9", "").strip()
-    identifier = value.get("a", "").strip()
+    try:
+        identifier = value.get("a", "").strip()
+    except AttributeError:
+        raise UnexpectedValue(field=key, subfield="a", value=value,
+                              message="Multiple values for subfield a")
 
     if scheme.upper() == "CERN LIBRARY":
         raise IgnoreKey("related_identifiers")

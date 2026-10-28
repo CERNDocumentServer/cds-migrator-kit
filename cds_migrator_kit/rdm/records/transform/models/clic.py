@@ -7,19 +7,24 @@
 
 """CDS-RDM CMS note model."""
 
-from cds_migrator_kit.rdm.records.transform.models.research import (
-    research_model,
+from cds_migrator_kit.rdm.collection_conf import conf_query
+from cds_migrator_kit.rdm.records.transform.models.base_publication_record import (
+    rdm_base_publication_model,
 )
 from cds_migrator_kit.transform.overdo import CdsOverdo
 
 
-class ANTARESResearchModel(CdsOverdo):
+class ClicResearchModel(CdsOverdo):
     """Translation model for research."""
 
-    __query__ = "980__:LCD-Notes OR 980__:LCD-NOTES -980__:THESIS -037__:CERN-STUDENTS-Note-* -980__:DELETED -980__.c:MIGRATED -980__.a:DUMMY -690C_.a:SCICOM"
+    # the queries of the collection configuration (migration_cli/collections/clic.yaml)
+    # (deleted, hidden and dummy records are always excluded), translated to the
+    # notation of the models
+    __query__ = conf_query(
+        "clic",
+    )
 
     __ignore_keys__ = {
-        "710__b",
         "0248_a",
         "0248_p",
         "0248_q",
@@ -40,14 +45,18 @@ class ANTARESResearchModel(CdsOverdo):
         "037__c",  # arxiv subject
         "100__m",  # email of contributor
         "245__9",  # title provenance
-        "270__m",  # document contact email
         "300__a",  # number of pages
+        "536__r",  # open access
         "340__a",  # TODO ignore material?
         "540__3",  # TODO still ignore the material of the license?
+        "540__8",  # agreed not to migrate open access related fields
         "540__9",  # TODO still ignore the material of the license?
+        "540__g",  # agreed not to migrate open access related fields
         "542__3",  # TODO still ignore the material of the license?
+        "542__8",  # agreed not to migrate open access related fields
         "595__i",  # TODO ??
         "695__e",  # some inspire tag
+        "695__9",  # bibclassify
         "700__m",  # email of contributor
         "700__q",  # TODO ignore? aliteration of the name, used for searching
         "700__v",  # TODO drop?
@@ -56,12 +65,15 @@ class ANTARESResearchModel(CdsOverdo):
         "773__0",  # from SIS: can be ignored
         "773__o",  # from SIS: can be ignored
         "773__z",  # from SIS: can be ignored
+        "852__a",  # physical location
         "8564_8",  # file id
         "8564_s",  # bibdoc id
         "8564_x",  # icon thumbnails sizes
-        "8564_y",  # file description - done by files dump, sometimes these are used for open access calculation
+        "8564_y",
+        # file description - done by files dump, sometimes these are used for open access calculation
         "8564_w",  # system field
         "8564_z",  # file comment, migrated via file metadata
+        "8564_q",  # TIFF metadata
         "913__y",  # citation
         "913__v",  # citation
         "913__t",  # citation
@@ -76,6 +88,7 @@ class ANTARESResearchModel(CdsOverdo):
         "961__l",  #
         "961__x",  #
         "964__a",  # TODO: ignore?
+        # "970__a",  # merged tag
         "981__a",  # duplicate record id
         "999C50",
         "999C52",  # https://cds.cern.ch/record/2640188/export/hm?ln=en
@@ -107,7 +120,7 @@ class ANTARESResearchModel(CdsOverdo):
     }
 
 
-lcd_research_model = ANTARESResearchModel(
-    bases=(research_model,),
-    entry_point_group="cds_migrator_kit.migrator.rdm.rules.small_exp",
+clic_research_model = ClicResearchModel(
+    bases=(rdm_base_publication_model,),
+    entry_point_group="cds_migrator_kit.migrator.rdm.rules.research",
 )
