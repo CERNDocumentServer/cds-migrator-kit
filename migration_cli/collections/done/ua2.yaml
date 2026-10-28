@@ -1,0 +1,10 @@
+name: ua2
+queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+flags:
+  include_plots: true
+  preferred_model: research
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - ua2   # slug of the community (id was 4040d2c7-7648-4f1a-81fa-7112fec8d130)
+  - cern-research

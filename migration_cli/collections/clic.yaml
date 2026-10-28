@@ -1,0 +1,22 @@
+name: dep_est
+queries:
+  - q: '980:LCD-Notes AND 591__b:"approved" -980:PHOTOLAB -980:PHOTOARC -980:VIDEOARC'
+    dump_file_prefix: lcd_notes
+  - q: '037:"CLIC-Note*" OR 088:"CLIC-Note*" -960__a:03 -960__a:01'
+    dump_file_prefix: clic_notes
+  - q: '980:CLICLIB'
+    dump_file_prefix: clic_archives
+  - q: '980:CLIC-DP-Drafts'
+    dump_file_prefix: clic_drafts
+  - q: '980:CLIC-DP-Notes'
+    dump_file_prefix: clic_notes_dp
+  - q: '980:CLIC-DP-Internal-Notes'
+    dump_file_prefix: clic_internal_notes
+  - q: '088:"CLICdp-Pub-*" OR 037:"CLICdp-Pub-*" OR collection:"CLIC-DP-Notes" OR 088:"CLICdp-Conf-*" OR 037:"CLICdp-Conf-*" OR (980:THESIS AND 693__s:CLICdp)'
+    dump_file_prefix: clic_publications
+flags:
+  include_plots: true
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - clic   # slug of the community (local id was d9c138bd-d39c-4797-a06c-c6f8db45f3ce)
