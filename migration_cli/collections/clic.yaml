@@ -2,18 +2,20 @@ name: clic
 queries:
   - q: '980:LCD-Notes AND 591__b:approved -980:PHOTOLAB -980:PHOTOARC -980:VIDEOARC -690C_:SCICOM -980:ANNOUNCEMENT'
     dump_file_prefix: lcd_notes
-  - q: '037:CLIC-Note* OR 088:CLIC-Note* -960__a:03 -960__a:01 -690C_:SCICOM -980:ANNOUNCEMENT'
+  - q: '037:"CLIC-Note*" OR 088:"CLIC-Note*" -960__a:03 -960__a:01 -690C_:SCICOM -980:ANNOUNCEMENT'
     dump_file_prefix: clic_notes
   - q: '980:CLICLIB -690C_:SCICOM -980:ANNOUNCEMENT'
     dump_file_prefix: clic_archives
   - q: '980:CLIC-DP-Drafts -690C_:SCICOM -980:ANNOUNCEMENT'
     dump_file_prefix: clic_drafts
   - q: '980:CLIC-DP-Notes -690C_:SCICOM -980:ANNOUNCEMENT'
-    dump_file_prefix: clic_notes_dp
+    dump_file_prefix: clic_dp_notes
   - q: '980:CLIC-DP-Internal-Notes -690C_:SCICOM -980:ANNOUNCEMENT'
     dump_file_prefix: clic_internal_notes
-  - q: '088:CLICdp-Pub-* OR 037:CLICdp-Pub-* OR 980:CLIC-DP-Notes OR 088:CLICdp-Conf-* OR 037:CLICdp-Conf-* OR (980:THESIS AND 693__s:CLICdp) -690C_:SCICOM -980:ANNOUNCEMENT'
+  - q: '088:"CLICdp-Pub-*" OR 037:"CLICdp-Pub-*" OR 980:CLIC-DP-Notes OR 088:"CLICdp-Conf-*" OR 037:"CLICdp-Conf-*" -690C_:SCICOM -980:ANNOUNCEMENT'
     dump_file_prefix: clic_publications
+  - q: '980:THESIS AND 693__s:CLICdp -690C_:SCICOM -980:ANNOUNCEMENT'
+    dump_file_prefix: clic_theses
 flags:
   include_plots: true
   create_inclusion_request: true
