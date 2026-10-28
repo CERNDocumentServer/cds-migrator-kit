@@ -234,14 +234,32 @@ def cmd_dump_records(ctx, args):
         print("Running in {}: {}".format(ctx.dump, " ".join(command)))
         subprocess.check_call(command, cwd=_fs(ctx.dump))
 
-    dumped = sorted(
-        name
-        for name in os.listdir(_fs(ctx.dump))
-        if any(name.startswith(prefix) for prefix in prefixes)
-    )
-    if not dumped:
+    # the files of a query are `<dump_file_prefix>_<n>.json`: matched whole
+    names = os.listdir(_fs(ctx.dump))
+    total, recids, files = 0, set(), 0
+    for query, prefix in jobs:
+        pattern = re.compile(r"^{}_\d+\.json$".format(re.escape(prefix)))
+        dumped = sorted(name for name in names if pattern.match(name))
+        count = 0
+        print("{}: {}".format(prefix, query))
+        for name in dumped:
+            with open(_fs(os.path.join(ctx.dump, name))) as fp:
+                records = json.load(fp)
+            print("  {}: {} records".format(name, len(records)))
+            count += len(records)
+            recids.update(record.get("recid") for record in records)
+        if not dumped:
+            print("  no files found for this query")
+        print("  {} records in {} file(s)".format(count, len(dumped)))
+        total += count
+        files += len(dumped)
+    if not files:
         sys.exit("The dump produced no files in {}".format(ctx.dump))
-    print("Dump placed in {} ({} file(s))".format(ctx.dump, len(dumped)))
+    print(
+        "Dump placed in {}: {} file(s), {} records ({} different)".format(
+            ctx.dump, files, total, len(recids)
+        )
+    )
 
 
 # --------------------------------------------------------------------------
