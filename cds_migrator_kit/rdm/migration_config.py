@@ -68,7 +68,7 @@ def _(x):  # needed to avoid start time failure with lazy strings
 # https://flask.palletsprojects.com/en/2.1.x/config/#SEND_FILE_MAX_AGE_DEFAULT
 SEND_FILE_MAX_AGE_DEFAULT = 300
 RDM_RECORDS_MAX_FILES_COUNT = (
-    150  # temporarily, until we decide what we do with figures
+    200  # temporarily, until we decide what we do with figures
 )
 
 # SECURITY WARNING: keep the secret key used in production secret!

@@ -188,7 +188,7 @@ def funding(self, key, value):
     _custom_fields = self.get("custom_fields", {})
     programme = value.get("a")
     _access_info = value.get("r", "").strip().lower()
-    if _access_info:
+    if _access_info.lower() != "openaccess":
         raise ManualImportRequired(
             "Open access field detected", field=key, value=value, priority="critical"
         )

@@ -33,11 +33,17 @@ to the root of the repository).
 """
 
 import os
+import re
+import warnings
 
 import yaml
 
 EOS_ROOT = "/eos/media/cds/cds-rdm/{env}/migration"
 DUPLICATES_FILENAME = "duplicated_pids.json"
+
+# Excluded from every model built with `conf_query`: the records the dump never
+# has (the other exclusions of the dump vary by model, they are given to it)
+MODEL_EXCLUSIONS = "-980:DELETED -980:HIDDEN -980__a:DUMMY"
 
 # names an environment may be deployed under -> EOS folder
 ENV_FOLDERS = {"production": "prod"}
@@ -172,3 +178,113 @@ def build_stream_config(
         "records": {collection: record},
         "comments": {collection: comments},
     }
+
+
+# a field of a legacy search query: tag, then up to two indicators and a subfield
+_QUOTED = re.compile(r'("(?:[^"\\]|\\.)*")')
+_FIELD = re.compile(r"(^|[\s(+-])(\d{3}[A-Za-z0-9_]{0,3})(?=:)")
+# a search keyword (`collection:`, `title:`) instead of a MARC field
+_KEYWORD = re.compile(r"(?:^|[\s(+-])([A-Za-z][A-Za-z_]*):")
+
+
+# the value of a field with a wildcard: `"CLIC-Note*"` or `CLIC-Note*`
+_WILDCARD = re.compile(r':("[^"]*\*[^"]*"|[^\s()"/]*\*[^\s()"/]*)')
+
+
+def _wildcard_to_regex(match):
+    value = match.group(1).strip('"')
+    pattern = ".*".join(re.escape(piece) for piece in value.split("*"))
+    # the legacy search matches the whole value, `*` stands for anything
+    if not value.startswith("*"):
+        pattern = "^" + pattern
+    if not value.endswith("*"):
+        pattern += "$"
+    # (?i): the legacy search ignores the case (CLICDP-CONF-2013-006 is found by
+    # "CLICdp-Conf-*"), the matcher does not
+    return ":/(?i)" + pattern + "/"
+
+
+def _model_field(match):
+    prefix, field = match.group(1), match.group(2)
+    if len(field) == 3:  # `088`: any indicators in the search, blank in a model
+        field += "__"
+    elif len(field) == 4:  # `690C`
+        field += "_"
+    elif len(field) == 6:  # `980__a`: a model separates the subfield with a dot
+        field = field[:5] + "." + field[5]
+    return prefix + field
+
+
+def legacy_to_model_query(query):
+    """Translate a legacy search query to the notation of a model ``__query__``.
+
+    The legacy search reads ``980__a:X`` and ``088:X``, the matcher of the models
+    only understands ``980__.a:X`` and ``088__:X`` (and silently matches nothing
+    otherwise):
+
+    * a field of 6 characters (tag, indicators, subfield) gets a dot before the
+      subfield: ``980__a`` -> ``980__.a``
+    * a field without (all) the indicators is padded with blank ones:
+      ``088`` -> ``088__``, ``690C`` -> ``690C_``. The search matches any
+      indicators there, the model only the blank ones.
+
+    * a value with a wildcard (``"CLIC-Note*"``, ``*ARCHIVE*``) becomes a regular
+      expression (``/(?i)^CLIC.Note/``, ``/(?i).*ARCHIVE.*/``, ignoring the case like the
+      search), as the matcher does not know the wildcard
+
+    The other values, quoted strings, operators and parentheses are left as they are, and
+    a query already in the notation of the models is not changed. The matcher is
+    case sensitive, the legacy search is not, and it does not know the search
+    keywords (``collection:"X"``): a warning is given for them, as they never
+    match.
+    """
+    # the matcher reads a value literally (`"X*"` matches only `X*`, `*X` is an
+    # invalid pattern), so a wildcard is turned into a regular expression
+    query = _WILDCARD.sub(_wildcard_to_regex, query)
+    parts = _QUOTED.split(query)
+    for part in parts[::2]:
+        for keyword in _KEYWORD.findall(part):
+            warnings.warn(
+                "`{}:` in `{}` is a search keyword, not a MARC field: a model "
+                "never matches it".format(keyword, query)
+            )
+    # the odd parts are the quoted strings
+    return "".join(
+        part if index % 2 else _FIELD.sub(_model_field, part)
+        for index, part in enumerate(parts)
+    )
+
+
+def conf_query(collection, exclusions="", confs_dir=None):
+    """The ``__query__`` of a model, built from the queries of the collection conf.
+
+    The queries of the conf (``queries``, each with its ``q``) are translated
+    with ``legacy_to_model_query`` and joined with OR. The deleted, hidden and
+    dummy records (``MODEL_EXCLUSIONS``) are always excluded. The other exclusions
+    vary by model: they are given in ``exclusions``, in either notation (e.g.
+    ``"-980__c:MIGRATED -690C_:SCICOM"``, translated the same way).
+
+    A model is imported when the application starts, so the folder of the confs
+    is not read from the application config: it is the environment variable
+    ``INVENIO_CDS_MIGRATOR_KIT_COLLECTIONS_DIR`` (set in the Dockerfile), else
+    the ``migration_cli/collections`` folder of the checkout.
+    """
+    confs_dir = (
+        confs_dir
+        or os.environ.get("INVENIO_CDS_MIGRATOR_KIT_COLLECTIONS_DIR")
+        or default_confs_dir()
+    )
+    queries = []
+    for item in read_conf(collection, confs_dir).get("queries") or []:
+        text = item.get("q") if isinstance(item, dict) else item
+        if not text:
+            raise ValueError(
+                "A query of `{}` has no text (`q`): {!r}".format(collection, item)
+            )
+        queries.append("({})".format(legacy_to_model_query(text.strip())))
+    if not queries:
+        raise ValueError(
+            "`queries` is not set for `{}` in {}".format(collection, confs_dir)
+        )
+    exclusions = " ".join((MODEL_EXCLUSIONS, exclusions.strip())).strip()
+    return "({}) {}".format(" OR ".join(queries), legacy_to_model_query(exclusions))
