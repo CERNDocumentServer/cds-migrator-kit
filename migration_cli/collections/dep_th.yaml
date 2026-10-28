@@ -1,4 +1,4 @@
-name: clic
+name: dep_th
 queries:
   - q: '595:"CERN-TH" 980:ARTICLE -690C_:SCICOM -980:ANNOUNCEMENT'
     dump_file_prefix: cern_th_articles
