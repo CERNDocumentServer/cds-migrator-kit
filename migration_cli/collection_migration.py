@@ -226,14 +226,14 @@ def cmd_dump_records(ctx, args):
             "dump",
             "records",
             "-q",
-            "'{} {}'".format(query.strip(), DUMP_EXCLUSIONS),
+            "{} {}".format(query.strip(), DUMP_EXCLUSIONS),
             "--file-prefix",
             prefix,
             "--chunk-size={}".format(conf["chunk_size"]),
         ]
         # no shell is involved: the query is one argument, shown quoted to be pasted
         print(
-            "Running in {}: {} {} {}".format(
+            "Running in {}: {} '{}' {}".format(
                 ctx.dump, " ".join(command[:4]), command[4], " ".join(command[5:])
             )
         )
@@ -243,7 +243,7 @@ def cmd_dump_records(ctx, args):
     names = os.listdir(_fs(ctx.dump))
     total, recids, files = 0, set(), 0
     for query, prefix in jobs:
-        pattern = re.compile(r"^{}_\d+\.json$".format(re.escape(prefix)))
+        pattern = re.compile(r"^{}(_\d+)?\.json$".format(re.escape(prefix)))
         dumped = sorted(name for name in names if pattern.match(name))
         count = 0
         print("{}: {}".format(prefix, query))
@@ -259,7 +259,11 @@ def cmd_dump_records(ctx, args):
         total += count
         files += len(dumped)
     if not files:
-        sys.exit("The dump produced no files in {}".format(ctx.dump))
+        sys.exit(
+            "No dump file matches the prefixes in {} (files there: {}). Run the "
+            "`inveniomigrator` command printed above by hand in that folder and "
+            "see how its files are named".format(ctx.dump, sorted(names))
+        )
     print(
         "Dump placed in {}: {} file(s), {} records ({} different)".format(
             ctx.dump, files, total, len(recids)
