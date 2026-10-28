@@ -98,15 +98,6 @@ def _fs(path):
     return path
 
 
-def _shell_quote(arguments):
-    """The command as it would be typed in a shell (quoted, to be pasted)."""
-    try:
-        from shlex import quote
-    except ImportError:  # python 2
-        from pipes import quote
-    return " ".join(quote(argument) for argument in arguments)
-
-
 def _makedirs(path):
     if not os.path.isdir(_fs(path)):
         os.makedirs(_fs(path))
@@ -240,7 +231,12 @@ def cmd_dump_records(ctx, args):
             prefix,
             "--chunk-size={}".format(conf["chunk_size"]),
         ]
-        print("Running in {}: {}".format(ctx.dump, _shell_quote(command)))
+        # no shell is involved: the query is one argument, shown quoted to be pasted
+        print(
+            "Running in {}: {} {} {}".format(
+                ctx.dump, " ".join(command[:4]), command[4], " ".join(command[5:])
+            )
+        )
         subprocess.check_call(command, cwd=_fs(ctx.dump))
 
     # the files of a query are `<dump_file_prefix>_<n>.json`: matched whole
@@ -444,7 +440,7 @@ def cmd_dump_users(ctx, args):
         "peoples",
         "--chunk-size=1000",
     ]
-    print("Running in {}: {}".format(ctx.users, _shell_quote(command)))
+    print("Running in {}: {}".format(ctx.users, " ".join(command)))
     subprocess.check_call(command, cwd=ctx.users)
     print(
         "On the migration pod, if people.csv has to be recreated:\n"
@@ -488,7 +484,7 @@ def cmd_prepare(ctx, args):
     for query in analyze_queries:
         command += ["--collection-q", query]
     command += ["--output-dir", ctx.base]
-    print("Running: {}".format(_shell_quote(command)))
+    print("Running: {}".format(" ".join(command)))
     subprocess.check_call(command)
 
     print("Review ep_report_number_dups.json, then continue on the migration pod.")
