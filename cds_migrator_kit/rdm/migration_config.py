@@ -538,7 +538,7 @@ AUDIT_LOGS_ENABLED = False
 # ATTENTION: please don't modify this local value - the community is created
 # via cds-rdm fixtures with this id - if you have another ID locally
 # change it in your local db
-CDS_CERN_SCIENTIFIC_COMMUNITY_ID = "c2c46ab3-5fb4-4d86-83c6-5d9dc8392d6f"
+CDS_CERN_SCIENTIFIC_COMMUNITY_ID = "780f1f4c-3bcd-4a90-8629-e8701b47cbb3"
 """The id of the CERN Scientific community.
 
 This is only a local-dev default: on other instances (sandbox/prod), set the

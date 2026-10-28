@@ -26,9 +26,7 @@ from cds_migrator_kit.transform.xml_processing.rules.base import (
 )
 
 from ...models.eco import eco_model as model
-from .base import identifiers
-from .base import note as base_note
-from .base import report_number, urls
+from .base import identifiers, note as base_note, report_number, urls, custom_fields_693 as base_custom_fields
 from .bulletin_issue import (
     additional_descriptions,
     additional_titles_bulletin,
@@ -65,28 +63,28 @@ def internal_notes(self, key, value):
     raise IgnoreKey("internal_notes")
 
 
-# @model.over("eco_report_number", "(^037__)|(^088__)", override=True)
-# @for_each_value
-# def eco_report_number(self, key, value):
-#     """Translates report number."""
-#     identifier = value.get("a", "")
-#     # Check it's email TODO: how to handle?
-#     if key == "088__" and "@" in identifier:
-#         pass
-#     else:
-#         provenance = value.get("9", "")
-#         identifiers = self.get("identifiers", [])
-#         if provenance == "submitter" and identifier.startswith("FERMILAB-POSTER"):
-#             new_id = {"identifier": identifier, "scheme": "cdsrn"}
-#             if new_id not in identifiers:
-#                 identifiers.append(new_id)
-#                 raise IgnoreKey("eco_report_number")
-#         _identifier = report_number(self, key, value)
+@model.over("eco_report_number", "(^037__)|(^088__)", override=True)
+@for_each_value
+def eco_report_number(self, key, value):
+    """Translates report number."""
+    identifier = value.get("a", "")
+    # Check it's email TODO: how to handle?
+    if key == "088__" and "@" in identifier:
+        pass
+    else:
+        provenance = value.get("9", "")
+        identifiers = self.get("identifiers", [])
+        if provenance == "submitter" and identifier.startswith("FERMILAB-POSTER"):
+            new_id = {"identifier": identifier, "scheme": "cdsrn"}
+            if new_id not in identifiers:
+                identifiers.append(new_id)
+                raise IgnoreKey("eco_report_number")
+        _identifier = report_number(self, key, value)
 
-#         if _identifier and _identifier not in identifiers:
-#             identifiers += _identifier
-#         self["identifiers"] = identifiers
-#     raise IgnoreKey("eco_report_number")
+        if _identifier and _identifier not in identifiers:
+            identifiers += _identifier
+        self["identifiers"] = identifiers
+    raise IgnoreKey("eco_report_number")
 
 
 @model.over("eco_related_identifiers", "(^962__)", override=True)
@@ -234,9 +232,9 @@ def languages(self, key, value):
     raise IgnoreKey("language")
 
 
-@model.over("field_993", "^993__", override=True)
+@model.over("custom_subjects", "^993__", override=True)
 @for_each_value
-def field_993(self, key, value):
+def custom_subjects(self, key, value):
     """Translates field 993 as a keyword."""
     value = value.get("q", "")
     if value and value not in ["Project Management"]:
@@ -247,4 +245,14 @@ def field_993(self, key, value):
     }
     _subjects.append(subject)
     self["subjects"] = _subjects
-    raise IgnoreKey("field_993")
+    raise IgnoreKey("custom_subjects")
+
+
+@model.over("custom_fields", "(^693__)",  override_tag=True)
+@for_each_value
+def custom_fields_eco(self, key, value):
+    """Translates custom fields."""
+    value = dict(value)
+    if value.get("e", "").strip().lower() in ["select:", "**no value**", "sélectionner:"]:
+        value["e"] = ""
+    base_custom_fields(self, key, value)
