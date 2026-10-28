@@ -1,0 +1,17 @@
+name: clic
+queries:
+  - q: '595:"CERN-TH" 980:ARTICLE -690C_:SCICOM -980:ANNOUNCEMENT'
+    dump_file_prefix: cern_th_articles
+  - q: '595:"CERN-PH-TH" 980:ARTICLE -690C_:SCICOM -980:ANNOUNCEMENT'
+    dump_file_prefix: cern_ph_th_articles
+  - q: '595:"CERN-PH-TH" 980:PREPRINT -690C_:SCICOM -980:ANNOUNCEMENT'
+    dump_file_prefix: cern_ph_th_preprints
+  - q: '595:"CERN-TH" 980:PREPRINT -690C_:SCICOM -980:ANNOUNCEMENT'
+    dump_file_prefix: cern_th_preprints
+flags:
+  include_plots: true
+  create_inclusion_request: true
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - theoretical-physics-department
