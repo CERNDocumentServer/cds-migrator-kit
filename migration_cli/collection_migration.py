@@ -81,8 +81,8 @@ ANALYSIS_FORBIDDEN = (
     "-980__a:DUMMY",
 )
 DUMP_EXCLUSIONS = (
-    "-690C_:SCICOM -595:*ARCHIVE* -980:ANNOUNCEMENT -980:DELETED -980:HIDDEN "
-    "-980__a:DUMMY -690C_:movingimages -970__b:MERGE-* -980:GREYBOOK"
+    "-980:DELETED -980:HIDDEN "
+    "-980__a:DUMMY -690C_:movingimages -980:GREYBOOK"
 )
 # -980__c:MIGRATED is not excluded on purpose: some records live in several
 # communities.
@@ -96,6 +96,15 @@ def _fs(path):
     if PY2 and isinstance(path, type("")):
         return path.encode("utf-8")
     return path
+
+
+def _shell_quote(arguments):
+    """The command as it would be typed in a shell (quoted, to be pasted)."""
+    try:
+        from shlex import quote
+    except ImportError:  # python 2
+        from pipes import quote
+    return " ".join(quote(argument) for argument in arguments)
 
 
 def _makedirs(path):
@@ -226,12 +235,12 @@ def cmd_dump_records(ctx, args):
             "dump",
             "records",
             "-q",
-            "{} {}".format(query.strip(), DUMP_EXCLUSIONS),
+            "'{} {}'".format(query.strip(), DUMP_EXCLUSIONS),
             "--file-prefix",
             prefix,
             "--chunk-size={}".format(conf["chunk_size"]),
         ]
-        print("Running in {}: {}".format(ctx.dump, " ".join(command)))
+        print("Running in {}: {}".format(ctx.dump, _shell_quote(command)))
         subprocess.check_call(command, cwd=_fs(ctx.dump))
 
     # the files of a query are `<dump_file_prefix>_<n>.json`: matched whole
@@ -435,7 +444,7 @@ def cmd_dump_users(ctx, args):
         "peoples",
         "--chunk-size=1000",
     ]
-    print("Running in {}: {}".format(ctx.users, " ".join(command)))
+    print("Running in {}: {}".format(ctx.users, _shell_quote(command)))
     subprocess.check_call(command, cwd=ctx.users)
     print(
         "On the migration pod, if people.csv has to be recreated:\n"
@@ -479,7 +488,7 @@ def cmd_prepare(ctx, args):
     for query in analyze_queries:
         command += ["--collection-q", query]
     command += ["--output-dir", ctx.base]
-    print("Running: {}".format(" ".join(command)))
+    print("Running: {}".format(_shell_quote(command)))
     subprocess.check_call(command)
 
     print("Review ep_report_number_dups.json, then continue on the migration pod.")
