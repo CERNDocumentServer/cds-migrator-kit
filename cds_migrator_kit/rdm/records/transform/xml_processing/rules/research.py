@@ -188,7 +188,7 @@ def funding(self, key, value):
     _custom_fields = self.get("custom_fields", {})
     programme = value.get("a")
     _access_info = value.get("r", "").strip().lower()
-    if _access_info.lower() != "openaccess":
+    if _access_info and _access_info not in ["openaccess", "open access"]:
         raise ManualImportRequired(
             "Open access field detected", field=key, value=value, priority="critical"
         )
@@ -196,14 +196,6 @@ def funding(self, key, value):
         raise UnexpectedValue(
             "Access information has unexpected value", field=key, value=value
         )
-    # https://cerneu.web.cern.ch/fp7-projects
-    is_fp7_programme = programme and programme.strip().lower() == "fp7"
-
-    # TODO check if this applies to other publications not only thesis
-    # if programme and not is_fp7_programme:
-    #     # if not fp7, then it is cern programme
-    #     _custom_fields["cern:programmes"] = programme
-    #     self["custom_fields"] = _custom_fields
     if programme and "f" in value or "c" in value:
         awards = self.get("funding", [])
         # this one is reliable, I checked the DB
