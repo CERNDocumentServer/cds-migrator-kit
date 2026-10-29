@@ -11,6 +11,7 @@ queries:
 flags:
   include_plots: true
   create_inclusion_request: true
+  preferred_model: dep_th
 # slugs of the communities the records are added to, the same in every environment;
 # they must exist in the environment
 communities:
