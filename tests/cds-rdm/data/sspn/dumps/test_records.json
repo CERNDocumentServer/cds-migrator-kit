@@ -34,6 +34,23 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [
+            "submitter15@cern.ch"
+          ],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {}
+    },
     "recid": 2788738,
     "creation_date": "2021-10-26 13:51:23",
     "record": [
@@ -89,6 +106,23 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [
+            "submitter2@cern.ch"
+          ],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {}
+    },
     "recid": 2684743,
     "creation_date": "2019-08-02 22:21:57",
     "record": [
@@ -196,6 +230,23 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [
+            "submitter5@cern.ch"
+          ],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {}
+    },
     "recid": 2889522,
     "creation_date":"2024-02-19 13:51:23",
     "record": [
@@ -381,6 +432,23 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [
+            "submitter6@cern.ch"
+          ],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {}
+    },
     "recid": 2051872,
     "creation_date":"2015-09-11 13:51:23",
     "record": [
@@ -454,6 +522,23 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [
+            "submitter7@cern.ch"
+          ],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {}
+    },
     "recid": 2207587,
     "creation_date": "2016-08-12 13:27:04",
     "record": [
@@ -482,6 +567,23 @@
   {
     "files": [],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [
+            "submitter16@cern.ch"
+          ],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {}
+    },
     "recid": 2783103,
     "creation_date": "2016-08-12 13:27:04",
     "record": [
@@ -532,6 +634,29 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [
+        {
+          "bibdocid": 2325606,
+          "status": "firerole: allow group \"it-dep\",\"hr-dep [CERN]\"\r\nallow email \"uploader@inveniosoftware.org\"",
+          "roles": []
+        }
+      ],
+      "record": {
+        "owners": {
+          "859__f": [
+            "submitter7@cern.ch"
+          ],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {}
+    },
     "recid": 2783104,
     "creation_date":"2021-10-04 13:51:23",
     "record": [
@@ -592,6 +717,23 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [
+            "submitter9@cern.ch"
+          ],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {}
+    },
     "recid": 2046076,
     "creation_date": "2015-08-21 11:40:00",
     "record": [
@@ -657,6 +799,23 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [
+            "submitter10@gmail.com"
+          ],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {}
+    },
     "recid": 1597985,
     "creation_date": "2013-09-06 09:31:03",
     "record": [
@@ -715,6 +874,23 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [
+            "submitter11@cern.ch"
+          ],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {}
+    },
     "recid": 2041388,
     "creation_date": "2015-08-07 19:39:37",
     "record": [
@@ -774,6 +950,23 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [
+            "submitter12@cern.ch"
+          ],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {}
+    },
     "recid": 2779426,
     "creation_date": "2021-08-27 19:34:36",
     "record": [
@@ -827,6 +1020,23 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [
+            "submitter13@cern.ch"
+          ],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {}
+    },
     "recid": 2294138,
     "creation_date": "2017-11-23 16:29:37",
     "record": [
@@ -850,6 +1060,23 @@
   {
     "files": [],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [
+            "submitter16@cern.ch"
+          ],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {}
+    },
     "recid": 2783112,
     "creation_date": "2021-10-04 13:51:23",
     "record": [
