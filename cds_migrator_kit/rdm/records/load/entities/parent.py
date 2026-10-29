@@ -11,6 +11,7 @@ from cds_rdm.requests.committee_approval import APPRN_PID_TYPE
 from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_accounts.models import User
+from invenio_communities.communities.records.api import Community
 from invenio_drafts_resources.services.records.uow import ParentRecordCommitOp
 from invenio_pidstore.errors import PIDAlreadyExists
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
@@ -31,13 +32,20 @@ class ParentLoad:
     methods are the counterpart of ``RecordEntry``.
     """
 
-    def __init__(self, entry: MigrationEntry, migration_logger, record_state):
+    def __init__(
+        self,
+        entry: MigrationEntry,
+        migration_logger,
+        record_state,
+        is_split_public_record=None,
+    ):
         """Constructor.
 
         :param record_parent: the built ``RecordParent`` for this entry
             (``MigrationEntry["parent"]``).
         :param migration_logger: kept for parity with the other load-side
             entity collaborators; not used directly by this class today.
+        :param is_split_public_record: whether this is the public component of a record split into a restricted/public pair. If None, this is not a split record.
         """
         self.record_parent = entry["parent"]
         self.migration_logger = migration_logger
@@ -45,6 +53,8 @@ class ParentLoad:
         self.migration_entry = entry
         self.versions = entry["versions"]
         self.ep_approval = entry.get("ep_approval")
+        self.is_split_public_record = is_split_public_record
+        self.has_restricted_community = False
 
     def load(self, published_record, uow):
         """Load access/communities, then access grants for every version.
@@ -62,54 +72,68 @@ class ParentLoad:
         freshly-read parent instance, which ``load_access_and_communities``'s
         stale in-memory parent doesn't see).
         """
-        self.load_access_and_communities(published_record, uow)
-        self.load_access_grants(published_record, uow)
+        self.has_restricted_community = self.load_access_and_communities(
+            published_record, uow
+        )
+        self.load_access_grants(uow)
         self.set_stateless_committee_approval(published_record, uow)
 
     def load_access_and_communities(self, draft, uow):
         """Load access rights and communities in a single parent commit."""
         parent = draft._record.parent
         parent.access = self.record_parent.body["access"]
-        for community in self.record_parent.communities["ids"]:
+
+        has_restricted_community = False
+        for community_id in self.record_parent.communities["ids"]:
+            community = Community.get_record(community_id)
+            if community.access.visibility_is_restricted:
+                has_restricted_community = True
             parent.communities.add(community)
+
         parent.communities.default = self.record_parent.communities["default"]
         uow.register(ParentRecordCommitOp(parent))
+        return has_restricted_community
 
-    def load_access_grants(self, published_record, uow):
+    def load_access_grants(self, uow):
         """Load access grants from metadata and record grants efficiently.
 
         :param draft: the draft/published record whose parent grants are set.
         :param recid: this record's legacy recid, for error reporting.
         """
         recid = self.migration_entry["record"].recid
-        # `record_state["versions"]` is keyed by invenio's own sequential
-        # `record.versions.index` (always 1, 2, 3, ...), while `self.versions`
-        # (`entry["versions"]`) is keyed by the *legacy* version number, which
-        # can start above 1 when the legacy version 1 was hard-deleted (see
-        # ``RecordLoad.pre_publish``). Both lists are built by iterating the
-        # same records in the same order (``RecordLoad._load_versions``), so
-        # match them up by position rather than by (possibly mismatched) key.
-        legacy_versions = list(self.versions.keys())
-        for legacy_version, version_state in zip(
-            legacy_versions, self.record_state["versions"]
-        ):
-            access_dict = self.versions[legacy_version]["access"]
+
+        for version_state in self.record_state["versions"]:
             published_record = current_rdm_records_service.read(
                 system_identity, version_state["new_recid"]
             )
 
+            if (
+                self.has_restricted_community
+                and published_record._record.access.protection.record == "public"
+            ):
+                # We shouldn't get here (transform/entities/version.py should make the record fully restricted if it's in a restricted collection).
+                # However, we add an extra check anyway.
+                raise ManualImportRequired(
+                    message="The record is public but it was added to at least one restricted community, which is not allowed.",
+                    stage="load",
+                )
+
             parent = published_record._record.parent
             identity = system_identity
 
-            specific_file_restrictions = access_dict.get("meta", "")
-            if not specific_file_restrictions and not self.record_parent.access_grants:
+            file_restrictions = self.migration_entry["restrictions"]["files"]
+            if self.is_split_public_record or (
+                not file_restrictions and not self.record_parent.access_grants
+            ):
+                # Skip loading access grants if this is the public component OR if the parent record doesn't have any
+                # custom grants and none of the files are restricted
                 continue
+
             default_permission = "view"
 
-            groups, emails, grants_with_perms = self.record_parent.resolve_grants(
-                specific_file_restrictions
-            )
+            groups, emails, grants_with_perms = self.record_parent.resolve_grants()
 
+            # TODO: this is where the load steps actually starts, the above stuff is transforming
             def _create_grant(subject_type, subject_id, permission):
                 grant_data = {
                     "grants": [

@@ -90,6 +90,7 @@ class MigrationProgressLogger:
         self._temp_state_cache = {}
         self._flush_interval = 100
         self._rows_since_flush = 0
+        self._global_warns: dict[str, str] = {}
 
     def start_log(self):
         """Initialize logging file descriptors."""
@@ -120,6 +121,7 @@ class MigrationProgressLogger:
         """Finalise logging files."""
         self.error_file.flush()
         self.error_file.close()
+        self.finalise_global_warnings()
 
     def add_log(self, exc, record=None, key=None, value=None):
         """Add exception log."""
@@ -177,6 +179,28 @@ class MigrationProgressLogger:
         if self._rows_since_flush >= self._flush_interval:
             self.error_file.flush()
             self._rows_since_flush = 0
+
+    def add_global_warning(self, id: str, log: str):
+        """
+        Log a warning globally for the whole run and save it by ID.
+
+        Only the last call to this method for each unique ID is saved. Calling it again
+        with an already-called ID will overwrite the log for that ID.
+
+        All global warning logs will be printed at the end of the whole run.
+        """
+        self._global_warns[id] = log
+
+    def finalise_global_warnings(self):
+        """Prints out any global warnings if there are any."""
+        if not self._global_warns:
+            return
+
+        logger_migrator = logging.getLogger("migrator-rules")
+        logger_migrator.warning("Global warnings generated during the run:")
+
+        for log in self._global_warns.values():
+            logger_migrator.warning("  - %s", log)
 
 
 class RecordStateLogger:

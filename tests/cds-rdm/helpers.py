@@ -69,6 +69,7 @@ def config(mocker, community, orcid_name_data):
                     "load": {
                         "legacy_pids_to_redirect": "tests/cds-rdm/data/hr/duplicated_pids.json"
                     },
+                    "restricted": "True",
                 },
                 "hr_restricted": {
                     "data_dir": "tests/cds-rdm/data/hr_restricted",
@@ -83,9 +84,7 @@ def config(mocker, community, orcid_name_data):
                     "load": {
                         "legacy_pids_to_redirect": "tests/cds-rdm/data/hr_restricted/duplicated_pids.json"
                     },
-                    # Configure access_grants_view with specific groups
                     "restricted": "True",
-                    "access_grants_view": ["cern-personnel"],
                 },
                 "thesis": {
                     "data_dir": "tests/cds-rdm/data/thesis",

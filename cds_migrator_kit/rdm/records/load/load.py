@@ -103,51 +103,6 @@ class CDSMigrationEntryLoad(Load):
         uow.register(ModelCommitOp(_original_dump_model))
 
     @staticmethod
-    def _verify_restricted_files(entry: MigrationEntry, records):
-        """Check that files of a record with legacy file restrictions are restricted.
-
-        If any legacy file of the entry has a non-empty ``status``, every
-        published version of the record must have its files access set to
-        ``restricted``. Runs as the last step of the load, inside the unit of
-        work, so raising rolls the whole record back.
-
-        EP approval entries are excused: they are split into a public and a
-        restricted record anyway, so the public one legitimately has public files.
-
-        :raises ManualImportRequired: with ``critical`` priority on any mismatch.
-        """
-        if entry.get("ep_approval"):
-            return
-
-        recid = entry["record"].recid
-        restricted_keys = [
-            file_data["key"]
-            for version_data in entry.get("versions", {}).values()
-            for file_data in version_data.get("files", {}).values()
-            if file_data.get("metadata", {}).get("status")
-        ]
-        if not restricted_keys:
-            return
-
-        for published in records:
-            record = published._record
-            files_protection = record.access.protection.files
-            if files_protection != "restricted":
-                raise ManualImportRequired(
-                    message=(
-                        "Record has files with legacy restrictions but the "
-                        f"migrated record {record.pid.pid_value} has files "
-                        f"access '{files_protection}' instead of 'restricted'"
-                    ),
-                    field="access",
-                    subfield="files",
-                    stage="load",
-                    recid=recid,
-                    priority="critical",
-                    value=restricted_keys,
-                )
-
-    @staticmethod
     def _have_migrated_recid(recid):
         """Check if we have minted `lrecid` pid."""
         pid = PersistentIdentifier.query.filter_by(
@@ -318,7 +273,7 @@ class CDSMigrationEntryLoad(Load):
             entry["record"],
             entry["parent"],
             self.migration_logger,
-            is_final_record=True,
+            is_public_record=True,
             update_new_version_publication_date=self.update_new_version_publication_date,
             record_state_logger=self.record_state_logger,
         )
@@ -338,14 +293,13 @@ class CDSMigrationEntryLoad(Load):
                             entry, recid_state_after_load, uow
                         )
                         self.parent_load_cls(
-                            entry, self.migration_logger, recid_state_after_load
+                            entry,
+                            self.migration_logger,
+                            recid_state_after_load,
                         ).load(published_record=records[-1], uow=uow)
                         self.request_load_cls(entry).load(
                             records, self.create_inclusion_request, uow
                         )
-                        # final step of the load: nothing is committed if
-                        # restricted files ended up with a wrong access
-                        self._verify_restricted_files(entry, records)
                     uow.commit()
                 if recid_state_after_load:
                     # only log to disk once the unit of work has actually

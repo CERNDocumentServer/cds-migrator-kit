@@ -54,14 +54,15 @@ def _split_copy(entry: MigrationEntry) -> MigrationEntry:
     return split
 
 
-class MetadataEntry:
-    """Build a load entry for the public or restricted EP approval split."""
+# TODO: workshop this
+class SplitEntry:
+    """Build a load entry for the public or restricted record split."""
 
-    def __init__(self, entry: MigrationEntry, approval_request, migration_logger):
+    def __init__(self, entry: MigrationEntry, migration_logger, approval_request=None):
         """Constructor."""
         self.entry = entry
-        self.approval_request = approval_request
         self.migration_logger = migration_logger
+        self.approval_request = approval_request
 
     def identifiers(self, identifiers):
         """Return identifiers for this split."""
@@ -113,15 +114,10 @@ class MetadataEntry:
         """Remove DOI PID from record."""
         pass
 
-    # Set by subclasses - written onto ``access_obj["record"]``/``["files"]``
+    # Set by subclasses - written onto ``access["record"]``/``["files"]``
     # for every version, and reused as the ``split_type`` label passed to
     # ``_log_removed_identifiers()``.
     _access_status = None
-    # Whether to drop the version's file-restriction ``meta`` string - kept
-    # for the restricted split (``ParentLoad.load_access_grants()`` reads it
-    # to resolve access grants), stripped for the public one (never
-    # restricted, so there's nothing to resolve grants from).
-    _strip_access_meta = False
 
     def _include_file(self, file_data, context):
         """Return whether a file belongs to this split; override in subclasses."""
@@ -161,17 +157,14 @@ class MetadataEntry:
 
             previous_signature = signature
 
-            version_access = deepcopy(version_data.get("access", {}))
-            access_obj = deepcopy(version_access.get("access_obj", {}))
+            access_obj = deepcopy(version_data.get("access", {}))
             access_obj["record"] = self._access_status
             access_obj["files"] = self._access_status
-            if self._strip_access_meta:
-                version_access.pop("meta", None)
-            version_access["access_obj"] = access_obj
+            version_data["access"] = access_obj
 
             new_version_data = deepcopy(version_data)
             new_version_data["files"] = deepcopy(versioned_files)
-            new_version_data["access"] = version_access
+            new_version_data["access"] = access_obj
 
             new_versions[len(new_versions) + 1] = new_version_data
 
@@ -202,7 +195,7 @@ class MetadataEntry:
         )
 
 
-class PublicEntry(MetadataEntry):
+class PublicEntry(SplitEntry):
     """Build the public EP approval split entry."""
 
     _access_status = "public"
@@ -216,6 +209,9 @@ class PublicEntry(MetadataEntry):
 
     def identifiers(self, identifiers):
         """Return identifiers for the public split, dropping EP approval RNs."""
+        if not self.approval_request:
+            return identifiers
+
         kept = []
         removed = []
         for id_entry in identifiers:
@@ -241,9 +237,18 @@ class PublicEntry(MetadataEntry):
         return kept
 
     def _apply_entry_modifications(self, split):
-        split.pop("_request_data", None)
-        split["parent"].body["access"]["owned_by"] = {"user": "system"}
-        self._add_cern_scientific_community(split)
+        # TODO: all scientific community ops should be in the load step.
+        if self.approval_request is not None:
+            split.pop("_request_data", None)
+            split["parent"].body["access"]["owned_by"] = {"user": "system"}
+
+        if (
+            self.approval_request is not None
+            or self.entry["parent"].resource_type_applicable_for_scientific_community()
+        ):
+            # If it's an EP record, always add the scientific community. Otherwise, only add it if the resource
+            # type requires it.
+            self._add_cern_scientific_community(split)
 
     def _add_cern_scientific_community(self, entry):
         community_id = _cern_scientific_community_id()
@@ -256,7 +261,7 @@ class PublicEntry(MetadataEntry):
         communities["ids"] = ids
 
 
-class RestrictedEntry(MetadataEntry):
+class RestrictedEntry(SplitEntry):
     """Build the restricted EP approval split entry."""
 
     _access_status = "restricted"
@@ -336,7 +341,10 @@ class RestrictedEntry(MetadataEntry):
                 continue
             # Remove CERN-(PH-)?EP-YYYY-NNN but keep *-DRAFT report numbers.
             if EP_APPROVAL_REPORT_NUMBER_RE.match(identifier):
-                if identifier != self.approval_request.report_number:
+                if (
+                    self.approval_request is not None
+                    and identifier != self.approval_request.report_number
+                ):
                     raise UnexpectedValue(
                         message=(
                             "EP report number is not the same as the approved entry"
