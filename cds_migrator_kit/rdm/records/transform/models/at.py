@@ -7,10 +7,10 @@
 
 """CDS-RDM AT migration model."""
 
-from cds_migrator_kit.rdm.records.transform.models._config import IGNORE_SYSTEM_KEYS
 from cds_migrator_kit.rdm.records.transform.models.base_publication_record import (
     rdm_base_publication_model,
 )
+from cds_migrator_kit.rdm.records.transform.models.research import ResearchModel
 from cds_migrator_kit.transform.overdo import CdsOverdo
 
 
@@ -27,25 +27,15 @@ class ATModel(CdsOverdo):
         -980__:DELETED -980__c:MERGED
     """
 
-    __ignore_keys__ = IGNORE_SYSTEM_KEYS | {
-        "030__a",  # coden designation
+    # the keys of the research model (the source of truth, see research.py) plus the
+    # fields ignored only here
+    __ignore_keys__ = ResearchModel.__ignore_keys__ | {
         "260__b",  # Always CERN
         "300__b",  # Resolution of the video
-        "340__a",  # Physical medium
         "518__h",  # Start time of meeting/conference event
         "518__g",  # Meeting/conference identification
-        "520__9",  # Source of the additional description (e.g. arxiv)
-        "542__3",  # Part of the license
-        "540__3",  # TODO: Confirm with SIS
-        "595__i",  # INSPEC number
         "773__a",  # Duplicate DOI
         "901__u",  # Affiliation at Conversion?
-        "913__y",  # citation
-        "913__v",  # citation
-        "913__t",  # citation
-        "913__a",  # citation
-        "913__c",  # citation
-        "964__a",  # number of physical copies
         "970__b",  # spreadsheet
     }
 

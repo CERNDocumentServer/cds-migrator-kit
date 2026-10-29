@@ -22,6 +22,10 @@ class DepThModel(ResearchModel):
     # notation of the models
     __query__ = conf_query("dep_th")
 
+    # the keys of the research model (the source of truth, see research.py); the fields
+    # ignored only here would be added with `| {...}`
+    __ignore_keys__ = ResearchModel.__ignore_keys__
+
 
 dep_th_model = DepThModel(
     bases=(rdm_base_publication_model,),
