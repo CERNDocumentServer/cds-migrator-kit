@@ -23,11 +23,18 @@ from cds_migrator_kit.errors import ManualImportRequired
 from cds_migrator_kit.rdm.records.transform.entities.parent import RecordParent
 
 
-def make_parent(access_grants=None):
-    """Build a RecordParent bypassing build(); set access_grants directly."""
+def make_parent(access_grants=None, statuses=(), roles=None):
+    """Build a RecordParent bypassing build(); set access_grants directly.
+
+    :param statuses: the status of each restricted file, all given ``roles``.
+    """
+    files = [
+        {"bibdocid": i, "status": status, "roles": roles or []}
+        for i, status in enumerate(statuses)
+    ]
     parent = RecordParent(
         record=SimpleNamespace(recid="123"),
-        raw_dump_entry={"recid": "123"},
+        raw_dump_entry={"recid": "123", "restrictions": {"files": files}},
         dojson_entry={},
         communities_ids=["some-community"],
         access_grants_view=[],
@@ -41,7 +48,7 @@ def make_parent(access_grants=None):
 
 def test_empty_restriction_no_grants(test_app):
     """No file restriction and no record grants -> everything empty."""
-    groups, emails, grants = make_parent().resolve_grants("")
+    groups, emails, grants = make_parent().resolve_grants()
     assert groups == set()
     assert emails == set()
     assert grants == {}
@@ -49,7 +56,7 @@ def test_empty_restriction_no_grants(test_app):
 
 def test_mapped_status_resolves_to_group(test_app):
     """A status in CDS_ACCESS_GROUP_MAPPINGS resolves to its mapped groups."""
-    groups, emails, grants = make_parent().resolve_grants("SSO")
+    groups, emails, grants = make_parent(statuses=["SSO"]).resolve_grants()
     assert groups == {"cern-personnel"}
     assert emails == set()
     assert grants == {}
@@ -57,49 +64,51 @@ def test_mapped_status_resolves_to_group(test_app):
 
 def test_mapped_status_multiple_groups(test_app):
     """A status mapping to several groups adds all of them."""
-    groups, _, _ = make_parent().resolve_grants("HrDepRestrFile")
+    groups, _, _ = make_parent(statuses=["HrDepRestrFile"]).resolve_grants()
     assert groups == {"hr-dep", "fap-dep-tpr-mi-staf"}
 
 
 def test_literal_restricted_maps_to_cern_personnel(test_app):
     """The literal 'restricted' status maps to cern-personnel."""
-    groups, emails, grants = make_parent().resolve_grants("restricted")
+    groups, emails, grants = make_parent(statuses=["restricted"]).resolve_grants()
     assert groups == {"cern-personnel"}
     assert emails == set()
 
 
 def test_bare_cern_egroup_name(test_app):
     """A bare '<name> [CERN]' e-group name is added, '[CERN]' stripped."""
-    groups, emails, _ = make_parent().resolve_grants(
-        "cds-ph-ep-publications-referee-non-lhc [CERN]"
-    )
+    groups, emails, _ = make_parent(
+        statuses=["cds-ph-ep-publications-referee-non-lhc [CERN]"]
+    ).resolve_grants()
     assert groups == {"cds-ph-ep-publications-referee-non-lhc"}
     assert emails == set()
 
 
 def test_firerole_allow_group(test_app):
     """A firerole 'allow group' string parses out the group(s)."""
-    groups, emails, _ = make_parent().resolve_grants(
-        'firerole: allow group "atlas-active-members [CERN]"\ndeny all'
-    )
+    groups, emails, _ = make_parent(
+        statuses=['firerole: allow group "atlas-active-members [CERN]"\ndeny all']
+    ).resolve_grants()
     assert groups == {"atlas-active-members"}
     assert emails == set()
 
 
 def test_firerole_allow_multiple_groups(test_app):
     """A firerole 'allow group' with several quoted groups parses all."""
-    groups, _, _ = make_parent().resolve_grants(
-        'firerole: allow group "atlas-active-members [CERN]", "cms-members [CERN]"\n'
-        "deny all"
-    )
+    groups, _, _ = make_parent(
+        statuses=[
+            'firerole: allow group "atlas-active-members [CERN]", "cms-members [CERN]"\n'
+            "deny all"
+        ]
+    ).resolve_grants()
     assert groups == {"atlas-active-members", "cms-members"}
 
 
 def test_firerole_allow_email(test_app):
     """A firerole 'allow email' string parses out the email(s)."""
-    groups, emails, _ = make_parent().resolve_grants(
-        'firerole: allow email "a@cern.ch"\ndeny all'
-    )
+    groups, emails, _ = make_parent(
+        statuses=['firerole: allow email "a@cern.ch"\ndeny all']
+    ).resolve_grants()
     assert groups == set()
     assert emails == {"a@cern.ch"}
 
@@ -107,7 +116,50 @@ def test_firerole_allow_email(test_app):
 def test_unmapped_non_firerole_status_raises(test_app):
     """An unknown status that is neither mapped nor firerole hard-raises."""
     with pytest.raises(ManualImportRequired):
-        make_parent().resolve_grants("TOTALLY_UNKNOWN_STATUS")
+        make_parent(statuses=["TOTALLY_UNKNOWN_STATUS"]).resolve_grants()
+
+
+def test_unsupported_firerole_rule_raises(test_app):
+    """A firerole with rules RDM can't represent hard-raises."""
+    with pytest.raises(ManualImportRequired):
+        make_parent(
+            statuses=['firerole: allow remote_ip "137.138.0.0/16"']
+        ).resolve_grants()
+
+
+NA61_ROLE = {
+    "id": 397,
+    "name": "NA61EditorialBoard",
+    "description": "Editorial board for NA61",
+    "firerole_def_src": 'allow group "cds-edboard-na61 [CERN]"',
+    "users": [{"email": "a@cern.ch"}],
+}
+
+
+def test_unmapped_status_resolves_from_roles(test_app):
+    """An unmapped status falls back to the legacy roles authorised for it."""
+    groups, emails, _ = make_parent(
+        statuses=["NA61-editorial-board"], roles=[NA61_ROLE]
+    ).resolve_grants()
+    assert groups == {"cds-edboard-na61"}
+    assert emails == {"a@cern.ch"}
+
+
+def test_mapped_status_takes_precedence_over_roles(test_app):
+    """CDS_ACCESS_GROUP_MAPPINGS overrides the dumped roles."""
+    groups, emails, _ = make_parent(
+        statuses=["SSO"], roles=[NA61_ROLE]
+    ).resolve_grants()
+    assert groups == {"cern-personnel"}
+    assert emails == set()
+
+
+def test_several_restricted_files_are_unioned(test_app):
+    """Groups/emails of every restricted file are combined."""
+    groups, _, _ = make_parent(
+        statuses=["SSO", "restricted", "it-dep [CERN]"]
+    ).resolve_grants()
+    assert groups == {"cern-personnel", "it-dep"}
 
 
 # --- Record access grants (``self.access_grants``) -------------------------
@@ -121,7 +173,7 @@ def test_record_group_grant_without_file_restriction(test_app):
     """
     groups, emails, grants = make_parent(
         [{"some-group [CERN]": "manage"}]
-    ).resolve_grants("")
+    ).resolve_grants()
     assert groups == {"some-group"}
     assert emails == set()
     assert grants == {"some-group [CERN]": "manage"}
@@ -129,7 +181,7 @@ def test_record_group_grant_without_file_restriction(test_app):
 
 def test_record_email_grant_defaults_to_view(test_app):
     """A record email grant with no permission defaults to 'view'."""
-    groups, emails, grants = make_parent([{"user@cern.ch": None}]).resolve_grants("")
+    groups, emails, grants = make_parent([{"user@cern.ch": None}]).resolve_grants()
     assert groups == set()
     assert emails == {"user@cern.ch"}
     assert grants == {"user@cern.ch": "view"}
@@ -138,9 +190,9 @@ def test_record_email_grant_defaults_to_view(test_app):
 def test_file_restriction_withholds_record_subjects_from_access(test_app):
     """When a file restriction exists, record subjects are kept out of
     groups/emails (least access) but still recorded in grants_with_perms."""
-    groups, emails, grants = make_parent([{"extra-group": "view"}]).resolve_grants(
-        "SSO"
-    )
+    groups, emails, grants = make_parent(
+        [{"extra-group": "view"}], statuses=["SSO"]
+    ).resolve_grants()
     assert groups == {"cern-personnel"}
     assert emails == set()
     assert grants == {"extra-group": "view"}

@@ -2,6 +2,41 @@
   {
     "files": [],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [],
+          "270__m": [
+            "uploader@inveniosoftware.org"
+          ]
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": [
+            "admin@inveniosoftware.org"
+          ]
+        }
+      },
+      "edit": {
+        "collections": {},
+        "any_collection": []
+      },
+      "comments": {
+        "primary_collection": "",
+        "view": {
+          "roles": [],
+          "any_collection": []
+        },
+        "send": {
+          "roles": [],
+          "any_collection": []
+        },
+        "record_restriction": "",
+        "restricted_comments": []
+      }
+    },
     "recid": 2872558,
     "creation_date": "2010-06-30 08:07:36",
     "record": [
@@ -15,6 +50,39 @@
   {
     "files": [],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": [
+            "hr-dep [CERN]"
+          ]
+        }
+      },
+      "edit": {
+        "collections": {},
+        "any_collection": []
+      },
+      "comments": {
+        "primary_collection": "",
+        "view": {
+          "roles": [],
+          "any_collection": []
+        },
+        "send": {
+          "roles": [],
+          "any_collection": []
+        },
+        "record_restriction": "",
+        "restricted_comments": []
+      }
+    },
     "recid": 2872551,
     "creation_date": "2008-02-18 03:43:54",
     "record": [
@@ -28,6 +96,39 @@
   {
     "files": [],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [
+            "uploader123@inveniosoftware.org"
+          ],
+          "5061_d": []
+        }
+      },
+      "edit": {
+        "collections": {},
+        "any_collection": []
+      },
+      "comments": {
+        "primary_collection": "",
+        "view": {
+          "roles": [],
+          "any_collection": []
+        },
+        "send": {
+          "roles": [],
+          "any_collection": []
+        },
+        "record_restriction": "",
+        "restricted_comments": []
+      }
+    },
     "recid": 2872550,
     "creation_date": "2006-12-14 21:29:57",
     "record": [
@@ -41,6 +142,37 @@
   {
     "files": [],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {
+        "collections": {},
+        "any_collection": []
+      },
+      "comments": {
+        "primary_collection": "",
+        "view": {
+          "roles": [],
+          "any_collection": []
+        },
+        "send": {
+          "roles": [],
+          "any_collection": []
+        },
+        "record_restriction": "",
+        "restricted_comments": []
+      }
+    },
     "recid": 126154,
     "creation_date": "2006-12-14 21:29:57",
     "record": [
@@ -64,7 +196,11 @@
         "full_name": "Report on ALICE RPE Website.pdf",
         "superformat": ".pdf",
         "recids_doctype": [
-          [2872569, "DEPIN_FILE", "Report on ALICE RPE Website.pdf"]
+          [
+            2872569,
+            "DEPIN_FILE",
+            "Report on ALICE RPE Website.pdf"
+          ]
         ],
         "path": "/opt/cdsweb/var/data/files/g79/792187/Report on ALICE RPE Website.pdf;1",
         "size": 1525703,
@@ -86,6 +222,47 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [
+        {
+          "bibdocid": 792187,
+          "status": "SSO",
+          "roles": []
+        }
+      ],
+      "record": {
+        "owners": {
+          "859__f": [],
+          "270__m": [
+            "uploader@inveniosoftware.org"
+          ]
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": [
+            "admin@inveniosoftware.org"
+          ]
+        }
+      },
+      "edit": {
+        "collections": {},
+        "any_collection": []
+      },
+      "comments": {
+        "primary_collection": "",
+        "view": {
+          "roles": [],
+          "any_collection": []
+        },
+        "send": {
+          "roles": [],
+          "any_collection": []
+        },
+        "record_restriction": "",
+        "restricted_comments": []
+      }
+    },
     "recid": 2872569,
     "creation_date": "2014-06-19 01:09:25",
     "record": [

@@ -7,7 +7,7 @@ from dojson.errors import IgnoreKey
 from idutils.normalizers import normalize_isbn
 from isbnlib import NotValidISBNError
 
-from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
 from cds_migrator_kit.transform.xml_processing.quality.decorators import (
     for_each_value,
     require,
@@ -230,7 +230,12 @@ def record_restriction(self, key, value):
     """Translates notes."""
     access = value.get("a")
     if access and access.lower() in ("cern internal", "restricted"):
-        return "restricted"
+        raise ManualImportRequired(
+            field=key,
+            subfield="a",
+            message="Record has 591__a:restricted, requires manual check",
+            priority="critical",
+        )
     elif access and access.lower() != "public":
         raise UnexpectedValue("Access field other than public", field=key, value=value)
     raise IgnoreKey("access")

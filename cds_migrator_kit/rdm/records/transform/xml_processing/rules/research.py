@@ -410,19 +410,6 @@ def meeting(self, key, value):
 # 540__ is fully handled by the base licenses rule (OA funding model included).
 
 
-@model.over("access_grants", "^506[1_]_")
-@for_each_value
-def access_grants(self, key, value):
-    """Translates access permissions (by user email or group name)."""
-    raw_identifier = value.get("d") or value.get("m") or value.get("a")
-    subject_identifier = StringValue(raw_identifier).parse()
-    if not subject_identifier:
-        raise IgnoreKey("access_grants")
-
-    permission_type = "view"
-    return {str(subject_identifier): permission_type}
-
-
 @model.over("internal_notes", "^562__")
 @for_each_value
 def internal_notes(self, key, value):

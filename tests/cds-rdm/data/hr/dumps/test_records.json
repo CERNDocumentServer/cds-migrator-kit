@@ -2,11 +2,44 @@
   {
     "files": [],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [],
+          "270__m": [
+            "admin@inveniosoftware.org"
+          ]
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {
+        "collections": {},
+        "any_collection": []
+      },
+      "comments": {
+        "primary_collection": "",
+        "view": {
+          "roles": [],
+          "any_collection": []
+        },
+        "send": {
+          "roles": [],
+          "any_collection": []
+        },
+        "record_restriction": "",
+        "restricted_comments": []
+      }
+    },
     "recid": 2647384,
     "creation_date": "2018-11-16 14:14:00",
     "record": [
       {
-        "marcxml": "<record>\n  <controlfield tag=\"001\">2647384</controlfield>\n  <controlfield tag=\"005\">20210427161418.0</controlfield>\n  <datafield tag=\"037\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">CERN-STAFF-RULES-ED01</subfield>\n  </datafield>\n  <datafield tag=\"041\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">eng</subfield>\n  </datafield>\n<datafield tag=\"041\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">fr</subfield>\n  </datafield>\n  <datafield tag=\"246\" ind1=\" \" ind2=\"1\">\n    <subfield code=\"a\">Mobilit\u00e9 interne</subfield>\n  </datafield>\n  <datafield tag=\"260\" ind1=\" \" ind2=\" \">\n    <subfield code=\"c\">2021</subfield>\n  </datafield>\n  <datafield tag=\"269\" ind1=\" \" ind2=\" \">\n    <subfield code=\"b\">CERN</subfield>\n    <subfield code=\"a\">Geneva</subfield>\n  <subfield code=\"c\">01 May 2021</subfield>\n  </datafield>\n <datafield tag=\"591\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">CERN Internal</subfield>\n  </datafield>\n   <datafield tag=\"270\" ind1=\" \" ind2=\" \">\n  <subfield code=\"m\">admin@inveniosoftware.org</subfield>\n  </datafield>\n  <datafield tag=\"690\" ind1=\"C\" ind2=\" \">\n   <subfield code=\"a\">Administrative Circular</subfield>\n  </datafield>\n  <datafield tag=\"710\" ind1=\" \" ind2=\" \">\n  <subfield code=\"5\">HR</subfield>\n  <subfield code=\"b\">DI</subfield>\n   </datafield>\n  <datafield tag=\"773\" ind1=\" \" ind2=\" \">\n  <subfield code=\"t\">HR-DHO</subfield>\n  </datafield>\n  <datafield tag=\"925\" ind1=\" \" ind2=\" \">\n  <subfield code=\"a\">2021-05-01</subfield>\n    <subfield code=\"b\">2222-12-31</subfield>\n  </datafield>\n <datafield tag=\"980\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">STAFFRULES</subfield>\n  </datafield>\n </record>",
+        "marcxml": "<record>\n  <controlfield tag=\"001\">2647384</controlfield>\n  <controlfield tag=\"005\">20210427161418.0</controlfield>\n  <datafield tag=\"037\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">CERN-STAFF-RULES-ED01</subfield>\n  </datafield>\n  <datafield tag=\"041\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">eng</subfield>\n  </datafield>\n<datafield tag=\"041\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">fr</subfield>\n  </datafield>\n  <datafield tag=\"246\" ind1=\" \" ind2=\"1\">\n    <subfield code=\"a\">Mobilit\u00e9 interne</subfield>\n  </datafield>\n  <datafield tag=\"260\" ind1=\" \" ind2=\" \">\n    <subfield code=\"c\">2021</subfield>\n  </datafield>\n  <datafield tag=\"269\" ind1=\" \" ind2=\" \">\n    <subfield code=\"b\">CERN</subfield>\n    <subfield code=\"a\">Geneva</subfield>\n  <subfield code=\"c\">01 May 2021</subfield>\n  </datafield>\n <datafield tag=\"591\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">PUBLIC</subfield>\n  </datafield>\n   <datafield tag=\"270\" ind1=\" \" ind2=\" \">\n  <subfield code=\"m\">admin@inveniosoftware.org</subfield>\n  </datafield>\n  <datafield tag=\"690\" ind1=\"C\" ind2=\" \">\n   <subfield code=\"a\">Administrative Circular</subfield>\n  </datafield>\n  <datafield tag=\"710\" ind1=\" \" ind2=\" \">\n  <subfield code=\"5\">HR</subfield>\n  <subfield code=\"b\">DI</subfield>\n   </datafield>\n  <datafield tag=\"773\" ind1=\" \" ind2=\" \">\n  <subfield code=\"t\">HR-DHO</subfield>\n  </datafield>\n  <datafield tag=\"925\" ind1=\" \" ind2=\" \">\n  <subfield code=\"a\">2021-05-01</subfield>\n    <subfield code=\"b\">2222-12-31</subfield>\n  </datafield>\n <datafield tag=\"980\" ind1=\" \" ind2=\" \">\n    <subfield code=\"a\">STAFFRULES</subfield>\n  </datafield>\n </record>",
         "json": null,
         "modification_datetime": "2021-04-27T14:14:18+00:00"
       }
@@ -45,6 +78,45 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [
+        {
+          "bibdocid": 792187,
+          "status": "restricted",
+          "roles": []
+        }
+      ],
+      "record": {
+        "owners": {
+          "859__f": [],
+          "270__m": [
+            "admin@inveniosoftware.org"
+          ]
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {
+        "collections": {},
+        "any_collection": []
+      },
+      "comments": {
+        "primary_collection": "",
+        "view": {
+          "roles": [],
+          "any_collection": []
+        },
+        "send": {
+          "roles": [],
+          "any_collection": []
+        },
+        "record_restriction": "",
+        "restricted_comments": []
+      }
+    },
     "recid": 2364643,
     "creation_date": "2018-11-16 14:14:00",
     "record": [

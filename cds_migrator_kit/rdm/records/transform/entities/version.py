@@ -15,6 +15,9 @@ from arrow import Arrow
 from typing_extensions import Required
 
 from cds_migrator_kit.errors import ManualImportRequired
+from cds_migrator_kit.rdm.records.transform.entities.restrictions import (
+    RecordRestrictions,
+)
 
 LEGACY_FILES_PATH_ROOT = Path("/opt/cdsweb/var/data/files/")
 
@@ -93,6 +96,7 @@ class RecordVersion:
     def __init__(
         self,
         record_access,
+        restrictions: RecordRestrictions,
         files_dump_dir,
         migration_logger,
         raw_file_dumps=None,
@@ -116,6 +120,7 @@ class RecordVersion:
             (by per-file access); a public/restricted file mix is expected.
         """
         self.record_access = record_access
+        self.restrictions = restrictions
         self.files_dump_dir = files_dump_dir
         self.migration_logger = migration_logger
         self.raw_file_dumps = raw_file_dumps or []
@@ -151,44 +156,15 @@ class RecordVersion:
                 }
             }
 
-        # A version carries a single access state + a single `meta`, so every
-        # file in it must share the same status. Any non-uniform mix — some
-        # public and some restricted, and/or several distinct restriction
-        # statuses — can't be represented, so hard-stop for manual review.
-        recid = str(file["recid"])
-        distinct_statuses = {f["status"] for f in self.raw_file_dumps}
-        restrictions = distinct_statuses - {""}
-        if self.has_ep_approval and restrictions:
-            # EP approval records are split into public/restricted records at
-            # load (ep_split), which sorts files by their own status - so a
-            # public + single-restriction mix is excused. The restriction is
-            # kept as `meta` for the restricted split's grants.
-            if len(restrictions) == 1:
-                distinct_statuses = restrictions
-        if len(distinct_statuses) > 1:
-            raise ManualImportRequired(
-                message=(
-                    "Mixed file restrictions in one version. "
-                    "Cannot auto-assign access — manual review required."
-                ),
-                field="files",
-                subfield="status",
-                stage="transform",
-                recid=recid,
-                priority="critical",
-                value=", ".join(
-                    f"{f['full_name']}: {f['status']}" for f in self.raw_file_dumps
-                ),
-            )
+        # The `restrictions.files` in the raw dump only contains entries for files that
+        # are restricted (i.e. have status != ''). So if this list is empty, none of the
+        # files are restricted.
+        restricted_files = self.restrictions["files"]
+        # Distinct (non-empty) file statuses within the record
+        distinct_statuses = {file["status"] for file in restricted_files}
 
-        # All files share one status: public (empty) or a single restriction.
-        # Note: we do NOT validate the status against CDS_ACCESS_GROUP_MAPPINGS
-        # here. Recognising/resolving the restriction string (mapping keyword,
-        # firerole, bare [CERN] e-group, ...) is RecordParent.resolve_grants()'s
-        # job at load time; it hard-raises on anything it can't resolve. Here we
-        # only decide public-vs-restricted and carry the raw status as `meta`.
-        status = distinct_statuses.pop()
-        if not status:
+        if len(restricted_files) == 0:
+            # The record's files are all non-restricted
             return {
                 "access_obj": {
                     "record": record_access,
@@ -196,16 +172,30 @@ class RecordVersion:
                 }
             }
 
+        recid = str(file["recid"])
+        if len(distinct_statuses) > 1:
+            # Records are allowed to have the following:
+            # - All empty-status files
+            # - Some empty-status files and some files with a non-empty, identical status
+            # - Only files with a non-empty, identical statuses
+            # They are not allowed to have multiple different non-empty statuses since we don't support this type of
+            # restricted/public record splitting; right now, we can create up to one restricted and one public record
+            # per legacy record.
+            raise ManualImportRequired(
+                message=f"Record had more than one distinct non-empty file status. Manual curation is needed.",
+                stage="transform",
+                recid=recid,
+            )
+
         self.migration_logger.add_information(
             recid,
             {
                 "message": "Record has individual file restrictions",
-                "value": status,
+                "value": ", ".join(file["status"] for file in restricted_files),
             },
         )
         return {
             "access_obj": {"record": record_access, "files": "restricted"},
-            "meta": status,
         }
 
     def compute_files(self):

@@ -157,6 +157,8 @@ def build_stream_config(
     }
     if flags.get("workers"):
         record["transform"]["workers"] = flags["workers"]
+    if "access_collections" in flags:
+        record["transform"]["access_collections"] = flags["access_collections"]
 
     duplicates = os.path.join(base, DUPLICATES_FILENAME)
     if os.path.isfile(duplicates):

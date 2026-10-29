@@ -10,7 +10,7 @@
 import pytest
 from dojson.errors import IgnoreKey
 
-from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.base import (
     custom_fields_693,
     imprint_info,
@@ -62,41 +62,17 @@ class TestRecid:
 class TestRecordRestriction:
     """Test record_restriction function from base.py."""
 
-    def test_record_restriction_public(self):
-        """Test that PUBLIC returns 'public'."""
-        record = {}
-        result = record_restriction(record, "963__", {"a": "PUBLIC"})
-        assert result == "public"
+    @pytest.mark.parametrize("value", ["PUBLIC", "public", "Public"])
+    def test_record_restriction_public_is_ignored(self, value):
+        """PUBLIC (any case) is ignored: access comes from the dump's restrictions."""
+        with pytest.raises(IgnoreKey):
+            record_restriction({}, "963__", {"a": value})
 
-    def test_record_restriction_public_lowercase(self):
-        """Test that public (lowercase) returns 'public'."""
-        record = {}
-        result = record_restriction(record, "963__", {"a": "public"})
-        assert result == "public"
-
-    def test_record_restriction_public_mixed_case(self):
-        """Test that Public (mixed case) returns 'public'."""
-        record = {}
-        result = record_restriction(record, "963__", {"a": "Public"})
-        assert result == "public"
-
-    def test_record_restriction_restricted_raises_error(self):
-        """Test that non-public values raise UnexpectedValue."""
-        record = {}
-        with pytest.raises(UnexpectedValue):
-            record_restriction(record, "963__", {"a": "RESTRICTED"})
-
-    def test_record_restriction_empty_raises_error(self):
-        """Test that empty value raises UnexpectedValue."""
-        record = {}
-        with pytest.raises(UnexpectedValue):
-            record_restriction(record, "963__", {"a": ""})
-
-    def test_record_restriction_cern_internal_raises_error(self):
-        """Test that CERN INTERNAL raises UnexpectedValue."""
-        record = {}
-        with pytest.raises(UnexpectedValue):
-            record_restriction(record, "963__", {"a": "CERN INTERNAL"})
+    @pytest.mark.parametrize("value", ["RESTRICTED", "", "CERN INTERNAL"])
+    def test_record_restriction_non_public_requires_manual_import(self, value):
+        """Non-public values need a manual check."""
+        with pytest.raises(ManualImportRequired):
+            record_restriction({}, "963__", {"a": value})
 
 
 class TestCustomFields693:

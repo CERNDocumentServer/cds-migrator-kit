@@ -23,7 +23,7 @@ class ISOLDEModel(CdsOverdo):
     # (035__ oai tags, 852__h/c holdings, 999C5*/6* citations, 8564_ file
     # subfields, 773__ SIS fields, contributor emails, etc.).
     # Only ISOLDE-specific additions are listed here.
-    __ignore_keys__ = ResearchModel.__ignore_keys__
+    __ignore_keys__ = ResearchModel.__ignore_keys__ | {"963__a"}
 
     _default_fields = {
         "custom_fields": {},
