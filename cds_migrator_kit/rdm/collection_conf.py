@@ -53,7 +53,6 @@ _RECORD_FLAGS = (
     "restricted",
     "create_inclusion_request",
     "update_new_version_publication_date",
-    "access_grants_view",
     "preferred_model",
 )
 

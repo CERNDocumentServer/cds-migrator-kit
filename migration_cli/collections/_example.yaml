@@ -6,14 +6,14 @@
 # <root of the migration data>/<name>/, see migrating-a-collection.md.
 name: antares_restr
 # folder: former_exp/antares_restr  # working directory under the root (default: name)
-chunk_size: 1000                    # records per dump file (default: 1000)
+chunk_size: 1000 # records per dump file (default: 1000)
 
 # Legacy search queries WITHOUT the standard exclusions (-980:DELETED, ...):
 # the script appends them. Each query is dumped separately, and needs a
 # `dump_file_prefix` (mandatory): the name of its dump files, and of the files
 # that tag its records as MIGRATED. It must differ between queries.
 queries:
-  - q: '980__a:PRIVANTARES'
+  - q: "980__a:PRIVANTARES"
     dump_file_prefix: antares_restr
   # - q: '980__a:PRIVANTARESPLOT'
   #   dump_file_prefix: antares_restr_plot
@@ -46,10 +46,6 @@ flags:
   # this name instead of failing with "multiple models matched" (the record is
   # still flagged with a warning). Name of a model, e.g. research.
   preferred_model: research
-  # Groups that get view access to every record of the collection, on top of the
-  # legacy permissions. For restricted collections that a whole group (e.g. all of
-  # CERN) should see, when the legacy records do not list it.
-  access_grants_view: []            # e.g. [cern-personnel]
   # Number of parallel workers for the transformation of the records. The
   # `--workers` option of `invenio migration run` takes precedence.
   # workers: 4
@@ -57,8 +53,8 @@ flags:
 # Slugs of the communities the records are added to. The same in every
 # environment: they are resolved to ids on the pod, and must exist there.
 communities:
-  - antares                # the DEFAULT collection community
-  - cern-research          # common community
+  - antares # the DEFAULT collection community
+  - cern-research # common community
 
 # To set only if for some reason comments query differ from the records query.
 # If not set, global queries will kick in.
@@ -67,4 +63,4 @@ communities:
 
 # Reviewers assigned to all the requests in this community
 community_reviewers:
-   - { group: antares-all }
+  - { group: antares-all }

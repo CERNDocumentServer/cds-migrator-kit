@@ -14,6 +14,9 @@ from typing_extensions import NotRequired
 from cds_migrator_kit.rdm.records.transform.entities.parent import RecordParent
 from cds_migrator_kit.rdm.records.transform.entities.record import RecordEntry
 from cds_migrator_kit.rdm.records.transform.entities.request import RecordRequest
+from cds_migrator_kit.rdm.records.transform.entities.restrictions import (
+    RecordRestrictions,
+)
 from cds_migrator_kit.rdm.records.transform.entities.version import VersionEntry
 
 
@@ -45,5 +48,6 @@ class MigrationEntry(TypedDict):
     _request_data: RecordRequest
     # EP approval workflow entries for this record, if any (possibly []).
     ep_approval: NotRequired[List[dict]]
+    restrictions: RecordRestrictions
     _original_dump: dict
     _clc_sync: Any
