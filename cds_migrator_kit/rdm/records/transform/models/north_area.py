@@ -7,10 +7,10 @@
 
 """CDS-RDM North Area models (NA58 & NA61-66)."""
 
-from cds_migrator_kit.rdm.records.transform.models._config import IGNORE_SYSTEM_KEYS
 from cds_migrator_kit.rdm.records.transform.models.base_publication_record import (
     rdm_base_publication_model,
 )
+from cds_migrator_kit.rdm.records.transform.models.research import ResearchModel
 from cds_migrator_kit.transform.overdo import CdsOverdo
 
 
@@ -23,8 +23,9 @@ class NorthAreaModel(CdsOverdo):
     -037__:CERN-STUDENTS-Note-* -690C_:SCICOM -980__:PHOTOLAB -980__:THESIS -980__:DELETED -980__:HIDDEN -980__:DUMMY
     """
 
-    __ignore_keys__ = IGNORE_SYSTEM_KEYS | {
-        "500__9",  # Provenance of the note
+    # the keys of the research model (the source of truth, see research.py) plus the
+    # fields ignored only here
+    __ignore_keys__ = ResearchModel.__ignore_keys__ | {
         "595_Da",  # From SIS: these can be ignored
         "595_Dd",  # From SIS: these can be ignored
         "595_Ds",  # From SIS: these can be ignored
