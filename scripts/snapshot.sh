@@ -4,7 +4,8 @@
 #
 # Usage:
 #   scripts/snapshot.sh dump <name>
-#   scripts/snapshot.sh restore <name>
+#   scripts/snapshot.sh restore <name>   (also purges the RabbitMQ queues;
+#                                         MQ_CONTAINER selects the container)
 #
 # Layout for a snapshot named "before-ep-approval-fix":
 #   snapshots/before-ep-approval-fix/db.sql
@@ -96,6 +97,18 @@ case "$ACTION" in
     docker exec "$CONTAINER_ID" psql -U "$DB_USER" -d "$DB_NAME" \
       -c "UPDATE files_location SET uri = '$INSTANCE_DATA_PATH' WHERE name = 'default-location';"
     echo "files_location.uri set to: $INSTANCE_DATA_PATH"
+
+    echo "=== Purging hanging RabbitMQ messages ==="
+    # Tasks queued before the restore refer to records of the replaced state, so
+    # they must not be consumed by the worker afterwards.
+    MQ_CONTAINER_ID="${MQ_CONTAINER:-$(docker ps --format '{{.ID}}\t{{.Image}}' | awk -F'\t' '$2 ~ /rabbitmq/{print $1; exit}')}"
+    if [[ -z "$MQ_CONTAINER_ID" ]]; then
+      echo "No running RabbitMQ container found (set MQ_CONTAINER), queues not purged." >&2
+    else
+      docker exec "$MQ_CONTAINER_ID" sh -c \
+        'rabbitmqctl list_queues -q name | while read -r queue; do rabbitmqctl purge_queue "$queue"; done'
+      echo "RabbitMQ queues purged."
+    fi
 
     echo "Snapshot '$NAME' restored."
     ;;
