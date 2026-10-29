@@ -12,8 +12,9 @@ IGNORE_SYSTEM_KEYS = {
     "0248_a",
     "0248_p",
     "0248_q",
+    "852__a",  # physical location of holdings
     "852__c",  # holdings will be taken separately
-    "852__h",
+    "852__h",  # holdings will be taken separately
     "030__a",  # From SIS: all 030__* fields can be ignored
     "035__h",  # From SIS: all 035__* fields can be ignored
     "035__d",  # From SIS: all 035__* fields can be ignored
@@ -24,9 +25,8 @@ IGNORE_SYSTEM_KEYS = {
     "037__c",  # arxiv subject
     "100__m",  # email of contributor
     "245__9",  # Provenance of title
-    "260__c",  # From SIS: see decision log
-    "269__c",  # From SIS: see decision log
     "300__a",  # number of pages
+    "336__a",  # redundant field
     "340__a",  # From SIS: see decision log
     "500__9",  # Provenance of the note
     "520__9",  # Provenance of the description
@@ -42,8 +42,10 @@ IGNORE_SYSTEM_KEYS = {
     "773__0",  # from SIS: can be ignored
     "773__o",  # from SIS: can be ignored
     "773__x",  # INSPIRE publication note
+    "773__z",  # from SIS: can be ignored
     "8564_8",  # file id
     "8564_s",  # bibdoc id
+    "8564_w",  # system field
     "8564_x",  # icon thumbnails sizes
     "8564_y",  # file description - done by files dump
     "8564_8",  # File information (done by file dump)

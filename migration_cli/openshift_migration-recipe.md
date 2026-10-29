@@ -54,6 +54,7 @@ communities:
 ```
 
 - Write the queries **without** the standard exclusions: the script appends `-690C_:SCICOM -595:*ARCHIVE* -980:ANNOUNCEMENT -980:DELETED -980:HIDDEN -980__a:DUMMY -690C_:movingimages -970__b:MERGE-* -980:GREYBOOK`. `-980__c:MIGRATED` is not excluded on purpose, some records belong to several communities.
+- The transformation model of the collection can use these `queries` too, so the dump and the model match the same records: see `conf_query` in `cds_migrator_kit/rdm/readme_models.md`. If the model has its own `__query__`, keep it in line with the queries of the configuration when you change one.
 - Each query is dumped to its own files, named after its `dump_file_prefix` (**mandatory**). The prefixes must differ between queries (one may start another, e.g. `clic_notes` and `clic_notes_dp`).
 - `prepare` (duplicates analysis) searches the records of **all** the `queries` together. It drops `-980:DELETED -980:HIDDEN -980__c:MIGRATED -980__a:DUMMY` from them if present, so deleted, hidden and already migrated records, which duplicates are redirected to, are searched too. Nothing to set; `analyze_query` is only an optional override.
 - `communities` are slugs, the same in every environment. The community must already exist in the environment where you migrate: the pod resolves the slugs to ids and stops if one does not exist.
@@ -82,7 +83,7 @@ python $S/collection_migration.py prepare       --collection <TODO collection na
 
 | Command | Result |
 |---|---|
-| `dump records` | `inveniomigrator dump records` for each query, the dump files in `dump/` |
+| `dump records` | `inveniomigrator dump records` for each query, the dump files in `dump/`. It prints the number of records in each file, per query, and the total (with the number of different records, as a record can match several queries) |
 | `dump comments` | `comments/comments_metadata.json` and `comments/users/{active,missing}_commentors*.json`. Needs the legacy Invenio: `ipython $S/collection_migration.py -- dump comments --collection <TODO collection name>` |
 | `dump files` | copies the files of the dumped records to `files/` (checksums verified, `files.log` written) and the files attached to comments to `comments/<recid>/` |
 | `prepare` | runs `analyze_collection_migration.py` from `subscripts/`. Duplicates (same title, description and file checksums, `981__a` merges, ignoring `CER` values) in `duplicated_pids.json`; EP report numbers shared with other records in `ep_report_number_dups.json` (review them) |

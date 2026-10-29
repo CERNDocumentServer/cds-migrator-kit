@@ -474,7 +474,12 @@ def _pids(self, key, value):
     """Translates external_system_identifiers fields."""
     pid_dict = self.get("_pids", {})
     scheme = value.get("2", "").lower()
-    qualifier = value.get("q", "").lower().strip()
+    try:
+        qualifier = value.get("q", "").lower().strip()
+    except AttributeError:
+        raise UnexpectedValue(
+            "Incorrect format of qualifier", field=key, subfield="2", stage="transform"
+        )
     identifier = value.get("a")
     if not identifier:
         identifier = value.get("A")
@@ -851,7 +856,15 @@ def yellow_reports(self, key, value):
     """Translate related records - yellow reports."""
     scheme = value.get("2", "").strip()
     provenance = value.get("9", "").strip()
-    identifier = value.get("a", "").strip()
+    try:
+        identifier = value.get("a", "").strip()
+    except AttributeError:
+        raise UnexpectedValue(
+            field=key,
+            subfield="a",
+            value=value,
+            message="Multiple values for subfield a",
+        )
 
     if scheme.upper() == "CERN LIBRARY":
         raise IgnoreKey("related_identifiers")
@@ -937,6 +950,10 @@ def related_identifiers_787(self, key, value):
             "resource_type": {"id": "publication-report"},
         },
         "addendum to": {
+            "relation_type": {"id": "issupplementto"},
+            "resource_type": {"id": "publication-report"},
+        },
+        "addendum": {
             "relation_type": {"id": "issupplementto"},
             "resource_type": {"id": "publication-report"},
         },
@@ -1075,6 +1092,10 @@ def imprint_info(self, key, value):
     publication_date_str = value.get("c")
     _publisher = value.get("b")
     place = value.get("a")
+    if type(place) is tuple:
+        raise UnexpectedValue(
+            message="Incorrect place format", field=key, value=place, subfield="a"
+        )
     if _publisher and not self.get("publisher"):
         self["publisher"] = _publisher
     if place:
