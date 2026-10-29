@@ -15,7 +15,7 @@ import pytest
 
 from cds_migrator_kit.errors import UnexpectedValue
 from cds_migrator_kit.rdm.migration_config import CDS_CERN_SCIENTIFIC_COMMUNITY_ID
-from cds_migrator_kit.rdm.records.load.entities.ep_split import (
+from cds_migrator_kit.rdm.records.load.entities.split_entries import (
     EPPHAPP_FILE_TYPE,
     PublicEntry,
     RestrictedEntry,
@@ -172,10 +172,7 @@ def _versions_with_epphapp():
                         PUBLIC_FILE_KEY: _public_file(checksum="main-v1"),
                     },
                     "publication_date": "2020-01-10",
-                    "access": {
-                        "access_obj": {"record": None, "files": "restricted"},
-                        "meta": "EP Restricted Draft",
-                    },
+                    "access": {"record": None, "files": "restricted"},
                 },
             ),
             (
@@ -186,10 +183,7 @@ def _versions_with_epphapp():
                         PUBLIC_FILE_KEY: _public_file(checksum="main-v1"),
                     },
                     "publication_date": "2020-01-12",
-                    "access": {
-                        "access_obj": {"record": None, "files": "restricted"},
-                        "meta": "EP Restricted Draft",
-                    },
+                    "access": {"record": None, "files": "restricted"},
                 },
             ),
             (
@@ -200,10 +194,7 @@ def _versions_with_epphapp():
                         PUBLIC_FILE_KEY: _public_file(checksum="main-v1"),
                     },
                     "publication_date": "2020-01-14",
-                    "access": {
-                        "access_obj": {"record": None, "files": "restricted"},
-                        "meta": "EP Restricted Draft",
-                    },
+                    "access": {"record": None, "files": "restricted"},
                 },
             ),
             (
@@ -214,10 +205,7 @@ def _versions_with_epphapp():
                         PUBLIC_FILE_KEY: _public_file(checksum="main-v1"),
                     },
                     "publication_date": "2020-01-15",
-                    "access": {
-                        "access_obj": {"record": None, "files": "restricted"},
-                        "meta": "EP Restricted Draft",
-                    },
+                    "access": {"record": None, "files": "restricted"},
                 },
             ),
         ]
@@ -237,7 +225,7 @@ def _versions_public_only():
                         ),
                     },
                     "publication_date": "2020-02-01",
-                    "access": {"access_obj": {"record": None, "files": None}},
+                    "access": {"record": None, "files": None},
                 },
             ),
         ]
@@ -250,7 +238,7 @@ class TestPublicEntryVersions:
     def test_public_excludes_epphapp_files(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = PublicEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         for _, vdata in result["versions"].items():
@@ -262,7 +250,7 @@ class TestPublicEntryVersions:
     def test_public_deduplicates_identical_versions(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = PublicEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         assert len(result["versions"]) == 1
@@ -270,12 +258,12 @@ class TestPublicEntryVersions:
     def test_public_access_is_public(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = PublicEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         for _, vdata in result["versions"].items():
-            assert vdata["access"]["access_obj"]["record"] == "public"
-            assert vdata["access"]["access_obj"]["files"] == "public"
+            assert vdata["access"]["record"] == "public"
+            assert vdata["access"]["files"] == "public"
 
     def test_public_raises_when_no_public_files(self, app):
         versions = OrderedDict(
@@ -288,7 +276,8 @@ class TestPublicEntryVersions:
                         },
                         "publication_date": "2020-01-10",
                         "access": {
-                            "access_obj": {"record": None, "files": "restricted"},
+                            "record": None,
+                            "files": "restricted",
                         },
                     },
                 ),
@@ -297,7 +286,9 @@ class TestPublicEntryVersions:
         entry = _make_entry(versions)
         with pytest.raises(UnexpectedValue, match="No public files found"):
             PublicEntry(
-                entry, _make_approval_request(), _make_migration_logger()
+                entry,
+                _make_migration_logger(),
+                approval_request=_make_approval_request(),
             ).build()
 
     def test_public_excludes_restricted_non_epphapp_files(self, app):
@@ -323,14 +314,14 @@ class TestPublicEntryVersions:
                             PUBLIC_FILE_KEY: _public_file(),
                         },
                         "publication_date": "2020-01-01",
-                        "access": {"access_obj": {"record": None, "files": None}},
+                        "access": {"record": None, "files": None},
                     },
                 ),
             ]
         )
         entry = _make_entry(versions)
         result = PublicEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         files = result["versions"][1]["files"]
@@ -349,7 +340,7 @@ class TestPublicEntryVersions:
                             ),
                         },
                         "publication_date": "2020-01-01",
-                        "access": {"access_obj": {"record": None, "files": None}},
+                        "access": {"record": None, "files": None},
                     },
                 ),
                 (
@@ -364,14 +355,14 @@ class TestPublicEntryVersions:
                             ),
                         },
                         "publication_date": "2020-02-01",
-                        "access": {"access_obj": {"record": None, "files": None}},
+                        "access": {"record": None, "files": None},
                     },
                 ),
             ]
         )
         entry = _make_entry(versions)
         result = PublicEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         assert len(result["versions"]) == 2
@@ -383,7 +374,7 @@ class TestRestrictedEntryVersions:
     def test_restricted_keeps_only_epphapp_when_present(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = RestrictedEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         for _, vdata in result["versions"].items():
@@ -395,7 +386,7 @@ class TestRestrictedEntryVersions:
     def test_restricted_keeps_all_changing_epphapp_versions(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = RestrictedEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         assert len(result["versions"]) == 4
@@ -403,17 +394,19 @@ class TestRestrictedEntryVersions:
     def test_restricted_access_is_restricted(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = RestrictedEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         for _, vdata in result["versions"].items():
-            assert vdata["access"]["access_obj"]["record"] == "restricted"
-            assert vdata["access"]["access_obj"]["files"] == "restricted"
+            assert vdata["access"]["record"] == "restricted"
+            assert vdata["access"]["files"] == "restricted"
 
     def test_restricted_uses_public_files_when_no_epphapp(self, app):
         entry = _make_entry(_versions_public_only())
         logger = _make_migration_logger()
-        result = RestrictedEntry(entry, _make_approval_request(), logger).build()
+        result = RestrictedEntry(
+            entry, logger, approval_request=_make_approval_request()
+        ).build()
 
         assert len(result["versions"]) == 1
         assert "document.pdf" in result["versions"][1]["files"]
@@ -427,7 +420,7 @@ class TestRestrictedEntryVersions:
                     {
                         "files": {},
                         "publication_date": "2020-01-01",
-                        "access": {"access_obj": {"record": None, "files": None}},
+                        "access": {"record": None, "files": None},
                     },
                 ),
             ]
@@ -435,7 +428,9 @@ class TestRestrictedEntryVersions:
         entry = _make_entry(versions)
         with pytest.raises(UnexpectedValue, match="No files found"):
             RestrictedEntry(
-                entry, _make_approval_request(), _make_migration_logger()
+                entry,
+                _make_migration_logger(),
+                approval_request=_make_approval_request(),
             ).build()
 
 
@@ -452,7 +447,7 @@ class TestPublicEntryIdentifiers:
         ]
         entry = _make_entry(_versions_with_epphapp(), identifiers=identifiers)
         result = PublicEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         identifiers = result["record"].body["metadata"]["identifiers"]
@@ -474,7 +469,7 @@ class TestPublicEntryIdentifiers:
         ]
         entry = _make_entry(_versions_with_epphapp(), identifiers=identifiers)
         result = PublicEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         cdsrn_ids = [
@@ -492,7 +487,7 @@ class TestRestrictedEntryIdentifiers:
     def test_restricted_removes_matching_cern_ep_rn(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = RestrictedEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         cdsrn_values = {
@@ -511,7 +506,7 @@ class TestRestrictedEntryIdentifiers:
         ]
         entry = _make_entry(_versions_with_epphapp(), identifiers=identifiers)
         result = RestrictedEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         assert not any(
@@ -529,7 +524,7 @@ class TestRestrictedEntryIdentifiers:
         ]
         entry = _make_entry(_versions_with_epphapp(), identifiers=identifiers)
         result = RestrictedEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         cdsrn_values = {
@@ -549,13 +544,15 @@ class TestRestrictedEntryIdentifiers:
         entry = _make_entry(_versions_with_epphapp(), identifiers=identifiers)
         with pytest.raises(UnexpectedValue, match="not the same"):
             RestrictedEntry(
-                entry, _make_approval_request(), _make_migration_logger()
+                entry,
+                _make_migration_logger(),
+                approval_request=_make_approval_request(),
             ).build()
 
     def test_restricted_removes_doi_pid(self, app):
         entry = _make_entry(_versions_with_epphapp(), has_doi=True)
         result = RestrictedEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         assert "doi" not in result["record"].body.get("pids", {})
@@ -567,7 +564,7 @@ class TestPublicEntryModifications:
     def test_public_removes_request_data(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = PublicEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         assert "_request_data" not in result
@@ -575,7 +572,7 @@ class TestPublicEntryModifications:
     def test_public_sets_owned_by_system(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = PublicEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         assert result["parent"].body["access"]["owned_by"] == {"user": "system"}
@@ -583,7 +580,7 @@ class TestPublicEntryModifications:
     def test_public_adds_cern_scientific_community(self, app):
         entry = _make_entry(_versions_with_epphapp())
         result = PublicEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         assert _cern_scientific_community_id() in result["parent"].communities["ids"]
@@ -595,7 +592,7 @@ class TestPublicEntryModifications:
             _cern_scientific_community_id(),
         ]
         result = PublicEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         community_ids = result["parent"].communities["ids"]
@@ -608,7 +605,9 @@ class TestEntryImmutability:
     def test_public_build_does_not_mutate_original(self, app):
         entry = _make_entry(_versions_with_epphapp())
         original = deepcopy(entry)
-        PublicEntry(entry, _make_approval_request(), _make_migration_logger()).build()
+        PublicEntry(
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
+        ).build()
 
         assert (
             entry["record"].body["metadata"]["identifiers"]
@@ -619,7 +618,7 @@ class TestEntryImmutability:
         entry = _make_entry(_versions_with_epphapp())
         original = deepcopy(entry)
         RestrictedEntry(
-            entry, _make_approval_request(), _make_migration_logger()
+            entry, _make_migration_logger(), approval_request=_make_approval_request()
         ).build()
 
         assert (

@@ -12,13 +12,13 @@ from invenio_rdm_migrator.streams import StreamDefinition
 from cds_migrator_kit.extract.extract import LegacyExtract
 from cds_migrator_kit.rdm.records.transform.transform import CDSToRDMRecordTransform
 
-from .load.entities.ep_migration_entry_load import EPMigrationEntryLoad
+from .load.entities.split_migration_entry_load import SplitMigrationEntryLoad
 
 RecordStreamDefinition = StreamDefinition(
     name="records",
     extract_cls=LegacyExtract,
     transform_cls=CDSToRDMRecordTransform,
-    load_cls=EPMigrationEntryLoad,
+    load_cls=SplitMigrationEntryLoad,
 )
 """ETL stream for CDS to RDM records.
 
