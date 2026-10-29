@@ -953,6 +953,10 @@ def related_identifiers_787(self, key, value):
             "relation_type": {"id": "issupplementto"},
             "resource_type": {"id": "publication-report"},
         },
+        "addendum": {
+            "relation_type": {"id": "issupplementto"},
+            "resource_type": {"id": "publication-report"},
+        },
         "complemented by": {
             "relation_type": {"id": "issupplementedby"},
             "resource_type": {"id": "publication-report"},
