@@ -81,8 +81,7 @@ ANALYSIS_FORBIDDEN = (
     "-980__a:DUMMY",
 )
 DUMP_EXCLUSIONS = (
-    "-980:DELETED -980:HIDDEN "
-    "-980__a:DUMMY -690C_:movingimages -980:GREYBOOK"
+    "-980:DELETED -980:HIDDEN " "-980__a:DUMMY -690C_:movingimages -980:GREYBOOK"
 )
 # -980__c:MIGRATED is not excluded on purpose: some records live in several
 # communities.
@@ -386,7 +385,9 @@ def cmd_tag_migrated(ctx, args):
     if not paths:
         print("No records to tag.")
         return
-    print("Written {} file(s) in {}. To tag the records, run:".format(len(paths), output))
+    print(
+        "Written {} file(s) in {}. To tag the records, run:".format(len(paths), output)
+    )
     for path in paths:
         print("  {} {}".format(BIBUPLOAD, path))
 

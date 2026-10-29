@@ -58,6 +58,7 @@ class ResearchModel(CdsOverdo):
         "773__0",  # from SIS: can be ignored
         "773__o",  # from SIS: can be ignored
         "773__z",  # from SIS: can be ignored
+        "852__a",  # location
         "8564_8",  # file id
         "8564_s",  # bibdoc id
         "8564_x",  # icon thumbnails sizes
