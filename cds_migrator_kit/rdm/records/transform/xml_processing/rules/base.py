@@ -18,12 +18,12 @@ from dojson.utils import filter_values, flatten, force_list
 from idutils.validators import is_arxiv, is_doi, is_handle, is_urn
 from invenio_accounts.models import User
 
-from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
 from cds_migrator_kit.rdm.migration_config import (
     RDM_RECORDS_IDENTIFIERS_SCHEMES,
     RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES,
 )
-from cds_migrator_kit.rdm.records.load.entities.ep_split import (
+from cds_migrator_kit.rdm.records.load.entities.split_entries import (
     EP_APPROVAL_REPORT_NUMBER_RE,
 )
 from cds_migrator_kit.rdm.records.transform.config import (
@@ -254,10 +254,13 @@ def record_restriction(self, key, value):
     restr = value.get("a", "")
     parsed = StringValue(restr).parse()
     if parsed.upper() == "PUBLIC":
-        return "public"
+        raise IgnoreKey("record_restriction")
     else:
-        raise UnexpectedValue(
-            field=key, subfield="a", message="Record restricted", priority="critical"
+        raise ManualImportRequired(
+            field=key,
+            subfield="a",
+            message="Record has 963__a:restricted, requires manual check",
+            priority="critical",
         )
 
 

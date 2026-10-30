@@ -50,6 +50,12 @@ flags:
   # legacy permissions. For restricted collections that a whole group (e.g. all of
   # CERN) should see, when the legacy records do not list it.
   access_grants_view: []            # e.g. [cern-personnel]
+  # Legacy collections whose roles define who can view/edit the records of
+  # this stream. Legacy records belong to many collections, but their access
+  # is normally set by only one: only the roles of these collections are
+  # checked against the members of the `communities` below. Without it, the
+  # roles of all the collections of each record are checked.
+  access_collections: []
   # Number of parallel workers for the transformation of the records. The
   # `--workers` option of `invenio migration run` takes precedence.
   # workers: 4

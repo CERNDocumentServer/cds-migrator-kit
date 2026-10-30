@@ -14,16 +14,20 @@ from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.records.api import RDMParent
 
 from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
+from cds_migrator_kit.rdm.records.load.entities.restriction_split_load import (
+    EPRecordSplitStrategy,
+    RecordSplitStrategy,
+)
 from cds_migrator_kit.rdm.records.transform.entities.migration import MigrationEntry
 
 from ..load import CDSMigrationEntryLoad
 from .approval_request import ApprovalRequest
 from .approval_request_load import ApprovalRequestLoad
-from .ep_split import PublicEntry, RestrictedEntry
 from .parent import ParentLoad
+from .split_entries import PublicEntry, RestrictedEntry
 
 
-class EPMigrationEntryLoad(CDSMigrationEntryLoad):
+class SplitMigrationEntryLoad(CDSMigrationEntryLoad):
     """Splits and loads an EP approval record as a public/restricted pair.
 
     Adds EP-approval splitting on top of the plain per-entry loader: builds
@@ -59,12 +63,23 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
         if self._should_skip_replicated_record(entry):
             return
 
-        if not entry.get("ep_approval"):
+        split_strategies: list[type[RecordSplitStrategy]] = [
+            EPRecordSplitStrategy,
+            RecordSplitStrategy,
+        ]
+        # Find the first split strategy that thinks it should be used for this record.
+        split_strategy = next(
+            (strat for strat in split_strategies if strat.should_use(entry)), None
+        )
+
+        if split_strategy is None:
             return super()._load(entry)
 
-        return self._load_split(entry, recid)
+        return self._load_split(entry, recid, split_strategy(self, entry, recid))
 
-    def _load_split(self, entry: MigrationEntry, recid):
+    def _load_split(
+        self, entry: MigrationEntry, recid: str, strategy: RecordSplitStrategy
+    ):
         """Load a record with EP approval by splitting it into two records.
 
         Configure the 2 records by separating the files, then:
@@ -89,31 +104,10 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
         for this legacy recid.
         """
         try:
-            ep_approval = entry.get("ep_approval")
             record_body = entry["record"].body
             metadata = record_body.get("metadata", {})
 
-            self.approval_request = ApprovalRequest(
-                ep_approval=ep_approval,
-                legacy_recid=recid,
-                title=metadata.get("title"),
-                resource_type=metadata.get("resource_type"),
-                dry_run=self.dry_run,
-            )
-            self.approval_request.validate()
-            approval_request_load = ApprovalRequestLoad(self.approval_request)
-
-            # Split the metadata and files
-            public_entry = PublicEntry(
-                entry,
-                approval_request=self.approval_request,
-                migration_logger=self.migration_logger,
-            ).build()
-            restricted_entry = RestrictedEntry(
-                entry,
-                approval_request=self.approval_request,
-                migration_logger=self.migration_logger,
-            ).build()
+            public_entry, restricted_entry = strategy.build_entries()
 
             restricted_record_load = self.record_load_cls(
                 restricted_entry["record"],
@@ -150,6 +144,7 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
                 restricted_record_state = restricted_record_load.build_record_state(
                     recid, restricted_records
                 )
+                assert restricted_record_state is not None
 
                 # Parent access grants + communities before EP approval request
                 # (needs parent.communities.default for referee group lookup).
@@ -157,8 +152,7 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
                     restricted_entry, self.migration_logger, restricted_record_state
                 ).load(published_record=restricted_records[-1], uow=uow)
 
-                # 2. Create and approve EP approval request
-                approval_request_load.create(restricted_record_state, uow=uow)
+                strategy.after_restricted_parent(uow, restricted_record_state)
 
                 self.request_load_cls(restricted_entry).load(
                     restricted_records, self.create_inclusion_request, uow
@@ -171,7 +165,7 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
                 )
                 if not public_record_state:
                     raise UnexpectedValue(
-                        message="Public record is required for EP approval.",
+                        message="Public record is required for record splitting.",
                         stage="load",
                         recid=recid,
                         priority="critical",
@@ -188,27 +182,30 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
                 )
 
                 # Link the records with related_identifiers
+                public_to_restricted_relation_id, public_to_restricted_resource_type = (
+                    strategy.public_relation_to_restricted()
+                )
                 self._append_related_identifier(
                     public_record_state["latest_version"],
                     restricted_record_state["latest_version"],
-                    "isversionof",
-                    self.approval_request.resource_type,
+                    public_to_restricted_relation_id,
+                    public_to_restricted_resource_type,
                     uow=uow,
+                )
+                restricted_to_public_relation_id, restricted_to_public_resource_type = (
+                    strategy.restricted_relation_to_public()
                 )
                 self._append_related_identifier(
                     restricted_record_state["latest_version"],
                     public_record_state["latest_version"],
-                    "isvariantformof",
-                    self.approval_request.resource_type,
+                    restricted_to_public_relation_id,
+                    restricted_to_public_resource_type,
                     uow=uow,
                 )
 
                 # 4. Write EP approval metadata on both parents
-                self._link_parent_ep_approvals(
-                    restricted_record_state,
-                    public_record_state,
-                    legacy_recid=recid,
-                    uow=uow,
+                strategy.after_both_loaded(
+                    uow, public_record_state, restricted_record_state
                 )
 
                 public_record_state["internal_version"] = restricted_record_state[
@@ -240,71 +237,6 @@ class EPMigrationEntryLoad(CDSMigrationEntryLoad):
                 priority="critical",
             )
             self.migration_logger.add_log(exc, record=entry)
-
-    def _link_parent_ep_approvals(
-        self, restricted_record_state, public_record_state, legacy_recid, uow=None
-    ):
-        """Write parent metadata and link public/restricted records.
-
-        If ``uow`` is provided, the writes are registered on it without
-        committing, so the caller can group this atomically with other
-        operations.
-        """
-        if self.dry_run:
-            return
-
-        if not restricted_record_state or not public_record_state:
-            raise UnexpectedValue(
-                message="Both public and restricted records are required for EP approval.",
-                stage="load",
-                recid=legacy_recid,
-                priority="critical",
-            )
-
-        if uow is not None:
-            self._write_parent_ep_approvals(
-                restricted_record_state, public_record_state, uow
-            )
-            return
-
-        with UnitOfWork() as inner_uow:
-            self._write_parent_ep_approvals(
-                restricted_record_state, public_record_state, inner_uow
-            )
-            inner_uow.commit()
-
-    def _write_parent_ep_approvals(
-        self, restricted_record_state, public_record_state, uow
-    ):
-        """Register the EP approval parent writes for both records on the given uow."""
-        report_number = self.approval_request.report_number
-        approval_iso = self.approval_request.approved_at.isoformat()
-        restricted_recid = restricted_record_state["latest_version"]
-        public_recid = public_record_state["latest_version"]
-        restricted_parent = RDMParent.get_record(
-            restricted_record_state["parent_object_uuid"]
-        )
-        public_parent = RDMParent.get_record(public_record_state["parent_object_uuid"])
-
-        ParentLoad.write_committee_approval_obj(
-            restricted_parent,
-            {
-                "reportnumber": [report_number],
-                "datetime": approval_iso,
-                "approved_internal_version": restricted_recid,
-                "approved_public_version": public_recid,
-                "source_public_version": restricted_recid,
-            },
-            uow,
-        )
-        ParentLoad.write_committee_approval_obj(
-            public_parent,
-            {
-                "reportnumber": [report_number],
-                "source_internal_version": restricted_recid,
-            },
-            uow,
-        )
 
     def _append_related_identifier(
         self, record_id, target_id, relation_id, resource_type, uow=None

@@ -49,6 +49,7 @@ IGNORE_SYSTEM_KEYS = {
     "8564_8",  # File information (done by file dump)
     "8564_q",  # File links File information (done by file dump)
     "8564_z",  # Websubmit "stamp" (migrated as file metadata)
+    "859__f",  # The submitter(s) is now imported via the `restrictions` key of the dump
     "905__m",  # Submitter email address
     "916__y",  # year, redundant value
     "937__c",  # last modified by
@@ -58,6 +59,7 @@ IGNORE_SYSTEM_KEYS = {
     "961__h",  # CDS modification tag # TODO
     "961__l",  # CDS modification tag # TODO
     "961__x",  # CDS modification tag # TODO
+    "963__a",  # Record-level restriction is now imported via the `restrictions` key of the dump
     "981__a",  # duplicate record id
     "999C50",  # From SIS: all 999* fields can be ignored
     "999C52",  # https://cds.cern.ch/record/2640188/export/hm?ln=en

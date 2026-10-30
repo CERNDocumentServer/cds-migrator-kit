@@ -22,6 +22,9 @@ from cds_migrator_kit.rdm.records.transform.config import (
     PIDS_SCHEMES_ALLOWED,
     PIDS_SCHEMES_TO_DROP,
 )
+from cds_migrator_kit.rdm.records.transform.entities.restrictions import (
+    RecordRestrictions,
+)
 from cds_migrator_kit.rdm.records.transform.mappers.base import RecordTransformContext
 from cds_migrator_kit.rdm.records.transform.mappers.registry import (
     CUSTOM_FIELD_MAPPERS,
@@ -84,6 +87,8 @@ class RecordEntry:
         :param dojson_entry: the DOJSON-processed record data
             (``dump.latest_revision``'s content) - passed in separately
             since ``build()`` mutates it in place as it builds the record.
+        :param restricted: whether the stream's config is set to restricted (not whether
+            this individual record is restricted)
         """
         self.dump = dump
         self.raw_dump_entry = dump.data
@@ -95,32 +100,18 @@ class RecordEntry:
 
         self.created = dump.first_created
         self.recid = self._recid(dump)
-        # None when RecordFlaggedCuration was raised and caught.
-        self.access_status = None
-        try:
-            self.access_status = self._access(dojson_entry)
-        except RecordFlaggedCuration as exc:
-            self.migration_logger.add_information(
-                self.raw_dump_entry["recid"],
-                {"message": exc.message, "value": exc.value},
-            )
-
-    def _access(self, dojson_entry):
-        record_restriction = dojson_entry.pop("record_restriction", None)
-        if isinstance(record_restriction, list):
-            record_restriction = record_restriction[0]
-        restrictions = "restricted" if self.restricted else record_restriction
-        if not restrictions:
-            raise RecordFlaggedCuration(
-                message="record restriction not found make sure the record should be public",
-                stage="transform",
-                field="record_restriction",
-            )
-        return restrictions
+        # Just the globally configured restriction for this record. Other sources of restriction
+        # are still taken into account even if this is `public`
+        self.access_status = "restricted" if self.restricted else "public"
 
     def has_any_restricted_file(self):
         """True if any of the legacy files carries a restriction status."""
-        return any(file.get("status") for file in self.raw_dump_entry["files"])
+        restrictions: RecordRestrictions = self.raw_dump_entry["restrictions"]
+        return len(restrictions["files"]) != 0
+
+    def has_any_non_restricted_file(self):
+        """True if any of the legacy files don't carry a restriction status."""
+        return any(not file.get("status") for file in self.raw_dump_entry["files"])
 
     def has_any_restrictions(self):
         """True if the record, its stream or any of its files is restricted."""

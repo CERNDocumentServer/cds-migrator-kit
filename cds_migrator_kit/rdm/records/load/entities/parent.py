@@ -101,14 +101,15 @@ class ParentLoad:
             parent = published_record._record.parent
             identity = system_identity
 
-            specific_file_restrictions = access_dict.get("meta", "")
-            if not specific_file_restrictions and not self.record_parent.access_grants:
+            file_restrictions = self.migration_entry["restrictions"]["files"]
+            if not file_restrictions and not self.record_parent.access_grants:
+                # Skip loading access grants if the parent record doesn't have any custom grants
+                # and none of the files are restricted
                 continue
+
             default_permission = "view"
 
-            groups, emails, grants_with_perms = self.record_parent.resolve_grants(
-                specific_file_restrictions
-            )
+            groups, emails, grants_with_perms = self.record_parent.resolve_grants()
 
             def _create_grant(subject_type, subject_id, permission):
                 grant_data = {

@@ -74,6 +74,7 @@ class CDSToRDMRecordTransform:
         record_state_logger=None,
         access_grants_view=None,
         preferred_model=None,
+        access_collections=None,
     ):
         """Constructor.
 
@@ -82,6 +83,13 @@ class CDSToRDMRecordTransform:
         ``cds_migrator_kit.runner.runner.Runner`` always passes them when
         constructing this class from ``streams.yaml`` config - they aren't
         used by this class or ``RecordEntry``.
+
+        ``restricted`` and ``plots`` come from the stream config, they are not
+        to do with individual records.
+
+        ``access_collections`` lists the legacy collections whose roles are
+        checked against the target communities' members (``None``: all of
+        each record's collections), see ``CommunityMembersCheck``.
         """
         self._throw = throw
         self._logger = None
@@ -93,6 +101,7 @@ class CDSToRDMRecordTransform:
         self.migration_logger = migration_logger
         self.record_state_logger = record_state_logger
         self.preferred_model = preferred_model
+        self.access_collections = access_collections
         self.db_state = {"affiliations": CDSMigrationAffiliationMapping}
         # the DOJSON-processed record data for the entry currently being
         # transformed - populated by _transform_xml_to_json(), read by
@@ -147,6 +156,8 @@ class CDSToRDMRecordTransform:
             dojson_entry=self.dojson_entry,
             communities_ids=self.communities_ids,
             access_grants_view=self.access_grants_view,
+            migration_logger=self.migration_logger,
+            access_collections=self.access_collections,
         ).build()
 
     def _request(self, raw_dump_entry):
@@ -186,6 +197,10 @@ class CDSToRDMRecordTransform:
             record_request = self._request(raw_dump_entry)
             record = self._record(raw_dump_entry, dump)
 
+            restrictions = raw_dump_entry.get("restrictions")
+            if restrictions is None:
+                raise ManualImportRequired("Missing `restrictions` key in raw dump.")
+
             if record:
                 versions = self._versions(raw_dump_entry, record, bool(ep_approval))
                 # RecordParent is the last entity to touch dojson_entry -
@@ -202,6 +217,7 @@ class CDSToRDMRecordTransform:
                     _clc_sync=clc_sync,
                     _request_data=record_request,
                     ep_approval=ep_approval,
+                    restrictions=restrictions,
                 )
 
         except (

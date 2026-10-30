@@ -7,6 +7,8 @@
 
 """Base classes shared by all CDS-RDM record field mappers."""
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
@@ -27,7 +29,7 @@ class RecordTransformContext:
     raw_dump_entry: dict
     migration_logger: object = None
     affiliations_mapping: object = None
-    access_grants_view: object = None
+    access_grants_view: list[str] | None = None
     pids: dict = field(default_factory=dict)
     metadata: dict = field(default_factory=dict)
     custom_fields: dict = field(default_factory=dict)

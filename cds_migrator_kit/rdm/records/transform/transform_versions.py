@@ -121,6 +121,7 @@ class RecordVersionsTransform:
                 cumulative_raw_dumps[file_dump["full_name"]] = file_dump
             versions[version_number] = RecordVersion(
                 record_access=record_access,
+                restrictions=self.raw_dump_entry["restrictions"],
                 files_dump_dir=self.files_dump_dir,
                 migration_logger=self.migration_logger,
                 publication_date=publication_dates[version_number],
@@ -132,6 +133,7 @@ class RecordVersionsTransform:
             # Record has no files. Add metadata-only record as single version
             versions[1] = RecordVersion(
                 record_access=record_access,
+                restrictions=self.raw_dump_entry["restrictions"],
                 files_dump_dir=self.files_dump_dir,
                 migration_logger=self.migration_logger,
                 publication_date=self.record.body["metadata"]["publication_date"],

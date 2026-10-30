@@ -32,6 +32,39 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [
+            "submitter13@cern.ch"
+          ],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {
+        "collections": {},
+        "any_collection": []
+      },
+      "comments": {
+        "primary_collection": "",
+        "view": {
+          "roles": [],
+          "any_collection": []
+        },
+        "send": {
+          "roles": [],
+          "any_collection": []
+        },
+        "record_restriction": "",
+        "restricted_comments": []
+      }
+    },
     "recid": 2294138,
     "creation_date": "2017-11-23 16:29:37",
     "record": [

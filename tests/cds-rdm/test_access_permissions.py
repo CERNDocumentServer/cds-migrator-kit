@@ -20,15 +20,14 @@ from cds_migrator_kit.runner.runner import Runner
 
 
 def grant_access_permissions(record):
-    """2872558."""
+    """2872558.
+
+    Only ``5061_d`` (admin) is a legacy viewer tag: ``5061_m`` (hr-dep) grants
+    nothing.
+    """
     dict_rec = record.to_dict()
 
     assert dict_rec["parent"]["access"]["grants"] == [
-        {
-            "permission": "view",
-            "subject": {"id": "hr-dep", "type": "role"},
-            "origin": "migrated",
-        },
         {
             "permission": "view",
             "subject": {"id": "1", "type": "user"},

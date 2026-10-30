@@ -54,14 +54,14 @@ def _split_copy(entry: MigrationEntry) -> MigrationEntry:
     return split
 
 
-class MetadataEntry:
-    """Build a load entry for the public or restricted EP approval split."""
+class SplitEntry:
+    """Build a load entry for the public or restricted record split."""
 
-    def __init__(self, entry: MigrationEntry, approval_request, migration_logger):
+    def __init__(self, entry: MigrationEntry, migration_logger, approval_request=None):
         """Constructor."""
         self.entry = entry
-        self.approval_request = approval_request
         self.migration_logger = migration_logger
+        self.approval_request = approval_request
 
     def identifiers(self, identifiers):
         """Return identifiers for this split."""
@@ -202,7 +202,7 @@ class MetadataEntry:
         )
 
 
-class PublicEntry(MetadataEntry):
+class PublicEntry(SplitEntry):
     """Build the public EP approval split entry."""
 
     _access_status = "public"
@@ -216,6 +216,9 @@ class PublicEntry(MetadataEntry):
 
     def identifiers(self, identifiers):
         """Return identifiers for the public split, dropping EP approval RNs."""
+        if not self.approval_request:
+            return identifiers
+
         kept = []
         removed = []
         for id_entry in identifiers:
@@ -241,6 +244,9 @@ class PublicEntry(MetadataEntry):
         return kept
 
     def _apply_entry_modifications(self, split):
+        if self.approval_request is None:
+            return
+
         split.pop("_request_data", None)
         split["parent"].body["access"]["owned_by"] = {"user": "system"}
         self._add_cern_scientific_community(split)
@@ -256,7 +262,7 @@ class PublicEntry(MetadataEntry):
         communities["ids"] = ids
 
 
-class RestrictedEntry(MetadataEntry):
+class RestrictedEntry(SplitEntry):
     """Build the restricted EP approval split entry."""
 
     _access_status = "restricted"
@@ -336,7 +342,10 @@ class RestrictedEntry(MetadataEntry):
                 continue
             # Remove CERN-(PH-)?EP-YYYY-NNN but keep *-DRAFT report numbers.
             if EP_APPROVAL_REPORT_NUMBER_RE.match(identifier):
-                if identifier != self.approval_request.report_number:
+                if (
+                    self.approval_request is not None
+                    and identifier != self.approval_request.report_number
+                ):
                     raise UnexpectedValue(
                         message=(
                             "EP report number is not the same as the approved entry"

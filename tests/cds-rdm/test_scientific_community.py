@@ -34,10 +34,30 @@ def _file_dump(version=1, status="", full_name="draft.pdf"):
     }
 
 
-def _dojson_entry(access="public", communities=None):
+def _restrictions(files):
+    """Build the dump's ``restrictions``, as the legacy dumper would.
+
+    Like a legacy BibDoc status, a file's restriction is the status of its
+    latest revision; only restricted files are listed.
+    """
+    statuses = {}
+    for file_dump in sorted(files, key=lambda f: f["version"]):
+        statuses[file_dump["full_name"]] = file_dump["status"]
+    return {
+        "collections": {},
+        "files": [
+            {"bibdocid": i, "status": status, "roles": []}
+            for i, status in enumerate(statuses.values())
+            if status
+        ],
+        "record": {"owners": {}, "viewers": {}},
+        "edit": {"collections": {}, "any_collection": []},
+    }
+
+
+def _dojson_entry(communities=None):
     """Build a minimal DOJSON-processed entry (it carries no ``files`` key)."""
     return {
-        "record_restriction": access,
         "communities": communities or [],
     }
 
@@ -56,7 +76,12 @@ def _record(
     """
     record = RecordEntry(
         dump=SimpleNamespace(
-            data={"recid": RECID, "files": files or []}, first_created=None
+            data={
+                "recid": RECID,
+                "files": files or [],
+                "restrictions": _restrictions(files or []),
+            },
+            first_created=None,
         ),
         dojson_entry=dojson_entry,
         restricted=restricted,
@@ -106,13 +131,17 @@ class TestRecordEntryRestrictions:
         assert record.has_any_restricted_file()
         assert record.has_any_restrictions()
 
-    def test_restricted_file_in_older_version(self):
-        """A restricted file in an older version is detected, even if the latest is public."""
+    def test_restriction_lifted_in_latest_version(self):
+        """A file whose latest revision is public is not restricted.
+
+        A legacy file's status is set per BibDoc: the dump only has the
+        current one.
+        """
         files = [_file_dump(version=1, status="restricted"), _file_dump(version=2)]
         record = _record(_dojson_entry(), files=files)
 
-        assert record.has_any_restricted_file()
-        assert record.has_any_restrictions()
+        assert not record.has_any_restricted_file()
+        assert not record.has_any_restrictions()
 
 
 @pytest.fixture
@@ -163,17 +192,6 @@ class TestBuildCommunities:
         assert str(cern_scientific_community.id) in result["ids"]
         assert str(cern_scientific_community.id) != result["default"]
 
-    def test_skip_restricted_record(
-        self, communities_ids, community, cern_scientific_community
-    ):
-        """Restricted records are not included in the CERN Research community."""
-        result = _build_communities(communities_ids, _dojson_entry(access="restricted"))
-
-        assert result == {
-            "ids": [str(community.id)],
-            "default": str(community.id),
-        }
-
     def test_skip_restricted_files(
         self, communities_ids, community, cern_scientific_community
     ):
@@ -189,14 +207,17 @@ class TestBuildCommunities:
             "default": str(community.id),
         }
 
-    def test_skip_restricted_file_in_older_version(
+    def test_skip_restricted_file_with_several_versions(
         self, communities_ids, community, cern_scientific_community
     ):
-        """A restricted file in an older version excludes the whole parent."""
+        """A restricted file with several revisions excludes the whole parent."""
         result = _build_communities(
             communities_ids,
             _dojson_entry(),
-            files=[_file_dump(version=1, status="restricted"), _file_dump(version=2)],
+            files=[
+                _file_dump(version=1, status="restricted"),
+                _file_dump(version=2, status="restricted"),
+            ],
         )
 
         assert result == {

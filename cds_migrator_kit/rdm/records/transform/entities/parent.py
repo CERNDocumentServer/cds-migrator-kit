@@ -19,6 +19,16 @@ from cds_migrator_kit.errors import (
     UnexpectedValue,
 )
 from cds_migrator_kit.rdm.records.transform.config import CERN_SCIENTIFIC_RESOURCE_TYPES
+from cds_migrator_kit.rdm.records.transform.entities.community_members import (
+    CommunityMembersCheck,
+)
+from cds_migrator_kit.rdm.records.transform.entities.restrictions import (
+    RecordRestrictions,
+    RecordRestrictionsFile,
+    legacy_role_subjects,
+    normalize_group_name,
+    parse_firerole,
+)
 from cds_migrator_kit.rdm.records.transform.mappers.base import RecordTransformContext
 from cds_migrator_kit.rdm.records.transform.mappers.record import AccessGrantsMapper
 
@@ -40,7 +50,14 @@ class RecordParent:
     """
 
     def __init__(
-        self, record, raw_dump_entry, dojson_entry, communities_ids, access_grants_view
+        self,
+        record,
+        raw_dump_entry,
+        dojson_entry,
+        communities_ids,
+        access_grants_view,
+        migration_logger=None,
+        access_collections=None,
     ):
         """Constructor.
 
@@ -57,21 +74,40 @@ class RecordParent:
             migration run (``CDSToRDMRecordTransform.communities_ids``).
         :param access_grants_view: configured collection-wide view grants
             (``CDSToRDMRecordTransform.access_grants_view``).
+        :param migration_logger: where non-blocking warnings of this record
+            are logged (e.g. extra members in a restricted community).
+        :param access_collections: the legacy collections whose roles are
+            checked against the target communities' members, see
+            ``CommunityMembersCheck``.
         """
         self.record = record
         self.raw_dump_entry = raw_dump_entry
         self.dojson_entry = dojson_entry
         self.communities_ids = communities_ids
         self.access_grants_view = access_grants_view
+        self.migration_logger = migration_logger
+        self.access_collections = access_collections
         self.body = None
         self.communities = None
         self.access_grants = None
 
     def build(self):
         """Populate ``body``/``communities``/``access_grants``; returns self."""
+        # Owners and viewers are read from the dump's `restrictions`: the
+        # values the MARC rules produce are discarded, so that they are not
+        # flagged by the forgotten-keys check
+        self.dojson_entry.pop("submitter", None)
+        self.dojson_entry.pop("access_grants", None)
         access = self._build_access()
+        CommunityMembersCheck(
+            restrictions=self.raw_dump_entry["restrictions"],
+            communities_ids=self.communities_ids,
+            recid=self.record.recid,
+            migration_logger=self.migration_logger,
+            access_collections=self.access_collections,
+        ).check()
         self.communities = self._build_communities()
-        self.access_grants = self._build_access_grants_from_record_marc()
+        self.access_grants = self._build_access_grants_from_record_dump()
         self.body = {
             # loader is responsible for creating/updating if the PID exists,
             # this part will be simply omitted.
@@ -83,7 +119,25 @@ class RecordParent:
 
     def _build_access(self):
         """Resolve the owner and return the parent's access dict."""
-        email = self.dojson_entry.pop("submitter", None)
+        restrictions: RecordRestrictions = self.raw_dump_entry["restrictions"]
+        owners: set[str] = set()
+        for field in restrictions["record"]["owners"]:
+            owners.update(restrictions["record"]["owners"][field])
+
+        if len(owners) > 1:
+            raise ManualImportRequired(
+                message="Cannot handle records with more than one owner",
+                field="owned_by",
+                subfield="user",
+                stage="transform",
+                recid=self.record.recid,
+                priority="critical",
+                value=owners,
+            )
+
+        email = None
+        if owners:
+            email = owners.pop()
         if not email:
             owner = "system"
         elif email in _submitter_id_by_email:
@@ -131,36 +185,38 @@ class RecordParent:
             return {"ids": communities, "default": self.communities_ids[0]}
         return {}
 
-    def _build_access_grants_from_record_marc(self):
+    def _build_access_grants_from_record_dump(self):
         """Compute the access grants to create on this parent after publish."""
         ctx = RecordTransformContext(
             dojson_entry=self.dojson_entry,
             raw_dump_entry=self.raw_dump_entry,
             access_grants_view=self.access_grants_view,
         )
+        # This creates view grants for users included in the record dump's
+        # `restrictions` dict as viewers.
         return AccessGrantsMapper().map_value(ctx)
 
-    def resolve_grants(self, specific_file_restrictions=""):
+    def resolve_grants(self):
         """Resolve which groups/emails/permissions get access grants for a version.
 
-        Combines this parent's own ``access_grants`` (record-level, from
-        legacy access-grant metadata) with ``specific_file_restrictions`` (a
-        version-specific file-restriction status string, e.g. "firerole:
-        allow group ..."). Pure computation - the caller (``load.py``) is
-        responsible for actually creating the grants against the RDM parent.
+        Combines this parent's own ``access_grants`` (record-level, from the
+        dump's ``restrictions["record"]["viewers"]``) with the file
+        restrictions in ``restrictions["files"]``. Pure computation - the
+        caller (``load/entities/parent.py``) is responsible for actually
+        creating the grants against the RDM parent.
 
-        :param specific_file_restrictions: the ``meta`` value from a
-            version's access dict (``VersionEntry["access"]["meta"]``), or
-            "" if that version has no individual file restriction.
         :return: ``(groups, emails, grants_with_perms)`` - see
-            ``load.py::_after_publish_load_parent_access_grants()`` for how
-            these are consumed to create the actual grants.
+            ``ParentLoad`` for how these are consumed to create the grants.
         """
         default_permission = "view"
         grants_with_perms = {}
 
         # ----Parse file status metadata----#
-        groups, emails = self._resolve_restriction_groups(specific_file_restrictions)
+        groups, emails = self._resolve_file_restriction_groups_and_emails()
+
+        file_restrictions: list[RecordRestrictionsFile] = self.raw_dump_entry[
+            "restrictions"
+        ]["files"]
 
         # ----Parse record access grants----#
         for grant_info in self.access_grants:
@@ -175,7 +231,7 @@ class RecordParent:
             # this is important - if there was no specific restrictions on the file,
             # then the record grands takes over - but if file had specific status,
             # then we take the least possible access
-            if not specific_file_restrictions:
+            if not file_restrictions:
                 if EMAIL_PATTERN.match(subject):
                     emails.add(subject)
                 else:
@@ -183,73 +239,79 @@ class RecordParent:
 
         return groups, emails, grants_with_perms
 
-    def _resolve_restriction_groups(self, specific_file_restrictions):
-        """Resolve the groups/emails implied by a file-restriction string.
+    def _resolve_file_restriction_groups_and_emails(self):
+        """Resolve the groups/emails that can view the record's restricted files.
 
-        Covers every form a legacy file ``status`` can take (see
-        ``docs/legacy_restriction_paths.md``): the literal ``"restricted"``, a
-        bare ``"<name> [CERN]"`` e-group name, a ``firerole:`` expression, or -
-        as a last resort - a key in ``CDS_ACCESS_GROUP_MAPPINGS``. Raises
-        ``ManualImportRequired`` for anything unrecognised.
+        Unions ``_resolve_file_restriction()`` over every entry of the dump's
+        ``restrictions["files"]`` (which only lists files with a non-empty
+        ``status``). ``RecordVersion`` already rejects records whose restricted
+        files don't share a single status.
 
-        :param specific_file_restrictions: the ``meta`` value from a
-            version's access dict, or "" when the version has no individual
-            file restriction.
-        :return: ``(groups, emails)`` - the groups/emails this restriction
-            string grants view access to.
+        :return: ``(groups, emails)`` - empty when no file is restricted.
         """
         groups = set()
         emails = set()
-        if not specific_file_restrictions:
-            return groups, emails
+        file_restrictions: list[RecordRestrictionsFile] = self.raw_dump_entry[
+            "restrictions"
+        ]["files"]
+        for file_restriction in file_restrictions:
+            file_groups, file_emails = self._resolve_file_restriction(file_restriction)
+            groups.update(file_groups)
+            emails.update(file_emails)
+        return groups, emails
 
+    def _resolve_file_restriction(self, file_restriction: RecordRestrictionsFile):
+        """Resolve the groups/emails implied by one restricted file.
+
+        Covers every form a legacy file ``status`` can take (see
+        ``docs/legacy_restriction_paths.md``), in order: the literal
+        ``"restricted"``, a bare ``"<name> [CERN]"`` e-group name, a
+        ``firerole:`` expression, a key in ``CDS_ACCESS_GROUP_MAPPINGS``
+        (curated override), and finally the legacy roles authorised for the
+        status, as dumped in the file's ``roles``. Raises
+        ``ManualImportRequired`` for anything unrecognised.
+        """
+        status = file_restriction["status"].strip()
+        roles = file_restriction["roles"]
         group_mappings = current_app.config.get("CDS_ACCESS_GROUP_MAPPINGS", {})
 
-        if specific_file_restrictions == "restricted":
+        def _manual_import_required(message):
+            return ManualImportRequired(
+                message=message,
+                field="access",
+                subfield="subject.id",
+                stage="transform",
+                recid=self.record.recid,
+                priority="critical",
+                value=status,
+            )
+
+        if status == "SSO" or status == "restricted":
             # https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showroledetails?id_role=69
-            groups.add("cern-personnel")
-        elif specific_file_restrictions.strip().endswith("[CERN]") and not any(
-            kw in specific_file_restrictions for kw in ("firerole:", "allow ")
+            return {"cern-personnel"}, set()
+        if status.endswith("[CERN]") and not any(
+            kw in status for kw in ("firerole:", "allow ")
         ):
             # bare CERN e-group name, e.g.
             # "cds-ph-ep-publications-referee-non-lhc [CERN]"
-            groups.add(self._normalize_group_name(specific_file_restrictions))
-        elif any(
-            kw in specific_file_restrictions
-            for kw in ("firerole: allow group", "allow email")
-        ):
-            meta_str = specific_file_restrictions.replace("\r\n", "\n")
-
-            # Parse groups
-            group_matches = re.search(r'allow group\s+((?:"[^"]+",?\s*)+)', meta_str)
-            if group_matches:
-                group_values = re.findall(r'"([^"]+)"', group_matches.group(1))
-                for g in group_values:
-                    groups.add(self._normalize_group_name(g))
-
-            # Parse emails
-            email_matches = re.search(r'allow email\s+((?:"[^"]+",?\s*)+)', meta_str)
-            if email_matches:
-                email_values = re.findall(r'"([^"]+)"', email_matches.group(1))
-                emails.update(email_values)
-        elif specific_file_restrictions in group_mappings:
-            # last resort: a simple keyword mapped to CERN e-group(s)
-            groups.update(group_mappings[specific_file_restrictions])
-        else:
-            raise ManualImportRequired(
-                message="Unexpected permission format.",
-                field="access",
-                subfield="subject.id",
-                stage="load",
-                recid=self.record.recid,
-                priority="critical",
-                value=specific_file_restrictions,
-            )
-
-        return groups, emails
+            return {self._normalize_group_name(status)}, set()
+        if status.startswith("firerole:"):
+            try:
+                return parse_firerole(status)
+            except ValueError as e:
+                raise _manual_import_required(f"Unexpected permission format: {e}")
+        if status in group_mappings:
+            # a simple keyword mapped to CERN e-group(s)
+            return set(group_mappings[status]), set()
+        if roles:
+            try:
+                return legacy_role_subjects(roles)
+            except ValueError as e:
+                raise _manual_import_required(
+                    f"Cannot map the roles of file status '{status}': {e}"
+                )
+        raise _manual_import_required("Unexpected permission format.")
 
     @staticmethod
     def _normalize_group_name(subject):
-        if subject.endswith(" [CERN]"):
-            subject = subject.replace(" [CERN]", "")
-        return subject.strip()
+        return normalize_group_name(subject)
