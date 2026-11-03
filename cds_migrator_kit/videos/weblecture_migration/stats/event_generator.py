@@ -8,7 +8,7 @@
 """CDS-Videos migration stats events generator module."""
 import json
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def flag_robots_and_COUNTER(entry):
@@ -82,7 +82,8 @@ def process_pageview_event(entry, rec_context, logger):
         "visitor_id": entry.get("visitor_id", ""),
         "unique_id": f"{pid_type}_{videos_recid}",
         "unique_session_id": entry.get("unique_session_id", ""),
-        "updated_timestamp": datetime.utcnow().isoformat(),
+        # Ingestion time (see the RDM stats event_generator for the rationale).
+        "updated_timestamp": datetime.now(timezone.utc).isoformat(),
         # Mark the event as migrated
         "is_cds": True,
         # Mark if event was COUNTER compliant
