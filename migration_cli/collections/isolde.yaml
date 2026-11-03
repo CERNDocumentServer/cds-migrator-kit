@@ -1,6 +1,6 @@
 name: isolde
 queries:
-  - q: '(693__a:"CERN ISOLDE" OR 693__a:"CERN Isolde") AND (980:ARTICLE OR 980:PREPRINT OR 980:ConferencePaper OR 980:NOTE OR 980:REPORT)'
+  - q: '693__a:"CERN ISOLDE" AND (980:ARTICLE OR 980:PREPRINT OR 980:ConferencePaper OR 980:NOTE OR 980:REPORT)'
     dump_file_prefix: isolde
 flags:
   include_plots: true
