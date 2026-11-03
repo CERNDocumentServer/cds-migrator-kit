@@ -242,7 +242,7 @@ def _plain_value_to_regex(match):
 
 
 def legacy_to_model_query(query):
-    """Translate a legacy search query to the notation of a model ``__query__``.
+    r"""Translate a legacy search query to the notation of a model ``__query__``.
 
     The legacy search reads ``980__a:X`` and ``088:X``, the matcher of the models
     only understands ``980__.a:X`` and ``088__:X`` (and silently matches nothing
@@ -259,7 +259,7 @@ def legacy_to_model_query(query):
       search), as the matcher does not know the wildcard
 
     * every other value becomes a case-insensitive regex too (``980:ARTICLE`` ->
-      ``980__:/(?i)ARTICLE/``, ``"CERN ISOLDE"`` -> ``/(?i)^CERN\\ ISOLDE$/``): the
+      ``980__:/(?i)ARTICLE/``, ``"CERN ISOLDE"`` -> ``/(?i)^CERN\ ISOLDE$/``): the
       legacy search ignores the case and the matcher does not, so a model would
       otherwise miss the records tagged with another case (``LCD-NOTES`` vs
       ``LCD-Notes``). An unquoted value keeps its substring search, a quoted one its
