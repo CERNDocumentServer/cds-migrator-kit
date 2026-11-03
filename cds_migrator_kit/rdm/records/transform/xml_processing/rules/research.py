@@ -273,27 +273,35 @@ def journal(self, key, value):
             related_ids.append(isbn_related_id)
         self["related_identifiers"] = related_ids
 
+    # 773__m qualifies the journal reference (e.g. the main publication or an
+    # erratum). Per the curators' decision, the erratum linking is handled
+    # entirely at the DOI level (0247_ $q -> related identifier with
+    # "issupplementedby"), so this note carries no extra information and is
+    # ignored. Any other value is surfaced for curation.
     if "m" in value:
-        # As discussed with SIS, we only ignore 773__m if there is only one in the record
-        # and its value is `publication`
-        if self.get("_773_m_seen"):
-            raise UnexpectedValue(
-                "Multiple 773__m seen. Record requires manual curation.",
-                subfield="m",
-                field=key,
-                value=value,
-            )
+        allowed_m_values = {"publication", "erratum"}
+        m_values = value.get("m")
+        if not isinstance(m_values, (list, tuple)):
+            m_values = (m_values,)
+        for m_value in m_values:
+            if StringValue(m_value).parse().lower() not in allowed_m_values:
+                raise UnexpectedValue(
+                    "Unexpected 773__m value. Record requires manual curation.",
+                    subfield="m",
+                    field=key,
+                    value=value,
+                )
 
-        m_value = value.get("m")
-        if m_value != "publication":
-            raise UnexpectedValue(
-                f'Only value "publication" can be ignored for 773__m. Value "{m_value}" requires manual curation.',
-                subfield="m",
-                field=key,
-                value=value,
-            )
-
-        self["_773_m_seen"] = True
+    # A repeated 773__c (dojson returns a tuple) is ambiguous page/session data
+    # that can't be reduced to a single value - flag for manual curation instead
+    # of crashing on the tuple when it is parsed downstream.
+    if isinstance(value.get("c"), (list, tuple)):
+        raise UnexpectedValue(
+            "Multiple 773__c values. Record requires manual curation.",
+            subfield="c",
+            field=key,
+            value=value,
+        )
 
     # p/n/v are journal-specific; c alone with w is a conference proceedings artid
     is_journal = any(f in value for f in ["p", "n", "v"])
@@ -343,7 +351,15 @@ def journal(self, key, value):
     # Only populate journal fields from a journal 773 (has p/n/v).
     # A 773 with only 'c'+'w' is a conference proceedings reference and must
     # not overwrite journal data extracted from the sibling journal 773.
+    # Two journal-like 773s would otherwise silently overwrite title/volume/pages
+    # (e.g. main publication + erratum); flag for curation instead.
     if is_journal:
+        if journal_fields:
+            raise UnexpectedValue(
+                "Multiple journal 773 fields. Record requires manual curation.",
+                field=key,
+                value=value,
+            )
         journal_fields["title"] = StringValue(value.get("p", "")).parse()
         journal_fields["issue"] = StringValue(value.get("n", "")).parse()
         journal_fields["volume"] = StringValue(value.get("v", "")).parse()
@@ -434,15 +450,16 @@ def internal_notes(self, key, value):
 @model.over("contributors", "^901__")
 @for_each_value
 def organisation(self, key, value):
-    """Translates organisation contributors."""
-    contributor = value.get("u", "")
-    return {
-        "person_or_org": {
-            "type": "organizational",
-            "name": contributor,
-        },
-        "role": {"id": "hostinginstitution"},
-    }
+    """Flag a 901__u value for manual curation."""
+    for item in force_list(value.get("u", "")):
+        if item and StringValue(item).parse().strip():
+            raise UnexpectedValue(
+                "901__u present. Record requires manual curation.",
+                field=key,
+                subfield="u",
+                value=value,
+            )
+    raise IgnoreKey("contributors")
 
 
 @model.over("request_reviewers", "^906__", override=True)

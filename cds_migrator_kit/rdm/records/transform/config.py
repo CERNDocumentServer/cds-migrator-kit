@@ -159,6 +159,57 @@ udc_pattern = r"\b\d+(?:\.\d+)*-?\d*(?:\.\d+)*\b"
 
 FILE_SUBFORMATS_TO_DROP = ["pdfa", "unstamped"]
 
+# Experiment IDs that live in the experiments MARC field but should be
+# stored as studies (cern:studies) rather than experiments (cern:experiments).
+EXPERIMENTS_AS_STUDIES = {
+    "IS01",
+    "IS01-1",
+    "IS01-2",
+    "IS01-3",
+    "IS01-4",
+    "IS01-5",
+    "IS01-6",
+    "IS01-7",
+    "IS01-8",
+    "IS01-9",
+    "IS01-10",
+    "IS01-11",
+    "IS01-12",
+    "IS01-13",
+    "IS01-15",
+    "IS01-16",
+    "IS01-18",
+    "IS01-20",
+    "IS01-21",
+    "IS01-22",
+    "IS01-23",
+    "IS01-24",
+    "IS01-26",
+    "IS01-28",
+    "IS01-29",
+    "IS01-31",
+    "IS01-32",
+    "IS01-35",
+    "IS01-37",
+    "IS01-38",
+    "IS01-39",
+    "IS01-40",
+    "IS01-42",
+    "IS01-43",
+    "IS01-44",
+    "IS01-45",
+    "IS01-49",
+    "IS01-51",
+    "IS01-B",
+    "IS01-C",
+    "IS01-D",
+    "IS01-E",
+    "IS250",
+    # "IS",
+    # "IS02",
+    "IS142",
+}
+
 # Legacy experiment names remapped to vocabulary ids before lookup
 EXPERIMENT_ALIASES = {
     "t2k": "RE13",
@@ -170,6 +221,12 @@ EXPERIMENT_ALIASES = {
     "dampe": "RE29",
     "compass": "NA58",
     "compass na58": "NA58",
+    "cern isolde": "ISOLDE",
+    "mistral is346": "IS346",
+    "mistral is373": "IS373",
+    "witch is433": "IS433",
+    "isoltrap": "IS394",
+    "is485 (rex-isolde)": "IS485",
 }
 
 # 693__e values that are keywords rather than real experiments (curated as
