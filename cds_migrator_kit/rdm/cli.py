@@ -9,7 +9,7 @@
 
 import logging
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import click
@@ -40,8 +40,6 @@ from cds_migrator_kit.rdm.users.transform.xml_processing.models.people import (
 from cds_migrator_kit.runner.runner import Runner
 
 cli_logger = logging.getLogger("migrator")
-
-BOOKMARK_START_DATE = "2000-06-26T15:56:05.755394"
 
 
 def _env_and_root():
@@ -259,48 +257,80 @@ def events_run(collection, filepath, less_than_date, dry_run=False):
     _run_stats_events(filepath, less_than_date, dry_run)
 
 
+def _month_chunks(start_date, end_date):
+    """Yield (start, end) ISO date strings, one calendar month at a time.
+
+    Bounding each aggregation call to a single month keeps every call small
+    enough to finish, so an interrupted backfill can simply be re-run instead
+    of having to reprocess the whole range from scratch.
+    """
+    current = start_date.replace(day=1)
+    while current <= end_date:
+        if current.month == 12:
+            next_month = current.replace(year=current.year + 1, month=1)
+        else:
+            next_month = current.replace(month=current.month + 1)
+        chunk_start = max(current, start_date)
+        chunk_end = min(next_month - timedelta(days=1), end_date)
+        yield chunk_start.date().isoformat(), chunk_end.date().isoformat()
+        current = next_month
+
+
 @stats.command()
 @click.option(
     "--start-date",
-    default=BOOKMARK_START_DATE,
-    show_default=True,
-    help="Date the aggregation bookmarks are reset to.",
+    required=True,
+    help="Start of the migrated events date range to aggregate (YYYY-MM-DD).",
 )
 @click.option(
     "--end-date",
     default=lambda: date.today().isoformat(),
-    help="Aggregate events up to this date. Default: today.",
+    show_default="today",
+    help="End of the migrated events date range to aggregate (YYYY-MM-DD).",
 )
 @with_appcontext
 def aggregate(start_date, end_date):
-    """Reset the aggregation bookmarks, aggregate the events and reindex stats.
+    """Aggregate migrated events over a bounded date range, safely on a live system.
 
-    Run it once all the events of all the collections are ingested.
+    Computes the aggregations for already-ingested *migrated* events without
+    ever touching the live aggregation bookmarks:
+
+    \b
+    * it processes ``[start_date, end_date]`` one month at a time, and
+    * every ``aggregate_events`` call uses ``update_bookmark=False``.
+
+    Because the live bookmark is never reset or moved backwards, the regular
+    hourly aggregation keeps tracking live traffic and can never be sent back
+    to reprocess history -- which is what previously caused an endless
+    re-aggregation / re-indexing loop (the old command reset every bookmark to
+    the year 2000 and then tried to aggregate everything in a single pass).
+
+    Run it once the migrated events of the collection(s) are ingested, with the
+    stats beat tasks paused (or at least before the next hourly aggregation):
+    the aggregator only picks up a migrated bucket while its events'
+    ``updated_timestamp`` (the ingestion time) is newer than the live bookmark,
+    so the live bookmark must not have advanced past the ingestion time yet.
     """
     from invenio_rdm_records.services.tasks import reindex_stats
-    from invenio_search import current_search_client
-    from invenio_search.utils import prefix_index
     from invenio_stats.tasks import aggregate_events
 
-    bookmarks_index = prefix_index("stats-bookmarks")
-    if not current_search_client.indices.exists(index=bookmarks_index):
-        raise click.UsageError(f"Index {bookmarks_index} does not exist.")
+    start = datetime.strptime(start_date, "%Y-%m-%d")
+    end = datetime.strptime(end_date, "%Y-%m-%d")
+    if end < start:
+        raise click.UsageError("--end-date must not be before --start-date.")
 
-    click.echo(f"Resetting the bookmarks in {bookmarks_index} to {start_date}")
-    current_search_client.delete_by_query(
-        index=bookmarks_index, body={"query": {"match_all": {}}}, refresh=True
-    )
-    for aggregation_type in ("file-download-agg", "record-view-agg", "stats_reindex"):
-        current_search_client.index(
-            index=bookmarks_index,
-            body={"date": start_date, "aggregation_type": aggregation_type},
-            refresh=True,
+    for chunk_start, chunk_end in _month_chunks(start, end):
+        click.echo(f"Aggregating events {chunk_start} -> {chunk_end}")
+        aggregate_events(
+            ["record-view-agg", "file-download-agg"],
+            start_date=chunk_start,
+            end_date=chunk_end,
+            # Never move the live bookmark: this is a historical backfill, not
+            # the live incremental aggregation.
+            update_bookmark=False,
         )
 
-    click.echo(f"Aggregating events up to {end_date}")
-    aggregate_events(["record-view-agg", "file-download-agg"], end_date=end_date)
-
-    click.echo("Reindexing the stats")
+    click.echo("Reindexing the stats for the affected records")
     reindex_stats(["stats-record-view", "stats-file-download"])
 
 
