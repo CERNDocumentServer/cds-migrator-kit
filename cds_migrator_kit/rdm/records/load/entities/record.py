@@ -156,6 +156,46 @@ class RecordLoad:
                 self.migration_logger.add_log(exc, record={"record": self.record_entry})
                 raise e
 
+    def set_default_preview(self, draft, version_files, uow):
+        """Set default_preview, preferring a PDF over plots/other files.
+
+        Files whose 8564_y description contains 'erratum' or 'addendum'
+        (case-insensitive) are supplementary documents and must not become
+        the record's preview file. Among the remaining files, prefer a PDF
+        (common case: one PDF + many plots). If no PDF is eligible, fall
+        back to the first remaining file. If every file carries a skip
+        label there is nothing useful to promote, so we leave the field unset.
+
+        Uses ``FilesManager.default_preview`` on the draft record (not
+        ``update_draft``) so access set by ``load_access`` is not wiped.
+        """
+        if not version_files:
+            return
+
+        _skip = {"erratum", "addendum"}
+        candidates = [
+            file_data
+            for file_data in version_files.values()
+            if not any(
+                term in (file_data["metadata"].get("description") or "").lower()
+                for term in _skip
+            )
+        ]
+        if not candidates:
+            return
+
+        def _is_pdf(file_data):
+            mimetype = (file_data.get("mimetype") or "").lower()
+            key = (file_data.get("key") or "").lower()
+            return mimetype == "application/pdf" or key.endswith(".pdf")
+
+        preview = next((f for f in candidates if _is_pdf(f)), candidates[0])
+        record = draft._record
+        # load_files went through the service; refresh so the key check sees DB state.
+        record.files._entries = None
+        record.files.default_preview = preview["key"]
+        uow.register(RecordCommitOp(record))
+
     def load_access(self, draft, access_dict: VersionAccess, uow):
         """Set this version's access on the published record."""
         record = draft._record
@@ -250,6 +290,7 @@ class RecordLoad:
 
         self.load_access(draft, access, uow)
         self.load_files(draft, files, uow)
+        self.set_default_preview(draft, files, uow)
 
         return draft
 
