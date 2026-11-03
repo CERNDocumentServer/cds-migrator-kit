@@ -1,9 +1,12 @@
 name: na61
-queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+queries:
+  - q: '(980:PREPRINT OR 980:ARTICLE OR 980:CONFERENCEPAPER OR 980:SLIDES OR 980:NOTES) AND (693__e:"NA61" OR 693__e:"SHINE NA61")'
+    dump_file_prefix: na61
 flags:
   include_plots: true
   create_inclusion_request: true
+  preferred_model: north_area
 # slugs of the communities the records are added to, the same in every environment;
 # they must exist in the environment
 communities:
-  - TODO   # slug of the community
+  - na61

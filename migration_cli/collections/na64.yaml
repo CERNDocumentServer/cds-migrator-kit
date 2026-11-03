@@ -1,9 +1,12 @@
 name: na64
-queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+queries:
+  - q: '980:PREPRINT OR 980:ARTICLE OR 980:CONFERENCEPAPER OR 980:SLIDES OR 980:NOTES OR 980:POSTER 693__e:"NA64"'
+    dump_file_prefix: na64
 flags:
   include_plots: true
   create_inclusion_request: true
+  preferred_model: north_area
 # slugs of the communities the records are added to, the same in every environment;
 # they must exist in the environment
 communities:
-  - TODO   # slug of the community
+  - na64

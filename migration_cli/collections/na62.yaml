@@ -1,9 +1,12 @@
 name: na62
-queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+queries:
+  - q: "980__a:NA62_Papers OR 980__a:NA62_Reports OR 980__a:NA62_Proc"
+    dump_file_prefix: na62
 flags:
   include_plots: true
   create_inclusion_request: true
+  preferred_model: north_area
 # slugs of the communities the records are added to, the same in every environment;
 # they must exist in the environment
 communities:
-  - TODO   # slug of the community
+  - na62
