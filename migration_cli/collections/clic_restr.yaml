@@ -1,0 +1,20 @@
+name: clic_restr
+# The LCD notes that are NOT approved (draft, not approved, no status): the
+# complement of the public `clic` collection, whose `lcd_notes` query is
+# `980:LCD-Notes AND 591__b:approved`. Together they cover every LCD note, so
+# none is dropped: the approved ones go public to `clic`, the rest restricted
+# here. Matched by the `clic_restr` model.
+queries:
+  - q: '980:LCD-Notes -591__b:approved -980:PHOTOLAB -980:PHOTOARC -980:VIDEOARC -690C_:SCICOM -980:ANNOUNCEMENT'
+    dump_file_prefix: lcd_notes_restricted
+flags:
+  # make every record restricted, whatever its legacy restriction
+  restricted: true
+  include_plots: true
+  create_inclusion_request: true
+  preferred_model: clic_restr
+
+# slugs of the communities the records are added to, the same in every environment;
+# they must exist in the environment
+communities:
+  - clic   # same community as the public clic notes, but restricted access
