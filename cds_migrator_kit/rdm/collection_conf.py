@@ -191,6 +191,13 @@ _KEYWORD = re.compile(r"(?:^|[\s(+-])([A-Za-z][A-Za-z_]*):")
 _WILDCARD = re.compile(r':("[^"]*\*[^"]*"|[^\s()"/]*\*[^\s()"/]*)')
 
 
+# the value of a field with no wildcard and no quotes, a plain literal, with its
+# leading `:`: the `:LCD-Notes` of `980:LCD-Notes`, the `:ARTICLE` of `980:ARTICLE`.
+# `(?!/)` skips a value the wildcard pass already rewrote to a `/(?i).../` regex;
+# `[^\s()]+` stops the value at the end of the term (a space or a parenthesis).
+_PLAIN_VALUE = re.compile(r"(:)(?!/)([^\s()]+)")
+
+
 def _wildcard_to_regex(match):
     value = match.group(1).strip('"')
     pattern = ".*".join(re.escape(piece) for piece in value.split("*"))
@@ -215,6 +222,25 @@ def _model_field(match):
     return prefix + field
 
 
+def _ci_regex(value, anchored):
+    """A case-insensitive regex for a literal value of a field.
+
+    The legacy search ignores the case (a record tagged ``LCD-NOTES`` is found by
+    ``980:LCD-Notes``), the matcher does not. A literal value is turned into a
+    ``/(?i).../`` regex so the model matches every case, like the search. The
+    match semantics are otherwise kept: an unquoted value stays a substring search
+    (``980:X`` matches any ``980`` with ``X`` in it, as before), a quoted value
+    stays an exact match (``anchored``, ``^...$``).
+    """
+    escaped = re.escape(value)
+    return "/(?i)^{}$/".format(escaped) if anchored else "/(?i){}/".format(escaped)
+
+
+def _plain_value_to_regex(match):
+    """Turn the plain value of a ``field:value`` into a case-insensitive regex."""
+    return match.group(1) + _ci_regex(match.group(2), anchored=False)
+
+
 def legacy_to_model_query(query):
     """Translate a legacy search query to the notation of a model ``__query__``.
 
@@ -232,9 +258,15 @@ def legacy_to_model_query(query):
       expression (``/(?i)^CLIC.Note/``, ``/(?i).*ARCHIVE.*/``, ignoring the case like the
       search), as the matcher does not know the wildcard
 
-    The other values, quoted strings, operators and parentheses are left as they are, and
-    a query already in the notation of the models is not changed. The matcher is
-    case sensitive, the legacy search is not, and it does not know the search
+    * every other value becomes a case-insensitive regex too (``980:ARTICLE`` ->
+      ``980__:/(?i)ARTICLE/``, ``"CERN ISOLDE"`` -> ``/(?i)^CERN\\ ISOLDE$/``): the
+      legacy search ignores the case and the matcher does not, so a model would
+      otherwise miss the records tagged with another case (``LCD-NOTES`` vs
+      ``LCD-Notes``). An unquoted value keeps its substring search, a quoted one its
+      exact match; only the case sensitivity changes.
+
+    Operators and parentheses are left as they are, and a query already in the
+    notation of the models is not changed. The matcher does not know the search
     keywords (``collection:"X"``): a warning is given for them, as they never
     match.
     """
@@ -248,11 +280,18 @@ def legacy_to_model_query(query):
                 "`{}:` in `{}` is a search keyword, not a MARC field: a model "
                 "never matches it".format(keyword, query)
             )
-    # the odd parts are the quoted strings
-    return "".join(
-        part if index % 2 else _FIELD.sub(_model_field, part)
-        for index, part in enumerate(parts)
-    )
+    # the odd parts are the quoted strings: an exact, case-insensitive match. The
+    # even parts hold the fields (translated) and the unquoted values (a substring,
+    # case-insensitive match), the operators and the parentheses.
+    out = []
+    for index, part in enumerate(parts):
+        if index % 2:
+            out.append(_ci_regex(part[1:-1], anchored=True))
+        else:
+            part = _FIELD.sub(_model_field, part)
+            part = _PLAIN_VALUE.sub(_plain_value_to_regex, part)
+            out.append(part)
+    return "".join(out)
 
 
 def conf_query(collection, exclusions="", confs_dir=None):

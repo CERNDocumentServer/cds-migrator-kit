@@ -7,6 +7,7 @@
 
 """CDS-RDM ISOLDE model."""
 
+from cds_migrator_kit.rdm.collection_conf import conf_query
 from cds_migrator_kit.rdm.records.transform.models._config import IGNORE_SYSTEM_KEYS
 from cds_migrator_kit.rdm.records.transform.models.base_publication_record import (
     rdm_base_publication_model,
@@ -18,12 +19,11 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 class ISOLDEModel(CdsOverdo):
     """Translation model for ISOLDE."""
 
-    __query__ = (
-        '(693__.a:"CERN ISOLDE" OR 693__.a:"CERN Isolde") AND '
-        "(980__:ARTICLE OR 980__:Article OR 980__:PREPRINT OR "
-        "980__:ConferencePaper OR 980__:conferencepaper OR "
-        "980__:NOTE OR 980__:REPORT) "
-        "-980__:DELETED -980__:DUMMY"
+    # the queries of the collection configuration (migration_cli/collections/isolde.yaml)
+    # (deleted, hidden and dummy records are always excluded), translated to the
+    # notation of the models
+    __query__ = conf_query(
+        "isolde",
     )
 
     __ignore_keys__ = IGNORE_SYSTEM_KEYS | ResearchModel.__ignore_keys__
