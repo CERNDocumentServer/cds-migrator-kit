@@ -65,6 +65,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         ca-certificates \
         curl \
         krb5-user \
+        libcairo2 \
         libgssapi-krb5-2 \
         libldap2 \
         libsasl2-2 \
