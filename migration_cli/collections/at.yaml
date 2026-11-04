@@ -1,9 +1,20 @@
 name: at
-queries: []   # TODO legacy queries of the collection (used by the legacy script only)
+queries:
+  - q: '980:ARTICLE 710__5:NPA -710__5:LHC -980__c:MIGRATED'
+    dump_file_prefix: NPA_articles
+  - q: '980:ARTICLE 710__5:AT -710__5:LHC -980__c:MIGRATED'
+    dump_file_prefix: AT_articles
+  - q: '980:PREPRINT 710__5:NPA -710__5:LHC -980__c:MIGRATED'
+    dump_file_prefix: NPA_preprints
+  - q: '980:PREPRINT 710__5:AT -710__5:LHC -980__c:MIGRATED'
+    dump_file_prefix: AT_preprints
+  - q: '(980:ARTICLE OR 980:PREPRINT) 710:LHC (037__:CERN-LHC-9* OR 037__:CERN-LHC-20* OR 088__:CERN-LHC-9* OR 088__:CERN-LHC-20*) -980:NEUFACNOT -980__c:MIGRATED'
+    dump_file_prefix: LHC_articles-preprints
 flags:
   restricted: false
   create_inclusion_request: true
+  preferred_model: at
 # slugs of the communities the records are added to, the same in every environment;
 # they must exist in the environment
 communities:
-  - TODO   # slug of the community (local id was 2ebd631f-66c3-4891-b2dd-275ec3656b7b)
+  - at   # slug of the community (local id was 2ebd631f-66c3-4891-b2dd-275ec3656b7b)

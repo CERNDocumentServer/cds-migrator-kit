@@ -13,6 +13,7 @@ from cds_migrator_kit.errors import (
     UnexpectedValue,
 )
 from cds_migrator_kit.rdm.records.transform.config import (
+    ACCELERATORS_AS_SUBJECTS,
     EXPERIMENT_ALIASES,
     EXPERIMENTS_AS_SUBJECTS,
 )
@@ -168,6 +169,12 @@ class AcceleratorsMapper(CustomFieldMapper):
                 "fermi",
                 "cern recognized expt.",
             ]:
+                continue
+            if accelerator.lower().strip() in ACCELERATORS_AS_SUBJECTS:
+                # curated as keywords, not real accelerators
+                ctx.dojson_entry.setdefault("subjects", []).append(
+                    {"subject": accelerator}
+                )
                 continue
             result = search_vocabulary(accelerator, "accelerators")
             if result and result not in accelerators_out:
