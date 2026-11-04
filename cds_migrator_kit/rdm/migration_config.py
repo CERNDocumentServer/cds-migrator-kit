@@ -25,10 +25,10 @@ from cds_rdm.permissions import (
     CDSCommunitiesPermissionPolicy,
     CDSRDMPreservationSyncPermissionPolicy,
 )
+from invenio_app_rdm.config import *
 from invenio_app_rdm.config import CELERY_BEAT_SCHEDULE as APP_RDM_CELERY_BEAT_SCHEDULE
 from invenio_app_rdm.config import STATS_AGGREGATIONS as _APP_RDM_STATS_AGGREGATIONS
 from invenio_app_rdm.config import STATS_EVENTS as _APP_RDM_STATS_EVENTS
-from invenio_app_rdm.config import *
 from invenio_cern_sync.sso import cern_keycloak, cern_remote_app_name
 from invenio_cern_sync.users.profile import CERNUserProfileSchema
 from invenio_i18n import lazy_gettext as _
@@ -41,10 +41,7 @@ from invenio_rdm_records.config import (
 from invenio_rdm_records.config import (
     RDM_RECORDS_IDENTIFIERS_SCHEMES as RDM_RECORDS_RELATED_IDENTIFIERS_SCHEMES,
 )
-from invenio_rdm_records.config import (
-    RDM_RECORDS_PERSONORG_SCHEMES,
-    always_valid,
-)
+from invenio_rdm_records.config import RDM_RECORDS_PERSONORG_SCHEMES, always_valid
 from invenio_rdm_records.proxies import current_rdm_records_service as record_service
 from invenio_rdm_records.services.components import DefaultRecordsComponents
 from invenio_vocabularies.config import (
@@ -648,6 +645,46 @@ CDS_COMMITTEE_APPROVAL_COMMUNITIES = {
     },
     "6a289642-5378-4daf-87b5-bb58af00487a": {
         # DIRAC
+        "label": "EP approval",  # shown in UI buttons/headings
+        "referee_group": "cds-ph-ep-publications-referee-non-lhc",  # CERN e-group slug
+        "report_number": {
+            "prefix": "CERN-EP",  # literal prefix, e.g. "CERN-EP"
+            "include_year": True,  # append the current year after prefix
+            "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
+    "742fea6c-0685-4da2-8000-c1f19635ba86": {
+        # NA58
+        "label": "EP approval",  # shown in UI buttons/headings
+        "referee_group": "cds-ph-ep-publications-referee-non-lhc",  # CERN e-group slug
+        "report_number": {
+            "prefix": "CERN-EP",  # literal prefix, e.g. "CERN-EP"
+            "include_year": True,  # append the current year after prefix
+            "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
+    "cf52a005-cc57-4a69-a135-771bf9f28d8a": {
+        # NA61
+        "label": "EP approval",  # shown in UI buttons/headings
+        "referee_group": "cds-ph-ep-publications-referee-non-lhc",  # CERN e-group slug
+        "report_number": {
+            "prefix": "CERN-EP",  # literal prefix, e.g. "CERN-EP"
+            "include_year": True,  # append the current year after prefix
+            "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
+    "71045612-b90c-4dba-83a5-c5e55d5b0622": {
+        # NA62
+        "label": "EP approval",  # shown in UI buttons/headings
+        "referee_group": "cds-ph-ep-publications-referee-non-lhc",  # CERN e-group slug
+        "report_number": {
+            "prefix": "CERN-EP",  # literal prefix, e.g. "CERN-EP"
+            "include_year": True,  # append the current year after prefix
+            "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
+    "25a0fa11-6e27-419a-a00e-3b4b30ef0182": {
+        # NA64
         "label": "EP approval",  # shown in UI buttons/headings
         "referee_group": "cds-ph-ep-publications-referee-non-lhc",  # CERN e-group slug
         "report_number": {
