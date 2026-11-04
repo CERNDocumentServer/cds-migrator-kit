@@ -70,9 +70,6 @@ class Runner:
                 self.create_inclusion_request = stream_config[collection].get(
                     "create_inclusion_request", False
                 )
-                self.access_grants_view = stream_config[collection].get(
-                    "access_grants_view", False
-                )
                 self.plots = stream_config[collection].get("plots", False)
                 self.preferred_model = stream_config[collection].get(
                     "preferred_model", None
@@ -102,7 +99,6 @@ class Runner:
                         collection=collection,
                         **transform_config,
                         restricted=self.restricted,
-                        access_grants_view=self.access_grants_view,
                         plots=self.plots,
                         preferred_model=self.preferred_model,
                         migration_logger=self.migration_logger,

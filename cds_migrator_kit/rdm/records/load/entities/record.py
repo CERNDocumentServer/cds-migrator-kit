@@ -27,7 +27,7 @@ from cds_migrator_kit.errors import ManualImportRequired
 from cds_migrator_kit.rdm.records.transform.entities.parent import RecordParent
 from cds_migrator_kit.rdm.records.transform.entities.record import RecordEntry
 from cds_migrator_kit.rdm.records.transform.entities.version import (
-    VersionAccess,
+    VersionAccessObj,
     VersionFileEntry,
 )
 
@@ -60,7 +60,7 @@ class RecordLoad:
         record_entry: RecordEntry,
         record_parent: RecordParent,
         migration_logger,
-        is_final_record=True,
+        is_public_record=True,
         update_new_version_publication_date=False,
         record_state_logger=None,
     ):
@@ -71,7 +71,7 @@ class RecordLoad:
         :param record_parent: the built ``RecordParent`` for this entry -
             only used on the first version, to set up the new draft's
             parent access/communities (see ``pre_publish()``).
-        :param is_final_record: whether this is the "real"/final record for
+        :param is_public_record: whether this is the "real"/final record for
             its legacy recid - False for the restricted half of an EP
             approval split, which exists only as an internal source record
             and must skip legacy-recid-facing side effects (rep-number PID
@@ -83,7 +83,7 @@ class RecordLoad:
         self.record_entry = record_entry
         self.record_parent = record_parent
         self.migration_logger = migration_logger
-        self.is_final_record = is_final_record
+        self.is_public_record = is_public_record
         self.update_new_version_publication_date = update_new_version_publication_date
         self.record_state_logger = record_state_logger
 
@@ -196,15 +196,15 @@ class RecordLoad:
         record.files.default_preview = preview["key"]
         uow.register(RecordCommitOp(record))
 
-    def load_access(self, draft, access_dict: VersionAccess, uow):
+    def load_access(self, draft, access_dict: VersionAccessObj, uow):
         """Set this version's access on the published record."""
         record = draft._record
-        record.access = access_dict["access_obj"]
+        record.access = access_dict
         uow.register(RecordCommitOp(record))
 
     def assign_rep_numbers(self, draft):
         """Mint ``cdsrn`` PIDs for this draft's report-number identifiers."""
-        if not self.is_final_record:
+        if not self.is_public_record:
             return
         draft_report_nums = {}
         for index, id in enumerate(draft.data["metadata"].get("identifiers", [])):
@@ -296,7 +296,7 @@ class RecordLoad:
 
     def after_publish_update_dois(self, identity, record, uow):
         """Update migrated DOIs post publish."""
-        if not self.is_final_record:
+        if not self.is_public_record:
             return
         migrated_pids = self.record_entry.body["pids"]
         for pid_type, identifier in migrated_pids.items():
@@ -337,7 +337,7 @@ class RecordLoad:
 
     def after_publish_mint_recid(self, record):
         """Mint legacy ids for redirections assigned to the parent."""
-        if not self.is_final_record:
+        if not self.is_public_record:
             return
         legacy_recid = self.record_entry.recid
         if record._record.versions.index == 1:
@@ -427,7 +427,7 @@ class RecordLoad:
         rolled back by a failure elsewhere in the same load (e.g. a grant
         creation failure).
         """
-        if self.is_final_record:
+        if self.is_public_record:
             self.record_state_logger.add_record_state(record_state_context)
 
     def _load_record_state(self, legacy_recid, records):

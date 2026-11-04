@@ -32,6 +32,45 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [
+        {
+          "bibdocid": 7921875,
+          "status": "restricted",
+          "roles": []
+        }
+      ],
+      "record": {
+        "owners": {
+          "859__f": [],
+          "270__m": [
+            "admin@inveniosoftware.org"
+          ]
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {
+        "collections": {},
+        "any_collection": []
+      },
+      "comments": {
+        "primary_collection": "",
+        "view": {
+          "roles": [],
+          "any_collection": []
+        },
+        "send": {
+          "roles": [],
+          "any_collection": []
+        },
+        "record_restriction": "",
+        "restricted_comments": []
+      }
+    },
     "recid": 555555,
     "creation_date": "2019-05-06 04:03:12",
     "record": [
@@ -75,6 +114,45 @@
       }
     ],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [
+        {
+          "bibdocid": 79218766,
+          "status": "EligibilityHRCirc",
+          "roles": []
+        }
+      ],
+      "record": {
+        "owners": {
+          "859__f": [],
+          "270__m": [
+            "admin@inveniosoftware.org"
+          ]
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {
+        "collections": {},
+        "any_collection": []
+      },
+      "comments": {
+        "primary_collection": "",
+        "view": {
+          "roles": [],
+          "any_collection": []
+        },
+        "send": {
+          "roles": [],
+          "any_collection": []
+        },
+        "record_restriction": "",
+        "restricted_comments": []
+      }
+    },
     "recid": 23646466,
     "creation_date": "2013-09-06 09:31:03",
     "record": [

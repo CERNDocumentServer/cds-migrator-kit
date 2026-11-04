@@ -29,11 +29,18 @@ IGNORE_SYSTEM_KEYS = {
     "336__a",  # redundant field
     "340__a",  # From SIS: see decision log
     "500__9",  # Provenance of the note
-    "520__9",  # Provenance of the description
+    "506__a",  # These are now imported via the `restrictions` key of the dump
+    "506__d",  # These are now imported via the `restrictions` key of the dump
+    "506__m",  # These are now imported via the `restrictions` key of the dump
+    "520__9",  # Provenance of the description,
     "536__r",  # From SIS: see decision log
     "540__3",  # Material of the license
     "540__9",  # Also material of the license
     "540__g",  # From SIS (see decision log)
+    "541__a",  # See decision log
+    "541__c",  # See decision log
+    "541__d",  # See decision log
+    "541__e",  # See decision log
     "542__3",  # Also material of the license
     "595__i",  # From SIS: see decision log
     "695__9",  # From SIS: see decision log
@@ -51,6 +58,7 @@ IGNORE_SYSTEM_KEYS = {
     "8564_8",  # File information (done by file dump)
     "8564_q",  # File links File information (done by file dump)
     "8564_z",  # Websubmit "stamp" (migrated as file metadata)
+    "859__f",  # The submitter(s) is now imported via the `restrictions` key of the dump
     "905__m",  # Submitter email address
     "916__y",  # year, redundant value
     "937__c",  # last modified by
@@ -60,6 +68,7 @@ IGNORE_SYSTEM_KEYS = {
     "961__h",  # CDS modification tag # TODO
     "961__l",  # CDS modification tag # TODO
     "961__x",  # CDS modification tag # TODO
+    "963__a",  # Record-level restriction is now imported via the `restrictions` key of the dump
     "981__a",  # duplicate record id
     "999C50",  # From SIS: all 999* fields can be ignored
     "999C52",  # https://cds.cern.ch/record/2640188/export/hm?ln=en
