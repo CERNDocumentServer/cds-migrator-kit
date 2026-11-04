@@ -1003,6 +1003,10 @@ def related_identifiers_787(self, key, value):
             "relation_type": {"id": "isdocumentedby"},
             "resource_type": {"id": "video"},
         },
+        "archives": {
+            "relation_type": {"id": "references"},
+            "resource_type": {"id": "other"},
+        },
     }
 
     if recid:
