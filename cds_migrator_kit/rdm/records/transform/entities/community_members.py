@@ -95,6 +95,9 @@ class CommunityMembersCheck:
         if not restricted:
             return
 
+        # TODO: collections do not map to communities exactly, check if we can only focus
+        # on checking one specific sub-community.
+
         recid = self.recid
         if len(restricted) > 1:
             raise ManualImportRequired(
@@ -120,6 +123,7 @@ class CommunityMembersCheck:
 
             extra = (community_groups - groups) | (community_emails - emails)
             if extra and self.migration_logger:
+                # TODO: aggregate into one log for the entire run, not per-record
                 self.migration_logger.add_information(
                     recid,
                     {
@@ -186,6 +190,7 @@ class CommunityMembersCheck:
             community_groups, community_emails = community_subjects(community_id)
             missing = (groups - community_groups) | (emails - community_emails)
             if missing and self.migration_logger:
+                # TODO: aggregate into one log for the entire run, not per-record
                 self.migration_logger.add_information(
                     self.recid,
                     {

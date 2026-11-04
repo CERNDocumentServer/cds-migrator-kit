@@ -133,6 +133,7 @@ class ParentLoad:
 
             groups, emails, grants_with_perms = self.record_parent.resolve_grants()
 
+            # TODO: this is where the load steps actually starts, the above stuff is transforming
             def _create_grant(subject_type, subject_id, permission):
                 grant_data = {
                     "grants": [

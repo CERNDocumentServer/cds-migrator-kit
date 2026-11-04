@@ -163,7 +163,7 @@ class SplitMigrationEntryLoad(CDSMigrationEntryLoad):
                     restricted_records, self.create_inclusion_request, uow
                 )
 
-                # 3. Create public record
+                # 2. Create public record
                 public_records = public_record_load.load(public_entry, uow=uow)
                 public_record_state = public_record_load.build_record_state(
                     recid, public_records
@@ -211,7 +211,7 @@ class SplitMigrationEntryLoad(CDSMigrationEntryLoad):
                     uow=uow,
                 )
 
-                # 4. Write EP approval metadata on both parents
+                # 3. Write EP approval metadata on both parents (if needed)
                 strategy.after_both_loaded(
                     uow, public_record_state, restricted_record_state
                 )

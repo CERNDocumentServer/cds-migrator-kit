@@ -54,6 +54,7 @@ def _split_copy(entry: MigrationEntry) -> MigrationEntry:
     return split
 
 
+# TODO: workshop this
 class SplitEntry:
     """Build a load entry for the public or restricted record split."""
 
@@ -236,6 +237,7 @@ class PublicEntry(SplitEntry):
         return kept
 
     def _apply_entry_modifications(self, split):
+        # TODO: all scientific community ops should be in the load step.
         if self.approval_request is not None:
             split.pop("_request_data", None)
             split["parent"].body["access"]["owned_by"] = {"user": "system"}

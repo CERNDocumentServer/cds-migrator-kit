@@ -198,6 +198,7 @@ class RecordParent:
 
         return access_grants
 
+    # TODO: move to loader
     def resolve_grants(self):
         """Resolve which groups/emails/permissions get access grants for a version.
 
@@ -212,6 +213,10 @@ class RecordParent:
         """
         default_permission = "view"
         grants_with_perms = {}
+
+        # TODO: the priority application should be in one place
+
+        # This should only do simple extraction, the loader should have all the business logic
 
         # ----Parse file status metadata----#
         groups, emails = self._resolve_file_restriction_groups_and_emails()
@@ -285,6 +290,7 @@ class RecordParent:
 
         if status == "SSO" or status == "restricted":
             # https://cds.cern.ch/admin/webaccess/webaccessadmin.py/showroledetails?id_role=69
+            # TODO: cern-accounts-primary
             return {"cern-personnel"}, set()
         if status.endswith("[CERN]") and not any(
             kw in status for kw in ("firerole:", "allow ")
