@@ -656,4 +656,44 @@ CDS_COMMITTEE_APPROVAL_COMMUNITIES = {
             "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
         },
     },
+    "742fea6c-0685-4da2-8000-c1f19635ba86": {
+        # NA58
+        "label": "EP approval",  # shown in UI buttons/headings
+        "referee_group": "cds-ph-ep-publications-referee-non-lhc",  # CERN e-group slug
+        "report_number": {
+            "prefix": "CERN-EP",  # literal prefix, e.g. "CERN-EP"
+            "include_year": True,  # append the current year after prefix
+            "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
+    "cf52a005-cc57-4a69-a135-771bf9f28d8a": {
+        # NA61
+        "label": "EP approval",  # shown in UI buttons/headings
+        "referee_group": "cds-ph-ep-publications-referee-non-lhc",  # CERN e-group slug
+        "report_number": {
+            "prefix": "CERN-EP",  # literal prefix, e.g. "CERN-EP"
+            "include_year": True,  # append the current year after prefix
+            "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
+    "71045612-b90c-4dba-83a5-c5e55d5b0622": {
+        # NA62
+        "label": "EP approval",  # shown in UI buttons/headings
+        "referee_group": "cds-ph-ep-publications-referee-non-lhc",  # CERN e-group slug
+        "report_number": {
+            "prefix": "CERN-EP",  # literal prefix, e.g. "CERN-EP"
+            "include_year": True,  # append the current year after prefix
+            "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
+    "25a0fa11-6e27-419a-a00e-3b4b30ef0182": {
+        # NA64
+        "label": "EP approval",  # shown in UI buttons/headings
+        "referee_group": "cds-ph-ep-publications-referee-non-lhc",  # CERN e-group slug
+        "report_number": {
+            "prefix": "CERN-EP",  # literal prefix, e.g. "CERN-EP"
+            "include_year": True,  # append the current year after prefix
+            "counter_digits": 3,  # zero-padding width, e.g. 3 → "001"
+        },
+    },
 }
