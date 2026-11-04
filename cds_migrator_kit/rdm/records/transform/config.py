@@ -237,7 +237,11 @@ EXPERIMENT_ALIASES = {
 
 # 693__e values that are keywords rather than real experiments (curated as
 # "mots clef"), mapped to subjects instead of cern:experiments
-EXPERIMENTS_AS_SUBJECTS = ["d3", "r104", "r105a"]
+EXPERIMENTS_AS_SUBJECTS = ["d3", "r104", "r105a", "icarus cngs2", "condopt"]
+
+# 693__a values that are keywords rather than real accelerators, mapped to
+# subjects instead of cern:accelerators
+ACCELERATORS_AS_SUBJECTS = ["grenoble esfr"]
 
 # Legacy accelerator names remapped to vocabulary ids before lookup
 ACCELERATOR_ALIASES = {
