@@ -23,9 +23,11 @@ from cds_migrator_kit.rdm.records.transform.xml_processing.rules.research import
     issn,
     journal,
     meeting,
+    organisation,
     resource_type,
     udc,
 )
+from cds_migrator_kit.transform.overdo import _count_901_values
 
 
 class TestIsbn:
@@ -1410,3 +1412,90 @@ class TestResourceType:
             resource_type(record, "697C_", {"a": "lexisomething"})
         assert record["subjects"] == [{"subject": "lexisomething"}]
         assert "resource_type" not in record
+
+
+def _person(name, affiliations=None):
+    person = {"person_or_org": {"type": "personal", "family_name": name, "name": name}}
+    if affiliations is not None:
+        person["affiliations"] = affiliations
+    return person
+
+
+class TestOrganisation901:
+    """901__u affiliation handling across every 901 field on the record."""
+
+    def test_one_personal_author_gets_every_901_value(self):
+        author = _person("Smith")
+        record = {"creators": [author], "_input_901_count": 2}
+        with pytest.raises(IgnoreKey):
+            organisation(record, "901__", {"u": ["ETH Zurich", "INFN"]})
+        assert author["affiliations"] == ["ETH Zurich", "INFN"]
+        assert "contributors" not in record
+
+    def test_one_personal_contributor_gets_the_901_value(self):
+        author = _person("Smith")
+        record = {"contributors": [author], "_input_901_count": 1}
+        with pytest.raises(IgnoreKey):
+            organisation(record, "901__", {"u": "CERN"})
+        assert author["affiliations"] == ["CERN"]
+
+    def test_several_authors_share_the_single_901_on_the_record(self):
+        smith = _person("Smith")
+        jones = _person("Jones")
+        record = {
+            "creators": [smith],
+            "contributors": [jones],
+            "_input_901_count": 1,
+        }
+        with pytest.raises(IgnoreKey):
+            organisation(record, "901__", {"u": "ETH Zurich"})
+        assert smith["affiliations"] == ["ETH Zurich"]
+        assert jones["affiliations"] == ["ETH Zurich"]
+
+    def test_several_authors_and_several_901_fields_become_contributors(self):
+        """This field has one value, but another 901 exists on the record."""
+        smith = _person("Smith")
+        jones = _person("Jones")
+        record = {
+            "creators": [smith, jones],
+            "_input_901_count": 2,
+        }
+        with pytest.raises(IgnoreKey):
+            organisation(record, "901__", {"u": "ETH Zurich"})
+        assert "affiliations" not in smith
+        assert "affiliations" not in jones
+        assert record["contributors"] == [
+            {
+                "person_or_org": {"type": "organizational", "name": "ETH Zurich"},
+                "role": {"id": "other"},
+            }
+        ]
+
+    def test_no_personal_author_becomes_contributor(self):
+        record = {"_input_901_count": 1}
+        with pytest.raises(IgnoreKey):
+            organisation(record, "901__", {"u": "ETH Zurich"})
+        assert record["contributors"] == [
+            {
+                "person_or_org": {"type": "organizational", "name": "ETH Zurich"},
+                "role": {"id": "other"},
+            }
+        ]
+
+    def test_empty_901_is_ignored(self):
+        author = _person("Smith")
+        record = {"creators": [author]}
+        with pytest.raises(IgnoreKey):
+            organisation(record, "901__", {"u": "  "})
+        assert "affiliations" not in author
+        assert "contributors" not in record
+
+    def test_count_includes_every_901_field(self):
+        items = [
+            ("100__", {"a": "Smith, J"}),
+            ("901__", {"u": "ETH Zurich"}),
+            ("901__", {"u": ("CERN", "INFN")}),
+            ("901__", {"u": "  "}),
+            ("906__", {"p": "Reviewer"}),
+        ]
+        assert _count_901_values(items) == 3
