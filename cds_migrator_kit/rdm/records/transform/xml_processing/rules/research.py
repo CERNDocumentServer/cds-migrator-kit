@@ -440,16 +440,71 @@ def internal_notes(self, key, value):
 @model.over("contributors", "^901__")
 @for_each_value
 def organisation(self, key, value):
-    """Flag a 901__u value for manual curation."""
+    """Translate a 901__u affiliation."""
+    cern_author = {"person_or_org": {"type": "organizational", "name": "CERN"}}
+    authors = [
+        person
+        for group in (self.get("creators", []), self.get("contributors", []))
+        for person in group
+        if isinstance(person, dict)
+    ]
+    personal_authors = [
+        person
+        for person in authors
+        if (person.get("person_or_org") or {}).get("type") == "personal"
+    ]
+    organisational_authors = [
+        person
+        for person in authors
+        if (person.get("person_or_org") or {}).get("type") == "organizational"
+    ]
+
+    unhandled_items = []
+
     for item in force_list(value.get("u", "")):
-        if item and StringValue(item).parse().strip():
-            raise UnexpectedValue(
-                "901__u present. Record requires manual curation.",
-                field=key,
-                subfield="u",
-                value=value,
-            )
-    raise IgnoreKey("contributors")
+        item_parsed = StringValue(item).parse().strip()
+        if not item or not item_parsed:
+            continue
+
+        # 1. One personal author: attach the affiliation.
+        if len(personal_authors) == 1:
+            affiliations = personal_authors[0].setdefault("affiliations", [])
+            if item_parsed not in affiliations:
+                affiliations.append(item_parsed)
+            continue
+
+        # 2. CERN: add organizational creator if not already present.
+        if item_parsed.lower() == "cern":
+            if cern_author not in organisational_authors:
+                self.setdefault("creators", []).append(cern_author)
+                organisational_authors.append(cern_author)
+            continue
+
+        unhandled_items.append(item_parsed)
+
+    # All values were handled.
+    if not unhandled_items:
+        raise IgnoreKey("contributors")
+
+    # 3. All personal authors already have affiliations: ignore.
+    if personal_authors and all(
+        person.get("affiliations") for person in personal_authors
+    ):
+        raise IgnoreKey("contributors")
+
+    # 4. Non-CERN organizational contributor already exists: ignore.
+    if any(
+        (person.get("person_or_org") or {}).get("name", "").strip().lower() != "cern"
+        for person in organisational_authors
+    ):
+        raise IgnoreKey("contributors")
+
+    raise UnexpectedValue(
+        "901__u found non-CERN affiliation. Record requires manual curation.",
+        field=key,
+        subfield="u",
+        value=value,
+    )
 
 
 @model.over("request_reviewers", "^906__", override=True)
