@@ -24,6 +24,7 @@ from psycopg2.errors import UniqueViolation
 from sqlalchemy.exc import IntegrityError
 
 from cds_migrator_kit.errors import ManualImportRequired
+from cds_migrator_kit.rdm.records.transform.config import CORRECTION_MATERIAL_TERMS
 from cds_migrator_kit.rdm.records.transform.entities.parent import RecordParent
 from cds_migrator_kit.rdm.records.transform.entities.record import RecordEntry
 from cds_migrator_kit.rdm.records.transform.entities.version import (
@@ -159,7 +160,7 @@ class RecordLoad:
     def set_default_preview(self, draft, version_files, uow):
         """Set default_preview, preferring a PDF over plots/other files.
 
-        Files whose 8564_y description contains 'erratum' or 'addendum'
+        Files whose 8564_y description contains correction material
         (case-insensitive) are supplementary documents and must not become
         the record's preview file. Among the remaining files, prefer a PDF
         (common case: one PDF + many plots). If no PDF is eligible, fall
@@ -172,13 +173,12 @@ class RecordLoad:
         if not version_files:
             return
 
-        _skip = {"erratum", "addendum"}
         candidates = [
             file_data
             for file_data in version_files.values()
             if not any(
                 term in (file_data["metadata"].get("description") or "").lower()
-                for term in _skip
+                for term in CORRECTION_MATERIAL_TERMS
             )
         ]
         if not candidates:

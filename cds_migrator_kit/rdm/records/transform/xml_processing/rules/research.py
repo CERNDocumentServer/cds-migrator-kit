@@ -26,9 +26,7 @@ from cds_migrator_kit.transform.xml_processing.rules.base import (
     extract_contributor_names,
 )
 
-from ...config import (
-    udc_pattern,
-)
+from ...config import CORRECTION_MATERIAL_TERMS, udc_pattern
 from ...models.base_publication_record import rdm_base_publication_model as model
 from .base import licenses as _base_licenses
 from .base import normalize
@@ -271,7 +269,7 @@ def journal(self, key, value):
     # "issupplementedby"), so this note carries no extra information and is
     # ignored. Any other value is surfaced for curation.
     if "m" in value:
-        allowed_m_values = {"publication", "erratum"}
+        allowed_m_values = {"publication", *CORRECTION_MATERIAL_TERMS}
         m_values = value.get("m")
         if not isinstance(m_values, (list, tuple)):
             m_values = (m_values,)
