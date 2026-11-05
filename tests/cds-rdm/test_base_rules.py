@@ -502,6 +502,31 @@ class TestPidsDOI:
         # the erratum DOI must not be promoted to the main record DOI
         assert "_pids" not in record or "doi" not in record.get("_pids", {})
 
+    @pytest.mark.parametrize("qualifier", ["erratum", "addendum", "corrigendum"])
+    def test_correction_material_doi_is_supplement(self, qualifier):
+        """Every correction material qualifier is handled as an erratum."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            _pids(
+                record,
+                "0247_",
+                {"2": "DOI", "a": "10.1/corr", "q": qualifier},
+            )
+        assert record["related_identifiers"] == [
+            {
+                "identifier": "10.1/corr",
+                "scheme": "doi",
+                "relation_type": {"id": "issupplementedby"},
+            }
+        ]
+
+    def test_correction_material_qualifier_case_insensitive(self):
+        """The qualifier is matched case/whitespace insensitively."""
+        record = {}
+        with pytest.raises(IgnoreKey):
+            _pids(record, "0247_", {"2": "DOI", "a": "10.1/corr", "q": " Addendum "})
+        assert len(record["related_identifiers"]) == 1
+
     def test_multiple_erratum_dois_each_added_as_supplement(self):
         """One or more erratum DOIs are all kept as related identifiers.
 

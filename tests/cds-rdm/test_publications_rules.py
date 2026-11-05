@@ -705,9 +705,11 @@ class TestJournal:
         assert result[0]["resource_type"] == {"id": "publication-conferenceproceeding"}
         assert record["custom_fields"]["journal:journal"]["title"] == "Journal"
 
-    @pytest.mark.parametrize("m_value", ["publication", "erratum"])
+    @pytest.mark.parametrize(
+        "m_value", ["publication", "erratum", "addendum", "corrigendum"]
+    )
     def test_773_m_known_value_is_ignored(self, m_value):
-        """773__m publication/erratum is ignored.
+        """773__m publication/correction material is ignored.
 
         The erratum linking is handled at the DOI level, so the note itself
         carries no extra data: the record still migrates and the journal
