@@ -442,11 +442,30 @@ def internal_notes(self, key, value):
 @model.over("contributors", "^901__")
 @for_each_value
 def organisation(self, key, value):
-    """Flag a 901__u value for manual curation."""
+    """Translate a 901__u affiliation."""
+    cern_author = {"person_or_org": {"type": "organizational", "name": "CERN"}}
     for item in force_list(value.get("u", "")):
-        if item and StringValue(item).parse().strip():
+        item_parsed = StringValue(item).parse().strip()
+        if not item or not item_parsed:
+            continue
+        if item_parsed.lower() == "cern":
+            creators = self.get("creators", [])
+            if cern_author not in creators:
+                creators.append(cern_author)
+                self["creators"] = creators
+            continue
+
+        personal_authors = [
+            person
+            for group in (self.get("creators", []), self.get("contributors", []))
+            for person in group
+            if (person.get("person_or_org") or {}).get("type") == "personal"
+        ]
+        if not personal_authors or any(
+            not person.get("affiliations") for person in personal_authors
+        ):
             raise UnexpectedValue(
-                "901__u present. Record requires manual curation.",
+                "901__u found non-CERN affiliation. Record requires manual curation.",
                 field=key,
                 subfield="u",
                 value=value,
