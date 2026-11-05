@@ -76,22 +76,26 @@ def internal_notes(self, key, value):
 def eco_report_number(self, key, value):
     """Translates report number."""
     identifier = value.get("a", "")
-    # Check it's email TODO: how to handle?
+    # TODO: handle email report numbers, raise until it is mapped
     if key == "088__" and "@" in identifier:
-        pass
-    else:
-        provenance = value.get("9", "")
-        identifiers = self.get("identifiers", [])
-        if provenance == "submitter" and identifier.startswith("FERMILAB-POSTER"):
-            new_id = {"identifier": identifier, "scheme": "cdsrn"}
-            if new_id not in identifiers:
-                identifiers.append(new_id)
-                raise IgnoreKey("eco_report_number")
-        _identifier = report_number(self, key, value)
+        raise UnexpectedValue(
+            message="Email as report number is not handled yet",
+            field=key,
+            subfield="a",
+            value=value,
+        )
+    provenance = value.get("9", "")
+    identifiers = self.get("identifiers", [])
+    if provenance == "submitter" and identifier.startswith("FERMILAB-POSTER"):
+        new_id = {"identifier": identifier, "scheme": "cdsrn"}
+        if new_id not in identifiers:
+            identifiers.append(new_id)
+            raise IgnoreKey("eco_report_number")
+    _identifier = report_number(self, key, value)
 
-        if _identifier and _identifier not in identifiers:
-            identifiers += _identifier
-        self["identifiers"] = identifiers
+    if _identifier and _identifier not in identifiers:
+        identifiers += _identifier
+    self["identifiers"] = identifiers
     raise IgnoreKey("eco_report_number")
 
 
@@ -120,13 +124,15 @@ def eco_identifiers(self, key, value):
     original_scheme = StringValue(value.get("9", "")).parse()
     scheme = original_scheme.lower()
 
-    # TODO: handle photo identifier
     if scheme == "phopho":
-        id_value = StringValue(value.get("a", "")).parse()
-        new_id = {"scheme": "photo", "identifier": id_value}
-        raise IgnoreKey("eco_identifiers")
-    identifiers(self, key, value)
-    raise IgnoreKey("eco_identifiers")
+        # TODO: It looks like the PHOPHO values are some kind of external identifiers, should we ask the librarians? because related identifiers scheme is controlled and only the ones existing are allowed, or do you know what could be the correct type? ref: https://datacite-metadata-schema.readthedocs.io/en/4.5/properties/relatedidentifier/#a-relatedidentifiertype
+        raise UnexpectedValue(
+            message="Photo identifier (phopho) is not handled yet",
+            field=key,
+            subfield="9",
+            value=value,
+        )
+    return identifiers(self, key, value)
 
 
 @model.over("resource_type", "^980__", override=True)
@@ -254,18 +260,3 @@ def custom_subjects(self, key, value):
     _subjects.append(subject)
     self["subjects"] = _subjects
     raise IgnoreKey("custom_subjects")
-
-
-@model.over("custom_fields", "(^693__)", override_tag=True)
-@for_each_value
-def custom_fields_eco(self, key, value):
-    """Translates custom fields."""
-    value = dict(value)
-    if value.get("e", "").strip().lower() in [
-        "select:",
-        "**no value**",
-        "sélectionner:",
-    ]:
-        value["e"] = ""
-    # TODO: Should be removed after curation
-    base_custom_fields(self, key, value)

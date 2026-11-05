@@ -33,8 +33,6 @@ class ITModel(CdsOverdo):
                     -980__:BOOK
                     -690C_:YELLOWREPORT
                     -690C_:"YELLOW REPORT"
-                    -690C_:CERNOFFICIALPRESSBROCHURE
-                    -690C_:CERNEXPERIMENTBROCHURE
                     -980__:THESIS
                     -980__:INTNOTECMSPUBL
                     """
