@@ -1,0 +1,8 @@
+name: eco
+queries:
+  - q: '(980__:POSTER -693__e:LHCb -693__e:ALICE -693__e:ATLAS -693__e:CMS -693__e:NA64) OR (980__:NOTE AND 710__.5:IR)'
+    dump_file_prefix: eco
+flags:
+  preferred_model: eco
+communities:
+  - eco
