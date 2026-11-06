@@ -28,6 +28,7 @@ from cds_migrator_kit.rdm.records.load.entities.ep_split import (
 )
 from cds_migrator_kit.rdm.records.transform.config import (
     CONTROLLED_SUBJECTS_SCHEMES,
+    CORRECTION_MATERIAL_TERMS,
     EXPERIMENTS_AS_STUDIES,
     IDENTIFIERS_SCHEMES_TO_DROP,
     KEYWORD_SCHEMES_TO_DROP,
@@ -515,7 +516,7 @@ def _pids(self, key, value):
     if not is_doi_id and is_handle_id and (scheme == "doi" or scheme == "urn/hdl"):
         scheme = "handle"
 
-    if qualifier == "erratum":
+    if qualifier in CORRECTION_MATERIAL_TERMS:
         related_identifiers = self.get("related_identifiers", [])
         new_id = {
             "identifier": identifier,

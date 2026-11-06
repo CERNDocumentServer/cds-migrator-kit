@@ -159,6 +159,8 @@ udc_pattern = r"\b\d+(?:\.\d+)*-?\d*(?:\.\d+)*\b"
 
 FILE_SUBFORMATS_TO_DROP = ["pdfa", "unstamped"]
 
+CORRECTION_MATERIAL_TERMS = ("erratum", "addendum", "corrigendum")
+
 # Experiment IDs that live in the experiments MARC field but should be
 # stored as studies (cern:studies) rather than experiments (cern:experiments).
 EXPERIMENTS_AS_STUDIES = {
