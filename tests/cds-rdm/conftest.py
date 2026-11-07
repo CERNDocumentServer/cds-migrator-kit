@@ -33,6 +33,7 @@ from invenio_app import factory as app_factory
 from invenio_cern_sync.sso import cern_remote_app_name
 from invenio_cern_sync.users.profile import CERNUserProfileSchema
 from invenio_communities.communities.records.api import Community
+from invenio_communities.members.records.models import MemberModel
 from invenio_i18n import lazy_gettext as _
 from invenio_pidstore.models import PersistentIdentifier, PIDStatus
 from invenio_rdm_records.cli import create_records_custom_field
@@ -432,6 +433,28 @@ def archiver(UserFixture, app, db):
     ds.add_role_to_user(user.user, r)
 
     return user
+
+
+@pytest.fixture()
+def normal_user(UserFixture, app, db, test_app):
+    """A normal user without special permissions."""
+    u = UserFixture(
+        email="normal@inveniosoftware.org",
+        password="normal",
+        preferences={
+            "visibility": "public",
+            "email_visibility": "restricted",
+            "notifications": {
+                "enabled": True,
+            },
+        },
+        active=True,
+        confirmed=True,
+    )
+    u.create(app, db)
+    UserAggregate.index.refresh()
+
+    return u
 
 
 @pytest.fixture(scope="module")
@@ -1741,6 +1764,37 @@ def cern_scientific_community(running_app, db, app):
     comm.commit()
     db.session.commit()
     app.config["CDS_CERN_SCIENTIFIC_COMMUNITY_ID"] = str(comm.id)
+    return comm
+
+
+@pytest.fixture()
+def restricted_community_group(db):
+    """The group that is a member of ``restricted_community``."""
+    role = Role(id="restricted-community-readers", name="restricted-community-readers")
+    db.session.add(role)
+    db.session.commit()
+    return role
+
+
+@pytest.fixture()
+def restricted_community(running_app, db, restricted_community_group):
+    """A restricted community with a single group as reader."""
+    comm = Community.create({})
+    comm.slug = "restricted-community"
+    comm.metadata = {"title": "Restricted Community"}
+    comm.access.visibility = "restricted"
+    comm.commit()
+
+    db.session.add(
+        MemberModel(
+            community_id=comm.id,
+            group_id=restricted_community_group.id,
+            role="reader",
+            visible=True,
+            active=True,
+        )
+    )
+    db.session.commit()
     return comm
 
 

@@ -20,7 +20,7 @@ from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.records.api import RDMDraft, RDMParent, RDMRecord
 from invenio_search.engine import dsl
 
-from cds_migrator_kit.errors import UnexpectedValue
+from cds_migrator_kit.errors import ManualImportRequired, UnexpectedValue
 from cds_migrator_kit.rdm.records.streams import RecordStreamDefinition
 from cds_migrator_kit.rdm.records.transform.xml_processing.rules.hr import (
     access_grants,
@@ -92,7 +92,7 @@ def test_full_hr_stream(
     # Title extracted from field 037__ (CERN-STAFF-RULES-ED01) when missing in 245__
     assert new_record["metadata"]["title"] == "Staff Rules and Regulations ed. 01"
 
-    # Restricted access - field 591 --> CERN INTERNAL
+    # Restricted access - the HR stream is configured as restricted
     assert new_record["access"] == {
         "record": "restricted",
         "files": "restricted",
@@ -280,15 +280,13 @@ def test_resource_type_invalid():
         resource_type({}, "980__", {"a": "invalid_type"})
 
 
-def test_record_restriction_values():
-    """Test record_restriction function with different access values."""
-    # Test CERN internal
-    assert record_restriction({}, "591__", {"a": "CERN INTERNAL"}) == ["restricted"]
-    assert record_restriction({}, "591__", {"a": "cern internal"}) == ["restricted"]
-
-    # Test restricted
-    assert record_restriction({}, "591__", {"a": "RESTRICTED"}) == ["restricted"]
-    assert record_restriction({}, "591__", {"a": "restricted"}) == ["restricted"]
+@pytest.mark.parametrize(
+    "access", ["CERN INTERNAL", "cern internal", "RESTRICTED", "restricted"]
+)
+def test_record_restriction_values(access):
+    """Restricted access values need a manual check."""
+    with pytest.raises(ManualImportRequired):
+        record_restriction({}, "591__", {"a": access})
 
 
 def test_record_restriction_public():

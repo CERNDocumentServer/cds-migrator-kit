@@ -2,6 +2,37 @@
   {
     "files": [],
     "collections": null,
+    "restrictions": {
+      "collections": {},
+      "files": [],
+      "record": {
+        "owners": {
+          "859__f": [],
+          "270__m": []
+        },
+        "viewers": {
+          "506__m": [],
+          "5061_d": []
+        }
+      },
+      "edit": {
+        "collections": {},
+        "any_collection": []
+      },
+      "comments": {
+        "primary_collection": "",
+        "view": {
+          "roles": [],
+          "any_collection": []
+        },
+        "send": {
+          "roles": [],
+          "any_collection": []
+        },
+        "record_restriction": "",
+        "restricted_comments": []
+      }
+    },
     "recid": 2234683,
     "creation_date": "2020-05-01 00:00:00",
     "record": [
