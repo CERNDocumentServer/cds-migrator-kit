@@ -305,7 +305,7 @@ def conf_query(collection, exclusions="", confs_dir=None):
 
     A model is imported when the application starts, so the folder of the confs
     is not read from the application config: it is the environment variable
-    ``INVENIO_CDS_MIGRATOR_KIT_COLLECTIONS_DIR`` (set in the Dockerfile), else
+    ``INVENIO_CDS_MIGRATOR_KIT_COLLECTIONS_DIR`` (set in OpenShift invenio-config), else
     the ``migration_cli/collections`` folder of the checkout.
     """
     confs_dir = (

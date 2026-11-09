@@ -84,8 +84,7 @@ ENV WORKING_DIR=/opt/cds-migrator-kit \
     LANGUAGE=en_US:en \
     LC_ALL=en_US.UTF-8 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    INVENIO_CDS_MIGRATOR_KIT_COLLECTIONS_DIR=/opt/cds-migrator-kit/src/migration_cli/collections
+    PYTHONUNBUFFERED=1
 
 RUN useradd invenio --uid 1000 --gid 0 && \
     mkdir -p ${WORKING_DIR} && \
