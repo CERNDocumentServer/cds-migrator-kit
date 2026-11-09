@@ -242,6 +242,7 @@ EXPERIMENTS_AS_SUBJECTS = ["d3", "r104", "r105a"]
 # Legacy accelerator names remapped to vocabulary ids before lookup
 ACCELERATOR_ALIASES = {
     "cern aa": "antiproton accumulator",
+    "lhc": "CERN LHC",
 }
 
 # Public research publication resource types that are auto-included in the CERN Research community.
