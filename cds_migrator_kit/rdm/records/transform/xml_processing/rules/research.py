@@ -779,6 +779,8 @@ def resource_type(self, key, value):
         "technical note": {"id": "publication-technicalnote"},
         "minutes": {"id": "publication-meetingminutes"},
         "presentation": {"id": "presentation"},
+        "moedal_internal_notes": {"id": "publication-technicalnote"},
+        "moedal_notes": {"id": "publication-technicalnote"},
     }
 
     try:
