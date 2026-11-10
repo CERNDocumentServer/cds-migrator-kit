@@ -24,6 +24,9 @@ Prepare the data locally first, see [local migration recipe](../cds_migrator_kit
 - [ ] check whether the e-group with the SBI right is still used; if yes, contact them
 - [ ] check the fields of the submission form for unknown fields
 - [ ] check the submission elements for hidden restrictions (specific emails and such)
+- [ ] check the exact queries of the collection and its subcollections (`Administration -> WebSearch` on legacy CDS)
+  - [ ] search globally and inside the collection separately to compare number of records from the results and check which should belong to the collection but are missing from it
+  - [ ] for global search, search by tag, not just by keyword (e.g. `693:ABC` instead of `experiment:ABC`), to catch the records where the value is in a different subfield
 - [ ] check the already submitted records and which collections they belong to, and which migration rules are missing
 - [ ] report the preliminary errors to the curators (create github task and spreadsheet with errors in https://drive.google.com/drive/u/0/folders/1t85ewhosbtFiVdFFoOd3GcWWWsh1sAaO)
 

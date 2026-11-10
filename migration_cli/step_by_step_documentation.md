@@ -9,6 +9,9 @@ the local flow in `cds_migrator_kit/rdm/README.md`.
 
 This is a detailed information on each stage of migration, but now they were all covered by migration_cli/collection_migration.py
 
+> **Note:** before finalising the number of records to migrate, run the preliminary analysis described in
+> [Data analysis](openshift_migration-recipe.md#1-data-analysis-before-moving-to-environments) of the OpenShift migration recipe.
+
 ### To visualise the errors (locally):
 
 ```shell
