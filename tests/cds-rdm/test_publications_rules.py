@@ -420,6 +420,19 @@ class TestJournal:
         assert result["meeting:meeting"] == [{"acronym": "CHEP"}]
         assert result["journal:journal"] == {}
 
+    def test_773_url_saved_without_cnum(self):
+        """A 773__u is stored when q is present and w is absent."""
+        result = journal({}, "773__", {"q": "CHEP", "u": "https://indico.cern.ch/e/1"})
+
+        assert result["meeting:meeting"] == [
+            {
+                "acronym": "CHEP",
+                "identifiers": [
+                    {"scheme": "URL", "identifier": "https://indico.cern.ch/e/1"}
+                ],
+            }
+        ]
+
     def test_773_sets_publication_date_if_missing(self):
         """A year in 773 adds a publication date if missing."""
         record = {}
@@ -747,7 +760,7 @@ class TestJournal:
             journal({}, "773__", {"p": "Nature", "m": ("publication", "bogus")})
 
     def test_multiple_journal_773_raises_for_curation(self):
-        """A second journal-like 773 must not overwrite journal:journal."""
+        """A second publication 773 must not overwrite journal:journal."""
         record = {}
         result = journal(
             record,
@@ -760,8 +773,34 @@ class TestJournal:
             journal(
                 record,
                 "773__",
-                {"p": "Journal-B", "v": "2", "c": "99", "m": "erratum"},
+                {"p": "Journal-B", "v": "2", "c": "99"},
             )
+
+    def test_correction_773_keeps_publication_journal(self):
+        """An erratum 773 beside the publication is not a second journal.
+
+        p/n/v must still be read. Unread subfields become a LossyConversion
+        ("Migration rule missing") for 773__p, 773__v and 773__n.
+        """
+        from cds_dojson.utils import MementoDict
+
+        record = {}
+        result = journal(
+            record,
+            "773__",
+            {"p": "Journal-A", "v": "1", "c": "10-12", "m": "publication"},
+        )
+        record["custom_fields"] = result
+
+        erratum = MementoDict(
+            [("p", "Journal-B"), ("v", "2"), ("n", "4"), ("c", "99"), ("m", "erratum")]
+        )
+        result = journal(record, "773__", erratum)
+
+        assert result["journal:journal"]["title"] == "Journal-A"
+        assert result["journal:journal"]["volume"] == "1"
+        assert result["journal:journal"]["pages"] == "10-12"
+        assert erratum.not_accessed_keys.isdisjoint({"p", "n", "v", "c", "m"})
 
     def test_773_c_repeated_raises_for_curation(self):
         """A repeated 773__c (a tuple) is ambiguous and flagged for curation.
