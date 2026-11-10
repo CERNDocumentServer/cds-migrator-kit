@@ -1,0 +1,11 @@
+name: moedal
+queries:
+  - q: '980__a:PREPRINT AND 693__e:MoEDAL OR 980__a:ARTICLE AND 693__e:MoEDAL OR 980:MoEDAL_NOTES OR 980:MoEDAL_INTERNAL_NOTES'
+    dump_file_prefix: moedal
+flags:
+  include_plots: true
+  create_inclusion_request: true
+  preferred_model: moedal
+# These community slugs must exist in the target environment.
+communities:
+  - moedal
