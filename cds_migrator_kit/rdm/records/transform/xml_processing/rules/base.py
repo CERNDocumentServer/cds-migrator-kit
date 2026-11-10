@@ -28,13 +28,13 @@ from cds_migrator_kit.rdm.records.load.entities.split_entries import (
 )
 from cds_migrator_kit.rdm.records.transform.config import (
     CONTROLLED_SUBJECTS_SCHEMES,
-    CORRECTION_MATERIAL_TERMS,
     EXPERIMENTS_AS_STUDIES,
     IDENTIFIERS_SCHEMES_TO_DROP,
     KEYWORD_SCHEMES_TO_DROP,
     PID_SCHEMES_TO_STORE_IN_IDENTIFIERS,
     PID_SCHEMES_TO_STORE_IN_RELATED_IDENTIFIERS,
     RECOGNISED_KEYWORD_SCHEMES,
+    is_correction_material,
     udc_pattern,
 )
 from cds_migrator_kit.rdm.records.transform.models.base_record import (
@@ -519,7 +519,7 @@ def _pids(self, key, value):
     if not is_doi_id and is_handle_id and (scheme == "doi" or scheme == "urn/hdl"):
         scheme = "handle"
 
-    if qualifier in CORRECTION_MATERIAL_TERMS:
+    if is_correction_material(qualifier):
         related_identifiers = self.get("related_identifiers", [])
         new_id = {
             "identifier": identifier,

@@ -26,7 +26,7 @@ from cds_migrator_kit.transform.xml_processing.rules.base import (
     extract_contributor_names,
 )
 
-from ...config import CORRECTION_MATERIAL_TERMS, udc_pattern
+from ...config import is_correction_material, udc_pattern
 from ...models.base_publication_record import rdm_base_publication_model as model
 from .base import licenses as _base_licenses
 from .base import normalize
@@ -268,19 +268,23 @@ def journal(self, key, value):
     # entirely at the DOI level (0247_ $q -> related identifier with
     # "issupplementedby"), so this note carries no extra information and is
     # ignored. Any other value is surfaced for curation.
+    is_correction = False
     if "m" in value:
-        allowed_m_values = {"publication", *CORRECTION_MATERIAL_TERMS}
         m_values = value.get("m")
         if not isinstance(m_values, (list, tuple)):
             m_values = (m_values,)
+        is_correction = True
         for m_value in m_values:
-            if StringValue(m_value).parse().lower() not in allowed_m_values:
+            parsed = StringValue(m_value).parse().lower()
+            if parsed != "publication" and not is_correction_material(parsed):
                 raise UnexpectedValue(
                     "Unexpected 773__m value. Record requires manual curation.",
                     subfield="m",
                     field=key,
                     value=value,
                 )
+            if not is_correction_material(parsed):
+                is_correction = False
 
     # A repeated 773__c (dojson returns a tuple) is ambiguous page/session data
     # that can't be reduced to a single value - flag for manual curation instead
@@ -310,6 +314,7 @@ def journal(self, key, value):
             # Some old records have slashes instead of hyphens in the INSPIRE conference cnum
             conference_cnum = conference_cnum.replace("/", "-")
             identifiers.append({"scheme": "inspire", "identifier": conference_cnum})
+        if identifiers:
             new_meeting["identifiers"] = identifiers
         if conference_acronym:
             new_meeting["acronym"] = conference_acronym
@@ -341,19 +346,30 @@ def journal(self, key, value):
     # Only populate journal fields from a journal 773 (has p/n/v).
     # A 773 with only 'c'+'w' is a conference proceedings reference and must
     # not overwrite journal data extracted from the sibling journal 773.
-    # Two journal-like 773s would otherwise silently overwrite title/volume/pages
-    # (e.g. main publication + erratum); flag for curation instead.
+    # Two journal-like 773s would otherwise silently overwrite title/volume/pages;
+    # flag those for curation. An erratum (addendum, corrigendum) 773 is not
+    # a second publication, so it must not raise or overwrite the journal.
+    # The subfields are still read: dojson reports any unread subfield as a
+    # missing rule (LossyConversion).
     if is_journal:
-        if journal_fields:
+        title = StringValue(value.get("p", "")).parse()
+        issue = StringValue(value.get("n", "")).parse()
+        volume = StringValue(value.get("v", "")).parse()
+        pages = StringValue(value.get("c", "")).parse()
+        journal_already_set = any(
+            field in journal_fields for field in ("title", "issue", "volume")
+        )
+        if journal_already_set and not is_correction:
             raise UnexpectedValue(
                 "Multiple journal 773 fields. Record requires manual curation.",
                 field=key,
                 value=value,
             )
-        journal_fields["title"] = StringValue(value.get("p", "")).parse()
-        journal_fields["issue"] = StringValue(value.get("n", "")).parse()
-        journal_fields["volume"] = StringValue(value.get("v", "")).parse()
-        journal_fields["pages"] = StringValue(value.get("c", "")).parse()
+        if not journal_already_set:
+            journal_fields["title"] = title
+            journal_fields["issue"] = issue
+            journal_fields["volume"] = volume
+            journal_fields["pages"] = pages
     _custom_fields["journal:journal"] = journal_fields
     return _custom_fields
 

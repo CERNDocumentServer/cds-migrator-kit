@@ -161,6 +161,20 @@ FILE_SUBFORMATS_TO_DROP = ["pdfa", "unstamped"]
 
 CORRECTION_MATERIAL_TERMS = ("erratum", "addendum", "corrigendum")
 
+
+def is_correction_material(value):
+    """Return whether a 773__m or 0247_q value is a correction.
+
+    ``erratum`` is matched as a substring. Addendum and corrigendum stay exact.
+    """
+    if not isinstance(value, str):
+        return False
+    normalized = value.strip().lower()
+    if "erratum" in normalized:
+        return True
+    return normalized in CORRECTION_MATERIAL_TERMS
+
+
 # Known empty/corrupt legacy PDF stub (Ghostscript zero-page placeholder).
 EMPTY_PDF_CHECKSUM = "6f58aa0bfac8a909ac578c1595d55a60"
 
@@ -233,6 +247,7 @@ EXPERIMENT_ALIASES = {
     "isoltrap": "IS394",
     "is485 (rex-isolde)": "IS485",
     "charm": "ea-irrad mixed-field",
+    "cern elena": "ELENA",
 }
 
 # 693__e values that are keywords rather than real experiments (curated as
