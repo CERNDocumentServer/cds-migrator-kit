@@ -22,9 +22,7 @@ class ISOLDEModel(CdsOverdo):
     # the queries of the collection configuration (migration_cli/collections/isolde.yaml)
     # (deleted, hidden and dummy records are always excluded), translated to the
     # notation of the models
-    __query__ = conf_query(
-        "isolde",
-    )
+    __query__ = conf_query("isolde")
 
     __ignore_keys__ = IGNORE_SYSTEM_KEYS | ResearchModel.__ignore_keys__
 
