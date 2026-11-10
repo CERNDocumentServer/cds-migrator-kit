@@ -4,5 +4,6 @@ queries:
     dump_file_prefix: radio_protection
 flags:
   restricted: true
+  preferred_model: radio_protection
 communities:
     - radio-protection
