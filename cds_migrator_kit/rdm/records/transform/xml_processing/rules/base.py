@@ -13,7 +13,7 @@ import re
 from urllib.parse import ParseResult, urlparse
 
 from dateutil.parser import ParserError, parse
-from dojson.errors import IgnoreKey
+from dojson.errors import IgnoreItem, IgnoreKey
 from dojson.utils import filter_values, flatten, force_list
 from idutils.validators import is_arxiv, is_doi, is_handle, is_urn
 from invenio_accounts.models import User
@@ -731,6 +731,9 @@ def licenses(self, key, value):
             self["custom_fields"] = _custom_fields
 
     if not license_id:
+        # From SIS: "f" bronze won't have any 540_a/u/3
+        if qualifier == "bronze":
+            raise IgnoreItem()
         # 540__f/b without a license id — side effects (funding model, copyright) already applied
         raise UnexpectedValue(
             "License title missing", field=key, subfield="a", value=value
