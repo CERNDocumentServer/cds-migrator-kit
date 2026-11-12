@@ -1334,9 +1334,14 @@ class TestLicenseAndFundingFrom540:
         assert self._cf(record)["cern:oa_funding_model"] == {"id": "other"}
 
     def test_bronze_does_not_set_funding_model(self):
+        """A 540 with only f=Bronze is ignored and sets no funding model.
+
+        SIS: bronze has no 540__a/u/3, so the field is skipped instead of
+        failing the record for a missing license title.
+        """
         record = {"custom_fields": {}}
-        with pytest.raises(UnexpectedValue):
-            oa_level_from_license(record, "540__", {"f": "Bronze"})
+        result = oa_level_from_license(record, "540__", {"f": "Bronze"})
+        assert result == []
         assert "cern:oa_funding_model" not in self._cf(record)
         assert "cern:oa_level" not in self._cf(record)
 
