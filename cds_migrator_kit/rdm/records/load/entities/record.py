@@ -143,27 +143,34 @@ class RecordLoad:
                     ],
                     uow=uow,
                 )
-                path = file_data["eos_tmp_path"]
-                if file_is_empty(path):
-                    raise ManualImportRequired(
-                        message="Empty file detected; curator review required.",
-                        field="files",
-                        stage="load",
-                        recid=recid,
-                        priority="critical",
-                        value=file_data["key"],
-                    )
-                if pdf_has_zero_pages(path):
-                    raise ManualImportRequired(
-                        message=(
-                            "Empty/corrupt PDF detected; curator review required."
-                        ),
-                        field="files",
-                        stage="load",
-                        recid=recid,
-                        priority="critical",
-                        value=file_data["key"],
-                    )
+
+                is_local_dev = current_app.config.get("CDS_MIGRATOR_KIT_ENV") == "local"
+
+                if not is_local_dev:
+                    # Don't run the checks on the local dev env since files don't actually
+                    # exist there, so the checks will fail.
+                    path = file_data["eos_tmp_path"]
+                    if file_is_empty(path):
+                        raise ManualImportRequired(
+                            message="Empty file detected; curator review required.",
+                            field="files",
+                            stage="load",
+                            recid=recid,
+                            priority="critical",
+                            value=file_data["key"],
+                        )
+                    if pdf_has_zero_pages(path):
+                        raise ManualImportRequired(
+                            message=(
+                                "Empty/corrupt PDF detected; curator review required."
+                            ),
+                            field="files",
+                            stage="load",
+                            recid=recid,
+                            priority="critical",
+                            value=file_data["key"],
+                        )
+
                 current_rdm_records_service.draft_files.set_file_content(
                     identity,
                     draft.id,
