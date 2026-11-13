@@ -9,7 +9,7 @@
 
 import json
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def flag_robots_and_COUNTER(entry):
@@ -110,6 +110,11 @@ def process_download_event(entry, rec_context, logger):
 
     return {
         "timestamp": timestamp,
+        # Ingestion time, mirroring invenio-stats' live EventsIndexer
+        # (processors.py). Must be recent (not the historical event time) so the
+        # aggregator's skip guard treats the migrated bucket as pending until the
+        # bookmark advances past it.
+        "updated_timestamp": datetime.now(timezone.utc).isoformat(),
         # Note: bucket_id created on migration
         "bucket_id": _file_context["bucket_id"],
         "file_id": _file_context["file_id"],
@@ -192,6 +197,11 @@ def process_pageview_event(entry, rec_context, logger):
 
     return {
         "timestamp": timestamp,
+        # Ingestion time, mirroring invenio-stats' live EventsIndexer
+        # (processors.py). Must be recent (not the historical event time) so the
+        # aggregator's skip guard treats the migrated bucket as pending until the
+        # bookmark advances past it.
+        "updated_timestamp": datetime.now(timezone.utc).isoformat(),
         # Note id_bibrec is here with the old style
         "recid": rec_context["latest_version"],
         "parent_recid": rec_context["parent_recid"],
