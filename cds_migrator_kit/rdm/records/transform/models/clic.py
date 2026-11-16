@@ -21,9 +21,7 @@ class ClicResearchModel(CdsOverdo):
     # the queries of the collection configuration (migration_cli/collections/clic.yaml)
     # (deleted, hidden and dummy records are always excluded), translated to the
     # notation of the models
-    __query__ = conf_query(
-        "clic",
-    )
+    __query__ = conf_query("clic")
 
     # the keys of the research model (the source of truth, see research.py); the fields
     # ignored only here would be added with `| {...}`

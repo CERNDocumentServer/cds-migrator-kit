@@ -32,6 +32,8 @@ to the root of the repository).
 ``migration_cli/migrating-a-collection.md`` describes the whole flow.
 """
 
+from __future__ import annotations
+
 import os
 import re
 import warnings
@@ -293,7 +295,7 @@ def legacy_to_model_query(query):
     return "".join(out)
 
 
-def conf_query(collection, exclusions="", confs_dir=None):
+def conf_query(collections: str | list[str], exclusions="", confs_dir=None):
     """The ``__query__`` of a model, built from the queries of the collection conf.
 
     The queries of the conf (``queries``, each with its ``q``) are translated
@@ -313,16 +315,25 @@ def conf_query(collection, exclusions="", confs_dir=None):
         or default_confs_dir()
     )
     queries = []
-    for item in read_conf(collection, confs_dir).get("queries") or []:
-        text = item.get("q") if isinstance(item, dict) else item
-        if not text:
-            raise ValueError(
-                "A query of `{}` has no text (`q`): {!r}".format(collection, item)
-            )
-        queries.append("({})".format(legacy_to_model_query(text.strip())))
+
+    if isinstance(collections, str):
+        collections = [collections]
+
+    for collection in collections:
+        for item in read_conf(collection, confs_dir).get("queries") or []:
+            text = item.get("q") if isinstance(item, dict) else item
+            if not text:
+                raise ValueError(
+                    "A query of `{}` has no text (`q`): {!r}".format(collection, item)
+                )
+            queries.append("({})".format(legacy_to_model_query(text.strip())))
+
     if not queries:
         raise ValueError(
-            "`queries` is not set for `{}` in {}".format(collection, confs_dir)
+            "`queries` is not set for any of {} in {}".format(
+                ", ".join(collections), confs_dir
+            )
         )
+
     exclusions = " ".join((MODEL_EXCLUSIONS, exclusions.strip())).strip()
     return "({}) {}".format(" OR ".join(queries), legacy_to_model_query(exclusions))
