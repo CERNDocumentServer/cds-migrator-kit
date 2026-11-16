@@ -7,6 +7,7 @@
 
 """CDS-RDM North Area models (NA58 & NA61-66)."""
 
+from cds_migrator_kit.rdm.collection_conf import conf_query
 from cds_migrator_kit.rdm.records.transform.models.base_publication_record import (
     rdm_base_publication_model,
 )
@@ -17,11 +18,10 @@ from cds_migrator_kit.transform.overdo import CdsOverdo
 class NorthAreaModel(CdsOverdo):
     """Translation model for North Area experiments."""
 
-    __query__ = """
-    693__.e:"COMPASS" OR 693__.e:"COMPASS NA58" OR 693__.e:"NA61" OR 693__.e:"SHINE NA61" OR
-    693__.e:"NA62" OR 693__.e:"NA63" OR 693__.e:"NA64" OR 693__.e:"DsTau NA65" OR 693__.e:"AMBER NA66"
-    -037__:CERN-STUDENTS-Note-* -690C_:SCICOM -980__:PHOTOLAB -980__:THESIS -980__:DELETED -980__:HIDDEN -980__:DUMMY
-    """
+    __query__ = conf_query(
+        ["na58", "na61", "na62", "na63", "na64", "na65", "na66"],
+        exclusions="-037:CERN-STUDENTS-Note-* -980:THESIS -980:SCICOMMPUBLSPSC -980:PHOTOLAB",
+    )
 
     # the keys of the research model (the source of truth, see research.py) plus the
     # fields ignored only here

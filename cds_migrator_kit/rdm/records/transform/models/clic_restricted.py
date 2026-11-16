@@ -22,9 +22,7 @@ class ClicRestrictedModel(CdsOverdo):
     # (migration_cli/collections/clic_restr.yaml): the LCD notes that are NOT
     # approved. Disjoint from the public `clic` model (which requires
     # `591__b:approved`), so a record matches exactly one of the two.
-    __query__ = conf_query(
-        "clic_restr",
-    )
+    __query__ = conf_query("clic_restr")
 
     __ignore_keys__ = ResearchModel.__ignore_keys__
 
