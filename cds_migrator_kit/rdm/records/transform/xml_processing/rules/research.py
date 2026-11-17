@@ -427,15 +427,45 @@ def internal_notes(self, key, value):
 @model.over("contributors", "^901__")
 @for_each_value
 def organisation(self, key, value):
-    """Flag a 901__u value for manual curation."""
+    """Translate a 901__u affiliation."""
+    personal_authors = [
+        person
+        for group in (self.get("creators", []), self.get("contributors", []))
+        for person in group
+        if isinstance(person, dict)
+        and (person.get("person_or_org") or {}).get("type") == "personal"
+    ]
+    affiliations = []
     for item in force_list(value.get("u", "")):
-        if item and StringValue(item).parse().strip():
-            raise UnexpectedValue(
-                "901__u present. Record requires manual curation.",
-                field=key,
-                subfield="u",
-                value=value,
-            )
+        item_parsed = StringValue(item).parse().strip()
+        if item and item_parsed and item_parsed not in affiliations:
+            affiliations.append(item_parsed)
+    if not affiliations:
+        raise IgnoreKey("contributors")
+
+    # One personal author takes every 901 value, ahead of the other cases.
+    # ``_input_901_count`` is every 901__u on the record, not just this field.
+    record_901_count = self.get("_input_901_count", len(affiliations))
+    if len(personal_authors) == 1:
+        targets = personal_authors
+    elif len(personal_authors) > 1 and record_901_count == 1:
+        targets = personal_authors
+    else:
+        contributors = self.setdefault("contributors", [])
+        for affiliation in affiliations:
+            contributor = {
+                "person_or_org": {"type": "organizational", "name": affiliation},
+                "role": {"id": "other"},
+            }
+            if contributor not in contributors:
+                contributors.append(contributor)
+        raise IgnoreKey("contributors")
+
+    for person in targets:
+        person_affiliations = person.setdefault("affiliations", [])
+        for affiliation in affiliations:
+            if affiliation not in person_affiliations:
+                person_affiliations.append(affiliation)
     raise IgnoreKey("contributors")
 
 

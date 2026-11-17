@@ -15,6 +15,19 @@ from dojson.errors import IgnoreKey, MissingRule
 from dojson.utils import GroupableOrderedDict
 
 
+def _count_901_values(items):
+    """Count non-empty 901__u values across every 901 field."""
+    total = 0
+    for key, value in items:
+        if not str(key).startswith("901__") or not isinstance(value, dict):
+            continue
+        subfields = value.get("u") or ""
+        if not isinstance(subfields, (list, tuple, set)):
+            subfields = (subfields,)
+        total += sum(1 for subfield in subfields if str(subfield).strip())
+    return total
+
+
 class CdsOverdo(Overdo):
     """Overwrite API of Overdo dojson class."""
 
@@ -80,6 +93,10 @@ class CdsOverdo(Overdo):
         else:
             items = iteritems(blob)
         items = sorted(items, key=lambda item: item[0])
+        # 901 fields are applied one at a time, so a rule cannot tell a single
+        # 901 from several by looking at the current value. Count every 901__u
+        # on the record before the rules run.
+        output["_input_901_count"] = _count_901_values(items)
         for key, value in items:
             # Skip completely empty datafields that have no subfields
             # Some records might have these for unknown reasons (e.g. https://cds.cern.ch/record/2964767/export/xm?ln=en)
@@ -104,4 +121,5 @@ class CdsOverdo(Overdo):
                         handler(exc, output, key, value)
                 else:
                     raise exc
+        output.pop("_input_901_count", None)
         return output
