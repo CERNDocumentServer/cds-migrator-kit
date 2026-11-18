@@ -692,7 +692,7 @@ _FUNDING_MODEL_MAP = {
     "scoap3": "scoap3",
     "collective": "collective",
     "cern-rp": "cern-rp",
-    "cern-apc": "cern-apc",
+    "cern-apc": "cern-individual-apcs",
     "other": "other",
 }
 

@@ -1323,7 +1323,9 @@ class TestLicenseAndFundingFrom540:
         record = {"custom_fields": {}}
         with pytest.raises(UnexpectedValue):
             oa_level_from_license(record, "540__", {"f": "CERN-APC"})
-        assert self._cf(record)["cern:oa_funding_model"] == {"id": "cern-apc"}
+        assert self._cf(record)["cern:oa_funding_model"] == {
+            "id": "cern-individual-apcs"
+        }
 
     def test_funding_model_other(self):
         record = {"custom_fields": {}}
