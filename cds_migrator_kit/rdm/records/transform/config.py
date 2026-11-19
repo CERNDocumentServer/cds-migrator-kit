@@ -159,7 +159,7 @@ udc_pattern = r"\b\d+(?:\.\d+)*-?\d*(?:\.\d+)*\b"
 
 FILE_SUBFORMATS_TO_DROP = ["pdfa", "unstamped"]
 
-CORRECTION_MATERIAL_TERMS = ("erratum", "addendum", "corrigendum")
+CORRECTION_MATERIAL_TERMS = ("erratum", "erratum 2", "addendum", "corrigendum")
 
 # Known empty/corrupt legacy PDF stub (Ghostscript zero-page placeholder).
 EMPTY_PDF_CHECKSUM = "6f58aa0bfac8a909ac578c1595d55a60"
@@ -233,6 +233,7 @@ EXPERIMENT_ALIASES = {
     "isoltrap": "IS394",
     "is485 (rex-isolde)": "IS485",
     "charm": "ea-irrad mixed-field",
+    "cern elena": "ELENA",
 }
 
 # 693__e values that are keywords rather than real experiments (curated as
