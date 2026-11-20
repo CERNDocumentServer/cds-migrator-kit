@@ -1,7 +1,9 @@
 name: na61
 queries:
-  - q: '(980:PREPRINT OR 980:ARTICLE OR 980:CONFERENCEPAPER OR 980:SLIDES OR 980:NOTES) AND (693__e:"NA61" OR 693__e:"SHINE NA61")'
+  - q: '980:PREPRINT OR 980:ARTICLE OR 980:CONFERENCEPAPER OR 980:SLIDES OR 980:NOTES AND 693__e:"NA61"'
     dump_file_prefix: na61
+  - q: '980:PREPRINT OR 980:ARTICLE OR 980:CONFERENCEPAPER OR 980:SLIDES OR 980:NOTES AND 693__e:"SHINE NA61"'
+    dump_file_prefix: na61_shine
 flags:
   include_plots: true
   create_inclusion_request: true

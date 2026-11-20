@@ -1,7 +1,9 @@
 name: na58
 queries:
-  - q: '(980:PREPRINT OR 980:ARTICLE OR 980:CONFERENCEPAPER OR 980:SLIDES OR 980:NOTES) AND (693__e:"COMPASS" OR 693__e:"COMPASS NA58")'
-    dump_file_prefix: na58
+  - q: '980:PREPRINT OR 980:ARTICLE OR 980:CONFERENCEPAPER OR 980:SLIDES OR 980:NOTES AND 693__e:"COMPASS"'
+    dump_file_prefix: na58_compass
+  - q: '980:PREPRINT OR 980:ARTICLE OR 980:CONFERENCEPAPER OR 980:SLIDES OR 980:NOTES AND 693__e:"COMPASS NA58"'
+    dump_file_prefix: na58_compass_na58
 flags:
   include_plots: true
   create_inclusion_request: true
