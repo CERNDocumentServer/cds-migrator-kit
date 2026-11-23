@@ -13,6 +13,8 @@ The data of the collection is kept apart, under the root of the migration data o
     files/                     record files                      (dump files)
     duplicated_pids.json       duplicates to redirect            (prepare)
     ep_report_number_dups.json EP report numbers to review       (prepare)
+    report_number_cross_dups.json  report numbers shared outside the collection (find_cross_collection_duplicates.py)
+    soft_title_cross_dups.json     similar titles outside the collection        (find_cross_collection_duplicates.py --soft-title-match)
 /eos/media/cds/cds-rdm/<env>/migration/users/    people.csv, shared by all collections
 ```
 
@@ -28,7 +30,28 @@ Prepare the data locally first, see [local migration recipe](../cds_migrator_kit
   - [ ] search globally and inside the collection separately to compare number of records from the results and check which should belong to the collection but are missing from it
   - [ ] for global search, search by tag, not just by keyword (e.g. `693:ABC` instead of `experiment:ABC`), to catch the records where the value is in a different subfield
 - [ ] check the already submitted records and which collections they belong to, and which migration rules are missing
-- [ ] report the preliminary errors to the curators (create github task and spreadsheet with errors in https://drive.google.com/drive/u/0/folders/1t85ewhosbtFiVdFFoOd3GcWWWsh1sAaO)
+- [ ] look for copies of the collection records elsewhere in CDS, see [Duplicates outside the collection](#duplicates-outside-the-collection)
+- [ ] report the preliminary errors and the duplicates outside the collection to the curators (create github task and spreadsheet with errors in https://drive.google.com/drive/u/0/folders/1t85ewhosbtFiVdFFoOd3GcWWWsh1sAaO)
+
+### Duplicates outside the collection
+
+`prepare` only finds duplicates **inside** the collection. To find records of the collection that also exist in another collection of CDS (f.e. the same paper submitted twice, once in each collection), run `subscripts/find_cross_collection_duplicates.py` on `cds-migration-01` (it needs the legacy Invenio) and give the results to the curators, who decide which record to keep, merge or delete on legacy CDS before the migration:
+
+```shell
+kinit cdsrdmeos<TODO env>   # to write to the EOS folder of the collection
+S=/opt/cds-migrator-kit/migration_cli
+python2 $S/subscripts/find_cross_collection_duplicates.py \
+    --collection-q '980__a:ARTICLE and 693:"FASER" -980:DELETED -980:HIDDEN -980__a:DUMMY' \
+    --output-dir /eos/media/cds/cds-rdm/<TODO env>/migration/<TODO collection name> \
+    --verbose
+```
+
+- `--collection-q` is a full CDS search query: unlike the `collection_migration.py` commands, the standard exclusions are **not** added. Give it once per query of the collection configuration (it can be repeated).
+- Report numbers (always): every report number of the collection records (`037__a`, `088__a`, `088__9`, `9031_b`, `909C0r`) is looked up with an exact match in all of CDS. The ones shared with records outside the collection go to `report_number_cross_dups.json`.
+- `--soft-title-match` (optional, fuzzy): also compares the normalised titles (case, accents, punctuation, hyphens and spaces removed, at least 20 characters) with all of CDS, written to `soft_title_cross_dups.json`. It scans the whole `bib24x` table, so it is slow, and it gives false positives (generic titles, different editions, ...): check the entries before sending them, the `same_year` flag of the verbose output helps.
+- `--verbose` is the format to give to the curators: per report number / title, the records in and outside the collection with their status, collections (`980__a`), title and year. Without it the output is only `{recid_in_collection: [recids outside], ...}`.
+- Deleted records are ignored by default (`--ignore-deleted False` to include them).
+- Nothing is written to `duplicated_pids.json`: the results are for review only and do not change the migration. If the curators merge or delete records, dump the records again (and rerun `prepare`).
 
 Community details (fill in with the community):
 

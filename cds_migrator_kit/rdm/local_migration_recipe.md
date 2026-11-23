@@ -144,6 +144,8 @@ rsync -av cds-migration-01:/tmp/antares-root/antares/{duplicated_pids,ep_report_
 
 `prepare` is optional: it searches the collection for duplicated records (same title, description and file checksums, and `981__a` merges) and writes the legacy recids to redirect in `duplicated_pids.json` (and the EP report numbers shared with other records in `ep_report_number_dups.json`) in the working directory of the collection. Run it if you want to test the redirections: when `duplicated_pids.json` is there, the migration reads it, otherwise nothing is redirected. It needs `analyze_collection_migration.py` and the legacy Invenio, like the dumps. It searches the records of all the `queries` of the collection configuration together.
 
+`prepare` only looks inside the collection. To find copies of the collection records in other collections of CDS (to give to the curators), see [Duplicates outside the collection](../../migration_cli/openshift_migration-recipe.md#duplicates-outside-the-collection).
+
 The dumps change only when the legacy records change (f.e. when curators intervene) , so they do not need to be refreshed on every run. `dump files` is not needed locally.
 
 ## 4. Environment
