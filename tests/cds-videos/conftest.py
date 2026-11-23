@@ -85,8 +85,8 @@ def app_config(app_config):
 @pytest.fixture(scope="module", autouse=True)
 def db(app):
     """Setup database."""
-    if not database_exists(str(db_.engine.url)):
-        create_database(str(db_.engine.url))
+    if not database_exists(db_.engine.url):
+        create_database(db_.engine.url)
     db_.create_all()
     yield db_
     db_.session.remove()
