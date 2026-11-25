@@ -13,8 +13,8 @@ The data of the collection is kept apart, under the root of the migration data o
     files/                     record files                      (dump files)
     duplicated_pids.json       duplicates to redirect            (prepare)
     ep_report_number_dups.json EP report numbers to review       (prepare)
-    report_number_cross_dups.json  report numbers shared outside the collection (find_cross_collection_duplicates.py)
-    soft_title_cross_dups.json     similar titles outside the collection        (find_cross_collection_duplicates.py --soft-title-match)
+    report_number_cross_dups.json  report numbers shared outside the collection (prepare)
+    soft_title_cross_dups.json     similar titles outside the collection        (prepare --soft-title-match, optional)
 /eos/media/cds/cds-rdm/<env>/migration/users/    people.csv, shared by all collections
 ```
 
@@ -35,7 +35,13 @@ Prepare the data locally first, see [local migration recipe](../cds_migrator_kit
 
 ### Duplicates outside the collection
 
-`prepare` only finds duplicates **inside** the collection. To find records of the collection that also exist in another collection of CDS (f.e. the same paper submitted twice, once in each collection), run `subscripts/find_cross_collection_duplicates.py` on `cds-migration-01` (it needs the legacy Invenio) and give the results to the curators, who decide which record to keep, merge or delete on legacy CDS before the migration:
+`collection_migration.py prepare` runs `subscripts/find_cross_collection_duplicates.py` automatically (after `analyze_collection_migration.py`) to find records of the collection that share a report number with records outside the collection (f.e. the same paper submitted twice, once in each collection). Give `report_number_cross_dups.json` to the curators, who decide which record to keep, merge or delete on legacy CDS before the migration.
+
+- Every report number of the collection records (`037__a`, `088__a`, `088__9`, `9031_b`, `909C0r`) is looked up with an exact match across all of CDS. Report numbers shared with records outside the collection are written to `report_number_cross_dups.json`.
+- `prepare` runs the script with `--verbose` (per report number, the records in and outside the collection with their status, collections `980__a`, title and year) and ignores deleted records by default.
+- `--soft-title-match` (opt-in, **not** run by default): pass `--soft-title-match` to `prepare` (or to `find_cross_collection_duplicates.py`) to also compare normalised titles (case, accents, punctuation, hyphens and spaces removed, at least 20 characters) across all of CDS, written to `soft_title_cross_dups.json`. It scans the whole `bib24x` table, so it is slow and gives false positives (generic titles, different editions, ...): review the entries by hand before sending them (the `same_year` flag helps).
+- Nothing is written to `duplicated_pids.json`: the results are for review only and do not change the migration. If the curators merge or delete records, dump the records again and rerun `prepare`.
+- To run it standalone before writing the collection configuration (e.g. during data analysis):
 
 ```shell
 kinit cdsrdmeos<TODO env>   # to write to the EOS folder of the collection
@@ -45,13 +51,6 @@ python2 $S/subscripts/find_cross_collection_duplicates.py \
     --output-dir /eos/media/cds/cds-rdm/<TODO env>/migration/<TODO collection name> \
     --verbose
 ```
-
-- `--collection-q` is a full CDS search query: unlike the `collection_migration.py` commands, the standard exclusions are **not** added. Give it once per query of the collection configuration (it can be repeated).
-- Report numbers (always): every report number of the collection records (`037__a`, `088__a`, `088__9`, `9031_b`, `909C0r`) is looked up with an exact match in all of CDS. The ones shared with records outside the collection go to `report_number_cross_dups.json`.
-- `--soft-title-match` (optional, fuzzy): also compares the normalised titles (case, accents, punctuation, hyphens and spaces removed, at least 20 characters) with all of CDS, written to `soft_title_cross_dups.json`. It scans the whole `bib24x` table, so it is slow, and it gives false positives (generic titles, different editions, ...): check the entries before sending them, the `same_year` flag of the verbose output helps.
-- `--verbose` is the format to give to the curators: per report number / title, the records in and outside the collection with their status, collections (`980__a`), title and year. Without it the output is only `{recid_in_collection: [recids outside], ...}`.
-- Deleted records are ignored by default (`--ignore-deleted False` to include them).
-- Nothing is written to `duplicated_pids.json`: the results are for review only and do not change the migration. If the curators merge or delete records, dump the records again (and rerun `prepare`).
 
 Community details (fill in with the community):
 
@@ -112,7 +111,7 @@ python $S/collection_migration.py prepare       --collection <TODO collection na
 | `dump records` | `inveniomigrator dump records` for each query, the dump files in `dump/`. It prints the number of records in each file, per query, and the total (with the number of different records, as a record can match several queries) |
 | `dump comments` | `comments/comments_metadata.json` and `comments/users/{active,missing}_commentors*.json`. Needs the legacy Invenio: `ipython $S/collection_migration.py -- dump comments --collection <TODO collection name>` |
 | `dump files` | copies the files of the dumped records to `files/` (checksums verified, `files.log` written) and the files attached to comments to `comments/<recid>/` |
-| `prepare` | runs `analyze_collection_migration.py` from `subscripts/`. Duplicates (same title, description and file checksums, `981__a` merges, ignoring `CER` values) in `duplicated_pids.json`; EP report numbers shared with other records in `ep_report_number_dups.json` (review them) |
+| `prepare` | runs `analyze_collection_migration.py` and `find_cross_collection_duplicates.py` from `subscripts/`. Duplicates (same title, description and file checksums, `981__a` merges, ignoring `CER` values) in `duplicated_pids.json`; EP report numbers shared with other records in `ep_report_number_dups.json`; report numbers shared with records outside the collection in `report_number_cross_dups.json` (review both) |
 
 
 If `people.csv` needs to be recreated (once per environment, no `--collection` needed):
