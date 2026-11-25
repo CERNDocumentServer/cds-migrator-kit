@@ -17,7 +17,7 @@ with --env. Other roots (e.g. local folders) are given with --root.
 The scripts are those of the cds-migrator-kit checkout on the legacy host
 (/opt/cds-migrator-kit/migration_cli): this one calls the helpers in subscripts/
 (analyze_collection_migration.py, copy_collection_files.py,
-export_collection_comments.py).
+export_collection_comments.py, find_cross_collection_duplicates.py).
 See docs in migration_cli/migrating-a-collection.md.
 
     kinit cdsrdmeosdev            # an identity that can write to the EOS folder
@@ -47,6 +47,7 @@ Layout of the working directory:
     files.log                      one line per copied file
     duplicated_pids.json           legacy recids to redirect (`prepare`)
     ep_report_number_dups.json     EP report numbers to review (`prepare`)
+    report_number_cross_dups.json  report numbers shared outside the collection (`prepare`)
 
 Every step can be re-run: the dump files are replaced, and the files already
 copied (verified by size + checksum) are skipped.
@@ -69,6 +70,9 @@ EOS_ROOT = "/eos/media/cds/cds-rdm/{env}/migration"
 ENV_FOLDERS = {"production": "prod"}
 EOS_ROOT_RE = re.compile(r"^(/eos/media/cds/cds-rdm/([^/]+)/migration)(/|$)")
 ANALYZE_SCRIPT = os.path.join(SUBSCRIPTS_DIR, "analyze_collection_migration.py")
+CROSS_DUPS_SCRIPT = os.path.join(
+    SUBSCRIPTS_DIR, "find_cross_collection_duplicates.py"
+)
 DUPLICATES_FILENAME = "duplicated_pids.json"
 LEGACY_FILES_ROOT = "/opt/cdsweb/var/data/files/"
 
@@ -492,7 +496,29 @@ def cmd_prepare(ctx, args):
     print("Running: {}".format(" ".join(command)))
     subprocess.check_call(command)
 
-    print("Review ep_report_number_dups.json, then continue on the migration pod.")
+    # find report numbers shared with records outside the collection,
+    # written to report_number_cross_dups.json for curator review
+    cross_dups_queries = [
+        "{} {}".format(query.strip(), DUMP_EXCLUSIONS)
+        for query in query_texts(conf)
+    ]
+    cross_dups_command = [args.python, args.cross_dups_script]
+    for query in cross_dups_queries:
+        cross_dups_command += ["--collection-q", query]
+    cross_dups_command += ["--output-dir", ctx.base, "--verbose"]
+    if args.soft_title_match:
+        cross_dups_command.append("--soft-title-match")
+    print("Running: {}".format(" ".join(cross_dups_command)))
+    subprocess.check_call(cross_dups_command)
+
+    review_files = ["ep_report_number_dups.json", "report_number_cross_dups.json"]
+    if args.soft_title_match:
+        review_files.append("soft_title_cross_dups.json")
+    print(
+        "Review {}, then continue on the migration pod.".format(
+            ", ".join(review_files)
+        )
+    )
 
 
 # --------------------------------------------------------------------------
@@ -566,6 +592,12 @@ def build_parser():
         "--python", default="python2", help="interpreter of the analysis"
     )
     prepare.add_argument("--analyze-script", default=ANALYZE_SCRIPT)
+    prepare.add_argument("--cross-dups-script", default=CROSS_DUPS_SCRIPT)
+    prepare.add_argument(
+        "--soft-title-match",
+        action="store_true",
+        help="also run fuzzy soft title matching across all of CDS (off by default, slow)",
+    )
     prepare.set_defaults(func=cmd_prepare, needs_conf=True)
     return parser
 

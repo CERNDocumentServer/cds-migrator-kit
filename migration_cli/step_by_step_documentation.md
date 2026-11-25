@@ -45,7 +45,7 @@ Identify and dump duplicated records i.e. records with same title, description a
 checksums (excluding deleted files) on EOS. If duplicates found, then we keep the recid
 that has restricted files or if not any, then the first one from the list.
 
-Run `migration_cli/collection_migration.py prepare` (it runs `migration_cli/subscripts/analyze_collection_migration.py`).
+Run `migration_cli/collection_migration.py prepare` (it runs `migration_cli/subscripts/analyze_collection_migration.py` and `migration_cli/subscripts/find_cross_collection_duplicates.py`).
 
 #### How to mount eos locally on MAC (to copy over the dumps and files)
 

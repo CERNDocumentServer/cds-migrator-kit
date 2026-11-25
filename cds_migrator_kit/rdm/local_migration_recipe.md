@@ -139,10 +139,10 @@ python $S/collection_migration.py prepare --collection antares --env local --roo
 # on your machine
 rsync -av cds-migration-01:/tmp/antares-root/antares/dump/ migration_cli/rdm-data/antares/dump/
 rsync -av cds-migration-01:/tmp/antares-root/antares/comments/ migration_cli/rdm-data/antares/comments/   # optional
-rsync -av cds-migration-01:/tmp/antares-root/antares/{duplicated_pids,ep_report_number_dups}.json migration_cli/rdm-data/antares/   # optional, after prepare
+rsync -av cds-migration-01:/tmp/antares-root/antares/{duplicated_pids,ep_report_number_dups,report_number_cross_dups}.json migration_cli/rdm-data/antares/   # optional, after prepare
 ```
 
-`prepare` is optional: it searches the collection for duplicated records (same title, description and file checksums, and `981__a` merges) and writes the legacy recids to redirect in `duplicated_pids.json` (and the EP report numbers shared with other records in `ep_report_number_dups.json`) in the working directory of the collection. Run it if you want to test the redirections: when `duplicated_pids.json` is there, the migration reads it, otherwise nothing is redirected. It needs `analyze_collection_migration.py` and the legacy Invenio, like the dumps. It searches the records of all the `queries` of the collection configuration together.
+`prepare` is optional: it searches the collection for duplicated records (same title, description and file checksums, and `981__a` merges) and writes the legacy recids to redirect in `duplicated_pids.json`, EP report numbers shared with other records in `ep_report_number_dups.json`, and report numbers shared with records outside the collection in `report_number_cross_dups.json` (see [Duplicates outside the collection](../../migration_cli/openshift_migration-recipe.md#duplicates-outside-the-collection)) in the working directory of the collection. Run it if you want to test the redirections: when `duplicated_pids.json` is there, the migration reads it, otherwise nothing is redirected. It needs `analyze_collection_migration.py`, `find_cross_collection_duplicates.py`, and the legacy Invenio, like the dumps. It searches the records of all the `queries` of the collection configuration together.
 
 The dumps change only when the legacy records change (f.e. when curators intervene) , so they do not need to be refreshed on every run. `dump files` is not needed locally.
 
